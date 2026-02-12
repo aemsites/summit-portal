@@ -1,4 +1,4 @@
-import { loadArea, setConfig } from './ak.js';
+import { loadStyle, loadArea, setConfig } from './ak.js';
 
 const hostnames = ['authorkit.dev'];
 
@@ -40,6 +40,8 @@ export async function loadPage() {
 await loadPage();
 
 (function da() {
+  loadStyle('https://use.typekit.net/pbq1nqa.css');
+
   const { searchParams } = new URL(window.location.href);
   const hasPreview = searchParams.has('dapreview');
   if (hasPreview) import('../tools/da/da.js').then((mod) => mod.default(loadPage));

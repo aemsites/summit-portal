@@ -1,6 +1,6 @@
 header {
   --logo-width: 40px;
-  --logo-height: 40px;
+  --logo-height: 24px;
   --mega-columns: 4;
 
   display: block;
@@ -126,6 +126,7 @@ header {
       height: var(--header-height);
       display: flex;
       justify-content: space-between;
+      gap: 8px;
 
       p,
       a {
@@ -136,7 +137,9 @@ header {
         font-weight: 700;
         text-decoration: none;
         margin: 0;
-        color: var(--color-brand);
+        color: light-dark(#000, #fff);
+        line-height: 1;
+        font-size: 16px;
 
         img {
           height: var(--logo-height);

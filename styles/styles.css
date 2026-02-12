@@ -160,13 +160,13 @@
   --color-light: rgb(255 255 255);
   --color-dark: rgb(0 0 0);
   --color-text: light-dark(var(--color-dark), var(--color-light));
-  --color-link: light-dark(var(--color-gray-900), var(--color-gray-100));
+  --color-link: light-dark(var(--color-blue-600), var(--color-gray-100));
   --color-brand: var(--color-purple-500);
   --color-accent: light-dark(var(--color-magenta-600), var(--color-magenta-500));
   --color-shaded: light-dark(#f9f9f9, #111);
 
   /* fonts */
-  --font-family: montserrat, "Trebuchet MS", sans-serif;
+  --font-family: 'Adobe Clean', adobe-clean, montserrat, "Trebuchet MS", sans-serif;
 
   /* headings */
   --heading-font-size-xxl: 32.44px;
