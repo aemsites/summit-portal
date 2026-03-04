@@ -1,0 +1,78 @@
+/* Report Bar — Distribution Bar */
+.report-bar {
+  padding: 0;
+}
+
+.report-bar .rb-container {
+  margin: 8px 0;
+}
+
+.report-bar .rb-bar {
+  display: flex;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.report-bar .rb-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 40px;
+  transition: opacity 0.2s;
+}
+
+.report-bar .rb-segment:hover {
+  opacity: 0.85;
+}
+
+.report-bar .rb-seg-label {
+  white-space: nowrap;
+}
+
+.report-bar .rb-seg-pct {
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.report-bar .rb-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.report-bar .rb-legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.report-bar .rb-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.report-bar .rb-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.report-bar .rb-legend-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.report-bar .rb-legend-desc {
+  color: #6b7280;
+}

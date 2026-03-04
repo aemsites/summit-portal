@@ -1,0 +1,146 @@
+/* Report Hero — Cover & Transition Slides */
+.report-hero {
+  --rh-red: #e60000;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 480px;
+  padding: 64px 32px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Label badge */
+.report-hero .rh-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255 255 255 / 10%);
+  border: 1px solid rgba(255 255 255 / 20%);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: var(--body-font-size-s);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+
+/* Company name */
+.report-hero .rh-company {
+  font-size: var(--heading-font-size-xxl);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Title */
+.report-hero .rh-title {
+  font-size: var(--heading-font-size-xl);
+  font-weight: 300;
+  margin-bottom: 8px;
+}
+
+.report-hero .rh-accent {
+  width: 60px;
+  height: 3px;
+  background: var(--rh-red);
+  margin: 12px auto 16px;
+  border-radius: 2px;
+}
+
+/* Subtitle */
+.report-hero .rh-subtitle {
+  font-size: var(--body-font-size-m);
+  color: rgba(255 255 255 / 70%);
+  max-width: 600px;
+  margin-bottom: 32px;
+}
+
+/* Element cards (cover) */
+.report-hero .rh-elements {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.report-hero .rh-element-card {
+  background: rgba(255 255 255 / 8%);
+  border: 1px solid rgba(255 255 255 / 15%);
+  border-radius: 12px;
+  padding: 16px 24px;
+  font-size: var(--body-font-size-s);
+  font-weight: 500;
+  min-width: 120px;
+}
+
+/* Badge (transition) */
+.report-hero.transition .rh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255 255 255 / 10%);
+  border: 1px solid rgba(255 255 255 / 20%);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: var(--body-font-size-s);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+
+.report-hero.transition .rh-title {
+  font-size: var(--heading-font-size-xxl);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* Metric previews (transition) */
+.report-hero .rh-metrics {
+  display: flex;
+  gap: 24px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.report-hero .rh-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255 255 255 / 8%);
+  border: 1px solid rgba(255 255 255 / 15%);
+  border-radius: 12px;
+  padding: 16px 24px;
+  min-width: 140px;
+}
+
+.report-hero .rh-metric-value {
+  font-size: var(--heading-font-size-l);
+  font-weight: 700;
+}
+
+.report-hero .rh-metric-label {
+  font-size: var(--body-font-size-xs);
+  color: rgba(255 255 255 / 70%);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (width < 600px) {
+  .report-hero {
+    padding: 40px 16px;
+    min-height: 360px;
+  }
+
+  .report-hero .rh-elements,
+  .report-hero .rh-metrics {
+    flex-direction: column;
+    align-items: center;
+  }
+}

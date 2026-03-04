@@ -1,0 +1,28 @@
+/* Report Chart — Traffic Trend */
+.report-chart {
+  padding: 0;
+}
+
+.report-chart .rch-container {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.report-chart .rch-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px;
+}
+
+.report-chart .rch-chart {
+  width: 100%;
+}
+
+.report-chart .rch-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}

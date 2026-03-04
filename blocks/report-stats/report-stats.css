@@ -1,0 +1,77 @@
+/* Report Stats — Metric Cards */
+.report-stats {
+  --rs-poor: #ef4444;
+  --rs-good: #10b981;
+  --rs-warning: #f59e0b;
+
+  padding: 16px 0;
+}
+
+.report-stats .rs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.report-stats .rs-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-stats .rs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-stats .rs-label {
+  font-size: var(--body-font-size-s);
+  color: var(--color-gray-600);
+  font-weight: 500;
+}
+
+.report-stats .rs-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.report-stats .rs-indicator-poor { background: var(--rs-poor); }
+.report-stats .rs-indicator-good { background: var(--rs-good); }
+.report-stats .rs-indicator-warning { background: var(--rs-warning); }
+
+.report-stats .rs-value {
+  font-size: var(--heading-font-size-l);
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.report-stats .rs-poor .rs-value { color: var(--rs-poor); }
+.report-stats .rs-good .rs-value { color: var(--rs-good); }
+
+.report-stats .rs-desc {
+  font-size: var(--body-font-size-xs);
+  color: var(--color-gray-500);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Compact variant */
+.report-stats.compact .rs-card {
+  padding: 12px 16px;
+}
+
+.report-stats.compact .rs-value {
+  font-size: var(--heading-font-size-s);
+}
+
+@media (width < 600px) {
+  .report-stats .rs-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,33 @@
+/* Report Callout — Insight / Highlight Bar */
+.report-callout {
+  padding: 0;
+}
+
+.report-callout .rcl-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fef2f2;
+  border-left: 3px solid #e60000;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.report-callout .rcl-icon {
+  color: #e60000;
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.report-callout .rcl-text {
+  font-size: 14px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.report-callout .rcl-text strong {
+  color: #1a1a1a;
+  font-weight: 600;
+}
