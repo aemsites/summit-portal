@@ -8,8 +8,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgb(230 0 0 / 4%);
-  border-left: 4px solid #e60000;
+  background: var(--rpt-red-bg-subtle);
+  border-left: 4px solid var(--rpt-red);
   border-radius: 12px;
   padding: 16px 20px;
 }
@@ -22,13 +22,13 @@
 
 .report-callout .rcl-text {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--rpt-text-secondary);
   margin: 0;
   line-height: 1.5;
   flex: 1;
 }
 
 .report-callout .rcl-text strong {
-  color: #1a1a1a;
+  color: var(--rpt-text);
   font-weight: 600;
 }

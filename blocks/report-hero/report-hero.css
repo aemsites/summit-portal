@@ -156,6 +156,74 @@
   letter-spacing: 0.3px;
 }
 
+/* ============================================= */
+/* Report page-level styles (loaded with hero)   */
+/* ============================================= */
+
+/* ---- Dark theme tokens (shared by all report blocks) ---- */
+:root {
+  --rpt-surface: light-dark(#fff, #1c1c1c);
+  --rpt-surface-raised: light-dark(#fff, #242424);
+  --rpt-surface-alt: light-dark(#f9fafb, #161616);
+  --rpt-surface-hover: light-dark(rgb(0 0 0 / 2%), rgb(255 255 255 / 5%));
+  --rpt-border: light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%));
+  --rpt-border-subtle: light-dark(rgb(0 0 0 / 6%), rgb(255 255 255 / 7%));
+  --rpt-text: light-dark(#1a1a1a, #e8e8e8);
+  --rpt-text-secondary: light-dark(#4b5563, #b0b8c4);
+  --rpt-text-muted: light-dark(#6b7280, #8b95a5);
+  --rpt-text-faint: light-dark(#9ca3af, #6b7580);
+  --rpt-red: #e60000;
+  --rpt-red-dark: light-dark(#e60000, #ff3333);
+  --rpt-red-bg: light-dark(rgb(230 0 0 / 8%), rgb(230 0 0 / 15%));
+  --rpt-red-bg-subtle: light-dark(rgb(230 0 0 / 4%), rgb(230 0 0 / 10%));
+  --rpt-impact-bg: light-dark(#f3f4f6, #2a2a2a);
+}
+
+/* Section heading accent bar — matches original */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--rpt-text);
+  margin: 0 0 6px;
+}
+
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 28px;
+  background: var(--rpt-red);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Subtitle paragraph — match original header-subtitle */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p {
+  font-size: 14px;
+  color: var(--rpt-text-muted);
+  margin: 0 0 16px;
+  padding-left: 16px;
+}
+
+/* Strong tags in subtitles get Adobe red */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p strong {
+  color: var(--rpt-red-dark);
+  font-weight: 600;
+}
+
+/* Section spacing for report sections */
+.section:has(.report-hero) {
+  padding: 0;
+}
+
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--rpt-border-subtle);
+}
+
 @media (width < 768px) {
   .report-hero {
     padding: 40px 20px;

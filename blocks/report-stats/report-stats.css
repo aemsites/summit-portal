@@ -1,9 +1,9 @@
 /* Report Stats — Metric Cards */
 /* Matches original metric-card pattern with left color border */
 .report-stats {
-  --rs-poor: #ef4444;
-  --rs-good: #22c55e;
-  --rs-warning: #f59e0b;
+  --rs-poor: light-dark(#ef4444, #f87171);
+  --rs-good: light-dark(#22c55e, #4ade80);
+  --rs-warning: light-dark(#f59e0b, #fbbf24);
 
   padding: 0;
 }
@@ -15,8 +15,8 @@
 }
 
 .report-stats .rs-card {
-  background: #fff;
-  border: 1px solid rgb(0 0 0 / 8%);
+  background: var(--rpt-surface);
+  border: 1px solid var(--rpt-border);
   border-radius: 12px;
   padding: 20px 24px;
   display: flex;
@@ -54,7 +54,7 @@
 .report-stats .rs-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--rpt-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -73,7 +73,7 @@
 .report-stats .rs-value {
   font-size: 32px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--rpt-text);
   line-height: 1;
 }
 
@@ -83,7 +83,7 @@
 
 .report-stats .rs-desc {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--rpt-text-faint);
   margin: 4px 0 0;
   line-height: 1.4;
 }

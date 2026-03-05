@@ -45,7 +45,7 @@
   justify-content: space-between;
   margin-top: 8px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--rpt-text-faint);
 }
 
 .report-bar .rb-legend {
@@ -71,9 +71,9 @@
 
 .report-bar .rb-legend-label {
   font-weight: 600;
-  color: #374151;
+  color: var(--rpt-text);
 }
 
 .report-bar .rb-legend-desc {
-  color: #6b7280;
+  color: var(--rpt-text-muted);
 }
