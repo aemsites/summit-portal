@@ -1,0 +1,167 @@
+/* File List — Sortable File Table */
+.file-list {
+  /* Token fallbacks (this block may load on pages without report-hero) */
+  --rpt-surface: light-dark(#fff, #1c1c1c);
+  --rpt-surface-alt: light-dark(#f9fafb, #161616);
+  --rpt-surface-hover: light-dark(rgb(0 0 0 / 2%), rgb(255 255 255 / 5%));
+  --rpt-border: light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%));
+  --rpt-border-subtle: light-dark(rgb(0 0 0 / 6%), rgb(255 255 255 / 7%));
+  --rpt-text: light-dark(#1a1a1a, #e8e8e8);
+  --rpt-text-secondary: light-dark(#4b5563, #b0b8c4);
+  --rpt-text-muted: light-dark(#6b7280, #8b95a5);
+  --rpt-text-faint: light-dark(#9ca3af, #6b7580);
+  --rpt-red-dark: light-dark(#e60000, #ff3333);
+
+  max-width: 30%;
+  padding: 0;
+  overflow-x: auto;
+}
+
+/* Table base */
+.file-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--rpt-surface);
+  border: 1px solid var(--rpt-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Header */
+.file-list th {
+  background: var(--rpt-surface-alt);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rpt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--rpt-border);
+  white-space: nowrap;
+}
+
+/* Sortable header */
+.file-list th.fl-sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 28px;
+  transition: color 0.15s;
+}
+
+.file-list th.fl-sortable:hover {
+  color: var(--rpt-text);
+}
+
+/* Default sort arrow (neutral) */
+.file-list th.fl-sortable::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid currentcolor;
+  opacity: 0.3;
+}
+
+.file-list th.fl-sortable:hover::after {
+  opacity: 0.6;
+}
+
+/* Active sorted — ascending */
+.file-list th.fl-sorted[data-dir="asc"]::after {
+  border-bottom: 5px solid var(--rpt-red-dark);
+  border-top: none;
+  opacity: 1;
+}
+
+/* Active sorted — descending */
+.file-list th.fl-sorted[data-dir="desc"]::after {
+  border-bottom: none;
+  border-top: 5px solid var(--rpt-red-dark);
+  opacity: 1;
+}
+
+/* Cells */
+.file-list td {
+  padding: 12px 16px;
+  color: var(--rpt-text-secondary);
+  border-bottom: 1px solid var(--rpt-border-subtle);
+  line-height: 1.4;
+}
+
+.file-list td p {
+  margin: 0;
+}
+
+.file-list tr:last-child td {
+  border-bottom: none;
+}
+
+.file-list tr.fl-row:hover td {
+  background: var(--rpt-surface-hover);
+}
+
+/* File cell — badge + link */
+.file-list .fl-cell-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--rpt-text);
+}
+
+.file-list .fl-cell-file a {
+  color: var(--rpt-red-dark);
+  text-decoration: none;
+}
+
+.file-list .fl-cell-file a:hover {
+  text-decoration: underline;
+}
+
+/* File type badge */
+.file-list .fl-file-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--fl-badge-color, #6b7280);
+  flex-shrink: 0;
+}
+
+/* Date cell */
+.file-list .fl-cell-date {
+  white-space: nowrap;
+  color: var(--rpt-text-muted);
+  font-size: 13px;
+}
+
+/* Responsive */
+@media (width < 640px) {
+  .file-list table {
+    font-size: 12px;
+  }
+
+  .file-list th,
+  .file-list td {
+    padding: 8px 12px;
+  }
+
+  .file-list .fl-file-badge {
+    min-width: 32px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+}
