@@ -11,17 +11,17 @@
   top: var(--header-height, 64px);
   z-index: 10;
   padding: var(--spacing-m) 0 var(--spacing-l);
-  background: light-dark(var(--color-light), var(--color-dark));
+  background: var(--color-surface);
 }
 
 .cp-search-input {
   width: 100%;
   padding: 14px 20px;
   font-size: var(--body-font-size-m);
-  border: 2px solid light-dark(var(--color-gray-200), var(--color-gray-700));
+  border: 2px solid var(--color-border);
   border-radius: 12px;
-  background: light-dark(var(--color-light), var(--color-gray-900));
-  color: light-dark(var(--color-dark), var(--color-light));
+  background: var(--color-surface);
+  color: var(--color-text);
   outline: none;
   transition: border-color 0.15s;
   box-sizing: border-box;
@@ -32,7 +32,7 @@
 }
 
 .cp-search-input::placeholder {
-  color: var(--color-gray-400);
+  color: var(--color-text-faint);
 }
 
 /* Letter Nav */
@@ -44,7 +44,7 @@
   position: sticky;
   top: calc(var(--header-height, 64px) + 70px);
   z-index: 9;
-  background: light-dark(var(--color-light), var(--color-dark));
+  background: var(--color-surface);
 }
 
 .cp-letter-btn {
@@ -58,8 +58,8 @@
   font-size: var(--body-font-size-s);
   font-weight: 600;
   text-decoration: none;
-  color: light-dark(var(--color-gray-700), var(--color-gray-300));
-  background: light-dark(var(--color-gray-100), var(--color-gray-800));
+  color: var(--color-text-secondary);
+  background: var(--color-surface-alt);
   transition: background 0.15s, color 0.15s;
   cursor: pointer;
 }
@@ -86,10 +86,10 @@
 .cp-group-heading {
   font-size: var(--heading-font-size-m);
   font-weight: 700;
-  color: light-dark(var(--color-gray-800), var(--color-gray-200));
+  color: var(--color-text);
   margin: 0 0 var(--spacing-m);
   padding-bottom: var(--spacing-s);
-  border-bottom: 2px solid light-dark(var(--color-gray-200), var(--color-gray-700));
+  border-bottom: 2px solid var(--color-border);
 }
 
 /* Cards grid */
@@ -106,9 +106,9 @@
   justify-content: space-between;
   padding: 14px 18px;
   border-radius: 10px;
-  border: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
-  background: light-dark(var(--color-light), var(--color-gray-900));
-  color: light-dark(var(--color-dark), var(--color-light));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   text-decoration: none;
   transition: all 0.15s ease;
   cursor: pointer;
@@ -116,7 +116,7 @@
 
 .cp-card:hover {
   border-color: light-dark(var(--color-blue-300), var(--color-blue-600));
-  background: light-dark(var(--color-blue-100), var(--color-blue-900));
+  background: var(--color-surface-hover);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
@@ -130,7 +130,7 @@
 .cp-card-arrow {
   flex-shrink: 0;
   margin-left: var(--spacing-s);
-  color: light-dark(var(--color-gray-400), var(--color-gray-500));
+  color: var(--color-text-faint);
   transition: color 0.15s, transform 0.15s;
 }
 
