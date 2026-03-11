@@ -1,0 +1,157 @@
+/* File List — Sortable File Table */
+.file-list {
+  --fl-accent: light-dark(#e60000, #ff3333);
+
+  max-width: 30%;
+  padding: 0;
+  overflow-x: auto;
+}
+
+/* Table base */
+.file-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Header */
+.file-list th {
+  background: var(--color-surface-alt);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+/* Sortable header */
+.file-list th.fl-sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 28px;
+  transition: color 0.15s;
+}
+
+.file-list th.fl-sortable:hover {
+  color: var(--color-text);
+}
+
+/* Default sort arrow (neutral) */
+.file-list th.fl-sortable::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid currentcolor;
+  opacity: 0.3;
+}
+
+.file-list th.fl-sortable:hover::after {
+  opacity: 0.6;
+}
+
+/* Active sorted — ascending */
+.file-list th.fl-sorted[data-dir="asc"]::after {
+  border-bottom: 5px solid var(--fl-accent);
+  border-top: none;
+  opacity: 1;
+}
+
+/* Active sorted — descending */
+.file-list th.fl-sorted[data-dir="desc"]::after {
+  border-bottom: none;
+  border-top: 5px solid var(--fl-accent);
+  opacity: 1;
+}
+
+/* Cells */
+.file-list td {
+  padding: 12px 16px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+  line-height: 1.4;
+}
+
+.file-list td p {
+  margin: 0;
+}
+
+.file-list tr:last-child td {
+  border-bottom: none;
+}
+
+.file-list tr.fl-row:hover td {
+  background: var(--color-surface-hover);
+}
+
+/* File cell — badge + link */
+.file-list .fl-cell-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.file-list .fl-cell-file a {
+  color: var(--fl-accent);
+  text-decoration: none;
+}
+
+.file-list .fl-cell-file a:hover {
+  text-decoration: underline;
+}
+
+/* File type badge */
+.file-list .fl-file-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--fl-badge-color, #6b7280);
+  flex-shrink: 0;
+}
+
+/* Date cell */
+.file-list .fl-cell-date {
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+/* Responsive */
+@media (width < 640px) {
+  .file-list table {
+    font-size: 12px;
+  }
+
+  .file-list th,
+  .file-list td {
+    padding: 8px 12px;
+  }
+
+  .file-list .fl-file-badge {
+    min-width: 32px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+}

@@ -1,0 +1,183 @@
+/* Report Cards — Multi-Purpose Card Grids */
+/* Matches original opportunity, impact, capability, step, and benefit card patterns */
+.report-cards {
+  --rc-red: var(--rpt-red, #e60000);
+
+  padding: 0;
+}
+
+.report-cards .rc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.report-cards .rc-card {
+  background: var(--rpt-surface);
+  border: 1px solid var(--rpt-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.report-cards .rc-card:hover {
+  transform: translateY(-2px);
+}
+
+.report-cards .rc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Icon as a box */
+.report-cards .rc-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--rpt-red-bg);
+  color: var(--rc-red);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.report-cards .rc-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--rpt-text);
+  line-height: 1.3;
+}
+
+.report-cards .rc-desc {
+  font-size: 14px;
+  color: var(--rpt-text-muted);
+  margin: 0;
+  line-height: 1.5;
+  flex: 1;
+}
+
+/* Tag */
+.report-cards .rc-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--rc-red);
+  color: #fff;
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+/* Steps variant */
+.report-cards.steps .rc-card {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.report-cards .rc-step-num {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--rc-red);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.report-cards .rc-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+/* Features variant */
+.report-cards .rc-features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-cards .rc-features li {
+  font-size: 14px;
+  color: var(--rpt-text-secondary);
+  margin: 0;
+  padding-left: 18px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.report-cards .rc-features li::before {
+  content: "\2192";
+  position: absolute;
+  left: 0;
+  color: var(--rc-red);
+}
+
+.report-cards .rc-impact-badge {
+  font-size: 13px;
+  color: var(--rpt-text-secondary);
+  background: var(--rpt-impact-bg);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border-left: 3px solid var(--rc-red);
+  margin-top: auto;
+  line-height: 1.5;
+}
+
+/* Capabilities variant */
+.report-cards .rc-impact {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--rpt-border-subtle);
+}
+
+.report-cards .rc-impact-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--rpt-red-dark);
+}
+
+.report-cards .rc-impact-label {
+  font-size: 13px;
+  color: var(--rpt-text-faint);
+  margin-left: 4px;
+}
+
+/* 4-col override when many cards */
+.report-cards .rc-grid:has(> :nth-child(4)) {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (width < 1024px) {
+  .report-cards .rc-grid,
+  .report-cards .rc-grid:has(> :nth-child(4)) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width < 640px) {
+  .report-cards .rc-grid,
+  .report-cards .rc-grid:has(> :nth-child(4)) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
