@@ -22,6 +22,10 @@
     :last-child {
       margin-bottom: 0;
     }
+
+    h3 {
+      color: light-dark(#eb1000, var(--color-red-400));
+    }
   }
 
   &.gap-xs {

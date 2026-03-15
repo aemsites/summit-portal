@@ -310,6 +310,12 @@ a {
   > .default-content {
     max-width: var(--grid-container-width);
     margin: 0 auto;
+
+    h2,
+    h3 {
+      color: light-dark(#eb1000, var(--color-red-400));
+      text-align: center;
+    }
   }
 }
 
