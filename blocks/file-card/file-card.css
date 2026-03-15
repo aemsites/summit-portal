@@ -9,9 +9,9 @@
     display: flex;
     flex-direction: column;
     border: 1px solid light-dark(var(--color-gray-200, #e0e0e0), var(--color-gray-700, #444));
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    background-color: light-dark(var(--color-gray-100, #fff), var(--color-gray-900, #1a1a1a));
+    background-color: light-dark(var(--color-gray-100, #f5f5f5), var(--color-gray-900, #1a1a1a));
     text-decoration: none;
     color: inherit;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -61,9 +61,7 @@
     font-weight: 400;
     color: light-dark(var(--color-link, #1473e6), var(--color-blue-400, #5898ff));
     transition: opacity 0.2s ease;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.4;
   }
 
   .file-card-type {
