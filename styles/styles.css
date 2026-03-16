@@ -165,6 +165,21 @@
   --color-accent: light-dark(var(--color-magenta-600), var(--color-magenta-500));
   --color-shaded: light-dark(#f9f9f9, #111);
 
+  /* semantic surfaces */
+  --color-surface: light-dark(#fff, #1c1c1c);
+  --color-surface-alt: light-dark(#f9fafb, #161616);
+  --color-surface-raised: light-dark(#fff, #242424);
+  --color-surface-hover: light-dark(rgb(0 0 0 / 2%), rgb(255 255 255 / 5%));
+
+  /* semantic borders */
+  --color-border: light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%));
+  --color-border-subtle: light-dark(rgb(0 0 0 / 6%), rgb(255 255 255 / 7%));
+
+  /* semantic text */
+  --color-text-secondary: light-dark(#4b5563, #b0b8c4);
+  --color-text-muted: light-dark(#6b7280, #8b95a5);
+  --color-text-faint: light-dark(#9ca3af, #6b7580);
+
   /* fonts */
   --font-family: 'Adobe Clean', adobe-clean, montserrat, "Trebuchet MS", sans-serif;
 
