@@ -18,13 +18,13 @@ export default async function init(el) {
     const sections = [...fragment.querySelectorAll('.section')];
 
     const copyright = sections.pop();
-    copyright.classList.add('section-copyright');
+    if (copyright) copyright.classList.add('section-copyright');
 
     const legal = sections.pop();
-    legal.classList.add('section-legal');
+    if (legal) legal.classList.add('section-legal');
 
     el.append(fragment);
   } catch (e) {
-    throw Error(e);
+    // Fragment not found or failed to load — silently skip footer
   }
 }
