@@ -91,37 +91,11 @@ function renderDetail(content, company, websiteMap, domainMap) {
     </div>`;
   }
 
-  content.innerHTML = html;
-
-  const actions = document.createElement('div');
-  actions.className = 'picker-detail-actions';
-
   if (company.Folder) {
-    const cta = document.createElement('a');
-    cta.className = 'picker-detail-cta';
-    cta.href = company.Folder;
-    cta.textContent = 'Go to dashboard →';
-    actions.append(cta);
+    html += `<a class="picker-detail-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
   }
 
-  const emailBody = [
-    `Company: ${company.Company}`,
-    '',
-    'Current information:',
-    `  Websites: ${websites.join(', ') || 'none'}`,
-    `  Email Domains: ${domains.join(', ') || 'none'}`,
-    '',
-    'What should be updated:',
-    '  ',
-  ].join('\n');
-
-  const request = document.createElement('a');
-  request.className = 'picker-detail-request';
-  request.href = `mailto:buergi@adobe.com?subject=${encodeURIComponent('Update portal data')}&body=${encodeURIComponent(emailBody)}`;
-  request.textContent = 'Request update';
-  actions.append(request);
-
-  content.append(actions);
+  content.innerHTML = html;
 }
 
 function buildGrid(companies, websiteMap, domainMap) {
