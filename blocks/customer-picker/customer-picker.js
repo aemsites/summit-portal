@@ -97,7 +97,7 @@ function renderDialog(content, company, websiteMap, domainMap) {
   }
 
   if (company.Folder) {
-    html += `<a class="cp-dialog-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
+    html += `<a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Go to dashboard &rarr;</a>`;
   }
 
   content.innerHTML = html;
