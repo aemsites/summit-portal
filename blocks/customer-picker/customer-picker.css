@@ -119,7 +119,7 @@
 
 .picker-card--active {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 2px var(--color-purple-200);
+  box-shadow: 0 0 0 2px light-dark(var(--color-purple-200), var(--color-purple-700));
 }
 
 /* Dialog */
@@ -204,8 +204,8 @@
 
 .picker-detail-list li {
   padding: 4px 10px;
-  background: var(--color-purple-100);
-  border: 1px solid var(--color-purple-200);
+  background: light-dark(var(--color-purple-100), var(--color-purple-900));
+  border: 1px solid light-dark(var(--color-purple-200), var(--color-purple-700));
   border-radius: 20px;
   font-size: var(--body-font-size-s);
   color: var(--color-text);
