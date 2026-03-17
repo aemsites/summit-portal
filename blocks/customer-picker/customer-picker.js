@@ -91,9 +91,24 @@ function renderDetail(content, company, websiteMap, domainMap) {
     </div>`;
   }
 
+  const bodyLines = [
+    `Company: ${company.Company}`,
+    '',
+    'Current information:',
+    `  Websites: ${websites.join(', ') || 'none'}`,
+    `  Email Domains: ${domains.join(', ') || 'none'}`,
+    '',
+    'What should be updated:',
+    '  ',
+  ];
+  const mailto = `mailto:buergi@adobe.com?subject=${encodeURIComponent('Update portal data')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+
+  let actions = '';
   if (company.Folder) {
-    html += `<a class="picker-detail-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
+    actions += `<a class="picker-detail-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
   }
+  actions += `<a class="picker-detail-request" href="${mailto}">Request update</a>`;
+  html += `<div class="picker-detail-actions">${actions}</div>`;
 
   content.innerHTML = html;
 }
