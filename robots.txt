@@ -2,6 +2,6 @@
 # Last updated: 2025-07-23
 
 User-agent: *
-Allow: /
+Disallow: /
 
-Sitemap: https://docs.da.live/sitemap.xml
+Sitemap: https://act.aem.now/sitemap.xml
