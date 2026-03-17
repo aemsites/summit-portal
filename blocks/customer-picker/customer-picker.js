@@ -1,79 +1,84 @@
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0-9'.replace(/(.)/g, '$1,').slice(0, -1).split(',');
-const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const LETTERS = '0-9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z'.split(' ');
 
-function getGroupKey(name) {
-  const first = name.charAt(0).toUpperCase();
-  return ALPHA.includes(first) ? first : '0-9';
+function getLetterGroup(name) {
+  const first = name.trim().charAt(0).toUpperCase();
+  return /\d/.test(first) ? '0-9' : first;
 }
 
-function buildSearch(onInput) {
-  const wrap = document.createElement('div');
-  wrap.className = 'picker-search';
+function buildSearch() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'cp-search';
 
   const input = document.createElement('input');
-  input.type = 'search';
-  input.className = 'picker-search-input';
-  input.placeholder = 'Search companies…';
-  input.setAttribute('aria-label', 'Search companies');
-  input.addEventListener('input', () => onInput(input.value));
+  input.type = 'text';
+  input.placeholder = 'Search customers…';
+  input.className = 'cp-search-input';
+  wrapper.append(input);
 
-  wrap.append(input);
-  return wrap;
+  return { wrapper, input };
 }
 
-function buildLetterNav(groups, onClick) {
+function buildLetterNav(groups) {
   const nav = document.createElement('nav');
-  nav.className = 'picker-letter-nav';
-  nav.setAttribute('aria-label', 'Jump to letter');
+  nav.className = 'cp-letter-nav';
+  nav.setAttribute('aria-label', 'Alphabetical navigation');
 
-  const allLetters = [...ALPHA, '0-9'];
-  allLetters.forEach((letter) => {
-    const btn = document.createElement('button');
-    btn.className = 'picker-letter-btn';
+  for (const letter of LETTERS) {
+    const btn = document.createElement('a');
+    btn.className = 'cp-letter-btn';
     btn.textContent = letter;
-    btn.type = 'button';
-    if (!groups.has(letter)) btn.disabled = true;
-    btn.addEventListener('click', () => onClick(letter));
+    btn.href = `#cp-group-${letter}`;
+
+    if (!groups.has(letter)) {
+      btn.classList.add('cp-letter-disabled');
+      btn.removeAttribute('href');
+    } else {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(`cp-group-${letter}`);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
     nav.append(btn);
-  });
+  }
 
   return nav;
 }
 
-function buildDetail() {
+function buildDialog() {
   const backdrop = document.createElement('div');
-  backdrop.className = 'picker-dialog-backdrop';
+  backdrop.className = 'cp-dialog-backdrop';
   backdrop.hidden = true;
 
   const dialog = document.createElement('div');
-  dialog.className = 'picker-dialog';
+  dialog.className = 'cp-dialog';
 
   const close = document.createElement('button');
-  close.className = 'picker-detail-close';
+  close.className = 'cp-dialog-close';
   close.type = 'button';
   close.setAttribute('aria-label', 'Close details');
   close.innerHTML = '&times;';
 
   const content = document.createElement('div');
-  content.className = 'picker-detail-content';
+  content.className = 'cp-dialog-content';
 
   dialog.append(close, content);
   backdrop.append(dialog);
   document.body.append(backdrop);
 
-  return { panel: backdrop, dialog, close, content };
+  return { backdrop, close, content };
 }
 
-function renderDetail(content, company, websiteMap, domainMap) {
+function renderDialog(content, company, websiteMap, domainMap) {
   const websites = websiteMap.get(company.Company) || [];
   const domains = domainMap.get(company.Company) || [];
 
-  let html = `<h3 class="picker-detail-title">${company.Company}</h3>`;
+  let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
   if (websites.length) {
-    html += `<div class="picker-detail-section">
+    html += `<div class="cp-dialog-section">
       <h4>Websites</h4>
-      <ul class="picker-detail-list">
+      <ul class="cp-dialog-list">
         ${websites.map((w) => {
     const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
     return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
@@ -83,107 +88,123 @@ function renderDetail(content, company, websiteMap, domainMap) {
   }
 
   if (domains.length) {
-    html += `<div class="picker-detail-section">
+    html += `<div class="cp-dialog-section">
       <h4>Email Domains</h4>
-      <ul class="picker-detail-list">
+      <ul class="cp-dialog-list">
         ${domains.map((d) => `<li>${d}</li>`).join('')}
       </ul>
     </div>`;
   }
 
   if (company.Folder) {
-    html += `<a class="picker-detail-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
+    html += `<a class="cp-dialog-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
   }
 
   content.innerHTML = html;
 }
 
+function buildCard(company, onOpen) {
+  const card = document.createElement('button');
+  card.className = 'cp-card';
+  card.type = 'button';
+
+  const name = document.createElement('span');
+  name.className = 'cp-card-name';
+  name.textContent = company.Company;
+  card.append(name);
+
+  const arrow = document.createElement('span');
+  arrow.className = 'cp-card-arrow';
+  arrow.textContent = '→';
+  card.append(arrow);
+
+  card.addEventListener('click', () => onOpen(card, company));
+  return card;
+}
+
 function buildGrid(companies, websiteMap, domainMap) {
   const grouped = new Map();
-  companies.forEach((c) => {
-    const key = getGroupKey(c.Company);
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key).push(c);
-  });
+  for (const c of companies) {
+    const letter = getLetterGroup(c.Company);
+    if (!grouped.has(letter)) grouped.set(letter, []);
+    grouped.get(letter).push(c);
+  }
 
-  const sortedKeys = [...grouped.keys()].sort((a, b) => {
-    if (a === '0-9') return 1;
-    if (b === '0-9') return -1;
-    return a.localeCompare(b);
-  });
+  const sortedGroups = new Map();
+  for (const letter of LETTERS) {
+    if (grouped.has(letter)) sortedGroups.set(letter, grouped.get(letter));
+  }
 
-  const container = document.createElement('div');
-  container.className = 'picker-grid';
-
-  const { panel, close, content } = buildDetail();
+  const { backdrop, close, content } = buildDialog();
   let activeCard = null;
 
-  function closeDetail() {
-    panel.hidden = true;
+  function closeDialog() {
+    backdrop.hidden = true;
     if (activeCard) {
-      activeCard.classList.remove('picker-card--active');
+      activeCard.classList.remove('cp-card--active');
       activeCard.focus();
       activeCard = null;
     }
   }
 
-  function openDetail(card, company) {
-    if (activeCard) activeCard.classList.remove('picker-card--active');
+  function openDialog(card, company) {
+    if (activeCard) activeCard.classList.remove('cp-card--active');
     activeCard = card;
-    card.classList.add('picker-card--active');
-    renderDetail(content, company, websiteMap, domainMap);
-    panel.hidden = false;
+    card.classList.add('cp-card--active');
+    renderDialog(content, company, websiteMap, domainMap);
+    backdrop.hidden = false;
     close.focus();
   }
 
-  close.addEventListener('click', closeDetail);
-  panel.addEventListener('click', (e) => { if (e.target === panel) closeDetail(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) closeDetail(); });
+  close.addEventListener('click', closeDialog);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeDialog(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !backdrop.hidden) closeDialog(); });
 
-  sortedKeys.forEach((letter) => {
+  const grid = document.createElement('div');
+  grid.className = 'cp-grid';
+
+  for (const [letter, items] of sortedGroups) {
     const section = document.createElement('div');
-    section.className = 'picker-group';
-    section.id = `group-${letter}`;
+    section.className = 'cp-group';
+    section.id = `cp-group-${letter}`;
 
     const heading = document.createElement('h2');
-    heading.className = 'picker-group-heading';
+    heading.className = 'cp-group-heading';
     heading.textContent = letter;
     section.append(heading);
 
     const cards = document.createElement('div');
-    cards.className = 'picker-cards';
-
-    grouped.get(letter).forEach((company) => {
-      const btn = document.createElement('button');
-      btn.className = 'picker-card';
-      btn.type = 'button';
-      btn.textContent = company.Company;
-      btn.addEventListener('click', () => openDetail(btn, company));
-      cards.append(btn);
-    });
-
+    cards.className = 'cp-cards';
+    for (const company of items) {
+      cards.append(buildCard(company, openDialog));
+    }
     section.append(cards);
-    container.append(section);
-  });
+    grid.append(section);
+  }
 
-  return { container, groups: new Set(sortedKeys) };
+  return { grid, groups: sortedGroups };
 }
 
-function filterGrid(grid, query) {
+function applyFilter(container, query) {
   const q = query.toLowerCase().trim();
-  grid.querySelectorAll('.picker-group').forEach((group) => {
+  const groups = container.querySelectorAll('.cp-group');
+
+  for (const group of groups) {
+    const cards = group.querySelectorAll('.cp-card');
     let visibleCount = 0;
-    group.querySelectorAll('.picker-card').forEach((card) => {
-      const match = !q || card.textContent.toLowerCase().includes(q);
+
+    for (const card of cards) {
+      const name = card.querySelector('.cp-card-name').textContent.toLowerCase();
+      const match = !q || name.includes(q);
       card.style.display = match ? '' : 'none';
       if (match) visibleCount += 1;
-    });
-    group.style.display = visibleCount ? '' : 'none';
-  });
+    }
+
+    group.style.display = visibleCount > 0 ? '' : 'none';
+  }
 }
 
 function buildLookupMaps(companyData, cugData) {
-  // company-list: Company -> websites (Domains column)
   const websiteMap = new Map();
   (companyData?.data || []).forEach((row) => {
     const company = row.Company;
@@ -194,8 +215,6 @@ function buildLookupMaps(companyData, cugData) {
     }
   });
 
-  // closed-user-groups: url uses glob patterns like /customers/0-9/abbvie**
-  // Strip ** suffix and map to cug-groups; skip rows with empty cug-groups
   const cugByPath = new Map();
   (cugData?.data || []).forEach((row) => {
     const path = row.url?.replace(/\*+$/, '').replace(/\/$/, '');
@@ -203,8 +222,6 @@ function buildLookupMaps(companyData, cugData) {
     if (path && groups) cugByPath.set(path, groups);
   });
 
-  // domain map: Company -> [email domains]
-  // Match company Folder (strip trailing slash) against cug path
   const domainMap = new Map();
   (companyData?.data || []).forEach((row) => {
     const company = row.Company;
@@ -221,44 +238,36 @@ function buildLookupMaps(companyData, cugData) {
 
 export default async function init(el) {
   const link = el.querySelector('a[href$=".json"]');
+  if (!link) return;
 
-  // Derive origin from the block's link so relative paths work across environments
-  const origin = link ? new URL(link.href).origin : window.location.origin;
-
-  const mappingUrl = link?.href || `${origin}/closed-user-groups-mapping.json`;
+  const origin = new URL(link.href).origin;
   const companyUrl = `${origin}/data/company-list.json`;
   const cugUrl = `${origin}/closed-user-groups.json`;
 
+  const [mappingResp, companyResp, cugResp] = await Promise.all([
+    fetch(link.href),
+    fetch(companyUrl),
+    fetch(cugUrl),
+  ]);
+  if (!mappingResp.ok) return;
+
+  const companies = (await mappingResp.json()).data || [];
+  const companyData = companyResp.ok ? await companyResp.json() : null;
+  const cugData = cugResp.ok ? await cugResp.json() : null;
+
+  const { websiteMap, domainMap } = buildLookupMaps(companyData, cugData);
+
   el.textContent = '';
-  el.classList.add('picker-loading');
 
-  try {
-    const [mappingResp, companyResp, cugResp] = await Promise.all([
-      fetch(mappingUrl),
-      fetch(companyUrl),
-      fetch(cugUrl),
-    ]);
+  const { wrapper: searchWrapper, input: searchInput } = buildSearch();
+  const { grid, groups } = buildGrid(companies, websiteMap, domainMap);
+  const letterNav = buildLetterNav(groups);
 
-    if (!mappingResp.ok) throw new Error(mappingResp.status);
+  el.append(searchWrapper, letterNav, grid);
 
-    const { data } = await mappingResp.json();
-    const companyData = companyResp.ok ? await companyResp.json() : null;
-    const cugData = cugResp.ok ? await cugResp.json() : null;
-
-    const { websiteMap, domainMap } = buildLookupMaps(companyData, cugData);
-
-    el.classList.remove('picker-loading');
-
-    const { container: grid, groups } = buildGrid(data, websiteMap, domainMap);
-    const search = buildSearch((q) => filterGrid(grid, q));
-    const letterNav = buildLetterNav(groups, (letter) => {
-      const target = grid.querySelector(`#group-${CSS.escape(letter)}`);
-      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-
-    el.append(search, letterNav, grid);
-  } catch {
-    el.classList.remove('picker-loading');
-    el.textContent = 'Unable to load company list.';
-  }
+  let debounce;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => applyFilter(grid, searchInput.value), 120);
+  });
 }
