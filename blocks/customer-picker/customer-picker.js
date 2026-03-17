@@ -91,7 +91,20 @@ function renderDetail(content, company, websiteMap, domainMap) {
     </div>`;
   }
 
-  const bodyLines = [
+  content.innerHTML = html;
+
+  const actions = document.createElement('div');
+  actions.className = 'picker-detail-actions';
+
+  if (company.Folder) {
+    const cta = document.createElement('a');
+    cta.className = 'picker-detail-cta';
+    cta.href = company.Folder;
+    cta.textContent = 'Go to dashboard →';
+    actions.append(cta);
+  }
+
+  const emailBody = [
     `Company: ${company.Company}`,
     '',
     'Current information:',
@@ -100,17 +113,15 @@ function renderDetail(content, company, websiteMap, domainMap) {
     '',
     'What should be updated:',
     '  ',
-  ];
-  const mailto = `mailto:buergi@adobe.com?subject=${encodeURIComponent('Update portal data')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+  ].join('\n');
 
-  let actions = '';
-  if (company.Folder) {
-    actions += `<a class="picker-detail-cta" href="${company.Folder}">Go to dashboard &rarr;</a>`;
-  }
-  actions += `<a class="picker-detail-request" href="${mailto}">Request update</a>`;
-  html += `<div class="picker-detail-actions">${actions}</div>`;
+  const request = document.createElement('a');
+  request.className = 'picker-detail-request';
+  request.href = `mailto:buergi@adobe.com?subject=${encodeURIComponent('Update portal data')}&body=${encodeURIComponent(emailBody)}`;
+  request.textContent = 'Request update';
+  actions.append(request);
 
-  content.innerHTML = html;
+  content.append(actions);
 }
 
 function buildGrid(companies, websiteMap, domainMap) {
