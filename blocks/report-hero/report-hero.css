@@ -1,0 +1,258 @@
+/* Report Hero — Cover & Transition Slides */
+/* Matches original introduction.css and transition-*.css */
+.report-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 480px;
+  padding: 60px;
+  background: #e60000;
+  color: #fff;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Label badge (cover) */
+.report-hero .rh-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 24px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+}
+
+/* Company name (cover) */
+.report-hero .rh-company {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  margin-bottom: 0;
+}
+
+/* Title */
+.report-hero .rh-title {
+  font-size: 42px;
+  font-weight: 300;
+  color: rgb(255 255 255 / 95%);
+  letter-spacing: -0.5px;
+  margin-bottom: 0;
+}
+
+.report-hero .rh-accent {
+  width: 80px;
+  height: 3px;
+  background: rgb(255 255 255 / 40%);
+  margin: 16px auto;
+  border-radius: 2px;
+}
+
+/* Subtitle */
+.report-hero .rh-subtitle {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgb(255 255 255 / 85%);
+  max-width: 550px;
+  margin: 0 auto 24px;
+}
+
+/* Element cards (cover) */
+.report-hero .rh-elements {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.report-hero .rh-element-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  min-width: 140px;
+}
+
+/* Badge (transition) */
+.report-hero.transition .rh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 24px;
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+}
+
+.report-hero.transition .rh-title {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  color: #fff;
+  margin-bottom: 0;
+}
+
+.report-hero.transition .rh-subtitle {
+  font-size: 24px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 90%);
+  max-width: 650px;
+}
+
+/* Metric previews (transition) */
+.report-hero .rh-metrics {
+  display: flex;
+  gap: 24px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.report-hero .rh-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 16px;
+  padding: 24px 32px;
+  min-width: 160px;
+}
+
+.report-hero .rh-metric-value {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+.report-hero .rh-metric-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgb(255 255 255 / 85%);
+  letter-spacing: 0.3px;
+}
+
+/* ============================================= */
+/* Report page-level styles (loaded with hero)   */
+/* ============================================= */
+
+/* ---- Report aliases to global tokens + report-specific tokens ---- */
+:root {
+  --rpt-surface: var(--color-surface);
+  --rpt-surface-raised: var(--color-surface-raised);
+  --rpt-surface-alt: var(--color-surface-alt);
+  --rpt-surface-hover: var(--color-surface-hover);
+  --rpt-border: var(--color-border);
+  --rpt-border-subtle: var(--color-border-subtle);
+  --rpt-text: var(--color-text);
+  --rpt-text-secondary: var(--color-text-secondary);
+  --rpt-text-muted: var(--color-text-muted);
+  --rpt-text-faint: var(--color-text-faint);
+  --rpt-red: #e60000;
+  --rpt-red-dark: light-dark(#e60000, #ff3333);
+  --rpt-red-bg: light-dark(rgb(230 0 0 / 8%), rgb(230 0 0 / 15%));
+  --rpt-red-bg-subtle: light-dark(rgb(230 0 0 / 4%), rgb(230 0 0 / 10%));
+  --rpt-impact-bg: light-dark(#f3f4f6, #2a2a2a);
+}
+
+/* Section heading accent bar — matches original */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--rpt-text);
+  margin: 0 0 6px;
+}
+
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 28px;
+  background: var(--rpt-red);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Subtitle paragraph — match original header-subtitle */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p {
+  font-size: 14px;
+  color: var(--rpt-text-muted);
+  margin: 0 0 16px;
+  padding-left: 16px;
+}
+
+/* Strong tags in subtitles get Adobe red */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p strong {
+  color: var(--rpt-red-dark);
+  font-weight: 600;
+}
+
+/* Section spacing for report sections */
+.section:has(.report-hero) {
+  padding: 0;
+}
+
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--rpt-border-subtle);
+}
+
+@media (width < 768px) {
+  .report-hero {
+    padding: 40px 20px;
+    min-height: 360px;
+  }
+
+  .report-hero .rh-company {
+    font-size: 48px;
+  }
+
+  .report-hero .rh-title {
+    font-size: 28px;
+  }
+
+  .report-hero.transition .rh-title {
+    font-size: 48px;
+  }
+
+  .report-hero .rh-elements,
+  .report-hero .rh-metrics {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .report-hero .rh-metric {
+    flex-direction: row;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    padding: 20px 24px;
+  }
+}
