@@ -4,6 +4,56 @@ import { setColorScheme } from '../section-metadata/section-metadata.js';
 
 const { locale } = getConfig();
 
+// Map EDS locale path segment -> Google Translate language code
+const GOOGLE_LANG_MAP = {
+  de: 'de',
+  fr: 'fr',
+  es: 'es',
+  zh: 'zh-CN',
+  ja: 'ja',
+  hi: 'hi',
+};
+
+function getLangCodeFromHref(href) {
+  const match = new URL(href).pathname.match(/^\/([a-z]{2})\/?$/);
+  return match ? (GOOGLE_LANG_MAP[match[1]] || match[1]) : null; // null = English (reset)
+}
+
+function loadGoogleTranslate() {
+  if (document.getElementById('google_translate_element')) return;
+  const el = document.createElement('div');
+  el.id = 'google_translate_element';
+  el.style.display = 'none';
+  document.body.append(el);
+
+  window.googleTranslateElementInit = () => {
+    // eslint-disable-next-line no-new
+    new window.google.translate.TranslateElement(
+      { pageLanguage: 'en', autoDisplay: false },
+      'google_translate_element',
+    );
+  };
+
+  const script = document.createElement('script');
+  script.src = '//translate.googleapis.com/translate_a/element.js?cb=googleTranslateElementInit';
+  document.head.append(script);
+}
+
+function applyTranslation(langCode) {
+  loadGoogleTranslate();
+  // Poll until the select is fully populated (Google Translate loads ~249 languages)
+  const attempt = (tries = 0) => {
+    const select = document.querySelector('.goog-te-combo');
+    if (select && select.options.length > 10) {
+      select.value = langCode;
+      select.dispatchEvent(new Event('change'));
+    } else if (tries < 30) {
+      setTimeout(() => attempt(tries + 1), 200);
+    }
+  };
+  attempt();
+}
+
 const HEADER_PATH = '/fragments/nav/header';
 const HEADER_ACTIONS = [
   '/tools/widgets/scheme',
@@ -49,6 +99,21 @@ function decorateLanguage(btn) {
       menu.append(fragment);
       content.append(menu);
       section.append(content);
+
+      // Intercept each language link — use Google Translate instead of navigation
+      menu.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          closeAllMenus();
+          const langCode = getLangCodeFromHref(link.href);
+          if (!langCode) {
+            // English selected — restore original page
+            window.location.reload();
+          } else {
+            applyTranslation(langCode);
+          }
+        });
+      });
     }
     toggleMenu(section);
   });
