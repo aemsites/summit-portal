@@ -1,5 +1,5 @@
 const FILE_ICONS = {
-  pdf: { label: 'PDF', color: '#e60000' },
+  pdf: { label: 'PDF', color: 'var(--color-adobe-red)' },
   docx: { label: 'DOCX', color: '#2176ff' },
   doc: { label: 'DOC', color: '#2176ff' },
   xlsx: { label: 'XLSX', color: '#22c55e' },

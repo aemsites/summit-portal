@@ -1,6 +1,6 @@
 /* File List — Sortable File Table */
 .file-list {
-  --fl-accent: light-dark(#e60000, #ff3333);
+  --fl-accent: var(--color-adobe-red-dark);
 
   max-width: 100%;
   padding: 0;
@@ -18,7 +18,7 @@
 /* Header */
 .fl-header {
   padding: 12px 16px;
-  background: #e60000;
+  background: var(--color-adobe-red);
   color: #fff;
 }
 
