@@ -13,7 +13,61 @@
 import { fetchSchedule, fetchFromAem } from './handlers/aem.js';
 import fetchDaSc from './handlers/dasc.js';
 
+/**
+ * Decodes a JWT payload without verifying the signature.
+ * Used only to read the user's own identity claims.
+ */
+const decodeJWTPayload = (token) => {
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * GET /auth/me — returns the authenticated user's profile from the auth cookie.
+ * Reads all cookies, finds one with a JWT containing an email claim.
+ */
+const handleAuthMe = (req) => {
+  const cookieHeader = req.headers.get('cookie') || '';
+  const cookies = cookieHeader.split(';').map((c) => c.trim().split('='));
+
+  for (const [, value] of cookies) {
+    if (!value || !value.includes('.')) continue;
+    const payload = decodeJWTPayload(value);
+    if (payload?.email) {
+      return new Response(JSON.stringify({
+        authenticated: true,
+        email: payload.email,
+        name: payload.name || payload.given_name || null,
+        picture: payload.picture || null,
+      }), {
+        headers: {
+          'content-type': 'application/json',
+          'cache-control': 'private, no-store',
+        },
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ authenticated: false }), {
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'private, no-store',
+    },
+  });
+};
+
 const ROUTES = [
+  // Return current user profile from auth cookie
+  {
+    match: (path) => path === '/auth/me',
+    handler: ({ request }) => handleAuthMe(request),
+  },
   // Handle schedule manifests
   {
     match: (path) => path.includes('/schedules/') && path.endsWith('json'),
