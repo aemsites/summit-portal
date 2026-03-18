@@ -176,6 +176,16 @@ header {
       align-items: center;
     }
 
+    .user-info {
+      font-size: 13px;
+      color: light-dark(var(--color-gray-600), var(--color-gray-400));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+      padding-inline: 8px;
+    }
+
     > .block-content {
       border-bottom: 1px solid light-dark(var(--color-gray-200), var(--color-gray-600));
     }

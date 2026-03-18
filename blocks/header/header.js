@@ -164,8 +164,23 @@ function decorateNavSection(section) {
   }
 }
 
+async function decorateUserInfo(section) {
+  try {
+    const resp = await fetch('/auth/me');
+    if (!resp.ok) return;
+    const user = await resp.json();
+    if (!user.authenticated) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'user-info';
+    wrapper.textContent = user.email;
+    section.querySelector('.default-content')?.append(wrapper);
+  } catch { /* not authenticated or endpoint unavailable */ }
+}
+
 async function decorateActionSection(section) {
   section.classList.add('actions-section');
+  decorateUserInfo(section);
 }
 
 async function decorateHeader(fragment) {
