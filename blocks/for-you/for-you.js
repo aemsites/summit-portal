@@ -1,10 +1,9 @@
 export default function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
 
-  // First row = section title, remaining rows = product cards
-  const titleRow = rows.shift();
-  const titleText = titleRow?.textContent.trim() || 'For You';
-  titleRow?.remove();
+  // Block header row ("For You") becomes the CSS class in EDS — not a DOM row.
+  // All child divs are product cards.
+  const titleText = 'For You';
 
   // Build header
   const header = document.createElement('div');

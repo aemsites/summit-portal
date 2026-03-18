@@ -1,10 +1,12 @@
 export default function init(el) {
-  const rows = [...el.querySelectorAll(':scope > div')];
+  // Block structure (DA authoring):
+  //   Row 1: single cell containing <strong> subtitle + <ul> task list
+  const cell = el.querySelector(':scope > div > div');
+  if (!cell) return;
 
-  // First row = header (title text), remaining rows = task items
-  const headerRow = rows.shift();
-  const title = headerRow?.textContent.trim() || 'To-Do';
-  headerRow?.remove();
+  // Extract title from <strong> inside first <p>
+  const strongEl = cell.querySelector('p > strong');
+  const titleText = strongEl?.textContent.trim() || 'To-Do';
 
   // Build header
   const header = document.createElement('div');
@@ -12,27 +14,27 @@ export default function init(el) {
 
   const titleEl = document.createElement('h3');
   titleEl.className = 'todo-title';
-  titleEl.textContent = title;
+  titleEl.textContent = titleText;
   header.append(titleEl);
 
-  // Build task list
+  // Build task list from <ul> > <li> items
   const list = document.createElement('ul');
   list.className = 'todo-list';
 
-  rows.forEach((row) => {
-    const text = row.textContent.trim();
-    if (!text) { row.remove(); return; }
+  const items = [...cell.querySelectorAll('ul > li')];
+  items.forEach((li) => {
+    const text = li.textContent.trim();
+    if (!text) return;
 
-    const li = document.createElement('li');
-    li.className = 'todo-item';
+    const item = document.createElement('li');
+    item.className = 'todo-item';
 
     const span = document.createElement('span');
     span.className = 'todo-text';
     span.textContent = text;
 
-    li.append(span);
-    list.append(li);
-    row.remove();
+    item.append(span);
+    list.append(item);
   });
 
   el.textContent = '';
