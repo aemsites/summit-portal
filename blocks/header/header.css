@@ -177,11 +177,14 @@ header {
     }
 
     .user-info {
-      position: relative;
+      position: absolute;
+      top: 0;
+      right: 52px;
       display: flex;
       align-items: center;
-      height: 100%;
+      height: var(--header-height);
       padding-inline: 8px;
+      z-index: 1;
     }
 
     .user-sign-in {
@@ -379,6 +382,13 @@ header {
       .default-content {
         max-width: initial;
         margin: 0;
+      }
+
+      .user-info {
+        position: relative;
+        top: auto;
+        right: auto;
+        height: 100%;
       }
 
       .action-wrapper {
