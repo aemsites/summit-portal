@@ -1,3 +1,9 @@
+/* Google Translate banner — keep it visible but suppress the tooltip bubble */
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
 header {
   --logo-width: 40px;
   --logo-height: 24px;
