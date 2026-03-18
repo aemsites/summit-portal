@@ -165,17 +165,41 @@ function decorateNavSection(section) {
 }
 
 async function decorateUserInfo(section) {
+  const container = section.querySelector('.default-content');
+  if (!container) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'user-info';
+
+  let user;
   try {
     const resp = await fetch('/auth/me');
-    if (!resp.ok) return;
-    const user = await resp.json();
-    if (!user.authenticated) return;
+    user = resp.ok ? await resp.json() : null;
+  } catch { user = null; }
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'user-info';
-    wrapper.textContent = user.email;
-    section.querySelector('.default-content')?.append(wrapper);
-  } catch { /* not authenticated or endpoint unavailable */ }
+  if (!user?.authenticated) {
+    const signIn = document.createElement('a');
+    signIn.href = '/auth/portal';
+    signIn.className = 'user-sign-in';
+    signIn.textContent = 'Sign in';
+    wrapper.append(signIn);
+  } else {
+    const btn = document.createElement('button');
+    btn.className = 'user-email';
+    btn.textContent = user.email;
+
+    const menu = document.createElement('div');
+    menu.className = 'user-menu';
+    const signOut = document.createElement('a');
+    signOut.href = '/auth/logout';
+    signOut.textContent = 'Sign out';
+    menu.append(signOut);
+
+    btn.addEventListener('click', () => toggleMenu(wrapper));
+    wrapper.append(btn, menu);
+  }
+
+  container.append(wrapper);
 }
 
 async function decorateActionSection(section) {

@@ -177,13 +177,44 @@ header {
     }
 
     .user-info {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding-inline: 8px;
+    }
+
+    .user-sign-in {
       font-size: 13px;
-      color: light-dark(var(--color-gray-600), var(--color-gray-400));
+      white-space: nowrap;
+    }
+
+    .user-email {
+      font-size: 13px;
+      background: none;
+      border: none;
+      cursor: pointer;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 200px;
-      padding-inline: 8px;
+      padding: 0;
+      color: light-dark(var(--color-gray-600), var(--color-gray-400));
+    }
+
+    .user-menu {
+      display: none;
+    }
+
+    .user-info.is-open .user-menu {
+      display: block;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background-color: var(--color-shaded);
+      padding: var(--spacing-m);
+      z-index: 1001;
+      white-space: nowrap;
     }
 
     > .block-content {
