@@ -7,7 +7,7 @@ export default function init(el) {
   const desc = [...(cell?.querySelectorAll('p') || [])]
     .find((p) => !p.querySelector('strong') && !p.querySelector('a') && p.textContent.trim());
 
-  el.innerHTML = '';
+  el.textContent = '';
 
   if (picture) {
     const imgWrap = document.createElement('div');
