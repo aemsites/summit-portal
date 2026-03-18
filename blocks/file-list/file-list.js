@@ -221,7 +221,10 @@ export default async function init(el) {
       });
     });
 
-    el.append(header, table);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fl-table-wrapper';
+    wrapper.append(table);
+    el.append(header, wrapper);
   }
 
   render();
