@@ -7,6 +7,19 @@
   overflow-x: auto;
 }
 
+/* Header */
+.fl-header {
+  padding: 12px 16px;
+  background: #e60000;
+  color: #fff;
+}
+
+.fl-title {
+  margin: 0;
+  font-size: var(--body-font-size-m);
+  font-weight: 700;
+}
+
 /* Table base */
 .file-list table {
   width: 100%;
