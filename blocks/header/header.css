@@ -280,6 +280,10 @@ header {
     }
   }
 
+  &:has(.user-info.is-open) {
+    overflow: visible;
+  }
+
   &.is-mobile-open {
     height: initial;
     max-height: initial;
