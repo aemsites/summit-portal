@@ -14,9 +14,10 @@ async function loadSidekick() {
   import('./utils/favicon.js');
   import('./utils/footer.js').then(({ default: footer }) => footer());
 
+  loadSidekick();
+
   // Author facing tools
   if (ENV !== 'prod') {
     import('../tools/scheduler/scheduler.js');
-    loadSidekick();
   }
 }());
