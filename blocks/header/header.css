@@ -212,7 +212,9 @@ header {
     }
 
     .user-info.is-open .user-menu {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-s);
       position: absolute;
       right: 0;
       top: 100%;
