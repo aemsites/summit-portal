@@ -202,7 +202,7 @@ header {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 100px;
+      max-width: 45px;
       padding: 0;
       color: light-dark(var(--color-gray-600), var(--color-gray-400));
     }
