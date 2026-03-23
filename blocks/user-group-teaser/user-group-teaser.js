@@ -29,7 +29,8 @@ export default async function init(el) {
     const url = await getGroupUrl(userGroups);
     if (!url) { el.remove(); return; }
 
-    const fragment = await loadFragment(`${url}/teaser`);
+    const base = url.endsWith('/') ? url : `${url}/`;
+    const fragment = await loadFragment(`${base}teaser`);
     el.textContent = '';
     el.append(fragment);
   } catch {
