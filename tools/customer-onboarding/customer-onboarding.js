@@ -355,8 +355,8 @@ function renderUI(onSubmit) {
     let listHtml = await fetchCompanyListHtml(org, site, token);
     if (companyExists(listHtml, company)) {
       step.className = 'fail';
-      step.textContent = `✗ Company "${company}" already exists in the company list.`;
-      showBanner(banner, 'error', `"${company}" is already onboarded. Please use a different company name.`);
+      step.textContent = `✗ "${company}" already exists in data/company-list.`;
+      showBanner(banner, 'error', `"${company}" is already listed in data/company-list. Remove that row first, then try again.`);
       return;
     }
     step.className = 'done';
