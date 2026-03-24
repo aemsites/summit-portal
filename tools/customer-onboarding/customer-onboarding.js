@@ -86,7 +86,7 @@ function buildSheetHtml(headers, rows) {
 
 async function fetchCompanyList(org, site, token) {
   const resp = await daGet(org, site, COMPANY_LIST_PATH, token);
-  if (resp.status === 404) return { headers: ['Company', 'Folder', 'Domains', 'Roles', 'Portal created'], data: [] };
+  if (resp.status === 404) return { headers: ['Company', 'Website', 'Email Domains', 'Roles'], data: [] };
   if (!resp.ok) throw new Error(`Cannot read company-list: ${resp.status}`);
   const raw = await resp.text();
   // eslint-disable-next-line no-console
@@ -102,14 +102,12 @@ function findExistingCompany(sheetData, companyName) {
   return sheetData.data.find((row) => (row.Company || '').toLowerCase() === name) || null;
 }
 
-async function saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles, customerPath }) {
-  const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+async function saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles }) {
   const newRow = {
     Company: company,
-    Folder: `/${customerPath}/`,
-    Domains: emailDomains,
+    Website: website,
+    'Email Domains': emailDomains,
     Roles: roles,
-    'Portal created': today,
   };
   const html = buildSheetHtml(sheetData.headers, [...sheetData.data, newRow]);
   const blob = new Blob([html], { type: 'text/html' });
@@ -384,7 +382,7 @@ function renderUI(onSubmit) {
     const existing = findExistingCompany(sheetData, company);
     if (existing) {
       step.className = 'fail';
-      const detail = existing.Folder ? ` (folder: ${existing.Folder})` : '';
+      const detail = existing.Website ? ` (website: ${existing.Website})` : '';
       step.textContent = `✗ "${company}" already exists in data/company-list${detail}.`;
       showBanner(banner, 'error', `"${company}" is already in data/company-list${detail}. Remove that row first, then try again.`);
       return;
