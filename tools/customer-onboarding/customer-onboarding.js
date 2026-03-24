@@ -76,8 +76,8 @@ function findExistingCompany(sheetData, companyName) {
 }
 
 async function saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles, customerPath }) {
-  // Folder stores the path segment after /customers/ to match existing rows
-  const folder = customerPath.replace(/^customers\//, '');
+  // Folder stores the full /customers/... path to match existing rows
+  const folder = `/${customerPath}`;
   const newRow = {
     Company: company,
     Folder: folder,
