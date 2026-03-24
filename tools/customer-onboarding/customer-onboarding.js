@@ -394,15 +394,15 @@ function renderUI(onSubmit) {
     step.className = 'done';
     step.textContent = '✓ Folders created.';
 
-    // Step 5: Copy portal template → index
+    // Step 5: Copy portal template → index.html
     step = logStep(stepLog, 'Copying portal template…');
-    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index`, token);
+    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index.html`, token);
     step.className = 'done';
     step.textContent = '✓ Portal template copied as index.';
 
-    // Step 6: Copy file-index template
+    // Step 6: Copy file-index template → file-index.json
     step = logStep(stepLog, 'Copying file-index template…');
-    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index`, token);
+    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index.json`, token);
     step.className = 'done';
     step.textContent = '✓ File-index template copied.';
 
@@ -410,8 +410,8 @@ function renderUI(onSubmit) {
     step = logStep(stepLog, 'Publishing pages…');
     try {
       await previewAndPublish(org, site, [
-        `${customerPath}/index`,
-        `${customerPath}/file-index`,
+        `${customerPath}/index.html`,
+        `${customerPath}/file-index.json`,
       ], token);
       step.className = 'done';
       step.textContent = '✓ Pages previewed and published.';
