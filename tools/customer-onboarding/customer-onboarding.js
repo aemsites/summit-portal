@@ -75,15 +75,16 @@ function findExistingCompany(sheetData, companyName) {
   return sheetData.data.find((row) => (row.Company || '').toLowerCase() === name) || null;
 }
 
-async function saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles, customerPath }) {
-  // Folder stores the full /customers/... path to match existing rows
+async function saveCompanyList(org, site, token, sheetData, { company, website, roles, customerPath }) {
+  // Columns: Company, Folder, Domains, Roles, Portal created — matching existing rows exactly
   const folder = `/${customerPath}/`;
+  const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const newRow = {
     Company: company,
     Folder: folder,
-    Website: website,
-    'Email Domains': emailDomains,
+    Domains: website,
     Roles: roles,
+    'Portal created': today,
   };
   // Preserve all original fields (total, offset, limit, :type, :names, etc.)
   // and only update the data array and total count.
