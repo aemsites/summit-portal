@@ -6,7 +6,7 @@ const ADMIN_BASE = 'https://admin.hlx.page';
 // Read and write to the .json path directly, preserving the full structure on write.
 const COMPANY_LIST_PATH = 'data/company-list.json';
 const PORTAL_TEMPLATE = 'docs/library/templates/portal.html';
-const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.html';
+const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.json';
 
 // ─── Slug helpers ────────────────────────────────────────────────────────────
 
