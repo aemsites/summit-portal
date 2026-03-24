@@ -3,8 +3,8 @@ import DA_SDK from 'https://da.live/nx/utils/sdk.js';
 const DA_SOURCE_BASE = 'https://admin.da.live/source';
 const ADMIN_BASE = 'https://admin.hlx.page';
 const COMPANY_LIST_PATH = 'data/company-list';
-const PORTAL_TEMPLATE = 'docs/library/templates/portal';
-const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index';
+const PORTAL_TEMPLATE = 'docs/library/templates/portal.html';
+const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.html';
 
 // ─── Slug helpers ────────────────────────────────────────────────────────────
 
@@ -390,13 +390,13 @@ function renderUI(onSubmit) {
 
     // Step 5: Copy portal template → index
     step = logStep(stepLog, 'Copying portal template…');
-    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index`, token);
+    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index.html`, token);
     step.className = 'done';
     step.textContent = '✓ Portal template copied as index.';
 
     // Step 6: Copy file-index template
     step = logStep(stepLog, 'Copying file-index template…');
-    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index`, token);
+    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index.html`, token);
     step.className = 'done';
     step.textContent = '✓ File-index template copied.';
 
