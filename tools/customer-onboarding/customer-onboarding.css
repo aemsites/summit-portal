@@ -1,0 +1,220 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: adobe-clean, Arial, sans-serif;
+  background: #f8f8f8;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #D3D3D3;
+  padding: 32px;
+  width: 100%;
+  max-width: 720px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.card-heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d1d1d;
+  margin-bottom: 6px;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  color: #6e6e6e;
+  margin-bottom: 28px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4B4B4B;
+  margin-bottom: 6px;
+}
+
+.form-label .required {
+  color: #D7373F;
+  margin-left: 2px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #D3D3D3;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #1d1d1d;
+  background: #fff;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #1473E6;
+  box-shadow: 0 0 0 2px rgba(20, 115, 230, 0.2);
+}
+
+.form-input.invalid {
+  border-color: #D7373F;
+}
+
+.form-helper {
+  font-size: 12px;
+  color: #6e6e6e;
+  margin-top: 4px;
+}
+
+.form-error {
+  font-size: 12px;
+  color: #D7373F;
+  margin-top: 4px;
+  display: none;
+}
+
+.form-error.visible {
+  display: block;
+}
+
+.slug-preview {
+  font-size: 12px;
+  color: #6e6e6e;
+  margin-top: 5px;
+  font-family: monospace;
+}
+
+/* Multi-field (tags) */
+.multi-field-wrapper {
+  border: 1px solid #D3D3D3;
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: text;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.multi-field-wrapper:focus-within {
+  border-color: #1473E6;
+  box-shadow: 0 0 0 2px rgba(20, 115, 230, 0.2);
+}
+
+.multi-field-wrapper.invalid {
+  border-color: #D7373F;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #E8F1FC;
+  color: #1473E6;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1473E6;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tag-remove:hover { color: #D7373F; }
+
+.multi-input {
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: #1d1d1d;
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+}
+
+/* Submit button */
+.submit-btn {
+  width: 100%;
+  padding: 10px 20px;
+  background: #1473E6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s;
+  margin-top: 8px;
+}
+
+.submit-btn:hover:not(:disabled) { background: #0d66d0; }
+.submit-btn:disabled { background: #b0b0b0; cursor: not-allowed; }
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+
+.submit-btn.loading .spinner { display: block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Banner */
+.banner {
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: none;
+}
+
+.banner.visible { display: block; }
+.banner.error   { background: #FFF4F4; border: 1px solid #D7373F; color: #D7373F; }
+.banner.success { background: #F0FAF6; border: 1px solid #2D9D78; color: #2D9D78; }
+.banner.warning { background: #FFF8EC; border: 1px solid #E68619; color: #E68619; }
+
+/* Step progress */
+.step-log {
+  margin-top: 16px;
+  font-size: 12px;
+  color: #6e6e6e;
+  display: none;
+}
+
+.step-log.visible { display: block; }
+.step-log p { margin: 2px 0; }
+.step-log p.done::before { content: '✓ '; color: #2D9D78; }
+.step-log p.pending::before { content: '… '; }
+.step-log p.fail::before { content: '✗ '; color: #D7373F; }
