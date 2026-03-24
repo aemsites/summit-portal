@@ -3,8 +3,8 @@ import DA_SDK from 'https://da.live/nx/utils/sdk.js';
 const DA_SOURCE_BASE = 'https://admin.da.live/source';
 const ADMIN_BASE = 'https://admin.hlx.page';
 const COMPANY_LIST_PATH = 'data/company-list.json';
-const PORTAL_TEMPLATE = 'docs/library/templates/portal.html';
-const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.html';
+const PORTAL_TEMPLATE = 'docs/library/templates/portal';
+const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.json';
 
 // ─── Slug helpers ────────────────────────────────────────────────────────────
 
@@ -100,8 +100,17 @@ function buildUpdatedList(rows, { company, website, emailDomains, roles, custome
 async function copyTemplate(org, site, srcPath, dstPath, token) {
   const resp = await daGet(org, site, srcPath, token);
   if (!resp.ok) throw new Error(`Cannot read template /${srcPath}: ${resp.status}`);
-  const html = await resp.text();
-  const postResp = await daPost(org, site, dstPath, html, token);
+  const content = await resp.text();
+  const isJson = srcPath.endsWith('.json');
+  const mimeType = isJson ? 'application/json' : 'text/html';
+  const blob = new Blob([content], { type: mimeType });
+  const fd = new FormData();
+  fd.append('data', blob);
+  const postResp = await fetch(`${DA_SOURCE_BASE}/${org}/${site}/${dstPath}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
   if (!postResp.ok) throw new Error(`Cannot write /${dstPath}: ${postResp.status}`);
 }
 
@@ -370,13 +379,13 @@ function renderUI(onSubmit) {
 
     // Step 5: Copy portal template → index
     step = logStep(stepLog, 'Copying portal template…');
-    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index.html`, token);
+    await copyTemplate(org, site, PORTAL_TEMPLATE, `${customerPath}/index`, token);
     step.className = 'done';
     step.textContent = '✓ Portal template copied as index.';
 
     // Step 6: Copy file-index template
     step = logStep(stepLog, 'Copying file-index template…');
-    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index.html`, token);
+    await copyTemplate(org, site, FILE_INDEX_TEMPLATE, `${customerPath}/file-index.json`, token);
     step.className = 'done';
     step.textContent = '✓ File-index template copied.';
 
