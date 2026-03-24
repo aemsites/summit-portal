@@ -151,6 +151,7 @@ function makeMultiField(placeholder) {
   const values = [];
   const wrapper = el('div', { className: 'multi-field-wrapper' });
   const input = el('input', { className: 'multi-input', type: 'text', placeholder });
+  wrapper.append(input);
 
   function addTag(raw) {
     raw.split(',').map((s) => s.trim()).filter(Boolean).forEach((val) => {
