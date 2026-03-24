@@ -92,9 +92,9 @@ async function fetchCompanyList(org, site, token) {
   return parseSheetHtml(html);
 }
 
-function companyExists(sheetData, companyName) {
+function findExistingCompany(sheetData, companyName) {
   const name = companyName.trim().toLowerCase();
-  return sheetData.data.some((row) => (row.Company || '').toLowerCase() === name);
+  return sheetData.data.find((row) => (row.Company || '').toLowerCase() === name) || null;
 }
 
 async function saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles, customerPath }) {
@@ -200,6 +200,7 @@ function makeMultiField(placeholder) {
 
   return {
     wrapper,
+    addTag,
     getValues: () => [...values],
     getValue: () => values.join(', '),
     setInvalid: (v) => wrapper.classList.toggle('invalid', v),
@@ -267,7 +268,18 @@ function renderUI(onSubmit) {
   );
 
   // Email Domains
-  const emailField = makeMultiField('acme.com');
+  const emailField = makeMultiField('e.g. acme.com');
+
+  // Auto-fill email domain when website is entered
+  websiteInput.addEventListener('blur', () => {
+    const val = websiteInput.value.trim();
+    if (!val || emailField.getValue().length > 0) return;
+    try {
+      const url = new URL(val.startsWith('http') ? val : `https://${val}`);
+      const domain = url.hostname.replace(/^www\./, '');
+      if (domain) emailField.addTag(domain);
+    } catch { /* invalid URL, skip */ }
+  });
   const emailError = el('div', { className: 'form-error' }, 'At least one email domain is required.');
   const emailGroup = el('div', { className: 'form-group' },
     el('label', { className: 'form-label' }, 'Email Domains', el('span', { className: 'required' }, '*')),
@@ -276,12 +288,13 @@ function renderUI(onSubmit) {
     emailError,
   );
 
-  // Roles
-  const rolesField = makeMultiField('admin, editor, viewer');
+  // Roles — pre-populated with defaults
+  const rolesField = makeMultiField('Add role…');
+  ['Executives', 'Marketing', 'IT'].forEach((r) => rolesField.addTag(r));
   const rolesGroup = el('div', { className: 'form-group' },
     el('label', { className: 'form-label' }, 'Roles'),
     rolesField.wrapper,
-    el('div', { className: 'form-helper' }, 'Optional. Press Enter or comma to add.'),
+    el('div', { className: 'form-helper' }, 'Optional. Press Enter or comma to add more.'),
   );
 
   // Submit
@@ -363,10 +376,12 @@ function renderUI(onSubmit) {
     // Step 1: Check company-list for duplicate
     let step = logStep(stepLog, 'Checking company list for duplicates…');
     const sheetData = await fetchCompanyList(org, site, token);
-    if (companyExists(sheetData, company)) {
+    const existing = findExistingCompany(sheetData, company);
+    if (existing) {
       step.className = 'fail';
-      step.textContent = `✗ "${company}" already exists in data/company-list.`;
-      showBanner(banner, 'error', `"${company}" is already listed in data/company-list. Remove that row first, then try again.`);
+      const detail = existing.Folder ? ` (folder: ${existing.Folder})` : '';
+      step.textContent = `✗ "${company}" already exists in data/company-list${detail}.`;
+      showBanner(banner, 'error', `"${company}" is already in data/company-list${detail}. Remove that row first, then try again.`);
       return;
     }
     step.className = 'done';
