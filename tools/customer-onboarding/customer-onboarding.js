@@ -88,8 +88,13 @@ async function fetchCompanyList(org, site, token) {
   const resp = await daGet(org, site, COMPANY_LIST_PATH, token);
   if (resp.status === 404) return { headers: ['Company', 'Folder', 'Domains', 'Roles', 'Portal created'], data: [] };
   if (!resp.ok) throw new Error(`Cannot read company-list: ${resp.status}`);
-  const html = await resp.text();
-  return parseSheetHtml(html);
+  const raw = await resp.text();
+  // eslint-disable-next-line no-console
+  console.log('[co] raw source (first 800):', raw.slice(0, 800));
+  const result = parseSheetHtml(raw);
+  // eslint-disable-next-line no-console
+  console.log('[co] parsed companies:', result.data.map((r) => r.Company));
+  return result;
 }
 
 function findExistingCompany(sheetData, companyName) {
