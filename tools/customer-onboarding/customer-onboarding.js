@@ -2,7 +2,7 @@ import DA_SDK from 'https://da.live/nx/utils/sdk.js';
 
 const DA_SOURCE_BASE = 'https://admin.da.live/source';
 const ADMIN_BASE = 'https://admin.hlx.page';
-const COMPANY_LIST_PATH = 'data/company-list';
+const COMPANY_LIST_PATH = 'data/company-list.json';
 const PORTAL_TEMPLATE = 'docs/library/templates/portal.html';
 const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.html';
 
@@ -59,60 +59,40 @@ async function checkExists(org, site, path, token) {
 
 // ─── Company list ─────────────────────────────────────────────────────────────
 
-async function fetchCompanyListHtml(org, site, token) {
+async function fetchCompanyList(org, site, token) {
   const resp = await daGet(org, site, COMPANY_LIST_PATH, token);
-  if (resp.status === 404) return null; // sheet doesn't exist yet
+  if (resp.status === 404) return []; // sheet doesn't exist yet
   if (!resp.ok) throw new Error(`Cannot read company-list: ${resp.status}`);
-  return resp.text();
+  const json = await resp.json();
+  return Array.isArray(json.data) ? json.data : [];
 }
 
-function parseTableRows(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const rows = [...doc.querySelectorAll('table tr')];
-  return rows.map((r) => [...r.querySelectorAll('th,td')].map((c) => c.textContent.trim()));
-}
-
-function companyExists(html, companyName) {
-  if (!html) return false;
+function companyExists(rows, companyName) {
   const name = companyName.trim().toLowerCase();
-  const rows = parseTableRows(html);
-  // first row is header; check column 0 of data rows
-  return rows.slice(1).some((cols) => (cols[0] || '').toLowerCase() === name);
+  return rows.some((row) => (row.Company || '').toLowerCase() === name);
 }
 
-function appendRow(existingHtml, { company, website, emailDomains, roles }) {
-  if (!existingHtml) {
-    // Build new sheet from scratch
-    return `<body><main><div>
-<table>
-<thead><tr><th>Company</th><th>Website</th><th>Email Domains</th><th>Roles</th></tr></thead>
-<tbody>
-<tr><td>${esc(company)}</td><td>${esc(website)}</td><td>${esc(emailDomains)}</td><td>${esc(roles)}</td></tr>
-</tbody>
-</table>
-</div></main></body>`;
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(existingHtml, 'text/html');
-  const tbody = doc.querySelector('tbody') || doc.querySelector('table');
-  const tr = doc.createElement('tr');
-  [company, website, emailDomains, roles].forEach((val) => {
-    const td = doc.createElement('td');
-    td.textContent = val;
-    tr.append(td);
+async function daPostJson(org, site, path, data, token) {
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const fd = new FormData();
+  fd.append('data', blob);
+  return fetch(`${DA_SOURCE_BASE}/${org}/${site}/${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
   });
-  tbody.append(tr);
-  return doc.documentElement.outerHTML;
 }
 
-function esc(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function buildUpdatedList(rows, { company, website, emailDomains, roles, customerPath }) {
+  const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const newRow = {
+    Company: company,
+    Folder: `/${customerPath}/`,
+    Domains: emailDomains,
+    Roles: roles,
+    'Portal created': today,
+  };
+  return { data: [...rows, newRow] };
 }
 
 // ─── Template copy ────────────────────────────────────────────────────────────
@@ -352,10 +332,10 @@ function renderUI(onSubmit) {
 
     // Step 1: Check company-list for duplicate
     let step = logStep(stepLog, 'Checking company list for duplicates…');
-    let listHtml = await fetchCompanyListHtml(org, site, token);
-    if (companyExists(listHtml, company)) {
+    const listRows = await fetchCompanyList(org, site, token);
+    if (companyExists(listRows, company)) {
       step.className = 'fail';
-      step.textContent = `✗ "${company}" already exists in data/company-list.`;
+      step.textContent = `✗ "${company}" already exists in data/company-list.json.`;
       showBanner(banner, 'error', `"${company}" is already listed in data/company-list. Remove that row first, then try again.`);
       return;
     }
@@ -364,8 +344,8 @@ function renderUI(onSubmit) {
 
     // Step 2: Update company-list
     step = logStep(stepLog, 'Updating company list…');
-    const updatedHtml = appendRow(listHtml, { company, website, emailDomains, roles });
-    const listResp = await daPost(org, site, COMPANY_LIST_PATH, updatedHtml, token);
+    const updatedList = buildUpdatedList(listRows, { company, website, emailDomains, roles, customerPath });
+    const listResp = await daPostJson(org, site, COMPANY_LIST_PATH, updatedList, token);
     if (!listResp.ok) throw new Error(`Failed to update company list: ${listResp.status}`);
     step.className = 'done';
     step.textContent = '✓ Company list updated.';
