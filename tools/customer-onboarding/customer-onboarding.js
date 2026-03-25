@@ -5,6 +5,8 @@ const ADMIN_BASE = 'https://admin.hlx.page';
 // The company-list is a plain JSON file managed via the DA source API.
 // Read and write to the .json path directly, preserving the full structure on write.
 const COMPANY_LIST_PATH = 'data/company-list.json';
+const CUG_PATH = 'closed-user-groups.json';
+const CUG_MAPPING_PATH = 'closed-user-groups-mapping.json';
 const PORTAL_TEMPLATE = 'docs/library/templates/portal.html';
 const FILE_INDEX_TEMPLATE = 'docs/library/templates/files/file-index.json';
 
@@ -103,6 +105,33 @@ async function saveCompanyList(org, site, token, sheetData, { company, website, 
     body: fd,
   });
   if (!resp.ok) throw new Error(`Cannot update company-list: ${resp.status}`);
+}
+
+async function appendToJsonSheet(org, site, path, token, newRows) {
+  const resp = await daGet(org, site, path, token);
+  if (!resp.ok) throw new Error(`Cannot read ${path}: ${resp.status}`);
+  const json = await resp.json();
+  const existing = Array.isArray(json.data) ? json.data : [];
+  const updated = { ...json, data: [...existing, ...newRows], total: existing.length + newRows.length, limit: existing.length + newRows.length };
+  const blob = new Blob([JSON.stringify(updated)], { type: 'application/json' });
+  const fd = new FormData();
+  fd.append('data', blob);
+  const post = await fetch(`${DA_SOURCE_BASE}/${org}/${site}/${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+  if (!post.ok) throw new Error(`Cannot update ${path}: ${post.status}`);
+}
+
+async function saveCUG(org, site, token, { emailDomains, customerPath }) {
+  const domains = emailDomains.split(',').map((d) => d.trim()).filter(Boolean);
+  const cugGroups = ['adobe.com', ...domains].join(', ');
+  await appendToJsonSheet(org, site, CUG_PATH, token, [
+    { url: `/${customerPath}**`, 'cug-required': '', 'cug-groups': cugGroups },
+  ]);
+}
+
+async function saveCUGMapping(org, site, token, { emailDomains, customerPath }) {
+  const domains = emailDomains.split(',').map((d) => d.trim()).filter(Boolean);
+  const rows = domains.map((d) => ({ group: d, url: `/${customerPath}/` }));
+  await appendToJsonSheet(org, site, CUG_MAPPING_PATH, token, rows);
 }
 
 // ─── Template copy ────────────────────────────────────────────────────────────
@@ -374,11 +403,23 @@ function renderUI(onSubmit) {
     step.className = 'done';
     step.textContent = `✓ No duplicate found.`;
 
-    // Step 2: Update company-list (write HTML back to preserve sheet format)
+    // Step 2: Update company-list
     step = logStep(stepLog, 'Updating company list…');
     await saveCompanyList(org, site, token, sheetData, { company, website, emailDomains, roles, customerPath });
     step.className = 'done';
     step.textContent = '✓ Company list updated.';
+
+    // Step 2a: Update closed-user-groups
+    step = logStep(stepLog, 'Updating closed-user-groups…');
+    await saveCUG(org, site, token, { emailDomains, customerPath });
+    step.className = 'done';
+    step.textContent = '✓ Closed-user-groups updated.';
+
+    // Step 2b: Update closed-user-groups-mapping
+    step = logStep(stepLog, 'Updating closed-user-groups-mapping…');
+    await saveCUGMapping(org, site, token, { emailDomains, customerPath });
+    step.className = 'done';
+    step.textContent = '✓ Closed-user-groups-mapping updated.';
 
     // Step 3: Check target folder doesn't already exist
     step = logStep(stepLog, `Checking if /customers/${firstChar}/${slug} is available…`);
