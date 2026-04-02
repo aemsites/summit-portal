@@ -2,6 +2,7 @@
   --top-bottom-spacing: 0;
   --section-container-width: var(--grid-container-width);
   --section-column-width: var(--grid-column-width);
+  --gap-spacing: 20px;
 
   padding: var(--top-bottom-spacing) 0;
 
@@ -80,6 +81,8 @@
   &.grid .block-content {
     display: grid;
     gap: var(--gap-spacing);
+    max-width: var(--grid-container-width);
+    margin: 0 auto;
   }
 
   &.center {
