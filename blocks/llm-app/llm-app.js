@@ -1,0 +1,151 @@
+/**
+ * LLM App block
+ * Renders a ChatGPT app card with configurable description, website link,
+ * MCP URL (step 2 param), and 1:n test prompts (step 3).
+ *
+ * Authored content model:
+ *   Row 1, Cell 1: <p> description text, <p><a> website link
+ *   Row 2, Cell 1: <p><a> MCP URL, <ul> test prompts
+ *
+ * @param {Element} block the block element
+ */
+export default function init(block) {
+  const rows = [...block.querySelectorAll(':scope > div')];
+
+  // --- Row 1: description + website link ---
+  const cell1 = rows[0]?.querySelector(':scope > div');
+  const descP = cell1 ? [...cell1.querySelectorAll('p')].find((p) => !p.querySelector('a')) : null;
+  const websiteLink = cell1?.querySelector('a');
+
+  // --- Row 2: MCP URL + prompts ---
+  const cell2 = rows[1]?.querySelector(':scope > div');
+  const mcpLink = cell2?.querySelector('a');
+  const mcpUrl = mcpLink?.textContent.trim() || mcpLink?.href || '';
+  const prompts = cell2 ? [...cell2.querySelectorAll('li')].map((li) => li.textContent.trim()) : [];
+
+  // --- Build app card ---
+  const card = document.createElement('div');
+  card.className = 'llm-app-card';
+
+  if (descP) {
+    descP.className = 'llm-app-description';
+    card.append(descP);
+  }
+
+  const cardFooter = document.createElement('div');
+  cardFooter.className = 'llm-app-card-footer';
+
+  if (websiteLink) {
+    const websiteP = websiteLink.closest('p') || document.createElement('p');
+    websiteP.className = 'llm-app-website';
+    if (!websiteP.contains(websiteLink)) websiteP.append(websiteLink);
+    cardFooter.append(websiteP);
+  }
+
+  const connectBtn = document.createElement('a');
+  connectBtn.href = 'https://chatgpt.com/';
+  connectBtn.target = '_blank';
+  connectBtn.rel = 'noopener noreferrer';
+  connectBtn.className = 'llm-app-connect-btn';
+  connectBtn.textContent = 'Connect to ChatGPT';
+  cardFooter.append(connectBtn);
+
+  card.append(cardFooter);
+
+  // --- Build setup panel ---
+  const setup = document.createElement('div');
+  setup.className = 'llm-app-setup';
+
+  const setupHeader = document.createElement('div');
+  setupHeader.className = 'llm-app-setup-header';
+
+  const setupTitle = document.createElement('p');
+  setupTitle.className = 'llm-app-setup-title';
+  setupTitle.textContent = 'Link & test your app';
+
+  const setupSubtitle = document.createElement('p');
+  setupSubtitle.className = 'llm-app-setup-subtitle';
+  setupSubtitle.textContent = 'Connect to ChatGPT in three steps.';
+
+  setupHeader.append(setupTitle, setupSubtitle);
+  setup.append(setupHeader);
+
+  // Step definitions (static labels, dynamic params from authored content)
+  const steps = [
+    {
+      title: 'Set up ChatGPT',
+      body: 'Log in to ChatGPT (paid) → Settings → Apps → Advanced settings → enable Developer mode',
+    },
+    {
+      title: 'Create your app',
+      body: 'Apps → Create App → name it → paste MCP URL → Auth: None → Create',
+      param: mcpUrl,
+    },
+    {
+      title: 'Test it out',
+      body: 'New chat → click + → More → select your app → try one of these prompts:',
+      prompts,
+    },
+  ];
+
+  steps.forEach((step, i) => {
+    const stepEl = document.createElement('div');
+    stepEl.className = 'llm-app-step';
+
+    const stepNum = document.createElement('div');
+    stepNum.className = 'llm-app-step-number';
+    stepNum.textContent = i + 1;
+
+    const stepContent = document.createElement('div');
+    stepContent.className = 'llm-app-step-content';
+
+    const stepTitle = document.createElement('strong');
+    stepTitle.textContent = step.title;
+
+    const stepBody = document.createElement('p');
+    stepBody.textContent = step.body;
+
+    stepContent.append(stepTitle, stepBody);
+
+    // Step 2: MCP URL with copy button
+    if (step.param) {
+      const paramEl = document.createElement('div');
+      paramEl.className = 'llm-app-step-param';
+
+      const paramText = document.createElement('span');
+      paramText.className = 'llm-app-param-text';
+      paramText.textContent = step.param;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'llm-app-copy-btn';
+      copyBtn.type = 'button';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(step.param).then(() => {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+      });
+
+      paramEl.append(paramText, copyBtn);
+      stepContent.append(paramEl);
+    }
+
+    // Step 3: prompts list
+    if (step.prompts?.length) {
+      const promptsEl = document.createElement('ul');
+      promptsEl.className = 'llm-app-prompts';
+      step.prompts.forEach((prompt) => {
+        const li = document.createElement('li');
+        li.textContent = prompt;
+        promptsEl.append(li);
+      });
+      stepContent.append(promptsEl);
+    }
+
+    stepEl.append(stepNum, stepContent);
+    setup.append(stepEl);
+  });
+
+  block.replaceChildren(card, setup);
+}
