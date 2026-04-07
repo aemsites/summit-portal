@@ -59,16 +59,25 @@ export default function init(block) {
   const setupHeader = document.createElement('div');
   setupHeader.className = 'llm-app-setup-header';
 
-  const setupTitle = document.createElement('p');
+  const setupTitle = document.createElement('button');
   setupTitle.className = 'llm-app-setup-title';
+  setupTitle.setAttribute('aria-expanded', 'false');
   setupTitle.textContent = 'Link & test your app';
 
   const setupSubtitle = document.createElement('p');
   setupSubtitle.className = 'llm-app-setup-subtitle';
   setupSubtitle.textContent = 'Connect to ChatGPT in three steps.';
 
-  setupHeader.append(setupTitle, setupSubtitle);
-  setup.append(setupHeader);
+  const setupBody = document.createElement('div');
+  setupBody.className = 'llm-app-setup-body';
+
+  setupTitle.addEventListener('click', () => {
+    const expanded = setupTitle.getAttribute('aria-expanded') === 'true';
+    setupTitle.setAttribute('aria-expanded', String(!expanded));
+  });
+
+  setupHeader.append(setupTitle);
+  setup.append(setupHeader, setupBody);
 
   // Step definitions (static labels, dynamic params from authored content)
   const steps = [
@@ -144,8 +153,14 @@ export default function init(block) {
     }
 
     stepEl.append(stepNum, stepContent);
-    setup.append(stepEl);
+    setupBody.append(stepEl);
   });
+
+  // Wrap all body content in a single inner div for smooth grid animation
+  const setupBodyInner = document.createElement('div');
+  setupBodyInner.className = 'llm-app-setup-body-inner';
+  setupBodyInner.append(setupSubtitle, ...setupBody.children);
+  setupBody.append(setupBodyInner);
 
   block.replaceChildren(card, setup);
 }
