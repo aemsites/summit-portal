@@ -173,6 +173,7 @@
   flex-direction: column;
   gap: var(--spacing-s);
   flex: 1;
+  min-width: 0;
 }
 
 .llm-app .llm-app-step-content strong {
@@ -192,15 +193,15 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-s);
-  padding: var(--spacing-s) var(--spacing-m);
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-m);
   border-radius: 8px;
   background-color: light-dark(#fff, var(--color-gray-900));
   border: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
-  overflow: hidden;
 }
 
 .llm-app .llm-app-param-text {
   flex: 1;
+  min-width: 0;
   font-size: var(--body-font-size-s);
   overflow: hidden;
   text-overflow: ellipsis;
