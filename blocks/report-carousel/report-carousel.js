@@ -224,7 +224,7 @@ export default function init(el) {
   const slidesWrap = document.createElement('div');
   slidesWrap.className = 'rc-slides-wrap';
 
-  const slideEls = slides.map((slide, gi) => {
+  const slideEls = slides.map((slide) => {
     const slideEl = buildSlideEl(slide);
     const localIdx = tabSlides[slide.tabIdx].indexOf(slide);
     slideEl.dataset.localIdx = localIdx;
@@ -274,7 +274,6 @@ export default function init(el) {
   }
 
   function goToSlide(localIdx) {
-    const tabSlidesArr = tabSlides[currentTab];
     slideEls.forEach((slideEl) => {
       const inTab = parseInt(slideEl.dataset.tab, 10) === currentTab;
       const isTarget = parseInt(slideEl.dataset.localIdx, 10) === localIdx;
