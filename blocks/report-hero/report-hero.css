@@ -1,5 +1,4 @@
-/* Report Hero — Cover & Transition Slides */
-/* Matches original introduction.css and transition-*.css */
+/* Report Hero — Cover, Transition & Dashboard Slides */
 .report-hero {
   display: flex;
   flex-direction: column;
@@ -157,6 +156,173 @@
 }
 
 /* ============================================= */
+/* Dashboard variant                             */
+/* ============================================= */
+.report-hero.dashboard {
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+  display: block;
+  text-align: left;
+  align-items: stretch;
+  justify-content: flex-start;
+
+  .rh-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 280px;
+    overflow: hidden;
+  }
+
+  .rh-header-text {
+    background: #e60000;
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+
+    h1, h2, h3 {
+      font-size: 40px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: -0.5px;
+    }
+
+    p {
+      color: rgb(255 255 255 / 82%);
+      font-size: 15px;
+      line-height: 1.65;
+      margin: 0;
+    }
+  }
+
+  .rh-cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 22px;
+    border: 2px solid rgb(255 255 255 / 80%);
+    border-radius: 24px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    width: fit-content;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+      background: #fff;
+      color: #e60000;
+      border-color: #fff;
+    }
+  }
+
+  .rh-header-image {
+    background: #0d0d0d;
+    position: relative;
+    overflow: hidden;
+
+    picture {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+  }
+
+  .rh-metrics-strip {
+    background: #111;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .rh-metric-card {
+    padding: 18px 22px;
+    border-right: 1px solid rgb(255 255 255 / 10%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+
+  .rh-metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+
+  .rh-metric-label {
+    font-size: 11px;
+    color: rgb(255 255 255 / 50%);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+  }
+
+  .rh-metric-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    width: fit-content;
+
+    &::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    &[data-status='good'] {
+      background: rgb(34 197 94 / 14%);
+      color: #4ade80;
+
+      &::before { background: #4ade80; }
+    }
+
+    &[data-status='bad'] {
+      background: rgb(239 68 68 / 14%);
+      color: #f87171;
+
+      &::before { background: #f87171; }
+    }
+
+    &[data-status='warn'] {
+      background: rgb(251 146 60 / 14%);
+      color: #fb923c;
+
+      &::before { background: #fb923c; }
+    }
+  }
+
+  .rh-metric-desc {
+    font-size: 11px;
+    color: rgb(255 255 255 / 32%);
+    line-height: 1.45;
+    margin-top: 5px;
+  }
+}
+
+/* ============================================= */
 /* Report page-level styles (loaded with hero)   */
 /* ============================================= */
 
@@ -179,8 +345,8 @@
   --rpt-impact-bg: light-dark(#f3f4f6, #2a2a2a);
 }
 
-/* Section heading accent bar — matches original */
-.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2 {
+/* Section heading accent bar */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout, .report-carousel) > .default-content h2 {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -190,7 +356,7 @@
   margin: 0 0 6px;
 }
 
-.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content h2::before {
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout, .report-carousel) > .default-content h2::before {
   content: '';
   display: block;
   width: 4px;
@@ -200,21 +366,20 @@
   flex-shrink: 0;
 }
 
-/* Subtitle paragraph — match original header-subtitle */
-.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p {
+/* Subtitle paragraph */
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout, .report-carousel) > .default-content p {
   font-size: 14px;
   color: var(--rpt-text-muted);
   margin: 0 0 16px;
   padding-left: 16px;
 }
 
-/* Strong tags in subtitles get Adobe red */
-.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) > .default-content p strong {
+.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout, .report-carousel) > .default-content p strong {
   color: var(--rpt-red-dark);
   font-weight: 600;
 }
 
-/* Section spacing for report sections */
+/* Section spacing */
 .section:has(.report-hero) {
   padding: 0;
 }
@@ -222,6 +387,39 @@
 .section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) {
   padding: 32px 0;
   border-bottom: 1px solid var(--rpt-border-subtle);
+}
+
+.section:has(.report-carousel) {
+  padding: 0;
+}
+
+/* Responsive */
+@media (width < 900px) {
+  .report-hero.dashboard {
+    .rh-header {
+      grid-template-columns: 1fr;
+
+      .rh-header-image {
+        min-height: 200px;
+      }
+    }
+
+    .rh-header-text {
+      padding: 36px 28px;
+
+      h1, h2, h3 {
+        font-size: 32px;
+      }
+    }
+
+    .rh-metrics-strip {
+      grid-template-columns: repeat(2, 1fr);
+
+      .rh-metric-card {
+        border-bottom: 1px solid rgb(255 255 255 / 10%);
+      }
+    }
+  }
 }
 
 @media (width < 768px) {
@@ -254,5 +452,9 @@
     gap: 16px;
     width: 100%;
     padding: 20px 24px;
+  }
+
+  .report-hero.dashboard .rh-metrics-strip {
+    grid-template-columns: 1fr 1fr;
   }
 }

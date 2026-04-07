@@ -1,6 +1,73 @@
 export default function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
+  const isDashboard = el.classList.contains('dashboard');
   const isTransition = el.classList.contains('transition');
+
+  if (isDashboard) {
+    const [headerRow, ...metricRows] = rows;
+    const cells = [...headerRow.children];
+
+    // Build gradient header
+    const header = document.createElement('div');
+    header.className = 'rh-header';
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'rh-header-text';
+    [...cells[0].childNodes].forEach((n) => textWrap.append(n));
+    textWrap.querySelectorAll('a').forEach((a) => a.classList.add('rh-cta'));
+
+    header.append(textWrap);
+
+    if (cells[1]) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'rh-header-image';
+      [...cells[1].childNodes].forEach((n) => imgWrap.append(n));
+      header.append(imgWrap);
+    }
+
+    headerRow.replaceWith(header);
+
+    // Build metrics strip
+    if (metricRows.length) {
+      const strip = document.createElement('div');
+      strip.className = 'rh-metrics-strip';
+
+      metricRows.forEach((row) => {
+        const [valueCell, infoCell] = [...row.children];
+        const card = document.createElement('div');
+        card.className = 'rh-metric-card';
+
+        const valueEl = document.createElement('div');
+        valueEl.className = 'rh-metric-value';
+        valueEl.textContent = valueCell?.textContent.trim() || '';
+
+        const paras = infoCell ? [...infoCell.querySelectorAll('p')] : [];
+        const labelEl = document.createElement('div');
+        labelEl.className = 'rh-metric-label';
+        labelEl.textContent = paras[0]?.textContent.trim() || '';
+
+        const badgeText = paras[1]?.textContent.trim() || '';
+        const badgeEl = document.createElement('span');
+        badgeEl.className = 'rh-metric-badge';
+        badgeEl.textContent = badgeText;
+        const bl = badgeText.toLowerCase();
+        // eslint-disable-next-line no-nested-ternary
+        badgeEl.dataset.status = (bl.includes('poor') || bl.includes('critical')) ? 'bad'
+          : (bl.includes('under') || bl.includes('warn')) ? 'warn' : 'good';
+
+        const descEl = document.createElement('div');
+        descEl.className = 'rh-metric-desc';
+        descEl.textContent = paras[2]?.textContent.trim() || '';
+
+        card.append(valueEl, labelEl, badgeEl, descEl);
+        strip.append(card);
+        row.remove();
+      });
+
+      el.append(strip);
+    }
+    return;
+  }
 
   if (isTransition) {
     // Transition: badge | title | subtitle | metric rows...

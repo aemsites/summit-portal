@@ -1,0 +1,326 @@
+/* Report Carousel — Persona tab switcher + slide carousel */
+.report-carousel {
+  background: light-dark(var(--color-gray-50, #fafafa), var(--color-gray-900, #111));
+}
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+.report-carousel .rc-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  padding: 0 32px;
+  background: light-dark(#fff, #161616);
+}
+
+.report-carousel .rc-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.report-carousel .rc-tab {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: light-dark(#6b7280, #9ca3af);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: light-dark(#111, #fff);
+  }
+
+  &.active {
+    color: light-dark(#111, #fff);
+    border-bottom-color: #e60000;
+  }
+}
+
+.report-carousel .rc-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #1d4ed8;
+  }
+
+  &::before {
+    content: '↓';
+    font-size: 14px;
+  }
+}
+
+/* ── Slides wrapper ─────────────────────────────────────── */
+.report-carousel .rc-slides-wrap {
+  padding: 40px 32px 24px;
+}
+
+.report-carousel .rc-slide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 32px 48px;
+  align-items: center;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Badge */
+.report-carousel .rc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &[data-type='no'] {
+    background: rgb(230 0 0 / 10%);
+    color: #e60000;
+
+    &::before { background: #e60000; }
+  }
+
+  &[data-type='key'] {
+    background: rgb(37 99 235 / 10%);
+    color: #2563eb;
+
+    &::before { background: #2563eb; }
+  }
+
+  &[data-type='critical'] {
+    background: rgb(234 88 12 / 10%);
+    color: #ea580c;
+
+    &::before { background: #ea580c; }
+  }
+
+  &[data-type='insight'] {
+    background: rgb(16 185 129 / 10%);
+    color: #10b981;
+
+    &::before { background: #10b981; }
+  }
+}
+
+/* Slide content */
+.report-carousel .rc-slide-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.report-carousel .rc-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: light-dark(#111, #f9fafb);
+  margin-bottom: 16px;
+
+  strong, b {
+    color: #e60000;
+    font-weight: 800;
+  }
+
+  h2, h3, h4 {
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin: 0;
+  }
+}
+
+.report-carousel .rc-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: light-dark(#4b5563, #9ca3af);
+  margin-bottom: 12px;
+
+  p {
+    margin: 0 0 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.report-carousel .rc-source {
+  font-size: 11px;
+  color: light-dark(#9ca3af, #6b7280);
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Slide visual (chart area) */
+.report-carousel .rc-slide-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.report-carousel .rc-chart-svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  overflow: visible;
+}
+
+/* Slide picture */
+.report-carousel .rc-slide-visual picture,
+.report-carousel .rc-slide-visual img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Footnote (spans full width) */
+.report-carousel .rc-footnote {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: light-dark(#9ca3af, #6b7280);
+  border-top: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  padding-top: 12px;
+  line-height: 1.5;
+}
+
+/* ── Navigation ─────────────────────────────────────────── */
+.report-carousel .rc-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px 28px;
+  border-top: 1px solid light-dark(#e5e7eb, #2a2a2a);
+}
+
+.report-carousel .rc-nav-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: light-dark(#6b7280, #9ca3af);
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: light-dark(#111, #fff);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+
+.report-carousel .rc-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.report-carousel .rc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: light-dark(#d1d5db, #374151);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background: light-dark(#9ca3af, #6b7280);
+  }
+
+  &.active {
+    background: #e60000;
+    transform: scale(1.3);
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (width < 900px) {
+  .report-carousel .rc-tab-bar {
+    padding: 0 20px;
+    flex-wrap: wrap;
+    gap: 0;
+
+    .rc-download-btn {
+      margin: 10px 0;
+    }
+  }
+
+  .report-carousel .rc-slides-wrap {
+    padding: 28px 20px 16px;
+  }
+
+  .report-carousel .rc-slide {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .report-carousel .rc-slide-visual {
+    order: -1;
+  }
+
+  .report-carousel .rc-title {
+    font-size: 22px;
+  }
+
+  .report-carousel .rc-nav {
+    padding: 14px 20px 24px;
+  }
+}
+
+@media (width < 600px) {
+  .report-carousel .rc-tab {
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+
+  .report-carousel .rc-title {
+    font-size: 20px;
+  }
+}
