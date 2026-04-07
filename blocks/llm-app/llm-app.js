@@ -71,6 +71,11 @@ export default function init(block) {
   const setupBody = document.createElement('div');
   setupBody.className = 'llm-app-setup-body';
 
+  const setupBodyInner = document.createElement('div');
+  setupBodyInner.className = 'llm-app-setup-body-inner';
+  setupBodyInner.append(setupSubtitle);
+  setupBody.append(setupBodyInner);
+
   setupTitle.addEventListener('click', () => {
     const expanded = setupTitle.getAttribute('aria-expanded') === 'true';
     setupTitle.setAttribute('aria-expanded', String(!expanded));
@@ -153,14 +158,8 @@ export default function init(block) {
     }
 
     stepEl.append(stepNum, stepContent);
-    setupBody.append(stepEl);
+    setupBodyInner.append(stepEl);
   });
-
-  // Wrap all body content in a single inner div for smooth grid animation
-  const setupBodyInner = document.createElement('div');
-  setupBodyInner.className = 'llm-app-setup-body-inner';
-  setupBodyInner.append(setupSubtitle, ...setupBody.children);
-  setupBody.append(setupBodyInner);
 
   block.replaceChildren(card, setup);
 }
