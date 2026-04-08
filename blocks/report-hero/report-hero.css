@@ -229,12 +229,13 @@
   .report-hero.insight {
     grid-template-columns: 1fr 1fr;
     min-height: 360px;
-    position: relative;
+    overflow: visible;
+    border-radius: 0;
   }
 
   .report-hero.insight .rh-insight-text {
     padding: 56px;
-    grid-column: 1;
+    border-radius: 16px 0 0 16px;
 
     h1, h2 {
       font-size: 48px;
@@ -243,7 +244,6 @@
 
   .report-hero.insight .rh-insight-image {
     display: block;
-    grid-column: 2;
     position: relative;
     overflow: visible;
 
