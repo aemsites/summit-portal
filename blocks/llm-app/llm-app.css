@@ -35,21 +35,19 @@
     padding: var(--spacing-l);
 
     .llm-app-setup-title {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      width: 100%;
+      gap: var(--spacing-xs);
       margin: 0;
-      padding: var(--spacing-s) var(--spacing-m);
+      padding: 5px 14px;
       border: none;
-      border-radius: var(--spacing-xs);
+      border-radius: 16px;
       background-color: var(--color-button);
       font-family: var(--font-family);
-      font-size: var(--body-font-size-m);
+      font-size: var(--body-font-size-s);
       font-weight: 600;
       color: var(--color-light);
       cursor: pointer;
-      text-align: start;
       transition: background-color 0.15s ease;
 
       &:hover {
@@ -60,8 +58,8 @@
         content: '';
         display: block;
         flex-shrink: 0;
-        width: 16px;
-        height: 16px;
+        width: 12px;
+        height: 12px;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M8 10.5L2 4.5h12z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: center;
