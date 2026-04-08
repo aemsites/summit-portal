@@ -30,19 +30,6 @@ export default function init(block) {
     card.append(descEl);
   }
 
-  const cardFooter = document.createElement('div');
-  cardFooter.className = 'llm-app-card-footer';
-
-  const connectBtn = document.createElement('a');
-  connectBtn.href = 'https://chatgpt.com/';
-  connectBtn.target = '_blank';
-  connectBtn.rel = 'noopener noreferrer';
-  connectBtn.className = 'llm-app-connect-btn';
-  connectBtn.textContent = 'Connect to ChatGPT';
-  cardFooter.append(connectBtn);
-
-  card.append(cardFooter);
-
   // --- Build setup panel ---
   const setup = document.createElement('div');
   setup.className = 'llm-app-setup';
