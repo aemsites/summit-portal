@@ -3,7 +3,7 @@
  * Renders a ChatGPT app card with configurable description, MCP URL, and test prompts.
  *
  * Authored content model:
- *   Row 1, Cell 1: <p> with bold title, description text, and optional inline email link
+ *   Row 1, Cell 1: <div> or <p> — bold title as first <strong>, followed by description text
  *   Row 2, Cell 1: <p><a> MCP URL, <ul> test prompts
  *
  * @param {Element} block the block element
@@ -50,9 +50,6 @@ export default function init(block) {
   const setup = document.createElement('div');
   setup.className = 'llm-app-setup';
 
-  const setupHeader = document.createElement('div');
-  setupHeader.className = 'llm-app-setup-header';
-
   const setupTitle = document.createElement('button');
   setupTitle.className = 'llm-app-setup-title';
   setupTitle.setAttribute('aria-expanded', 'false');
@@ -75,8 +72,7 @@ export default function init(block) {
     setupTitle.setAttribute('aria-expanded', String(!expanded));
   });
 
-  setupHeader.append(setupTitle);
-  setup.append(setupHeader, setupBody);
+  setup.append(setupTitle, setupBody);
 
   // Step definitions (static labels, dynamic params from authored content)
   const steps = [
@@ -131,6 +127,9 @@ export default function init(block) {
       copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(step.param).then(() => {
           copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        }).catch(() => {
+          copyBtn.textContent = 'Failed';
           setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
         });
       });
