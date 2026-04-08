@@ -43,17 +43,17 @@
       padding: var(--spacing-s) var(--spacing-m);
       border: none;
       border-radius: var(--spacing-xs);
-      background-color: var(--color-surface);
+      background-color: var(--color-button);
       font-family: var(--font-family);
       font-size: var(--body-font-size-m);
       font-weight: 600;
-      color: inherit;
+      color: var(--color-light);
       cursor: pointer;
       text-align: start;
       transition: background-color 0.15s ease;
 
       &:hover {
-        background-color: var(--color-surface-hover);
+        background-color: var(--color-button-hover);
       }
 
       &::after {
