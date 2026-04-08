@@ -37,15 +37,21 @@
       justify-content: space-between;
       width: 100%;
       margin: 0;
-      padding: 0;
-      border: none;
-      background: none;
+      padding: var(--spacing-s) var(--spacing-m);
+      border: 1px solid light-dark(var(--color-gray-300), var(--color-gray-600));
+      border-radius: 8px;
+      background-color: light-dark(var(--color-light), var(--color-gray-700));
       font-family: var(--body-font-family);
-      font-size: var(--body-font-size-l);
-      font-weight: 700;
+      font-size: var(--body-font-size-m);
+      font-weight: 600;
       color: inherit;
       cursor: pointer;
       text-align: start;
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background-color: light-dark(var(--color-gray-200), var(--color-gray-600));
+      }
 
       &::after {
         content: '';
