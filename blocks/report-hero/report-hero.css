@@ -156,7 +156,112 @@
 }
 
 /* ============================================= */
+
+/* Insight variant                               */
+
+/* ============================================= */
+.report-hero.insight {
+  background: #e60000;
+  min-height: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  text-align: left;
+  overflow: hidden;
+}
+
+.report-hero.insight .rh-insight-text {
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.report-hero.insight .rh-insight-text h1,
+.report-hero.insight .rh-insight-text h2 {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+.report-hero.insight .rh-insight-text p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgb(255 255 255 / 85%);
+  margin: 0;
+  max-width: 520px;
+}
+
+.report-hero.insight .rh-insight-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #fff;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+  width: fit-content;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+}
+
+.report-hero.insight .rh-insight-badge img {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.report-hero.insight .rh-insight-image {
+  display: none;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 15%);
+}
+
+.report-hero.insight .rh-insight-image picture,
+.report-hero.insight .rh-insight-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
+}
+
+@media (width >= 1000px) {
+  .report-hero.insight {
+    grid-template-columns: 1fr 1fr;
+    border-radius: 16px;
+    min-height: 320px;
+  }
+
+  .report-hero.insight .rh-insight-text {
+    padding: 56px;
+  }
+
+  .report-hero.insight .rh-insight-text h1,
+  .report-hero.insight .rh-insight-text h2 {
+    font-size: 48px;
+  }
+
+  .report-hero.insight .rh-insight-image {
+    display: flex;
+    min-height: 260px;
+  }
+}
+
+/* ============================================= */
+
 /* Dashboard variant                             */
+
 /* ============================================= */
 .report-hero.dashboard {
   background: transparent;
@@ -323,7 +428,9 @@
 }
 
 /* ============================================= */
+
 /* Report page-level styles (loaded with hero)   */
+
 /* ============================================= */
 
 /* ---- Report aliases to global tokens + report-specific tokens ---- */
@@ -339,7 +446,7 @@
   --rpt-text-muted: var(--color-text-muted);
   --rpt-text-faint: var(--color-text-faint);
   --rpt-red: #e60000;
-  --rpt-red-dark: light-dark(#e60000, #ff3333);
+  --rpt-red-dark: light-dark(#e60000, #f33);
   --rpt-red-bg: light-dark(rgb(230 0 0 / 8%), rgb(230 0 0 / 15%));
   --rpt-red-bg-subtle: light-dark(rgb(230 0 0 / 4%), rgb(230 0 0 / 10%));
   --rpt-impact-bg: light-dark(#f3f4f6, #2a2a2a);

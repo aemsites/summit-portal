@@ -145,6 +145,10 @@ function decorateBrandSection(section) {
   span.className = 'brand-text';
   span.append(text);
   brandLink.append(span);
+
+  // Logo image is decorative — link text already describes the destination
+  const logoImg = section.querySelector('img');
+  if (logoImg && !logoImg.alt) logoImg.alt = '';
 }
 
 function decorateNavSection(section) {

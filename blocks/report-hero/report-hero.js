@@ -1,7 +1,50 @@
+function buildInsightHero(el, rows) {
+  const [contentRow, badgeRow] = rows;
+  const [textCell, imgCell] = contentRow ? [...contentRow.children] : [];
+
+  // Text column
+  const textCol = document.createElement('div');
+  textCol.className = 'rh-insight-text';
+  if (textCell) [...textCell.childNodes].forEach((n) => textCol.append(n));
+
+  // Badge
+  if (badgeRow) {
+    const [faviconCell, domainCell] = [...badgeRow.children];
+    const faviconSrc = faviconCell?.textContent.trim();
+    const domain = domainCell?.textContent.trim();
+    if (faviconSrc && domain) {
+      const badge = document.createElement('div');
+      badge.className = 'rh-insight-badge';
+      const img = document.createElement('img');
+      img.src = faviconSrc;
+      img.alt = '';
+      img.setAttribute('aria-hidden', 'true');
+      img.width = 16;
+      img.height = 16;
+      badge.append(img, document.createTextNode(domain));
+      textCol.append(badge);
+    }
+    badgeRow.remove();
+  }
+
+  // Image column (desktop only)
+  const imgCol = document.createElement('div');
+  imgCol.className = 'rh-insight-image';
+  if (imgCell) [...imgCell.childNodes].forEach((n) => imgCol.append(n));
+
+  contentRow.replaceWith(textCol, imgCol);
+}
+
 export default function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
   const isDashboard = el.classList.contains('dashboard');
   const isTransition = el.classList.contains('transition');
+  const isInsight = el.classList.contains('insight');
+
+  if (isInsight) {
+    buildInsightHero(el, rows);
+    return;
+  }
 
   if (isDashboard) {
     const [headerRow, ...metricRows] = rows;
