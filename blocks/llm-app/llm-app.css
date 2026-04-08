@@ -1,10 +1,11 @@
 .llm-app {
   max-width: 560px;
   margin-inline: auto;
-  border-radius: 12px;
+  border-radius: var(--spacing-s);
   box-shadow: 0 1px 6px 0 rgb(0 0 0 / 12%);
-  background-color: light-dark(var(--color-gray-100), var(--color-gray-800));
-  color: light-dark(var(--color-gray-900), var(--color-gray-100));
+  background-color: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
 
   /* ---- App card ---- */
 
@@ -14,12 +15,12 @@
     .llm-app-description {
       margin: 0;
       font-size: var(--body-font-size-m);
-      line-height: 1.5;
+      line-height: var(--body-line-height);
 
       strong:first-child {
         display: block;
         font-size: var(--body-font-size-l);
-        font-weight: 700;
+        font-weight: 600;
         margin-bottom: var(--spacing-s);
       }
     }
@@ -29,7 +30,7 @@
 
   .llm-app-setup {
     padding: var(--spacing-l);
-    border-top: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
+    border-top: 1px solid var(--color-border);
 
     .llm-app-setup-title {
       display: flex;
@@ -38,10 +39,10 @@
       width: 100%;
       margin: 0;
       padding: var(--spacing-s) var(--spacing-m);
-      border: 1px solid light-dark(var(--color-gray-300), var(--color-gray-600));
-      border-radius: 8px;
-      background-color: light-dark(var(--color-light), var(--color-gray-700));
-      font-family: var(--body-font-family);
+      border: 1px solid var(--color-border);
+      border-radius: var(--spacing-xs);
+      background-color: var(--color-surface);
+      font-family: var(--font-family);
       font-size: var(--body-font-size-m);
       font-weight: 600;
       color: inherit;
@@ -50,7 +51,7 @@
       transition: background-color 0.15s ease;
 
       &:hover {
-        background-color: light-dark(var(--color-gray-200), var(--color-gray-600));
+        background-color: var(--color-surface-hover);
       }
 
       &::after {
@@ -87,7 +88,7 @@
       flex-direction: column;
       gap: var(--spacing-l);
       padding-top: var(--spacing-l);
-      border-top: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
+      border-top: 1px solid var(--color-border);
       margin-top: var(--spacing-m);
       margin-inline: calc(-1 * var(--spacing-l));
       padding-inline: var(--spacing-l);
@@ -96,7 +97,7 @@
     .llm-app-setup-subtitle {
       margin: 0;
       font-size: var(--body-font-size-s);
-      color: light-dark(var(--color-gray-500), var(--color-gray-400));
+      color: var(--color-text-muted);
     }
   }
 
@@ -135,8 +136,8 @@
       p {
         margin: 0;
         font-size: var(--body-font-size-s);
-        color: light-dark(var(--color-gray-600), var(--color-gray-400));
-        line-height: 1.5;
+        color: var(--color-text-secondary);
+        line-height: var(--body-line-height);
       }
     }
   }
@@ -148,9 +149,9 @@
     align-items: center;
     gap: var(--spacing-s);
     padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-m);
-    border-radius: 8px;
-    background-color: light-dark(var(--color-light), var(--color-gray-900));
-    border: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
+    border-radius: var(--spacing-xs);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
 
     .llm-app-param-text {
       flex: 1;
@@ -159,14 +160,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: light-dark(var(--color-gray-700), var(--color-gray-300));
+      color: var(--color-text-secondary);
     }
 
     .llm-app-copy-btn {
       flex-shrink: 0;
       padding: var(--spacing-xs) var(--spacing-m);
       border: none;
-      border-radius: 6px;
+      border-radius: var(--spacing-xs);
       background-color: var(--color-blue-600);
       color: var(--color-light);
       font-size: var(--body-font-size-s);
@@ -192,11 +193,11 @@
 
     li {
       padding: var(--spacing-s) var(--spacing-m);
-      border-radius: 8px;
-      border: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
-      background-color: light-dark(var(--color-light), var(--color-gray-900));
+      border-radius: var(--spacing-xs);
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
       font-size: var(--body-font-size-s);
-      color: light-dark(var(--color-gray-700), var(--color-gray-300));
+      color: var(--color-text-secondary);
     }
   }
 }
