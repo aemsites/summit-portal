@@ -166,6 +166,8 @@
   --color-adobe-red: #e60000;
   --color-adobe-red-hover: #cc0000;
   --color-adobe-red-dark: light-dark(#e60000, #ff3333);
+  --color-button: var(--color-adobe-red);
+  --color-button-hover: var(--color-adobe-red-hover);
   --color-shaded: light-dark(#f9f9f9, #111);
 
   /* semantic surfaces */
