@@ -11,8 +11,9 @@
 export default function init(block) {
   const rows = [...block.querySelectorAll(':scope > div')];
 
-  // --- Row 1: description paragraph (may include bold title and inline email link) ---
-  const descP = rows[0]?.querySelector('p');
+  // --- Row 1: description content (may be directly in cell div, or wrapped in <p>) ---
+  const cell1 = rows[0]?.querySelector(':scope > div');
+  const descEl = cell1?.querySelector('p') ?? cell1;
 
   // --- Row 2: MCP URL + prompts ---
   const cell2 = rows[1]?.querySelector(':scope > div');
@@ -24,9 +25,9 @@ export default function init(block) {
   const card = document.createElement('div');
   card.className = 'llm-app-card';
 
-  if (descP) {
-    descP.className = 'llm-app-description';
-    card.append(descP);
+  if (descEl) {
+    descEl.className = 'llm-app-description';
+    card.append(descEl);
   }
 
   const cardFooter = document.createElement('div');
