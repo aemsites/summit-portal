@@ -40,7 +40,7 @@ export default function init(block) {
   const setupTitle = document.createElement('button');
   setupTitle.className = 'llm-app-setup-title';
   setupTitle.setAttribute('aria-expanded', 'false');
-  setupTitle.textContent = 'Link & test your app';
+  setupTitle.textContent = 'Try your app in ChatGPT';
 
   const setupSubtitle = document.createElement('p');
   setupSubtitle.className = 'llm-app-setup-subtitle';
