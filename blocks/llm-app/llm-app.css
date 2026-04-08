@@ -9,16 +9,12 @@
   /* ---- App card ---- */
 
   .llm-app-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-m);
     padding: var(--spacing-l);
 
     .llm-app-description {
       margin: 0;
       font-size: var(--body-font-size-m);
       line-height: 1.5;
-      color: inherit;
 
       strong:first-child {
         display: block;
@@ -27,7 +23,6 @@
         margin-bottom: var(--spacing-s);
       }
     }
-
   }
 
   /* ---- Setup panel ---- */
@@ -85,9 +80,11 @@
       display: flex;
       flex-direction: column;
       gap: var(--spacing-l);
-      padding-top: var(--spacing-m);
+      padding-top: var(--spacing-l);
       border-top: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
       margin-top: var(--spacing-m);
+      margin-inline: calc(-1 * var(--spacing-l));
+      padding-inline: var(--spacing-l);
     }
 
     .llm-app-setup-subtitle {
