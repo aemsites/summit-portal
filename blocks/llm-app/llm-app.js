@@ -26,6 +26,9 @@ export default function init(block) {
   const titleText = titleEl?.textContent.trim() || '';
   if (titleEl) titleEl.remove();
 
+  // Remove leading <br> elements left after title extraction
+  while (descEl?.firstChild?.nodeName === 'BR') descEl.firstChild.remove();
+
   // --- Build card header ---
   const cardHeader = document.createElement('div');
   cardHeader.className = 'llm-app-card-header';
