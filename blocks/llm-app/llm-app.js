@@ -1,10 +1,9 @@
 /**
  * LLM App block
- * Renders a ChatGPT app card with configurable description, website link,
- * MCP URL (step 2 param), and 1:n test prompts (step 3).
+ * Renders a ChatGPT app card with configurable description, MCP URL, and test prompts.
  *
  * Authored content model:
- *   Row 1, Cell 1: <p> description text, <p><a> website link
+ *   Row 1, Cell 1: <p> with bold title, description text, and optional inline email link
  *   Row 2, Cell 1: <p><a> MCP URL, <ul> test prompts
  *
  * @param {Element} block the block element
@@ -12,10 +11,9 @@
 export default function init(block) {
   const rows = [...block.querySelectorAll(':scope > div')];
 
-  // --- Row 1: description + website link ---
+  // --- Row 1: description paragraph (may include bold title and inline email link) ---
   const cell1 = rows[0]?.querySelector(':scope > div');
-  const descP = cell1 ? [...cell1.querySelectorAll('p')].find((p) => !p.querySelector('a')) : null;
-  const websiteLink = cell1?.querySelector('a');
+  const descP = cell1?.querySelector('p');
 
   // --- Row 2: MCP URL + prompts ---
   const cell2 = rows[1]?.querySelector(':scope > div');
@@ -34,13 +32,6 @@ export default function init(block) {
 
   const cardFooter = document.createElement('div');
   cardFooter.className = 'llm-app-card-footer';
-
-  if (websiteLink) {
-    const websiteP = websiteLink.closest('p') || document.createElement('p');
-    websiteP.className = 'llm-app-website';
-    if (!websiteP.contains(websiteLink)) websiteP.append(websiteLink);
-    cardFooter.append(websiteP);
-  }
 
   const connectBtn = document.createElement('a');
   connectBtn.href = 'https://chatgpt.com/';

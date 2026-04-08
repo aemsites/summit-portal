@@ -18,29 +18,21 @@
       margin: 0;
       font-size: var(--body-font-size-m);
       line-height: 1.5;
+
+      strong:first-child {
+        display: block;
+        font-size: var(--body-font-size-l);
+        font-weight: 700;
+        margin-bottom: var(--spacing-s);
+      }
     }
 
     .llm-app-card-footer {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: var(--spacing-m);
+      justify-content: flex-end;
       padding-top: var(--spacing-m);
       border-top: 1px solid light-dark(var(--color-gray-200), var(--color-gray-700));
-
-      .llm-app-website {
-        margin: 0;
-
-        a:any-link {
-          color: var(--link-color);
-          font-size: var(--body-font-size-s);
-          text-decoration: none;
-        }
-
-        a:hover {
-          text-decoration: underline;
-        }
-      }
 
       .llm-app-connect-btn {
         display: inline-flex;
