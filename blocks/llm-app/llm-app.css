@@ -1,6 +1,4 @@
 .llm-app {
-  max-width: 560px;
-  margin-inline: auto;
   border-radius: var(--spacing-s);
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);

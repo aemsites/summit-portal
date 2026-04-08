@@ -26,17 +26,17 @@ export default function init(block) {
   const titleText = titleEl?.textContent.trim() || '';
   if (titleEl) titleEl.remove();
 
-  // --- Build app card ---
-  const card = document.createElement('div');
-  card.className = 'llm-app-card';
-
+  // --- Build card header ---
   const cardHeader = document.createElement('div');
   cardHeader.className = 'llm-app-card-header';
   const cardTitle = document.createElement('p');
   cardTitle.className = 'llm-app-card-title';
   cardTitle.textContent = titleText;
   cardHeader.append(cardTitle);
-  card.append(cardHeader);
+
+  // --- Build app card body ---
+  const card = document.createElement('div');
+  card.className = 'llm-app-card';
 
   if (descEl) {
     descEl.className = 'llm-app-description';
@@ -152,5 +152,5 @@ export default function init(block) {
     setupBodyInner.append(stepEl);
   });
 
-  block.replaceChildren(card, setup);
+  block.replaceChildren(cardHeader, card, setup);
 }
