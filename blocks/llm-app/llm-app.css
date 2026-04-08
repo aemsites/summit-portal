@@ -18,6 +18,7 @@
       margin: 0;
       font-size: var(--body-font-size-m);
       line-height: 1.5;
+      color: inherit;
 
       strong:first-child {
         display: block;

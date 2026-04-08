@@ -12,8 +12,7 @@ export default function init(block) {
   const rows = [...block.querySelectorAll(':scope > div')];
 
   // --- Row 1: description paragraph (may include bold title and inline email link) ---
-  const cell1 = rows[0]?.querySelector(':scope > div');
-  const descP = cell1?.querySelector('p');
+  const descP = rows[0]?.querySelector('p');
 
   // --- Row 2: MCP URL + prompts ---
   const cell2 = rows[1]?.querySelector(':scope > div');
