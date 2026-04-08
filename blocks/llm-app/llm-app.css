@@ -95,8 +95,8 @@
 
     .llm-app-setup-subtitle {
       margin: 0;
-      font-size: var(--body-font-size-s);
-      color: var(--color-text-muted);
+      font-size: var(--body-font-size-m);
+      line-height: var(--body-line-height);
     }
   }
 
