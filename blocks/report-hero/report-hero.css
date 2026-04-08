@@ -169,6 +169,7 @@
   align-items: stretch;
   text-align: left;
   overflow: hidden;
+  border-radius: 16px;
 }
 
 .report-hero.insight .rh-insight-text {
@@ -208,6 +209,7 @@
   font-size: 14px;
   font-weight: 600;
   color: #111;
+  text-decoration: none;
   width: fit-content;
   box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
 }
@@ -221,40 +223,49 @@
 
 .report-hero.insight .rh-insight-image {
   display: none;
-  overflow: hidden;
-  align-items: center;
-  justify-content: center;
-  background: rgb(0 0 0 / 15%);
-}
-
-.report-hero.insight .rh-insight-image picture,
-.report-hero.insight .rh-insight-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top left;
-  display: block;
 }
 
 @media (width >= 1000px) {
   .report-hero.insight {
     grid-template-columns: 1fr 1fr;
-    border-radius: 16px;
-    min-height: 320px;
+    min-height: 360px;
+    position: relative;
   }
 
   .report-hero.insight .rh-insight-text {
     padding: 56px;
-  }
+    grid-column: 1;
 
-  .report-hero.insight .rh-insight-text h1,
-  .report-hero.insight .rh-insight-text h2 {
-    font-size: 48px;
+    h1, h2 {
+      font-size: 48px;
+    }
   }
 
   .report-hero.insight .rh-insight-image {
-    display: flex;
-    min-height: 260px;
+    display: block;
+    grid-column: 2;
+    position: relative;
+    overflow: visible;
+
+    picture {
+      display: block;
+      position: absolute;
+      top: -24px;
+      left: 0;
+      right: -24px;
+      bottom: -24px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+      display: block;
+    }
   }
 }
 
