@@ -1,38 +1,46 @@
 function buildInsightHero(el, rows) {
-  const [contentRow, badgeRow] = rows;
-  const [textCell, imgCell] = contentRow ? [...contentRow.children] : [];
+  // New authoring: single row, single cell
+  // Children in order: heading(s), description p(s), standalone picture (→ right column),
+  // then a p containing picture (favicon) + a (domain link) → brand badge
+  const cell = rows[0]?.firstElementChild;
+  if (!cell) return;
 
-  // Text column
   const textCol = document.createElement('div');
   textCol.className = 'rh-insight-text';
-  if (textCell) [...textCell.childNodes].forEach((n) => textCol.append(n));
-
-  // Badge
-  if (badgeRow) {
-    const [faviconCell, domainCell] = [...badgeRow.children];
-    const faviconSrc = faviconCell?.textContent.trim();
-    const domain = domainCell?.textContent.trim();
-    if (faviconSrc && domain) {
-      const badge = document.createElement('div');
-      badge.className = 'rh-insight-badge';
-      const img = document.createElement('img');
-      img.src = faviconSrc;
-      img.alt = '';
-      img.setAttribute('aria-hidden', 'true');
-      img.width = 16;
-      img.height = 16;
-      badge.append(img, document.createTextNode(domain));
-      textCol.append(badge);
-    }
-    badgeRow.remove();
-  }
-
-  // Image column (desktop only)
   const imgCol = document.createElement('div');
   imgCol.className = 'rh-insight-image';
-  if (imgCell) [...imgCell.childNodes].forEach((n) => imgCol.append(n));
 
-  contentRow.replaceWith(textCol, imgCol);
+  [...cell.children].forEach((child) => {
+    // Standalone <picture> → hero image on the right
+    if (child.tagName === 'PICTURE') {
+      imgCol.append(child);
+      return;
+    }
+
+    // <p> with picture (favicon) + anchor → brand badge button
+    if (child.tagName === 'P') {
+      const pic = child.querySelector('picture');
+      const anchor = child.querySelector('a');
+      if (pic && anchor) {
+        const faviconImg = pic.querySelector('img');
+        if (faviconImg) {
+          faviconImg.alt = '';
+          faviconImg.setAttribute('aria-hidden', 'true');
+          faviconImg.width = 16;
+          faviconImg.height = 16;
+          anchor.prepend(faviconImg); // move img before link text
+        }
+        anchor.className = 'rh-insight-badge';
+        textCol.append(anchor);
+        return;
+      }
+    }
+
+    // Everything else (h1, description paragraphs) → text column
+    textCol.append(child);
+  });
+
+  rows[0].replaceWith(textCol, imgCol);
 }
 
 export default function init(el) {
