@@ -116,7 +116,7 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background-color: var(--color-blue-600);
+      background-color: var(--color-button);
       color: var(--color-light);
       font-size: var(--body-font-size-s);
       font-weight: 700;
@@ -168,7 +168,7 @@
       padding: var(--spacing-xs) var(--spacing-m);
       border: none;
       border-radius: var(--spacing-xs);
-      background-color: var(--color-blue-600);
+      background-color: var(--color-button);
       color: var(--color-light);
       font-size: var(--body-font-size-s);
       font-weight: 600;
@@ -176,7 +176,7 @@
       transition: background-color 0.2s ease;
 
       &:hover {
-        background-color: var(--color-blue-700);
+        background-color: var(--color-button-hover);
       }
     }
   }
