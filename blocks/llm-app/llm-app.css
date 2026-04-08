@@ -90,7 +90,6 @@
       flex-direction: column;
       gap: var(--spacing-l);
       padding-top: var(--spacing-l);
-      border-top: 1px solid var(--color-border);
       margin-top: var(--spacing-m);
       margin-inline: calc(-1 * var(--spacing-l));
       padding-inline: var(--spacing-l);
