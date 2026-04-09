@@ -41,8 +41,8 @@ function buildDarkStats(el, rows) {
 
   rows.forEach((row) => {
     const cells = [...row.children];
-    const value = cells[0]?.textContent.trim() || '';
-    const label = cells[1]?.textContent.trim() || '';
+    const label = cells[0]?.textContent.trim() || '';
+    const value = cells[1]?.textContent.trim() || '';
     const badgeText = cells[2]?.textContent.trim() || '';
     const badgeStatus = cells[3]?.textContent.trim().toLowerCase() || '';
     const desc = cells[4]?.textContent.trim() || '';
