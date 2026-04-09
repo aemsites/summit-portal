@@ -160,6 +160,17 @@
 /* Insight variant                               */
 
 /* ============================================= */
+.section:has(.report-hero.insight) {
+  background: #f5f5f4;
+  padding: 24px 24px 0;
+}
+
+@media (width < 600px) {
+  .section:has(.report-hero.insight) {
+    padding: 0;
+  }
+}
+
 .report-hero.insight {
   background: #e60000;
   min-height: 0;
@@ -169,7 +180,10 @@
   align-items: stretch;
   text-align: left;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 16px 16px 0 0;
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .report-hero.insight .rh-insight-text {
@@ -230,12 +244,12 @@
     grid-template-columns: 1fr 1fr;
     min-height: 360px;
     overflow: visible;
-    border-radius: 0;
+    border-radius: 16px 16px 0 0;
   }
 
   .report-hero.insight .rh-insight-text {
     padding: 56px;
-    border-radius: 16px 0 0 16px;
+    border-radius: 0;
 
     h1, h2 {
       font-size: 48px;
@@ -250,10 +264,7 @@
     picture {
       display: block;
       position: absolute;
-      top: -24px;
-      left: 0;
-      right: -24px;
-      bottom: -24px;
+      inset: -24px -24px -24px 0;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 8px 32px rgb(0 0 0 / 30%);

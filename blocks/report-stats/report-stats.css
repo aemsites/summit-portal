@@ -90,8 +90,24 @@
 }
 
 /* Dark variant */
+.section:has(.report-stats.dark) {
+  background: #f5f5f4;
+  padding: 0 24px 24px;
+}
+
+@media (width < 600px) {
+  .section:has(.report-stats.dark) {
+    padding: 0;
+  }
+}
+
 .report-stats.dark {
   padding: 0;
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
 }
 
 .report-stats.dark .rs-dark-strip {
@@ -113,11 +129,9 @@
 }
 
 .report-stats.dark .rs-dark-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgb(255 255 255 / 50%);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgb(255 255 255 / 55%);
 }
 
 .report-stats.dark .rs-dark-value-row {
@@ -147,42 +161,33 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
   width: fit-content;
+  color: #fff;
 }
 
-.report-stats.dark .rs-dark-badge::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.report-stats.dark .rs-dark-badge svg {
   flex-shrink: 0;
 }
 
 .report-stats.dark .rs-dark-badge[data-status='negative'] {
-  background: rgb(248 113 113 / 14%);
-  color: #f87171;
+  background: #d73220;
 }
-
-.report-stats.dark .rs-dark-badge[data-status='negative']::before { background: #f87171; }
 
 .report-stats.dark .rs-dark-badge[data-status='positive'] {
-  background: rgb(74 222 128 / 14%);
-  color: #4ade80;
+  background: #058e4e;
 }
-
-.report-stats.dark .rs-dark-badge[data-status='positive']::before { background: #4ade80; }
 
 .report-stats.dark .rs-dark-badge[data-status='neutral'] {
-  background: rgb(255 255 255 / 8%);
-  color: rgb(255 255 255 / 60%);
+  background: #505050;
 }
 
-.report-stats.dark .rs-dark-badge[data-status='neutral']::before { background: rgb(255 255 255 / 40%); }
+/* Speedometer card: color the leading number by badge status */
+.report-stats.dark .rs-dark-card:has([data-status='negative']) .rs-dark-value-main { color: #d73220; }
+.report-stats.dark .rs-dark-card:has([data-status='positive']) .rs-dark-value-main { color: #058e4e; }
 
 .report-stats.dark .rs-dark-desc {
   font-size: 11px;

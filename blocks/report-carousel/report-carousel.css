@@ -1,6 +1,22 @@
 /* Report Carousel — Persona tab switcher + slide carousel */
+.section:has(.report-carousel) {
+  background: #f5f5f4;
+  padding: 16px 24px 24px;
+}
+
+@media (width < 600px) {
+  .section:has(.report-carousel) {
+    padding: 12px 0 0;
+  }
+}
+
 .report-carousel {
-  background: light-dark(var(--color-gray-50, #fafafa), var(--color-gray-900, #111));
+  background: light-dark(#fff, var(--color-gray-900, #111));
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 /* ── Tab bar ─────────────────────────────────────────────── */
@@ -8,15 +24,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  padding: 16px 20px;
+  background: transparent;
   border-bottom: 1px solid light-dark(#e5e7eb, #2a2a2a);
-  padding: 0 32px;
-  background: light-dark(#fff, #161616);
 }
 
 .report-carousel .rc-tabs {
   display: flex;
-  gap: 0;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -26,25 +42,24 @@
 }
 
 .report-carousel .rc-tab {
-  padding: 14px 20px;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: light-dark(#6b7280, #9ca3af);
-  background: none;
+  color: light-dark(#292929, #dbdbdb);
+  background: light-dark(#e8e8e8, #323232);
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 24px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease;
-  margin-bottom: -1px;
+  transition: background 0.15s ease, color 0.15s ease;
 
   &:hover {
-    color: light-dark(#111, #fff);
+    background: light-dark(#d4d4d4, #444);
   }
 
   &.active {
-    color: light-dark(#111, #fff);
-    border-bottom-color: #e60000;
+    background: #1a1a1a;
+    color: #fff;
   }
 }
 
@@ -52,10 +67,10 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 18px;
+  padding: 8px 20px;
   background: #2563eb;
   color: #fff;
-  border-radius: 6px;
+  border-radius: 24px;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -488,13 +503,9 @@
 /* ── Responsive ─────────────────────────────────────────── */
 @media (width < 900px) {
   .report-carousel .rc-tab-bar {
-    padding: 0 20px;
+    padding: 12px 16px;
     flex-wrap: wrap;
-    gap: 0;
-
-    .rc-download-btn {
-      margin: 10px 0;
-    }
+    gap: 8px;
   }
 
   .report-carousel .rc-slides-wrap {

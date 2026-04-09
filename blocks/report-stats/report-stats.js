@@ -29,6 +29,12 @@ function makeSpeedometer(ratio) {
   </svg>`;
 }
 
+const BADGE_ICONS = {
+  negative: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M6 2v7M3 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  positive: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M2 6.5l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  neutral: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M1 8.5l3-3 2 2 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
 function buildDarkStats(el, rows) {
   const strip = document.createElement('div');
   strip.className = 'rs-dark-strip';
@@ -54,7 +60,18 @@ function buildDarkStats(el, rows) {
 
     const valueEl = document.createElement('div');
     valueEl.className = 'rs-dark-value';
-    valueEl.textContent = value;
+    if (showMeter && value.includes('/')) {
+      const [num, denom] = value.split('/');
+      const mainSpan = document.createElement('span');
+      mainSpan.className = 'rs-dark-value-main';
+      mainSpan.textContent = num;
+      const denomSpan = document.createElement('span');
+      denomSpan.className = 'rs-dark-value-denom';
+      denomSpan.textContent = `/${denom}`;
+      valueEl.append(mainSpan, denomSpan);
+    } else {
+      valueEl.textContent = value;
+    }
     valueRow.append(valueEl);
 
     if (showMeter) {
@@ -81,6 +98,7 @@ function buildDarkStats(el, rows) {
       status = 'positive';
     }
     badgeEl.dataset.status = status;
+    badgeEl.innerHTML = (BADGE_ICONS[status] || '') + badgeEl.textContent;
 
     const descEl = document.createElement('div');
     descEl.className = 'rs-dark-desc';
