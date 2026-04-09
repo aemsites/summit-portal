@@ -161,12 +161,13 @@
 
 /* ============================================= */
 .section:has(.report-hero.insight) {
-  background: var(--color-surface-alt);
+  background: light-dark(#f5f5f4, #161616);
   padding: 24px 24px 0;
 }
 
-body:has(.report-hero.insight) {
-  background-color: var(--color-surface-alt);
+body:has(.report-hero.insight),
+body:has(.report-hero.insight) main {
+  background-color: light-dark(#f5f5f4, #161616);
 }
 
 @media (width < 600px) {
