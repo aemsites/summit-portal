@@ -23,7 +23,7 @@ header.header {
   justify-content: space-between;
   max-width: var(--header-max-width);
   margin: 0 auto;
-  padding: 16px 0;
+  padding: 16px 24px;
   height: var(--header-height);
   gap: var(--header-inner-gap);
   width: 100%;
@@ -104,7 +104,7 @@ header.header-wrapper {
 /* Mobile */
 @media (width < 900px) {
   .header nav {
-    padding: 12px 16px;
+    padding: 12px 24px;
   }
 
   .header .nav-brand a {

@@ -39,8 +39,8 @@ export default async function decorate(block) {
   // load nav as fragment
   const navMeta = getMetadata('nav');
   const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
-  let resp = await fetch(`${navPath}.html`);
-  if (!resp.ok) resp = await fetch(`/content${navPath}.html`);
+  let resp = await fetch(`/content${navPath}.html`);
+  if (!resp.ok) resp = await fetch(`${navPath}.plain.html`);
 
   if (resp.ok) {
     const html = await resp.text();
