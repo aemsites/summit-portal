@@ -38,8 +38,9 @@ function toggleMenu(nav, desktop, forceExpanded = null) {
 export default async function decorate(block) {
   // load nav as fragment
   const navMeta = getMetadata('nav');
-  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/content/nav';
-  const resp = await fetch(`${navPath}.html`);
+  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
+  let resp = await fetch(`${navPath}.html`);
+  if (!resp.ok) resp = await fetch(`/content${navPath}.html`);
 
   if (resp.ok) {
     const html = await resp.text();
