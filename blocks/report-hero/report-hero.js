@@ -1,3 +1,21 @@
+function typeText(el) {
+  const full = el.textContent;
+  el.textContent = '';
+  el.classList.add('rh-typing');
+  let i = 0;
+  function tick() {
+    if (i < full.length) {
+      el.textContent += full[i];
+      i += 1;
+      const delay = 70 + Math.random() * 120;
+      setTimeout(tick, delay);
+    } else {
+      el.classList.remove('rh-typing');
+    }
+  }
+  tick();
+}
+
 function buildInsightHero(block, rows) {
   const row = rows[0];
   if (!row) return;
@@ -162,6 +180,8 @@ export default function decorate(block) {
 
   if (isInsight) {
     buildInsightHero(block, rows);
+    const heading = block.querySelector('.rh-insight-text h1, .rh-insight-text h2');
+    if (heading) typeText(heading);
   } else if (isDashboard) {
     buildDashboardHero(block, rows);
   } else if (isTransition) {

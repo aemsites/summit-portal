@@ -1,3 +1,15 @@
+/* Typing cursor animation */
+.rh-typing::after {
+  content: '|';
+  animation: rh-blink 0.6s step-end infinite;
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+@keyframes rh-blink {
+  50% { opacity: 0; }
+}
+
 /* Report Hero — Cover, Transition, Dashboard & Insight Slides */
 .report-hero {
   display: flex;

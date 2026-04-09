@@ -1,3 +1,99 @@
+function parseValue(text) {
+  const t = text.trim();
+  const m = t.match(/^([\d.]+)(M|K|%)?$/);
+  if (!m) return null;
+  return { num: parseFloat(m[1]), suffix: m[2] || '' };
+}
+
+function formatValue(num, suffix, decimals) {
+  const s = decimals > 0 ? num.toFixed(decimals) : Math.round(num).toString();
+  return `${s}${suffix}`;
+}
+
+function easeOutExpo(t) {
+  return t >= 1 ? 1 : 1 - 2 ** (-10 * t);
+}
+
+function animateValue(el, targetText, duration) {
+  const parsed = parseValue(targetText);
+  if (!parsed) return;
+  const { num: target, suffix } = parsed;
+  const decimals = targetText.includes('.') ? (targetText.match(/\.(\d+)/)?.[1].length || 0) : 0;
+  const start = performance.now();
+
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const val = easeOutExpo(t) * target;
+    el.textContent = formatValue(val, suffix, decimals);
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function animateSpeedometer(svg, targetRatio, duration) {
+  if (!svg) return;
+  const fillPath = svg.querySelectorAll('path')[1];
+  const needle = svg.querySelector('line');
+  if (!fillPath || !needle) return;
+
+  const cx = 34;
+  const cy = 36;
+  const outerR = 26;
+  const needleR = outerR - 10;
+  const start = performance.now();
+
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const pct = easeOutExpo(t) * targetRatio;
+    const angle = Math.PI - pct * Math.PI;
+    const large = pct > 0.5 ? 1 : 0;
+
+    const sx = cx + outerR * Math.cos(Math.PI);
+    const sy = cy - outerR * Math.sin(Math.PI);
+    const ex = cx + outerR * Math.cos(angle);
+    const ey = cy - outerR * Math.sin(angle);
+    fillPath.setAttribute('d', `M ${sx} ${sy} A ${outerR} ${outerR} 0 ${large} 1 ${ex} ${ey}`);
+
+    const nx = cx + needleR * Math.cos(angle);
+    const ny = cy - needleR * Math.sin(angle);
+    needle.setAttribute('x2', nx);
+    needle.setAttribute('y2', ny);
+
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function animateDarkStats(strip) {
+  const cards = strip.querySelectorAll('.rs-dark-card');
+  cards.forEach((card, i) => {
+    const valueEl = card.querySelector('.rs-dark-value');
+    const mainSpan = valueEl.querySelector('.rs-dark-value-main');
+    const meter = card.querySelector('.rs-speedometer');
+    const duration = 3000 + Math.random() * 2000;
+    const delay = 1000 + i * 120;
+
+    if (mainSpan) {
+      const target = mainSpan.textContent;
+      mainSpan.textContent = '0';
+      const parsed = parseValue(target);
+      const targetRatio = parsed ? parsed.num / 100 : 0;
+
+      // Zero the speedometer initially
+      if (meter) animateSpeedometer(meter, 0, 0.001);
+
+      setTimeout(() => {
+        animateValue(mainSpan, target, duration);
+        if (meter) animateSpeedometer(meter, targetRatio, duration);
+      }, delay);
+    } else {
+      const target = valueEl.textContent;
+      valueEl.textContent = '0';
+      setTimeout(() => animateValue(valueEl, target, duration), delay);
+    }
+  });
+}
+
 function makeSpeedometer(ratio, label) {
   const pct = Math.max(0, Math.min(1, ratio));
   const angle = Math.PI - pct * Math.PI;
@@ -124,6 +220,7 @@ function buildDarkStats(el, rows) {
 
   el.textContent = '';
   el.append(strip);
+  animateDarkStats(strip);
 }
 
 export default function init(el) {

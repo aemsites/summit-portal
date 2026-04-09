@@ -21,7 +21,7 @@ header.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: var(--header-max-width);
+  max-width: calc(var(--header-max-width) + 48px);
   margin: 0 auto;
   padding: 16px 24px;
   height: var(--header-height);
@@ -32,11 +32,6 @@ header.header {
 .header .header-wrapper,
 .header {
   background: var(--header-background);
-}
-
-header.header-wrapper {
-  background: light-dark(#f8f8f8, #1c1c1c);
-  padding: 0 24px;
 }
 
 .header .nav-brand {

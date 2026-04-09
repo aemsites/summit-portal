@@ -56,6 +56,17 @@ export default async function decorate(block) {
       if (section) section.classList.add(`nav-${c}`);
     });
 
+    // Insert Adobe logo into brand link
+    const brandLink = nav.querySelector('.nav-brand a');
+    if (brandLink) {
+      const logo = document.createElement('img');
+      logo.src = '/blocks/header/adobe-logo.svg';
+      logo.alt = 'Adobe';
+      logo.width = 32;
+      logo.height = 32;
+      brandLink.prepend(logo);
+    }
+
     // hamburger for mobile
     const hamburger = document.createElement('div');
     hamburger.classList.add('nav-hamburger');
