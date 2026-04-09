@@ -97,7 +97,17 @@ function renderDialog(content, company, websiteMap, domainMap) {
   }
 
   if (company.Folder) {
-    html += `<a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Go to dashboard &rarr;</a>`;
+    let folderPath;
+    try {
+      folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
+    } catch {
+      folderPath = company.Folder.replace(/\/$/, '');
+    }
+    const daUrl = `https://da.live/canvas?nx=exp-workspace#/aemsites/summit-portal${folderPath}/index.html`;
+    html += `<div class="cp-dialog-actions">
+      <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open customer portal page &rarr;</a>
+      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${daUrl}" target="_blank" rel="noopener">Edit customer portal page</a>
+    </div>`;
   }
 
   content.innerHTML = html;

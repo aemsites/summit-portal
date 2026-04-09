@@ -244,6 +244,12 @@
   text-decoration: underline;
 }
 
+.cp-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-s);
+}
+
 .cp-dialog-cta {
   display: inline-flex;
   align-items: center;
@@ -260,6 +266,12 @@
 
 .cp-dialog-cta:hover {
   opacity: 0.85;
+}
+
+.cp-dialog-cta--secondary {
+  background: transparent;
+  color: var(--color-brand);
+  border: 2px solid var(--color-brand);
 }
 
 /* Responsive */
