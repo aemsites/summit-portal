@@ -37,47 +37,6 @@
   max-width: 460px;
 }
 
-.report-download .rd-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: #e60000;
-  color: #fff;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  width: fit-content;
-  transition: background 0.2s ease;
-}
-
-.report-download .rd-cta:hover {
-  background: #c00;
-}
-
-.report-download .rd-cta::before {
-  content: '↓';
-  font-size: 16px;
-}
-
-.report-download .rd-meta {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.report-download .rd-meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: rgb(255 255 255 / 50%);
-}
-
-.report-download .rd-meta-icon {
-  font-size: 14px;
-}
 
 /* Right column — PDF card */
 .report-download .rd-right {
@@ -122,22 +81,45 @@
   letter-spacing: -0.3px;
 }
 
+.report-download .rd-pdf-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.report-download .rd-pdf-meta-item {
+  font-size: 13px;
+  color: rgb(255 255 255 / 60%);
+}
+
 .report-download .rd-pdf-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 
-.report-download .rd-pdf-badge {
+.report-download .rd-pdf-btn {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  gap: 6px;
+  padding: 6px 14px;
   background: rgb(255 255 255 / 20%);
   border: 1px solid rgb(255 255 255 / 25%);
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #fff;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.report-download .rd-pdf-btn::before {
+  content: '↓';
+}
+
+.report-download .rd-pdf-btn:hover {
+  background: rgb(255 255 255 / 30%);
 }
 
 /* Desktop: 2-column layout */

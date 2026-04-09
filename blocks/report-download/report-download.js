@@ -1,70 +1,97 @@
 /**
  * Report Download block
  *
- * Authoring structure (rows):
- *   Row 1: Heading text  |  Card title
- *   Row 2: Description   |  (empty)
- *   Row 3: CTA link      |  (empty)
- *   Row 4: Updated date  |  Page count
+ * Authoring structure (single row, two cells):
+ *   Cell 1: Bold heading paragraph | description paragraph(s)
+ *   Cell 2: Link (report title + download href) | metadata paragraphs (date, pages, …)
  */
 export default function init(el) {
-  const rows = [...el.querySelectorAll(':scope > div')];
-  const [headingRow, descRow, ctaRow, metaRow] = rows;
+  const row = el.querySelector(':scope > div');
+  if (!row) return;
 
-  const [headingCell, cardTitleCell] = headingRow ? [...headingRow.children] : [];
-  const descCell = descRow?.children[0];
-  const ctaCell = ctaRow?.children[0];
-  const [dateCell, pagesCell] = metaRow ? [...metaRow.children] : [];
+  const [leftCell, rightCell] = [...row.children];
 
-  // Left content column
+  // --- Left column: heading + description ---
   const left = document.createElement('div');
   left.className = 'rd-left';
 
-  const heading = document.createElement('h2');
-  heading.className = 'rd-heading';
-  heading.textContent = headingCell?.textContent.trim() || '';
-  left.append(heading);
-
-  if (descCell) {
-    const desc = document.createElement('p');
-    desc.className = 'rd-desc';
-    desc.innerHTML = descCell.innerHTML;
-    left.append(desc);
+  if (leftCell) {
+    [...leftCell.children].forEach((child) => {
+      if (child.tagName === 'P') {
+        const strong = child.querySelector('strong');
+        if (strong && child.textContent.trim() === strong.textContent.trim()) {
+          // Bold-only paragraph → section heading
+          const heading = document.createElement('h2');
+          heading.className = 'rd-heading';
+          heading.textContent = strong.textContent.trim();
+          left.append(heading);
+          return;
+        }
+        const desc = document.createElement('p');
+        desc.className = 'rd-desc';
+        desc.innerHTML = child.innerHTML;
+        left.append(desc);
+        return;
+      }
+      left.append(child);
+    });
   }
 
-  if (ctaCell) {
-    const link = ctaCell.querySelector('a');
-    if (link) {
-      link.className = 'rd-cta';
-      left.append(link);
-    }
-  }
-
-  // Metadata row (date + pages)
-  const meta = document.createElement('div');
-  meta.className = 'rd-meta';
-  if (dateCell?.textContent.trim()) {
-    meta.innerHTML += `<span class="rd-meta-item"><span class="rd-meta-icon">🕐</span>${dateCell.textContent.trim()}</span>`;
-  }
-  if (pagesCell?.textContent.trim()) {
-    meta.innerHTML += `<span class="rd-meta-item"><span class="rd-meta-icon">📄</span>${pagesCell.textContent.trim()}</span>`;
-  }
-  if (meta.innerHTML) left.append(meta);
-
-  // Right PDF card
+  // --- Right column: PDF card ---
   const right = document.createElement('div');
   right.className = 'rd-right';
 
-  const cardTitle = cardTitleCell?.textContent.trim() || '';
+  let downloadHref = '#';
+  let cardTitle = '';
+  const metaItems = [];
+
+  if (rightCell) {
+    rightCell.querySelectorAll(':scope p').forEach((p) => {
+      const anchor = p.querySelector('a');
+      if (anchor && !cardTitle) {
+        // First link → card title + download URL
+        cardTitle = anchor.textContent.trim();
+        downloadHref = anchor.href || '#';
+      } else {
+        const text = p.textContent.trim();
+        if (text) metaItems.push(text);
+      }
+    });
+  }
+
   const card = document.createElement('div');
   card.className = 'rd-pdf-card';
-  card.innerHTML = `
-    <div class="rd-pdf-card-inner">
-      <h3 class="rd-pdf-title">${cardTitle}</h3>
-      <div class="rd-pdf-footer">
-        <span class="rd-pdf-badge">Full PDF report</span>
-      </div>
-    </div>`;
+
+  const cardInner = document.createElement('div');
+  cardInner.className = 'rd-pdf-card-inner';
+
+  const titleEl = document.createElement('h3');
+  titleEl.className = 'rd-pdf-title';
+  titleEl.textContent = cardTitle;
+  cardInner.append(titleEl);
+
+  if (metaItems.length) {
+    const meta = document.createElement('div');
+    meta.className = 'rd-pdf-meta';
+    metaItems.forEach((item) => {
+      const span = document.createElement('span');
+      span.className = 'rd-pdf-meta-item';
+      span.textContent = item;
+      meta.append(span);
+    });
+    cardInner.append(meta);
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'rd-pdf-footer';
+  const downloadBtn = document.createElement('a');
+  downloadBtn.className = 'rd-pdf-btn';
+  downloadBtn.href = downloadHref;
+  downloadBtn.textContent = 'Full PDF report';
+  footer.append(downloadBtn);
+  cardInner.append(footer);
+
+  card.append(cardInner);
   right.append(card);
 
   el.textContent = '';
