@@ -80,6 +80,7 @@ function renderColumnChart(chartData) {
   const yTicks = 5;
   const { max: niceMax, step: tickStep } = niceScale(rawMax, yTicks);
   const actualTicks = Math.round(niceMax / tickStep);
+  const uid = `cc${Date.now()}`;
 
   const W = 420;
   const H = 280;
@@ -103,7 +104,7 @@ function renderColumnChart(chartData) {
 
   const gradients = items.map((d, i) => {
     const color = d.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-    return `<linearGradient id="colGrad${i}" x1="0" y1="0" x2="0" y2="1">
+    return `<linearGradient id="${uid}g${i}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${color}" stop-opacity="1"/>
       <stop offset="100%" stop-color="${color}" stop-opacity="0.6"/>
     </linearGradient>`;
@@ -122,7 +123,7 @@ function renderColumnChart(chartData) {
     const r = Math.min(4, barW / 2);
     const barPath = `M ${x} ${padTop + chartH} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + barW - r} ${y} Q ${x + barW} ${y} ${x + barW} ${y + r} L ${x + barW} ${padTop + chartH} Z`;
     return `
-      <path class="rc-chart-hover" d="${barPath}" fill="url(#colGrad${i})"><title>${d.label}: ${d.value}</title></path>
+      <path class="rc-chart-hover" d="${barPath}" fill="url(#${uid}g${i})"><title>${d.label}: ${d.value}</title></path>
       <text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">${d.value}</text>
       ${labelHtml}`;
   }).join('');
@@ -436,9 +437,10 @@ function renderHorizontalBars(chartData) {
   const chartR = 16;
   const W = 420;
   const barsH = items.length * barH + (items.length - 1) * barGap;
+  const barPad = 20;
   const padTop = 12;
   const padBot = 32;
-  const H = padTop + barsH + padBot;
+  const H = padTop + barPad + barsH + barPad + padBot;
   const chartW = W - chartL - chartR;
   const uid = `hb${Date.now()}`;
 
@@ -456,24 +458,23 @@ function renderHorizontalBars(chartData) {
   }).join('');
 
   // Vertical grid lines + x-axis labels
+  const unit = items[0]?.suffix || '';
   const gridLines = Array.from({ length: actualTicks + 1 }, (_, i) => {
     const v = tickStep * i;
     const x = chartL + (v / niceMax) * chartW;
     return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${H - padBot}" stroke="#ccc" stroke-width="0.7" stroke-dasharray="4 3"/>
-      <text x="${x}" y="${H - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#666">${formatVal(v)}</text>`;
+      <text x="${x}" y="${H - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#666">${v}${unit}</text>`;
   }).join('');
 
   // Bars + labels
   const barsHtml = items.map((d, i) => {
-    const color = d.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
     const suffix = d.suffix || '';
     const barW = Math.max(2, (d.value / niceMax) * chartW);
-    const y = padTop + i * (barH + barGap);
+    const y = padTop + barPad + i * (barH + barGap);
     const r = Math.min(8, barH / 2);
     const barPath = `M ${chartL} ${y} L ${chartL + barW - r} ${y} Q ${chartL + barW} ${y} ${chartL + barW} ${y + r} L ${chartL + barW} ${y + barH - r} Q ${chartL + barW} ${y + barH} ${chartL + barW - r} ${y + barH} L ${chartL} ${y + barH} Z`;
     return `<text x="${labelW}" y="${y + barH / 2 + 4}" text-anchor="end" font-size="11" font-weight="700" fill="currentColor">${d.label}</text>
-      <path class="rc-hbar-path" d="${barPath}" fill="url(#${uid}g${i})" data-label="${d.label}" data-value="${d.value}${suffix}"><title>${d.label}: ${d.value}${suffix}</title></path>
-      <line x1="${chartL + barW}" y1="${y}" x2="${chartL + barW}" y2="${y + barH}" stroke="${color}" stroke-width="1.5" opacity="0.8"/>`;
+      <path class="rc-hbar-path" d="${barPath}" fill="url(#${uid}g${i})" data-label="${d.label}" data-value="${d.value}${suffix}"><title>${d.label}: ${d.value}${suffix}</title></path>`;
   }).join('');
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
