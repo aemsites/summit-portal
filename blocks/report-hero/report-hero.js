@@ -17,10 +17,17 @@ function buildInsightHero(el, rows) {
       return;
     }
 
-    // <p> with picture (favicon) + anchor → brand badge button
     if (child.tagName === 'P') {
       const pic = child.querySelector('picture');
       const anchor = child.querySelector('a');
+
+      // <p> containing only a picture (EDS may wrap standalone pictures in <p>) → right image
+      if (pic && !anchor) {
+        imgCol.append(child);
+        return;
+      }
+
+      // <p> with picture (favicon) + anchor → brand badge button
       if (pic && anchor) {
         const faviconImg = pic.querySelector('img');
         if (faviconImg) {
