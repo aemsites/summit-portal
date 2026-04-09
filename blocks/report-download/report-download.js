@@ -59,39 +59,45 @@ export default function init(el) {
     });
   }
 
+  // --- CTA button + metadata row below description ---
+  const ctaRow = document.createElement('div');
+  ctaRow.className = 'rd-cta-row';
+
+  const ctaBtn = document.createElement('a');
+  ctaBtn.className = 'rd-cta-btn';
+  ctaBtn.href = downloadHref;
+  ctaBtn.innerHTML = '\u2193 Download full report';
+  ctaRow.append(ctaBtn);
+
+  if (metaItems.length) {
+    const metaRow = document.createElement('div');
+    metaRow.className = 'rd-meta-row';
+    metaItems.forEach((item) => {
+      const span = document.createElement('span');
+      span.className = 'rd-meta-item';
+      span.textContent = item;
+      metaRow.append(span);
+    });
+    ctaRow.append(metaRow);
+  }
+
+  left.append(ctaRow);
+
+  // --- Right column: PDF card ---
   const card = document.createElement('div');
   card.className = 'rd-pdf-card';
-
-  const cardInner = document.createElement('div');
-  cardInner.className = 'rd-pdf-card-inner';
 
   const titleEl = document.createElement('h3');
   titleEl.className = 'rd-pdf-title';
   titleEl.textContent = cardTitle;
-  cardInner.append(titleEl);
+  card.append(titleEl);
 
-  if (metaItems.length) {
-    const meta = document.createElement('div');
-    meta.className = 'rd-pdf-meta';
-    metaItems.forEach((item) => {
-      const span = document.createElement('span');
-      span.className = 'rd-pdf-meta-item';
-      span.textContent = item;
-      meta.append(span);
-    });
-    cardInner.append(meta);
-  }
+  const tagEl = document.createElement('a');
+  tagEl.className = 'rd-pdf-tag';
+  tagEl.href = downloadHref;
+  tagEl.innerHTML = '\u2193 Full PDF report';
+  card.append(tagEl);
 
-  const footer = document.createElement('div');
-  footer.className = 'rd-pdf-footer';
-  const downloadBtn = document.createElement('a');
-  downloadBtn.className = 'rd-pdf-btn';
-  downloadBtn.href = downloadHref;
-  downloadBtn.textContent = 'Full PDF report';
-  footer.append(downloadBtn);
-  cardInner.append(footer);
-
-  card.append(cardInner);
   right.append(card);
 
   el.textContent = '';

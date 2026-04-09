@@ -35,11 +35,18 @@ function parseChartData(cell) {
   if (!paras.length) return null;
   const type = paras[0]?.textContent.trim().toLowerCase().replace(/[^a-z]/g, '');
   if (!type) return null;
+  let callout = '';
   const items = paras.slice(1)
     .map((p) => p.textContent.trim())
-    .filter(Boolean)
+    .filter((t) => {
+      if (t.toLowerCase().startsWith('callout:')) {
+        callout = t.substring(8).trim();
+        return false;
+      }
+      return Boolean(t);
+    })
     .map(parsePair);
-  return { type, items };
+  return { type, items, callout };
 }
 
 function renderColumnChart(chartData) {
@@ -104,7 +111,6 @@ function renderLineChart(chartData) {
   const areaD = `${pathD} L ${pts[pts.length - 1].x} ${H - padBot} L ${pts[0].x} ${H - padBot} Z`;
 
   const dots = pts.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${color}"/>`).join('');
-  // Show first/last label
   const labels = [0, pts.length - 1].map((i) => {
     const p = pts[i];
     const anchor = i === 0 ? 'start' : 'end';
@@ -169,7 +175,6 @@ function renderStackedBar(chartData) {
 
 function renderDonutChart(chartData) {
   const { items } = chartData;
-  // First item with label starting "center:" is the center annotation
   let centerLabel = '';
   let centerValue = '';
   const segments = items.filter((d) => {
@@ -317,7 +322,6 @@ function renderChart(chartData) {
   if (type === 'bigfigure') return renderBigFigure(chartData);
   if (type === 'metricstrip') return renderMetricStrip(chartData);
   if (type === 'recommendationlist') return renderRecommendationList(chartData);
-  // columnChart, pairedColumns, barChart all use column renderer
   return renderColumnChart(chartData);
 }
 
@@ -326,7 +330,6 @@ function buildSlideEl(slide) {
   slideEl.className = 'rc-slide';
   slideEl.dataset.tab = slide.tabIdx;
 
-  // Content column
   const content = document.createElement('div');
   content.className = 'rc-slide-content';
 
@@ -364,12 +367,17 @@ function buildSlideEl(slide) {
 
   slideEl.append(content);
 
-  // Visual column (chart or picture)
   if (slide.chartData) {
     const visual = document.createElement('div');
     visual.className = 'rc-slide-visual';
     const chart = renderChart(slide.chartData);
     if (chart) visual.append(chart);
+    if (slide.chartData.callout) {
+      const calloutEl = document.createElement('p');
+      calloutEl.className = 'rc-callout';
+      calloutEl.textContent = slide.chartData.callout;
+      visual.append(calloutEl);
+    }
     slideEl.append(visual);
   } else if (slide.picture) {
     const visual = document.createElement('div');
@@ -415,12 +423,11 @@ export default function init(el) {
       const matchIdx = tabLabels.findIndex((l) => l.toLowerCase() === text);
       if (matchIdx !== -1) {
         currentTabIdx = matchIdx;
-        return; // skip — not a slide
+        return;
       }
     }
 
     // Slide row
-    // Cell 0: badge text
     const badge = cells[0]?.textContent.trim() || '';
 
     // Cell 1: text content — heading = title, p = description, em = source
@@ -499,19 +506,46 @@ export default function init(el) {
   const nav = document.createElement('div');
   nav.className = 'rc-nav';
 
+  const prevWrap = document.createElement('div');
+  prevWrap.className = 'rc-nav-prev-wrap';
   const prevBtn = document.createElement('button');
   prevBtn.className = 'rc-nav-btn rc-nav-prev';
-  prevBtn.innerHTML = '&#8592; Previous slide';
+  prevBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  prevBtn.setAttribute('aria-label', 'Previous slide');
+  const prevLabel = document.createElement('span');
+  prevLabel.className = 'rc-nav-label';
+  prevLabel.textContent = 'Previous slide';
+  prevWrap.append(prevBtn, prevLabel);
 
   const dotsEl = document.createElement('div');
   dotsEl.className = 'rc-dots';
 
+  const nextWrap = document.createElement('div');
+  nextWrap.className = 'rc-nav-next-wrap';
+  const nextLabel = document.createElement('span');
+  nextLabel.className = 'rc-nav-label';
+  nextLabel.textContent = 'Next slide';
   const nextBtn = document.createElement('button');
   nextBtn.className = 'rc-nav-btn rc-nav-next';
-  nextBtn.innerHTML = 'Next slide &#8594;';
+  nextBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  nextBtn.setAttribute('aria-label', 'Next slide');
+  nextWrap.append(nextLabel, nextBtn);
 
-  nav.append(prevBtn, dotsEl, nextBtn);
-  el.append(nav);
+  nav.append(prevWrap, dotsEl, nextWrap);
+
+  // Insert nav BEFORE slides (between tab bar and slides)
+  el.insertBefore(nav, slidesWrap);
+
+  // ── Slide counter footer ───────────────────────────────────
+  const slideFooter = document.createElement('div');
+  slideFooter.className = 'rc-slide-counter';
+  const counterLeft = document.createElement('span');
+  counterLeft.className = 'rc-counter-label';
+  const counterRight = document.createElement('span');
+  counterRight.className = 'rc-counter-desc';
+  counterRight.textContent = 'Leadership view \u2014 portfolio risk, demand, and funding trade-offs.';
+  slideFooter.append(counterLeft, counterRight);
+  el.append(slideFooter);
 
   // ── State helpers ──────────────────────────────────────────
   function updateNav() {
@@ -531,13 +565,41 @@ export default function init(el) {
 
     prevBtn.disabled = curr === 0;
     nextBtn.disabled = curr === count - 1;
+
+    // Update slide counter — count findings vs recommendations
+    const currentSlide = tabSlides[currentTab][curr];
+    const isRec = currentSlide && currentSlide.badge.toLowerCase() === 'recommendation';
+    const allSlides = tabSlides[currentTab];
+    if (isRec) {
+      const recs = allSlides.filter((s) => s.badge.toLowerCase() === 'recommendation');
+      const recIdx = recs.indexOf(currentSlide) + 1;
+      counterLeft.textContent = `Recommendation ${recIdx} of ${recs.length}`;
+    } else {
+      const findings = allSlides.filter((s) => s.badge.toLowerCase() !== 'recommendation');
+      const findIdx = findings.indexOf(currentSlide) + 1;
+      counterLeft.textContent = `Finding ${findIdx} of ${findings.length}`;
+    }
   }
 
-  function goToSlide(localIdx) {
+  function goToSlide(localIdx, direction) {
     slideEls.forEach((slideEl) => {
       const inTab = parseInt(slideEl.dataset.tab, 10) === currentTab;
       const isTarget = parseInt(slideEl.dataset.localIdx, 10) === localIdx;
-      slideEl.hidden = !(inTab && isTarget);
+      if (inTab && isTarget) {
+        slideEl.hidden = false;
+        // Animate in
+        const dir = direction === 'prev' ? -40 : 40;
+        slideEl.style.opacity = '0';
+        slideEl.style.transform = `translateX(${dir}px)`;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            slideEl.style.opacity = '1';
+            slideEl.style.transform = 'translateX(0)';
+          });
+        });
+      } else {
+        slideEl.hidden = true;
+      }
     });
     currentIdxByTab[currentTab] = localIdx;
     updateNav();
@@ -557,12 +619,12 @@ export default function init(el) {
 
   prevBtn.addEventListener('click', () => {
     const curr = currentIdxByTab[currentTab];
-    if (curr > 0) goToSlide(curr - 1);
+    if (curr > 0) goToSlide(curr - 1, 'prev');
   });
 
   nextBtn.addEventListener('click', () => {
     const curr = currentIdxByTab[currentTab];
-    if (curr < tabSlides[currentTab].length - 1) goToSlide(curr + 1);
+    if (curr < tabSlides[currentTab].length - 1) goToSlide(curr + 1, 'next');
   });
 
   updateNav();
