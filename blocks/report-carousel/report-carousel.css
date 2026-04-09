@@ -458,9 +458,13 @@
 .report-carousel .rc-slide-counter {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   padding: 16px 32px 24px;
   margin-top: 8px;
+}
+
+.report-carousel .rc-download-footer {
+  display: none;
 }
 
 .report-carousel .rc-counter-label {
@@ -746,24 +750,47 @@
     gap: 8px;
   }
 
+  .report-carousel .rc-tab-bar .rc-download-btn {
+    display: none;
+  }
+
+  .report-carousel .rc-download-footer {
+    display: inline-flex;
+  }
+
   .report-carousel .rc-slides-wrap {
     padding: 0 20px;
+    min-height: 580px;
   }
 
   .report-carousel .rc-slide {
     grid-template-columns: 1fr;
     gap: 20px;
-    height: auto;
-    min-height: 0;
+    height: 580px;
     padding: 32px;
   }
 
   .report-carousel .rc-slide-visual {
-    order: -1;
+    order: 1;
+    max-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .report-carousel .rc-slide-visual svg {
+    max-height: 260px;
   }
 
   .report-carousel .rc-title {
-    font-size: 22px;
+    font-size: 28px;
+  }
+
+  .report-carousel .rc-metric-strip {
+    max-width: 400px;
+    margin: 0 auto;
   }
 
   .report-carousel .rc-nav {
@@ -794,9 +821,6 @@
     white-space: nowrap;
   }
 
-  .report-carousel .rc-download-btn {
-    display: none;
-  }
 
   .report-carousel .rc-slide {
     padding: 24px;

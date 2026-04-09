@@ -245,17 +245,20 @@
 }
 
 @media (width < 600px) {
-  .report-stats.dark .rs-dark-value {
-    font-size: 24px;
+  .report-stats.dark .rs-dark-strip {
+    grid-template-columns: minmax(0, 400px);
+    justify-content: center;
+    padding: 0 24px;
   }
 
-  .report-stats.dark .rs-dark-label {
-    font-size: 12px;
+  .report-stats.dark .rs-dark-card {
+    border-right: none;
   }
 
-  .report-stats.dark .rs-dark-desc {
-    font-size: 12px;
+  .report-stats.dark .rs-dark-card:nth-child(odd) {
+    border-right: none;
   }
+
 }
 
 /* Compact variant */

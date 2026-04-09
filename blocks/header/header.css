@@ -104,7 +104,7 @@ header.header-wrapper {
 /* Mobile */
 @media (width < 900px) {
   .header nav {
-    padding: 12px 0;
+    padding: 12px 16px;
   }
 
   .header .nav-brand a {

@@ -635,6 +635,8 @@
 @media (width < 1000px) {
   .report-hero.insight .rh-insight-text {
     padding: 32px 24px;
+    max-width: 400px;
+    margin: 0 auto;
   }
 
   .report-hero.insight .rh-insight-text h1,
@@ -643,8 +645,29 @@
   }
 
   .report-hero.insight > .rh-insight-bg-svg {
-    width: 300px;
-    height: 300px;
+    display: none;
+  }
+
+  .report-hero.insight .rh-insight-image {
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 24px;
+  }
+
+  .report-hero.insight .rh-insight-image picture {
+    display: block;
+    max-width: 400px;
+    width: 400px;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+  }
+
+  .report-hero.insight .rh-insight-image img {
+    width: 100%;
+    height: auto;
+    display: block;
   }
 
   .report-hero.insight {
