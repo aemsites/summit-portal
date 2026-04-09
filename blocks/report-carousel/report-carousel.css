@@ -531,9 +531,23 @@
 }
 
 @media (width < 600px) {
+  .report-carousel .rc-tab-bar {
+    flex-wrap: nowrap;
+    padding: 10px 12px;
+  }
+
+  .report-carousel .rc-tabs {
+    flex: 1;
+    min-width: 0;
+  }
+
   .report-carousel .rc-tab {
-    padding: 12px 14px;
+    padding: 7px 12px;
     font-size: 12px;
+  }
+
+  .report-carousel .rc-download-btn {
+    display: none;
   }
 
   .report-carousel .rc-title {

@@ -226,6 +226,7 @@
   text-decoration: none;
   width: fit-content;
   box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+  margin-top: auto;
 }
 
 .report-hero.insight .rh-insight-badge img {
