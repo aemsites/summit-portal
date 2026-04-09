@@ -318,6 +318,7 @@
 }
 
 .report-carousel .rc-anim-stacked-seg {
+  transform-origin: left center;
   animation: rc-grow-right 0.5s ease-out both;
 }
 
@@ -331,17 +332,21 @@
     opacity: 0;
   }
 
-  40% {
-    transform: scale(1.15);
+  35% {
+    transform: scale(1.5);
     opacity: 1;
   }
 
-  65% {
-    transform: scale(0.92);
+  55% {
+    transform: scale(0.85);
   }
 
-  82% {
-    transform: scale(1.05);
+  75% {
+    transform: scale(1.1);
+  }
+
+  90% {
+    transform: scale(0.97);
   }
 
   100% {

@@ -1,4 +1,5 @@
 const DEFAULT_COLORS = ['#818cf8', '#fb7185', '#fb923c', '#34d399', '#60a5fa', '#a78bfa'];
+let chartUid = 0;
 
 function triggerCascade(container) {
   const items = container.querySelectorAll('[data-anim]');
@@ -103,7 +104,8 @@ function renderColumnChart(chartData) {
   const yTicks = 5;
   const { max: niceMax, step: tickStep } = niceScale(rawMax, yTicks);
   const actualTicks = Math.round(niceMax / tickStep);
-  const uid = `cc${Date.now()}`;
+  chartUid += 1;
+  const uid = `cc${chartUid}`;
 
   const W = 420;
   const H = 280;
@@ -223,7 +225,8 @@ function renderLineChart(chartData) {
   const { max: niceMax, step: tickStep } = niceScale(rawMax, yTicks);
   const actualTicks = Math.round(niceMax / tickStep);
   const color = items[0].color || '#818cf8';
-  const uid = `lc${Date.now()}`;
+  chartUid += 1;
+  const uid = `lc${chartUid}`;
 
   const pts = items.map((d, i) => {
     const x = padL + (i / (items.length - 1)) * chartW;
@@ -385,6 +388,8 @@ function renderDonutChart(chartData) {
   });
   if (!segments.length) return null;
   const total = segments.reduce((s, d) => s + d.value, 0) || 1;
+  chartUid += 1;
+  const uid = `dn${chartUid}`;
 
   const wrap = document.createElement('div');
   wrap.className = 'rc-donut-wrap';
@@ -415,8 +420,8 @@ function renderDonutChart(chartData) {
     const yi2 = cy + innerR * Math.sin(angle);
     const large = slice > Math.PI ? 1 : 0;
     const fill = d.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-    const gradId = `donutGrad${i}`;
-    const glowId = `donutGlow${i}`;
+    const gradId = `${uid}g${i}`;
+    const glowId = `${uid}w${i}`;
     const arcPath = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${innerR} ${innerR} 0 ${large} 0 ${xi1} ${yi1} Z`;
     return {
       path: `<path class="rc-donut-seg" data-anim="rc-anim-donut-seg" style="transform-origin:${cx}px ${cy}px;opacity:0" data-label="${d.label}" data-value="${d.value}%" d="${arcPath}" fill="url(#${gradId})" stroke="url(#${glowId})" stroke-width="1.5" stroke-linejoin="round"/>`,
@@ -484,7 +489,8 @@ function renderHorizontalBars(chartData) {
   const padBot = 32;
   const H = padTop + barPad + barsH + barPad + padBot;
   const chartW = W - chartL - chartR;
-  const uid = `hb${Date.now()}`;
+  chartUid += 1;
+  const uid = `hb${chartUid}`;
 
   const wrap = document.createElement('div');
   wrap.className = 'rc-hbars-wrap';
