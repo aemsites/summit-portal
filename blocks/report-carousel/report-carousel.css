@@ -1,0 +1,556 @@
+/* Report Carousel — Persona tab switcher + slide carousel */
+.section:has(.report-carousel) {
+  background: #f5f5f4;
+  padding: 16px 24px 24px;
+}
+
+@media (width < 600px) {
+  .section:has(.report-carousel) {
+    padding: 12px 0 0;
+  }
+}
+
+.report-carousel {
+  background: light-dark(#fff, var(--color-gray-900, #111));
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+.report-carousel .rc-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: transparent;
+  border-bottom: 1px solid light-dark(#e5e7eb, #2a2a2a);
+}
+
+.report-carousel .rc-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.report-carousel .rc-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: light-dark(#292929, #dbdbdb);
+  background: light-dark(#e8e8e8, #323232);
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: light-dark(#d4d4d4, #444);
+  }
+
+  &.active {
+    background: #1a1a1a;
+    color: #fff;
+  }
+}
+
+.report-carousel .rc-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 20px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #1d4ed8;
+  }
+
+  &::before {
+    content: '↓';
+    font-size: 14px;
+  }
+}
+
+/* ── Slides wrapper ─────────────────────────────────────── */
+.report-carousel .rc-slides-wrap {
+  padding: 40px 32px 24px;
+}
+
+.report-carousel .rc-slide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 32px 48px;
+  align-items: center;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Badge */
+.report-carousel .rc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &[data-type='no'] {
+    background: rgb(230 0 0 / 10%);
+    color: #e60000;
+
+    &::before { background: #e60000; }
+  }
+
+  &[data-type='key'] {
+    background: rgb(37 99 235 / 10%);
+    color: #2563eb;
+
+    &::before { background: #2563eb; }
+  }
+
+  &[data-type='critical'] {
+    background: rgb(234 88 12 / 10%);
+    color: #ea580c;
+
+    &::before { background: #ea580c; }
+  }
+
+  &[data-type='insight'] {
+    background: rgb(16 185 129 / 10%);
+    color: #10b981;
+
+    &::before { background: #10b981; }
+  }
+}
+
+/* Slide content */
+.report-carousel .rc-slide-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.report-carousel .rc-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: light-dark(#111, #f9fafb);
+  margin-bottom: 16px;
+
+  strong, b {
+    color: #e60000;
+    font-weight: 800;
+  }
+
+  h2, h3, h4 {
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin: 0;
+  }
+}
+
+.report-carousel .rc-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: light-dark(#4b5563, #9ca3af);
+  margin-bottom: 12px;
+
+  p {
+    margin: 0 0 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.report-carousel .rc-source {
+  font-size: 11px;
+  color: light-dark(#9ca3af, #6b7280);
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Slide visual (chart area) */
+.report-carousel .rc-slide-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.report-carousel .rc-chart-svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  overflow: visible;
+}
+
+/* Slide picture */
+.report-carousel .rc-slide-visual picture,
+.report-carousel .rc-slide-visual img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Footnote (spans full width) */
+.report-carousel .rc-footnote {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: light-dark(#9ca3af, #6b7280);
+  border-top: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  padding-top: 12px;
+  line-height: 1.5;
+}
+
+/* ── Navigation ─────────────────────────────────────────── */
+.report-carousel .rc-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px 28px;
+  border-top: 1px solid light-dark(#e5e7eb, #2a2a2a);
+}
+
+.report-carousel .rc-nav-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: light-dark(#6b7280, #9ca3af);
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: light-dark(#111, #fff);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+
+.report-carousel .rc-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.report-carousel .rc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: light-dark(#d1d5db, #374151);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background: light-dark(#9ca3af, #6b7280);
+  }
+
+  &.active {
+    background: #e60000;
+    transform: scale(1.3);
+  }
+}
+
+/* ── Additional chart types ─────────────────────────────── */
+
+/* Stacked bar */
+.report-carousel .rc-stacked-bar-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.report-carousel .rc-stacked-bar {
+  display: flex;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.report-carousel .rc-stacked-seg {
+  height: 100%;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.report-carousel .rc-stacked-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-carousel .rc-stacked-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: light-dark(#4b5563, #9ca3af);
+}
+
+.report-carousel .rc-stacked-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Horizontal bars */
+.report-carousel .rc-hbars {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-carousel .rc-hbar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-carousel .rc-hbar-label {
+  font-size: 12px;
+  color: light-dark(#6b7280, #9ca3af);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-carousel .rc-hbar-track {
+  height: 8px;
+  background: light-dark(#e5e7eb, #374151);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.report-carousel .rc-hbar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.report-carousel .rc-hbar-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: light-dark(#111, #f9fafb);
+  text-align: right;
+}
+
+/* Big figure */
+.report-carousel .rc-bigfigure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.report-carousel .rc-bigfigure-value {
+  font-size: 80px;
+  font-weight: 800;
+  color: #e60000;
+  line-height: 1;
+  letter-spacing: -3px;
+}
+
+.report-carousel .rc-bigfigure-unit {
+  font-size: 18px;
+  font-weight: 600;
+  color: light-dark(#4b5563, #9ca3af);
+}
+
+.report-carousel .rc-bigfigure-ctx {
+  font-size: 13px;
+  color: light-dark(#9ca3af, #6b7280);
+  max-width: 200px;
+}
+
+/* Metric strip */
+.report-carousel .rc-metric-strip {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.report-carousel .rc-metric-strip-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  align-items: center;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.report-carousel .rc-ms-label {
+  font-size: 13px;
+  color: light-dark(#4b5563, #9ca3af);
+}
+
+.report-carousel .rc-ms-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: light-dark(#111, #f9fafb);
+}
+
+.report-carousel .rc-ms-note {
+  font-size: 11px;
+  color: light-dark(#9ca3af, #6b7280);
+}
+
+/* Recommendation list */
+.report-carousel .rc-rec-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-carousel .rc-rec-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: light-dark(#f9fafb, #1a1a1a);
+  border: 1px solid light-dark(#e5e7eb, #2a2a2a);
+}
+
+.report-carousel .rc-rec-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.report-carousel .rc-rec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-carousel .rc-rec-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: light-dark(#111, #f9fafb);
+  line-height: 1.4;
+}
+
+.report-carousel .rc-rec-detail {
+  font-size: 12px;
+  color: light-dark(#6b7280, #9ca3af);
+  line-height: 1.5;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (width < 900px) {
+  .report-carousel .rc-tab-bar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .report-carousel .rc-slides-wrap {
+    padding: 28px 20px 16px;
+  }
+
+  .report-carousel .rc-slide {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .report-carousel .rc-slide-visual {
+    order: -1;
+  }
+
+  .report-carousel .rc-title {
+    font-size: 22px;
+  }
+
+  .report-carousel .rc-nav {
+    padding: 14px 20px 24px;
+  }
+}
+
+@media (width < 600px) {
+  .report-carousel .rc-tab-bar {
+    flex-wrap: nowrap;
+    padding: 10px 12px;
+  }
+
+  .report-carousel .rc-tabs {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .report-carousel .rc-tab {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .report-carousel .rc-download-btn {
+    display: none;
+  }
+
+  .report-carousel .rc-title {
+    font-size: 20px;
+  }
+}
