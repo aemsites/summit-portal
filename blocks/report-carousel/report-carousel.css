@@ -83,9 +83,9 @@
     background: #1d4ed8;
   }
 
-  &::before {
-    content: '↓';
-    font-size: 14px;
+  & .rc-download-icon {
+    display: inline-flex;
+    align-items: center;
   }
 }
 

@@ -157,6 +157,9 @@
 
 .report-stats.dark .rs-speedometer {
   display: block;
+  width: 72px;
+  height: 44px;
+  flex-shrink: 0;
 }
 
 .report-stats.dark .rs-dark-badge {
@@ -175,7 +178,8 @@
   flex-shrink: 0;
 }
 
-.report-stats.dark .rs-dark-badge[data-status='negative'] {
+.report-stats.dark .rs-dark-badge[data-status='negative'],
+.report-stats.dark .rs-dark-badge[data-status='critical'] {
   background: #d73220;
 }
 
@@ -188,7 +192,8 @@
 }
 
 /* Speedometer card: color the leading number by badge status */
-.report-stats.dark .rs-dark-card:has([data-status='negative']) .rs-dark-value-main { color: #d73220; }
+.report-stats.dark .rs-dark-card:has([data-status='negative']) .rs-dark-value-main,
+.report-stats.dark .rs-dark-card:has([data-status='critical']) .rs-dark-value-main { color: #d73220; }
 .report-stats.dark .rs-dark-card:has([data-status='positive']) .rs-dark-value-main { color: #058e4e; }
 
 .report-stats.dark .rs-dark-desc {

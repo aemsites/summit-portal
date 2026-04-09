@@ -11,7 +11,7 @@ function buildInsightHero(block, rows) {
 
   // Decorative SVG background image (top-right of the hero block)
   const bgImg = document.createElement('img');
-  bgImg.src = '/content/hero-bg.svg';
+  bgImg.src = '/blocks/report-hero/hero-bg.svg';
   bgImg.alt = '';
   bgImg.setAttribute('aria-hidden', 'true');
   bgImg.className = 'rh-insight-bg-svg';

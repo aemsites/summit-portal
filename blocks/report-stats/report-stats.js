@@ -1,38 +1,52 @@
-function makeSpeedometer(ratio) {
+function makeSpeedometer(ratio, label) {
   const pct = Math.max(0, Math.min(1, ratio));
-  // 180° arc from left (π) to right (0) via top of gauge
   const angle = Math.PI - pct * Math.PI;
-  const r = 28;
-  const cx = 36;
-  const cy = 36; // pivot sits at bottom of viewBox (0 0 72 40)
+  const cx = 34;
+  const cy = 36;
+  const outerR = 26;
+  const innerR = 18;
+  const needleR = outerR - 10; // needle length from center
 
-  // y is flipped: cy - r*sin(a) draws the arc through the upper half (y < cy)
-  // sweep=1 (SVG clockwise) traces left→top→right
-  const arcPath = (a1, a2, color, strokeW) => {
-    const x1 = cx + r * Math.cos(a1);
-    const y1 = cy - r * Math.sin(a1);
-    const x2 = cx + r * Math.cos(a2);
-    const y2 = cy - r * Math.sin(a2);
-    const large = Math.abs(a2 - a1) > Math.PI ? 1 : 0;
-    return `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
-  };
+  const arcEnd = (r, a) => ({
+    x: cx + r * Math.cos(a),
+    y: cy - r * Math.sin(a),
+  });
 
-  // Needle tip (same y-flip so it tracks the arc)
-  const nx = cx + (r - 6) * Math.cos(angle);
-  const ny = cy - (r - 6) * Math.sin(angle);
+  // Outer arc endpoints
+  const outerStart = arcEnd(outerR, Math.PI);
+  const outerEnd = arcEnd(outerR, 0);
+  const outerFill = arcEnd(outerR, angle);
+  const outerLarge = pct > 0.5 ? 1 : 0;
 
-  return `<svg viewBox="0 0 72 40" width="72" height="40" aria-hidden="true" class="rs-speedometer">
-    ${arcPath(Math.PI, 0, 'rgba(255,255,255,0.15)', 4)}
-    ${arcPath(Math.PI, angle, '#f87171', 4)}
-    <circle cx="${cx}" cy="${cy}" r="4" fill="#fff"/>
-    <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  // Inner arc endpoints
+  const innerStart = arcEnd(innerR, Math.PI);
+  const innerEnd = arcEnd(innerR, 0);
+
+  // Needle tip
+  const needle = arcEnd(needleR, angle);
+
+  const ariaLabel = label || `Score ${Math.round(pct * 100)} out of 100`;
+
+  return `<svg width="72" height="44" viewBox="0 0 72 44" role="img" aria-label="${ariaLabel}" class="rs-speedometer">
+    <title>${ariaLabel}</title>
+    <path d="M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 0 1 ${outerEnd.x} ${outerEnd.y}" fill="none" stroke="rgba(255, 255, 255, 0.22)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 ${outerLarge} 1 ${outerFill.x} ${outerFill.y}" fill="none" stroke="#ff5c5c" stroke-width="5" stroke-linecap="round"/>
+    <path d="M ${innerStart.x} ${innerStart.y} A ${innerR} ${innerR} 0 0 1 ${innerEnd.x} ${innerEnd.y}" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1"/>
+    <line x1="${cx}" y1="${cy}" x2="${needle.x}" y2="${needle.y}" stroke="rgba(255, 255, 255, 0.95)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="3.5" fill="rgba(255, 255, 255, 0.95)"/>
+    <circle cx="${cx}" cy="${cy}" r="2" fill="#ff5c5c" opacity="0.45"/>
   </svg>`;
 }
 
+const SORT_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M18.28 13.22c-.293-.293-.767-.293-1.06 0L16 14.44V3.75c0-.414-.336-.75-.75-.75s-.75.336-.75.75v10.69l-1.22-1.22c-.293-.293-.767-.293-1.06 0s-.293.767 0 1.06l2.5 2.5q.105.105.243.162c.138.057.19.058.287.058s.195-.02.287-.058.174-.093.243-.162l2.5-2.5c.293-.293.293-.767 0-1.06M7.25 14.5h-4.5c-.414 0-.75-.336-.75-.75s.336-.75.75-.75h4.5c.414 0 .75.336.75.75s-.336.75-.75.75M9.25 10.5h-6.5c-.414 0-.75-.336-.75-.75S2.336 9 2.75 9h6.5c.414 0 .75.336.75.75s-.336.75-.75.75M11.25 6.5h-8.5c-.414 0-.75-.336-.75-.75S2.336 5 2.75 5h8.5c.414 0 .75.336.75.75s-.336.75-.75.75"/></svg>';
+
+const CRITICAL_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 18.795c-.601 0-1.166-.234-1.591-.66l-6.545-6.544c-.876-.877-.876-2.305 0-3.182l6.545-6.545c.849-.85 2.333-.85 3.182 0l6.545 6.545c.876.877.876 2.305 0 3.182l-6.545 6.545c-.425.425-.99.659-1.591.659m0-16.09c-.2 0-.389.078-.53.22L2.925 9.47c-.292.292-.292.768 0 1.06l6.545 6.545c.283.283.778.283 1.06 0l6.545-6.545c.292-.292.292-.768 0-1.06L10.53 2.925c-.141-.142-.33-.22-.53-.22"/><path fill="currentColor" d="M10 14.998c-.231.008-.456-.073-.627-.228-.33-.365-.33-.92 0-1.285.17-.158.395-.242.626-.234.237-.01.466.08.633.247.162.168.25.394.242.627.012.235-.07.465-.228.639-.174.164-.408.25-.647.234M10 11.625c-.414 0-.75-.336-.75-.75v-5c0-.414.336-.75.75-.75s.75.336.75.75v5c0 .414-.336.75-.75.75"/></svg>';
+
 const BADGE_ICONS = {
-  negative: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M6 2v7M3 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  positive: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M2 6.5l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  neutral: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none"><path d="M1 8.5l3-3 2 2 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  negative: SORT_ICON,
+  positive: SORT_ICON,
+  neutral: SORT_ICON,
+  critical: CRITICAL_ICON,
 };
 
 function buildDarkStats(el, rows) {
@@ -82,7 +96,8 @@ function buildDarkStats(el, rows) {
         : parseFloat(parts[0]) / 100;
       const meterWrap = document.createElement('div');
       meterWrap.className = 'rs-dark-meter';
-      meterWrap.innerHTML = makeSpeedometer(Number.isFinite(ratio) ? ratio : 0);
+      const ariaLabel = `${label} ${value}`;
+      meterWrap.innerHTML = makeSpeedometer(Number.isFinite(ratio) ? ratio : 0, ariaLabel);
       valueRow.append(meterWrap);
     }
 
@@ -92,7 +107,9 @@ function buildDarkStats(el, rows) {
     // Derive badge color
     const bl = (badgeText + badgeStatus).toLowerCase();
     let status = 'neutral';
-    if (bl.includes('negative') || bl.includes('down') || bl.includes('critical') || bl.includes('poor')) {
+    if (bl.includes('critical')) {
+      status = 'critical';
+    } else if (bl.includes('negative') || bl.includes('down') || bl.includes('poor')) {
       status = 'negative';
     } else if (bl.includes('positive') || bl.includes('optimal') || bl.includes('good')) {
       status = 'positive';
