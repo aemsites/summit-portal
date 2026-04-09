@@ -400,12 +400,28 @@ export default function init(el) {
   const downloadLink = downloadCell?.querySelector('a');
 
   // Parse slide rows (row 1 onward)
-  const slides = rows.slice(1).map((row) => {
+  // A row with a single cell whose text matches a tab label is a separator → advances the tab.
+  // All other rows are slides belonging to the current tab.
+  let currentTabIdx = 0;
+  const slides = [];
+  const tabSlides = tabLabels.map(() => []);
+
+  rows.slice(1).forEach((row) => {
     const cells = [...row.children];
-    // Cell 0: meta — paragraph 1 = tab index (1-3), paragraph 2 = badge text
-    const metaParas = cells[0] ? [...cells[0].querySelectorAll('p')] : [];
-    const tabIdx = Math.max(0, parseInt(metaParas[0]?.textContent.trim() || '1', 10) - 1);
-    const badge = metaParas[1]?.textContent.trim() || '';
+
+    // Separator row: 1 cell, text matches a tab label
+    if (cells.length === 1) {
+      const text = cells[0].textContent.trim().toLowerCase();
+      const matchIdx = tabLabels.findIndex((l) => l.toLowerCase() === text);
+      if (matchIdx !== -1) {
+        currentTabIdx = matchIdx;
+        return; // skip — not a slide
+      }
+    }
+
+    // Slide row
+    // Cell 0: badge text
+    const badge = cells[0]?.textContent.trim() || '';
 
     // Cell 1: text content — heading = title, p = description, em = source
     const textCell = cells[1];
@@ -423,13 +439,12 @@ export default function init(el) {
     // Cell 3: optional footnote
     const footnote = cells[3]?.textContent.trim() || '';
 
-    return {
-      tabIdx, badge, titleHtml, descHtml, source, chartData, picture, footnote,
+    const slide = {
+      tabIdx: currentTabIdx, badge, titleHtml, descHtml, source, chartData, picture, footnote,
     };
+    slides.push(slide);
+    tabSlides[currentTabIdx].push(slide);
   });
-
-  // Group slides by tab index
-  const tabSlides = tabLabels.map((_, ti) => slides.filter((s) => s.tabIdx === ti));
 
   // Current state
   let currentTab = 0;
