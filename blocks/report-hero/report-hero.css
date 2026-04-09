@@ -461,6 +461,13 @@ body:has(.report-hero.insight) main {
 
 /* ============================================= */
 
+/* ---- Constrain all sections on report pages to the same 1120px as report blocks ---- */
+@media (width >= 1200px) {
+  body:has(.report-hero.insight) {
+    --grid-container-width: 1120px;
+  }
+}
+
 /* ---- Report aliases to global tokens + report-specific tokens ---- */
 :root {
   --rpt-surface: var(--color-surface);
