@@ -813,12 +813,13 @@
   .report-carousel .rc-tabs {
     flex: 1;
     min-width: 0;
+    flex-wrap: wrap;
   }
 
   .report-carousel .rc-tab {
     padding: 7px 12px;
     font-size: 12px;
-    white-space: nowrap;
+    white-space: normal;
   }
 
 
@@ -835,9 +836,10 @@
   }
 
   .report-carousel .rc-slide-counter {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 12px 20px 16px;
     font-size: 13px;
   }
