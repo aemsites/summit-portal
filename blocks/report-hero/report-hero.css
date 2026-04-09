@@ -254,7 +254,7 @@
   border-radius: 9px;
   font-size: 14px;
   font-weight: 600;
-  color: #111;
+  color: var(--color-text);
   text-decoration: none;
   width: fit-content;
   box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
@@ -497,6 +497,13 @@
 /* Report page-level styles (loaded with hero)   */
 
 /* ============================================= */
+
+/* ---- Constrain all sections on report pages to the same 1120px as report blocks ---- */
+@media (width >= 1200px) {
+  body:has(.report-hero.insight) {
+    --grid-container-width: 1120px;
+  }
+}
 
 /* ---- Report aliases to global tokens + report-specific tokens ---- */
 :root {
