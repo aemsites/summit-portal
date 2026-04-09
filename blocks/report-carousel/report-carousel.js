@@ -581,8 +581,8 @@ export default function init(el) {
       dotsEl.append(dot);
     }
 
-    prevBtn.disabled = curr === 0;
-    nextBtn.disabled = curr === count - 1;
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
 
     // Update slide counter — count findings vs recommendations
     const currentSlide = tabSlides[currentTab][curr];
@@ -600,25 +600,45 @@ export default function init(el) {
   }
 
   function goToSlide(localIdx, direction) {
+    const outDir = direction === 'prev' ? 80 : -80;
+    const inDir = direction === 'prev' ? -80 : 80;
+
+    // Animate out the current slide
+    const currIdx = currentIdxByTab[currentTab];
     slideEls.forEach((slideEl) => {
       const inTab = parseInt(slideEl.dataset.tab, 10) === currentTab;
-      const isTarget = parseInt(slideEl.dataset.localIdx, 10) === localIdx;
-      if (inTab && isTarget) {
-        slideEl.hidden = false;
-        // Animate in
-        const dir = direction === 'prev' ? -40 : 40;
+      const isCurrent = parseInt(slideEl.dataset.localIdx, 10) === currIdx;
+      if (inTab && isCurrent) {
+        slideEl.style.transition = 'opacity 0.25s ease, transform 0.3s cubic-bezier(0.4, 0, 1, 1)';
         slideEl.style.opacity = '0';
-        slideEl.style.transform = `translateX(${dir}px)`;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            slideEl.style.opacity = '1';
-            slideEl.style.transform = 'translateX(0)';
-          });
-        });
-      } else {
-        slideEl.hidden = true;
+        slideEl.style.transform = `translateX(${outDir}px)`;
+        setTimeout(() => { slideEl.hidden = true; }, 250);
       }
     });
+
+    // Animate in the target slide after a short delay
+    setTimeout(() => {
+      slideEls.forEach((slideEl) => {
+        const inTab = parseInt(slideEl.dataset.tab, 10) === currentTab;
+        const isTarget = parseInt(slideEl.dataset.localIdx, 10) === localIdx;
+        if (inTab && isTarget) {
+          slideEl.hidden = false;
+          slideEl.style.transition = 'none';
+          slideEl.style.opacity = '0';
+          slideEl.style.transform = `translateX(${inDir}px)`;
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              slideEl.style.transition = 'opacity 0.35s ease, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
+              slideEl.style.opacity = '1';
+              slideEl.style.transform = 'translateX(0)';
+            });
+          });
+        } else if (!inTab || parseInt(slideEl.dataset.localIdx, 10) !== currIdx) {
+          slideEl.hidden = true;
+        }
+      });
+    }, 150);
+
     currentIdxByTab[currentTab] = localIdx;
     updateNav();
   }
@@ -637,12 +657,16 @@ export default function init(el) {
 
   prevBtn.addEventListener('click', () => {
     const curr = currentIdxByTab[currentTab];
-    if (curr > 0) goToSlide(curr - 1, 'prev');
+    const count = tabSlides[currentTab].length;
+    const target = curr > 0 ? curr - 1 : count - 1;
+    goToSlide(target, 'prev');
   });
 
   nextBtn.addEventListener('click', () => {
     const curr = currentIdxByTab[currentTab];
-    if (curr < tabSlides[currentTab].length - 1) goToSlide(curr + 1, 'next');
+    const count = tabSlides[currentTab].length;
+    const target = curr < count - 1 ? curr + 1 : 0;
+    goToSlide(target, 'next');
   });
 
   updateNav();

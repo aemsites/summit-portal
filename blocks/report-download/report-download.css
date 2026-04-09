@@ -97,7 +97,7 @@
 .report-download .rd-right::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 50%;
   right: 0;
   width: 100%;
   max-width: 320px;
@@ -105,13 +105,13 @@
   background: #fff;
   border-radius: 8px;
   z-index: 0;
-  transform: none;
+  transform: translateY(-50%);
   transform-origin: left center;
   transition: transform 220ms cubic-bezier(0, 0, 0.4, 1);
 }
 
 .report-download .rd-right:hover::before {
-  transform: perspective(2000px) rotateY(-7deg) translateX(32px);
+  transform: translateY(-50%) perspective(2000px) rotateY(-4deg) translateX(28px);
 }
 
 .report-download .rd-pdf-card {
