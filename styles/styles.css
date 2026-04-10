@@ -164,8 +164,8 @@
   --color-brand: var(--color-purple-500);
   --color-accent: light-dark(var(--color-magenta-600), var(--color-magenta-500));
   --color-adobe-red: #e60000;
-  --color-adobe-red-hover: #cc0000;
-  --color-adobe-red-dark: light-dark(#e60000, #ff3333);
+  --color-adobe-red-hover: #c00;
+  --color-adobe-red-dark: light-dark(#e60000, #f33);
   --color-button: var(--color-adobe-red);
   --color-button-hover: var(--color-adobe-red-hover);
   --color-shaded: light-dark(#f9f9f9, #111);
@@ -226,12 +226,12 @@ html {
 
 body {
   margin: 0;
-  background-color: light-dark(var(--color-light), var(--color-dark));
+  background-color: light-dark(#f8f8f8, #1c1c1c);
   color: var(--color-text);
   font-family: var(--font-family);
   font-size: var(--body-font-size-m);
   line-height: var(--body-line-height);
-  padding: var(--header-height) 0 0;
+  padding: 0;
 
   &.has-breadcrumb {
     margin: calc(var(--header-height) + var(--breadcrumb-height)) 0 0;
@@ -247,7 +247,6 @@ body {
 header {
   display: none;
   height: var(--header-height);
-  position: fixed;
 }
 
 a {

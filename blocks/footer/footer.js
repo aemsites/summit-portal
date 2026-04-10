@@ -1,30 +1,12 @@
-import { getConfig, getMetadata } from '../../scripts/ak.js';
-import { loadFragment } from '../fragment/fragment.js';
+import { getMetadata } from '../../scripts/ak.js';
 
-const FOOTER_PATH = '/fragments/nav/footer';
-
-/**
- * loads and decorates the footer
- * @param {Element} el The footer element
- */
-export default async function init(el) {
-  const { locale } = getConfig();
+export default async function decorate(block) {
   const footerMeta = getMetadata('footer');
-  const path = footerMeta || FOOTER_PATH;
-  try {
-    const fragment = await loadFragment(`${locale.prefix}${path}`);
-    fragment.classList.add('footer-content');
-
-    const sections = [...fragment.querySelectorAll('.section')];
-
-    const copyright = sections.pop();
-    if (copyright) copyright.classList.add('section-copyright');
-
-    const legal = sections.pop();
-    if (legal) legal.classList.add('section-legal');
-
-    el.append(fragment);
-  } catch (e) {
-    // Fragment not found or failed to load — silently skip footer
+  const footerPath = footerMeta ? new URL(footerMeta, window.location).pathname : '/footer';
+  let resp = await fetch(`/content${footerPath}.html`);
+  if (!resp.ok) resp = await fetch(`${footerPath}.plain.html`);
+  if (resp.ok) {
+    const html = await resp.text();
+    block.innerHTML = html;
   }
 }
