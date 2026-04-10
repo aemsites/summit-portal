@@ -1,33 +1,31 @@
-# Project Documentation
+# Summit Portal — Personalized Performance Reports
 
 ## Overview
 
-Single-page Nike digital performance report built on Adobe Edge Delivery Services. The page presents performance metrics, search visibility, and AI discovery data in a tabbed carousel format with executive, marketer, and engineering persona views.
+A personalized digital performance report delivered to Adobe Summit attendees who are AEM Sites customers. Each report presents site-specific metrics — traffic, performance scores, AI search visibility, and SEO health — in a polished, data-rich single-page format.
+
+The current content is a **sample report for Nike**, used during development. In production, the same block system will generate unique reports for each Summit attendee's site.
 
 - **Framework**: `ak.js` (Author Kit / Document Authoring)
-- **Content**: One page at `/content/index.html` (full HTML document with scripts included)
-- **Design reference**: `/original-design/` — Vite build output of the target React design
-- **Initial import reference**: `/initial-import/` — previous design import with complete block implementations
+- **Content source**: https://main--summit-portal--gabrielwalt.aem.page
+- **Initial import**: Created via the [Slicc browser extension](https://github.com/ai-ecoverse/slicc)
+- **Design**: Fully responsive (single 1000px breakpoint), dark mode support via `light-dark()` CSS, rich data visualizations (SVG charts, gauges, animated counters), smooth animations (typing effect, count-up numbers)
 
 ## Project Structure
 
 ```
 ├── blocks/                    # Block implementations (JS + CSS per block)
-│   ├── report-hero/           # Hero block (insight, dashboard, transition, cover variants)
-│   ├── report-stats/          # Metric cards (default grid + dark strip variant)
-│   ├── report-carousel/       # Tabbed carousel with charts and recommendations
-│   ├── report-download/       # Download CTA with PDF card
-│   ├── header/                # Site header (fetches /content/nav.html)
-│   └── footer/                # Site footer (fetches /content/footer.html)
-├── content/                   # Authored content served by AEM CLI
-│   ├── index.html             # The report page (full HTML document)
-│   ├── nav.html               # Header navigation content
-│   ├── footer.html            # Footer content
-│   ├── hero-bg.svg            # Decorative hero background
-│   ├── logo.svg               # Adobe logo
-│   ├── nike-favicon.png       # Nike site favicon
-│   ├── nike-site-preview.png  # Nike site screenshot
-│   └── pdf-card-cover-pattern.png
+│   ├── header/                # Site header with nav, help icon, dark mode toggle
+│   ├── footer/                # Site footer with copyright + legal links
+│   ├── report-hero/           # Hero greeting with brand badge and decorative SVG
+│   ├── report-stats/          # Metric cards with gauges and trend badges
+│   ├── report-carousel/       # Tabbed carousel with SVG charts and findings
+│   └── report-download/       # Download CTA with PDF card preview
+├── content/                   # Authored content (served by AEM CLI)
+│   ├── index.plain.html       # The report page
+│   ├── nav.plain.html         # Header navigation content
+│   └── footer.plain.html      # Footer content
+├── img/                       # Static assets (SVGs, icons, logos)
 ├── styles/
 │   └── styles.css             # Global styles with design tokens
 ├── scripts/
@@ -35,117 +33,54 @@ Single-page Nike digital performance report built on Adobe Edge Delivery Service
 │   ├── scripts.js             # Page initialization
 │   ├── lazy.js                # Post-LCP loading (footer, sidekick)
 │   └── postlcp.js             # Header loading
-├── original-design/           # Vite build of the target design (reference only)
-└── initial-import/            # Previous import run (reference only)
 ```
 
-## Content Structure
-
-The page has a single section containing all report blocks in sequence:
-
-```
-header (fetches /content/nav.html)
-└── section
-    ├── report-hero (insight variant)
-    ├── report-stats (dark variant)
-    ├── report-carousel
-    └── report-download
-footer (fetches /content/footer.html)
-```
-
-## Block Reference
+## Blocks
 
 ### report-hero (insight variant)
-
-**Content structure** (1 row, 2 cells):
-- Cell 1: `<h1>` greeting, `<p>` description, `<p>` with `<picture>` favicon + `<a>` link
-- Cell 2: `<picture>` hero screenshot
-
-**Decorated DOM**:
-- `.rh-insight-bg-svg` — decorative background image (loaded from `/content/hero-bg.svg`)
-- `.rh-insight-text` — left column with h1, description, `.rh-insight-badge`
-- `.rh-insight-image` — right column with screenshot (hidden on mobile)
-
-**CSS prefix**: `rh-` | **Background**: `var(--rpt-red, #e60000)`
-
-Other variants (cover, dashboard, transition) exist in the code but are not used on this page.
+Full-width red banner with a personalized greeting ("Hello, Erika!"), a site description, a brand badge linking to the customer's site (with favicon), and a site screenshot. Features a typing animation on the heading and a decorative SVG background. The screenshot is hidden on mobile.
 
 ### report-stats (dark variant)
-
-**Content structure** (N rows, 6 cells each):
-`label | value | badge-text | badge-status | description | icon-type`
-
-- badge-status: `negative` (red), `positive` (green), `neutral` (gray), `critical` (→ negative)
-- icon-type: `speedometer` renders an SVG gauge; empty = no icon
-
-**Decorated DOM**: `.rs-dark-strip` → `.rs-dark-card` per row
-
-**CSS prefix**: `rs-` | **Background**: `#000`
+A horizontal strip of four metric cards on a black background. Each card shows a KPI label, animated count-up value, a color-coded trend badge (positive/negative/critical/optimal), and a description. The performance score card includes an SVG speedometer gauge.
 
 ### report-carousel
-
-**Content structure**:
-- Row 0 (tabs): 3 cells for tab labels + optional 4th cell with download `<a>`
-- Separator rows: single cell matching tab label (marks tab boundaries)
-- Slide rows: 3 cells — `badge | text (h3 + p) | chart-data or picture`
-
-**Chart types** (first `<p>` in cell 3 = type keyword, subsequent `<p>` = data):
-
-| Keyword | Renders | Data format |
-|---------|---------|------------|
-| `columnchart` | Vertical bars | `Label \| value \| #color` |
-| `linechart` | Area line + dots | `Label \| value \| #color` (color on first line) |
-| `donutchart` | Donut ring + legend | `center: Label \| value` then `Label \| value \| #color` |
-| `horizontalbars` | Horizontal bars | `Label \| value \| suffix \| #color` |
-| `stackedbar` | Stacked % bar | `Label \| value \| #color` |
-| `bigfigure` | Large number | `value \| unit \| context` |
-| `metricstrip` | Table rows | `Label \| value \| note` |
-| `recommendationlist` | Cards with icons | `Title \| detail \| tone` (tone: growth/risk/action/priority) |
-
-**CSS prefix**: `rc-` | **Background**: `light-dark(#fff, var(--color-gray-900))`
+A tabbed carousel with three persona views — Executive overview, Marketer insights, and IT/Engineering learnings. Each tab contains multiple slides with a "Top insight" callout and an SVG data visualization (column charts, line charts, donut charts, horizontal bars, stacked bars, big figures, metric strips, or recommendation lists). Includes dot navigation, prev/next arrows, and a slide counter.
 
 ### report-download
-
-**Content structure** (1 row, 2 cells):
-- Cell 1: `<p><strong>heading</strong></p>` + `<p>` description
-- Cell 2: `<p><a>` report title + href, `<p>` metadata lines (date, pages)
-
-**Decorated DOM**: `.rd-left` (heading + desc + CTA row) + `.rd-right` (PDF card)
-
-**CSS prefix**: `rd-` | **Background**: `#000`
+A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count).
 
 ### header
-
-Fetches `/content/nav.html`. Standard boilerplate navigation with brand, sections, tools. Uses `getMetadata('nav')` for custom nav path.
+Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage.
 
 ### footer
-
-Fetches `/content/footer.html`. Renders copyright + link list.
+Renders copyright text and a horizontal list of legal links (Terms of use, Privacy policy, Cookie preferences, etc.).
 
 ## Design Tokens
 
-Global tokens defined in `styles/styles.css`. Report blocks alias them via `--rpt-*` tokens in `report-hero.css`:
+Global tokens defined in `styles/styles.css` with `light-dark()` for automatic dark mode. Report blocks alias them via `--rpt-*` tokens:
 
-| Report Token | Maps To |
+| Report Token | Purpose |
 |---|---|
-| `--rpt-surface` | `--color-surface` |
-| `--rpt-border` | `--color-border` |
-| `--rpt-border-subtle` | `--color-border-subtle` |
-| `--rpt-text` | `--color-text` |
-| `--rpt-text-secondary` | `--color-text-secondary` |
-| `--rpt-text-muted` | `--color-text-muted` |
-| `--rpt-text-faint` | `--color-text-faint` |
-| `--rpt-red` | `--color-adobe-red` (fallback `#e60000`) |
+| `--rpt-surface` | Block backgrounds |
+| `--rpt-border` | Card borders |
+| `--rpt-text` | Primary text color |
+| `--rpt-text-secondary` | Secondary text |
+| `--rpt-text-muted` | Muted text |
+| `--rpt-red` | Adobe red (`#e60000`) |
+
+## Responsive Design
+
+- **Breakpoint**: 1000px (mobile-first)
+- **Desktop (>=1000px)**: Centered blocks, max-width 1200px, 24px side padding, 16px rounded corners
+- **Mobile (<1000px)**: Edge-to-edge, no side padding, no rounded corners
 
 ## Remaining Work
 
 ### Polish
 - Footer styling could be improved (currently uses default list rendering)
 - Header nav sections are hidden (`display: none`) — could show on desktop
-- Dark mode: blocks use `light-dark()` but hasn't been tested end-to-end
+- Accessibility: Chart SVGs need better `aria-label` descriptions
 
 ### Potential Enhancements
-- report-hero: The `createInsightSvg()` function was removed (unused). Could be restored as an alternative to the external hero-bg.svg if a fully code-generated decorative background is preferred
-- report-carousel: Slide transition animations could be smoother
-- Performance: Images in content/ are not optimized (committed as-is from source)
-- Accessibility: Chart SVGs need better `aria-label` descriptions
+- Report-carousel: Slide transition animations could be smoother
+- Performance: Images in content/ are not optimized
