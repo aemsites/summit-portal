@@ -78,6 +78,10 @@
     --top-bottom-spacing: calc(var(--spacing-xxl) * 2);
   }
 
+  &.grid {
+    margin-top: 24px;
+  }
+
   &.grid .block-content {
     display: grid;
     gap: var(--gap-spacing);
@@ -169,5 +173,6 @@
   .section.grid .block-content {
     display: grid;
     grid-template-columns: repeat(var(--grid-size), 1fr);
+    max-width: 1200px;
   }
 }
