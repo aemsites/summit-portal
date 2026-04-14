@@ -23,15 +23,14 @@ export default function init(el) {
 
   const items = [...cell.querySelectorAll('ul > li')];
   items.forEach((li) => {
-    const text = li.textContent.trim();
-    if (!text) return;
+    if (!li.textContent.trim()) return;
 
     const item = document.createElement('li');
     item.className = 'todo-item';
 
     const span = document.createElement('span');
     span.className = 'todo-text';
-    span.textContent = text;
+    [...li.childNodes].forEach((n) => span.append(n.cloneNode(true)));
 
     item.append(span);
     list.append(item);
