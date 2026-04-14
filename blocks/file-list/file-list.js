@@ -172,20 +172,21 @@ export default async function init(el) {
   titleEl.textContent = headerTitle;
   header.append(titleEl);
 
-  // Check if block contains a link to a JSON sheet
+  // Check if block contains a link to a JSON sheet (or URL stashed before auto-blocking)
   const link = el.querySelector('a[href$=".json"]');
+  const jsonUrl = link?.href || el.dataset.src;
   let files;
 
-  if (link) {
+  if (jsonUrl) {
     // Dynamic mode: fetch file list from sheet
     try {
-      const resp = await fetch(link.href);
+      const resp = await fetch(jsonUrl);
       if (!resp.ok) throw new Error(`${resp.status}`);
       const json = await resp.json();
       // Derive base URL from the sheet link (parent folder)
-      const baseUrl = link.href.replace(/\/[^/]+\.json.*$/, '');
+      const baseUrl = jsonUrl.replace(/\/[^/]+\.json.*$/, '');
       files = parseSheetData(json, baseUrl);
-    } catch (e) {
+    } catch {
       el.textContent = '';
       const msg = document.createElement('p');
       msg.className = 'fl-error';

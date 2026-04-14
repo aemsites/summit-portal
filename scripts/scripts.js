@@ -31,6 +31,11 @@ const decorateArea = ({ area = document }) => {
   };
 
   eagerLoad(area, 'img');
+
+  // Stash JSON src on file-list blocks before auto-blocking consumes the link
+  area.querySelectorAll('.file-list a[href$=".json"]').forEach((a) => {
+    a.closest('.file-list').dataset.src = a.href;
+  });
 };
 
 export async function loadPage() {
