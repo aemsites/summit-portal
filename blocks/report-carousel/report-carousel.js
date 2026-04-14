@@ -713,9 +713,6 @@ export default function init(el) {
   const tabLabels = tabCells.slice(0, 3).map((c) => c.textContent.trim()).filter(Boolean);
   const downloadCell = tabCells[3];
   const downloadLink = downloadCell?.querySelector('a');
-  if (downloadLink && (!downloadLink.getAttribute('href') || downloadLink.getAttribute('href') === '#')) {
-    downloadLink.href = '#report-download';
-  }
 
   // Parse slide rows (row 1 onward)
   // A row with a single cell whose text matches a tab label is a separator → advances the tab.

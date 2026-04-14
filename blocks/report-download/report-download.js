@@ -6,7 +6,6 @@
  *   Cell 2: Link (report title + download href) | metadata paragraphs (date, pages, …)
  */
 export default function init(el) {
-  el.id = 'report-download';
   const row = el.querySelector(':scope > div');
   if (!row) return;
 
