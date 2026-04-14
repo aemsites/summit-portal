@@ -92,6 +92,8 @@ function renderTable(files, sortCol, sortDir) {
     const a = document.createElement('a');
     a.href = file.href;
     a.textContent = file.name;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
     tdFile.append(a);
     tr.append(tdFile);
 
@@ -185,7 +187,7 @@ export default async function init(el) {
       // Derive base URL from the sheet link (parent folder)
       const baseUrl = link.href.replace(/\/[^/]+\.json.*$/, '');
       files = parseSheetData(json, baseUrl);
-    } catch (e) {
+    } catch {
       el.textContent = '';
       const msg = document.createElement('p');
       msg.className = 'fl-error';
