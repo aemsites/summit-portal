@@ -180,6 +180,19 @@
   margin: 0 auto !important;
 }
 
+/* Page background adapts to color scheme on insight pages */
+.section:has(.report-hero.insight) {
+  background: light-dark(#f5f5f4, #161616);
+  padding: 24px 24px 0;
+}
+
+/* Hero wrapper — remove default section padding/margin */
+.report-hero-wrapper {
+  max-width: 1200px !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+
 /* Decorative SVG background image — top-right of the hero, no transparency */
 .report-hero.insight {
   background: var(--rpt-red, #e60000);

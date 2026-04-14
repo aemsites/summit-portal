@@ -7,9 +7,21 @@ function gradeClass(score) {
 
 function metricStatus(label, val) {
   const n = parseFloat(val);
-  if (label === 'LCP' && n > 2.5) return 'poor';
-  if (label === 'FID' && n > 100) return 'poor';
-  if (label === 'CLS' && n > 0.1) return 'poor';
+  if (label === 'LCP') {
+    if (n <= 2.5) return 'good';
+    if (n <= 4) return 'warning';
+    return 'poor';
+  }
+  if (label === 'INP') {
+    if (n <= 200) return 'good';
+    if (n <= 500) return 'warning';
+    return 'poor';
+  }
+  if (label === 'CLS') {
+    if (n <= 0.1) return 'good';
+    if (n <= 0.25) return 'warning';
+    return 'poor';
+  }
   return 'good';
 }
 
@@ -21,12 +33,13 @@ export default function init(el) {
   rows.forEach((row) => {
     const cells = [...row.children];
     const pageName = cells[0]?.textContent.trim() || '';
-    const score = cells[1]?.textContent.trim() || '';
-    const lcp = cells[2]?.textContent.trim() || '';
-    const fid = cells[3]?.textContent.trim() || '';
-    const cls = cells[4]?.textContent.trim() || '';
-    const summary = cells[5]?.textContent.trim() || '';
-    const rec = cells[6]?.textContent.trim() || '';
+    const pageUrl = cells[1]?.querySelector('a')?.href || cells[1]?.textContent.trim() || '';
+    const score = cells[2]?.textContent.trim() || '';
+    const lcp = cells[3]?.textContent.trim() || '';
+    const fid = cells[4]?.textContent.trim() || '';
+    const cls = cells[5]?.textContent.trim() || '';
+    const summary = cells[6]?.textContent.trim() || '';
+    const rec = cells[7]?.textContent.trim() || '';
 
     const gc = gradeClass(score);
 
@@ -39,11 +52,20 @@ export default function init(el) {
 
     const name = document.createElement('h3');
     name.className = 'rsc-page-name';
-    name.textContent = pageName;
+    if (pageUrl) {
+      const link = document.createElement('a');
+      link.href = pageUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = pageName;
+      name.append(link);
+    } else {
+      name.textContent = pageName;
+    }
 
     const metrics = document.createElement('div');
     metrics.className = 'rsc-metrics';
-    [['LCP', lcp], ['FID', fid], ['CLS', cls]].forEach(([label, val]) => {
+    [['LCP', lcp], ['INP', fid], ['CLS', cls]].forEach(([label, val]) => {
       const m = document.createElement('div');
       m.className = 'rsc-metric';
       const ml = document.createElement('span');
