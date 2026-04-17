@@ -6,12 +6,14 @@
 }
 
 .report-carousel {
-  background: light-dark(#fff, #2a2a2a);
+  background: var(--rpt-insight-section-bg);
   max-width: none;
   margin: 24px 0 0;
   width: 100%;
   border-radius: 0;
-  overflow: hidden;
+
+  /* visible so .rc-slide box-shadow is not clipped */
+  overflow: visible;
 }
 
 @media (width >= 1000px) {
@@ -28,7 +30,7 @@
   gap: 12px;
   padding: 16px 20px;
   background: transparent;
-  border-bottom: 1px solid light-dark(#e5e7eb, #444);
+  border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
 }
 
 .report-carousel .rc-tabs {
@@ -91,7 +93,7 @@
 
 /* ── Slides wrapper ─────────────────────────────────────── */
 .report-carousel .rc-slides-wrap {
-  padding: 0 32px;
+  padding: 0;
   display: grid;
   min-height: 450px;
 }
@@ -107,13 +109,17 @@
   gap: 0 64px;
   align-items: center;
   height: 450px;
+  margin-left: 20px;
+  margin-right: 20px;
   border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
   border-radius: 16px;
-  box-shadow: rgb(0 0 0 / 12%) 0 1px 3px 0;
+  box-shadow: var(--rpt-card-shadow);
   padding: 32px 64px;
   box-sizing: border-box;
   background: light-dark(#fff, #1a1a1a);
-  overflow: hidden;
+
+  /* visible so box-shadow paints outside the slide */
+  overflow: visible;
   transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -485,7 +491,7 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
-  padding: 16px 32px;
+  padding: 16px 20px;
   margin-bottom: 0;
 }
 
@@ -499,7 +505,7 @@
 .report-carousel .rc-nav-label {
   font-size: 14px;
   font-weight: 400;
-  color: light-dark(#6b7280, #9ca3af);
+  color: light-dark(#505050, #ccc);
 }
 
 .report-carousel .rc-nav-btn {
@@ -710,10 +716,10 @@
 .report-carousel .rc-rec-card {
   display: flex;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: light-dark(#f9fafb, #1a1a1a);
-  border: 1px solid light-dark(#e5e7eb, #2a2a2a);
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: light-dark(#f8f8f8, #2a2a2a);
+  border: none;
 }
 
 .report-carousel .rc-rec-icon {
@@ -730,15 +736,16 @@
 }
 
 .report-carousel .rc-rec-title {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
-  color: light-dark(#111, #f9fafb);
+  color: light-dark(#131313, #f9fafb);
   line-height: 1.4;
+  margin-bottom: 8px;
 }
 
 .report-carousel .rc-rec-detail {
-  font-size: 12px;
-  color: light-dark(#6b7280, #9ca3af);
+  font-size: 16px;
+  color: light-dark(#212121, #9ca3af);
   line-height: 1.5;
 }
 
@@ -759,7 +766,7 @@
   }
 
   .report-carousel .rc-slides-wrap {
-    padding: 0 20px;
+    padding: 20px;
     min-height: 580px;
   }
 
@@ -767,6 +774,8 @@
     grid-template-columns: 1fr;
     gap: 20px;
     height: 580px;
+    margin-left: 0;
+    margin-right: 0;
     padding: 32px;
   }
 
@@ -822,6 +831,9 @@
     white-space: normal;
   }
 
+  .report-carousel .rc-slides-wrap {
+    padding: 12px;
+  }
 
   .report-carousel .rc-slide {
     padding: 24px;

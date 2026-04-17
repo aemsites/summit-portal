@@ -1,0 +1,752 @@
+/* Report AI Visibility — unified card (tokens align with report-cards / report-stats / report-hero) */
+.report-ai-visibility {
+  padding: 0;
+  margin-top: 24px;
+  margin-bottom: 24px;
+
+  --rav-negative: light-dark(var(--color-red-500), var(--color-red-300));
+}
+
+/* Section title at top of card — matches report-ai-section-head / carousel tab bar chrome */
+.report-ai-visibility .rav-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  box-sizing: border-box;
+  min-height: 74px;
+  padding: 12px 20px;
+  margin-bottom: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
+}
+
+.report-ai-visibility .rav-section-title {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+}
+
+/* Single containing card */
+.report-ai-visibility .rav-container {
+  background: var(--rpt-insight-section-bg);
+  border: 0 none transparent;
+  border-image: none;
+  border-radius: 16px;
+
+  /* visible so nested .rav-panels / .rav-panel shadows are not clipped */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Stats strip ──────────────────────────────────────────────────────────── */
+.report-ai-visibility .rav-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 60px;
+  padding-right: 60px;
+  font-size: 0;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
+}
+
+.report-ai-visibility .rav-stat-card {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 20px 24px;
+  border-right: 1px solid var(--rpt-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-ai-visibility .rav-stat-card:last-child {
+  border-right: none;
+}
+
+.report-ai-visibility .rav-stat-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--rpt-text, var(--color-text));
+  margin-bottom: 4px;
+}
+
+.report-ai-visibility .rav-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  line-height: 1;
+}
+
+.report-ai-visibility .rav-stat-delta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rav-negative);
+}
+
+.report-ai-visibility .rav-stat-sublabel {
+  font-size: 14px;
+  color: var(--rpt-text, var(--color-text));
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* ── Platform pills (in section head, after title) ───────────────────────── */
+.report-ai-visibility .rav-platforms {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex: 0 1 auto;
+  gap: 16px;
+  min-width: 0;
+  margin-left: auto;
+  justify-content: flex-end;
+  padding: 0;
+  border: none;
+}
+
+.report-ai-visibility .rav-platforms-label {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: light-dark(#505050, #ccc);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.report-ai-visibility .rav-platforms-pills {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  gap: 16px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* Platform pills — icon only (no chip background/padding) */
+.report-ai-visibility .rav-platform-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  box-sizing: border-box;
+  height: auto;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--rpt-text, var(--color-text));
+  background-color: transparent;
+  border: none;
+  vertical-align: middle;
+}
+
+.report-ai-visibility .rav-platform-pill-icon {
+  flex-shrink: 0;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Two-panel layout (outer inset + single slide shell like report-carousel .rc-slide) ── */
+.report-ai-visibility .rav-panels-outer {
+  box-sizing: border-box;
+  padding: 20px;
+  border-bottom: none;
+  border-image: none;
+}
+
+.report-ai-visibility .rav-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto;
+  gap: 0 64px;
+  align-items: stretch;
+  box-sizing: border-box;
+  padding: 64px;
+  overflow: visible;
+  background: light-dark(#fff, #1a1a1a);
+  border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
+  border-radius: 16px;
+  box-shadow: var(--rpt-card-shadow);
+}
+
+@media (width >= 1000px) {
+  /* Single panel: same width as one 1fr track (64px column gap), centered in the shell */
+  .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
+    width: 100%;
+    max-width: calc(50% - 32px);
+    min-width: 0;
+  }
+}
+
+/* Inner columns — content only; chrome lives on .rav-panels */
+.report-ai-visibility .rav-panels .rav-panel {
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Standalone panel chrome if .rav-panel is ever used outside .rav-panels */
+.report-ai-visibility .rav-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 28px;
+  overflow: visible;
+  background: light-dark(#fff, #1a1a1a);
+  border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
+  border-radius: 16px;
+  box-shadow: var(--rpt-card-shadow);
+}
+
+.report-ai-visibility .rav-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  margin: 0 0 -4px;
+  line-height: 1.3;
+}
+
+.report-ai-visibility .rav-panel-sub {
+  font-size: 16px;
+  color: var(--rpt-text, var(--color-text));
+  margin: 0;
+  line-height: 1.5;
+}
+
+.report-ai-visibility .rav-panel-chart {
+  flex: 1;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.report-ai-visibility .rav-panel-footnote {
+  font-size: 12px;
+  color: light-dark(rgb(80 80 80 / 100%), #ccc);
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rpt-border, var(--color-border));
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ── Horizontal bars ──────────────────────────────────────────────────────── */
+.report-ai-visibility .rav-hbars {
+  --rav-hbar-value-width: 4.75rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-ai-visibility .rav-hbar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr var(--rav-hbar-value-width);
+  align-items: center;
+  gap: 10px;
+}
+
+.report-ai-visibility .rav-hbar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rpt-text);
+  text-align: left;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-ai-visibility .rav-hbar-track {
+  position: relative;
+  height: 32px;
+  background: light-dark(rgb(243 243 243 / 100%), var(--color-gray-700));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.report-ai-visibility .rav-hbar-fill {
+  position: relative;
+  z-index: 0;
+  height: 100%;
+  border-radius: 8px;
+  width: 0;
+  transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.report-ai-visibility.rav-animate .rav-hbar-fill {
+  width: var(--bar-w, 0%);
+}
+
+.report-ai-visibility .rav-hbar-val {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  white-space: nowrap;
+  justify-self: end;
+  text-align: end;
+  min-width: 0;
+}
+
+.report-ai-visibility .rav-hbar-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 100%);
+  color: rgb(80 80 80 / 100%);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.report-ai-visibility .rav-hbar-track .rav-hbar-badge {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+/* Platform bars variant */
+.report-ai-visibility .rav-platform-row {
+  grid-template-columns: 28px 100px 1fr var(--rav-hbar-value-width);
+}
+
+.report-ai-visibility .rav-platform-icon {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--rpt-text, var(--color-text));
+  background: transparent;
+}
+
+.report-ai-visibility .rav-platform-label {
+  text-align: left;
+}
+
+/* ── Score table ──────────────────────────────────────────────────────────── */
+.report-ai-visibility .rav-scoretable {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-ai-visibility .rav-st-row {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, 56px);
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.report-ai-visibility .rav-st-header span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--rpt-text-faint);
+  text-align: center;
+}
+
+.report-ai-visibility .rav-st-row span:not(.rav-st-brand) {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  text-align: center;
+}
+
+.report-ai-visibility .rav-st-highlight {
+  background: var(--rpt-red-bg-subtle);
+}
+
+.report-ai-visibility .rav-st-brand {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rpt-text);
+  line-height: 1.3;
+}
+
+.report-ai-visibility .rav-st-highlight .rav-st-brand {
+  font-weight: 700;
+  color: var(--rpt-red-dark);
+}
+
+/* ── Big figure ───────────────────────────────────────────────────────────── */
+.report-ai-visibility .rav-bigfigure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 16px;
+}
+
+.report-ai-visibility .rav-bf-value {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  color: var(--rpt-red-dark);
+}
+
+.report-ai-visibility .rav-bf-unit {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rpt-text-muted);
+}
+
+.report-ai-visibility .rav-bf-ctx {
+  font-size: 12px;
+  color: var(--rpt-text-faint);
+}
+
+/* ── Visibility gap + Key insight: flex row, 50/50 halves; CTA follows in DOM below ─ */
+.report-ai-visibility .rav-gap-insight-flex {
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: stretch;
+  gap: 64px;
+  width: 100%;
+  margin: 20px 24px 24px;
+  padding: 48px 64px;
+  min-width: 0;
+  background: light-dark(rgb(248 248 248 / 100%), #1a1a1a);
+  border: none;
+  border-color: transparent;
+  border-image: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Below bar charts card, inside .rav-panels-outer (parent already has horizontal padding) */
+.report-ai-visibility .rav-panels-outer > .rav-gap-insight-flex {
+  margin: 20px 0 0;
+}
+
+.report-ai-visibility .rav-gap-insight-flex > .rav-gap,
+.report-ai-visibility .rav-gap-insight-flex > .rav-insight {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.report-ai-visibility .rav-gap-insight-flex > :only-child {
+  flex: 1 1 100%;
+}
+
+/* ── Gap + insight panes (chrome lives on .rav-gap-insight-flex) ───────────── */
+.report-ai-visibility .rav-gap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0;
+}
+
+/* Red label — matches report-carousel .rc-badge (e.g. “Top insight” on slides) */
+.report-ai-visibility .rav-pane-badge {
+  display: inline;
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--rpt-red, #eb1000);
+}
+
+.report-ai-visibility .rav-gap-content {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--rpt-text, var(--color-text));
+}
+
+.report-ai-visibility .rav-gap-content strong {
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+}
+
+/* ── CTA — full-width row inside card ────────────────────────────────────── */
+.report-ai-visibility .rav-cta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 24px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 16px 56px 16px 64px;
+  border: 0 solid transparent;
+  border-top: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
+}
+
+.report-ai-visibility .rav-cta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 0%;
+  width: 100%;
+  min-width: 0;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.report-ai-visibility .rav-cta-left h2,
+.report-ai-visibility .rav-cta-left h3,
+.report-ai-visibility .rav-cta-left strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  margin: 0;
+  display: block;
+}
+
+.report-ai-visibility #discover-adobe-llm-optimizer {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.report-ai-visibility .rav-cta-left p {
+  font-size: 18px;
+  color: var(--rpt-text, var(--color-text));
+  margin: 0;
+  line-height: 1.4;
+}
+
+.report-ai-visibility .rav-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 24px;
+  padding: 10px 22px;
+  background-color: light-dark(rgb(41 41 41), #000);
+  color: var(--color-light);
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.report-ai-visibility .rav-cta-btn:hover {
+  background: #000;
+}
+
+.report-ai-visibility .rav-cta-visual {
+  flex-shrink: 0;
+  width: fit-content;
+  line-height: 0;
+}
+
+/* CTA illustration — fixed display width; height follows aspect ratio */
+.report-ai-visibility .rav-cta-img {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Key insight (pane inside .rav-gap-insight-flex) ───────────────────────── */
+.report-ai-visibility .rav-insight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0;
+}
+
+.report-ai-visibility .rav-insight-content {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--rpt-text, var(--color-text));
+}
+
+.report-ai-visibility .rav-insight-content strong {
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+}
+
+@media (width < 900px) {
+  .report-ai-visibility .rav-gap-insight-flex {
+    flex-direction: column;
+    margin: 16px 20px 20px;
+  }
+
+  .report-ai-visibility .rav-panels-outer > .rav-gap-insight-flex {
+    margin: 16px 0 0;
+  }
+
+  /* CTA: stack copy + illustration; center art; drop desktop-only left gutter */
+  .report-ai-visibility .rav-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 0 20px;
+  }
+
+  .report-ai-visibility .rav-cta-left {
+    flex: 0 1 auto;
+    width: 100%;
+    padding-top: 20px;
+    padding-bottom: 0;
+    max-width: 100%;
+  }
+
+  .report-ai-visibility .rav-cta-visual {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 24px;
+    box-sizing: border-box;
+  }
+
+  .report-ai-visibility .rav-cta-img {
+    width: min(100%, 240px);
+    margin-inline: auto;
+  }
+
+  /* Stats: align horizontal inset with CTA; 60px desktop gutters are too wide here */
+  .report-ai-visibility .rav-stats {
+    padding-inline: 24px;
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (width < 1024px) {
+  .report-ai-visibility .rav-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .report-ai-visibility .rav-stat-card:nth-child(2) {
+    border-right: none;
+  }
+
+  .report-ai-visibility .rav-stat-card:nth-child(-n+2) {
+    border-bottom: 1px solid var(--rpt-border);
+  }
+}
+
+/* Stack stats in one column with horizontal dividers (phones / small tablets) */
+@media (width < 768px) {
+  .report-ai-visibility .rav-stats {
+    grid-template-columns: 1fr;
+    padding-inline: 20px;
+  }
+
+  .report-ai-visibility .rav-stat-card {
+    border-right: none;
+    border-bottom: 1px solid var(--rpt-border);
+  }
+
+  .report-ai-visibility .rav-stat-card:last-child {
+    border-bottom: none;
+  }
+}
+
+@media (width < 1000px) {
+  .report-ai-visibility .rav-panels {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 32px;
+    align-items: start;
+  }
+}
+
+@media (width < 600px) {
+  .report-ai-visibility .rav-hbars {
+    --rav-hbar-value-width: 3.5rem;
+  }
+
+  .report-ai-visibility .rav-stats {
+    padding-inline: 16px;
+  }
+
+  .report-ai-visibility .rav-stat-value {
+    font-size: 28px;
+  }
+
+  .report-ai-visibility .rav-hbar-row {
+    grid-template-columns: minmax(0, 72px) 1fr var(--rav-hbar-value-width);
+  }
+
+  .report-ai-visibility .rav-platform-row {
+    grid-template-columns: 26px minmax(0, 72px) 1fr var(--rav-hbar-value-width);
+  }
+
+  .report-ai-visibility .rav-panels-outer {
+    padding: 12px;
+  }
+
+  .report-ai-visibility .rav-panels {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .report-ai-visibility .rav-cta {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .report-ai-visibility .rav-cta-btn {
+    max-width: 100%;
+    white-space: normal;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.25;
+  }
+}
+
+/* Page performance cards (report-scores) nested under Performance insights shell */
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .report-scores {
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .report-scores .rsc-grid {
+  box-sizing: border-box;
+  padding: 0;
+}

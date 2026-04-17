@@ -41,19 +41,25 @@ The current content is a **sample report for Nike**, used during development. In
 Full-width red banner with a personalized greeting ("Hello, Erika!"), a site description, a brand badge linking to the customer's site (with favicon), and a site screenshot. Features a typing animation on the heading and a decorative SVG background. The screenshot is hidden on mobile.
 
 ### report-stats (dark variant)
-A horizontal strip of four metric cards on a black background. Each card shows a KPI label, animated count-up value, a color-coded trend badge (positive/negative/critical/optimal), and a description. The performance score card includes an SVG speedometer gauge.
+A horizontal strip of four metric cards on a black background. Each card shows a KPI label, animated count-up value, a color-coded trend badge (positive/negative/critical/optimal), and a description. The performance score card includes an SVG semicircle speedometer; the red fill arc and needle are animated with geometry suited to a ≤180° sweep (selectors `.rs-gauge-fill` / `.rs-gauge-needle` when present).
 
 ### report-carousel
 A tabbed carousel with three persona views — Executive overview, Marketer insights, and IT/Engineering learnings. Each tab contains multiple slides with a "Top insight" callout and an SVG data visualization (column charts, line charts, donut charts, horizontal bars, stacked bars, big figures, metric strips, or recommendation lists). Includes dot navigation, prev/next arrows, and a slide counter.
 
 ### report-download
-A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count).
+A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count). PDF title text is resolved from the block row markup (including nested links).
+
+### report-ai-visibility
+Summit “LLM visibility” / “Performance insights” experience: stat cards, platform coverage pills, side-by-side comparison panels with charts (horizontal bars, platform bars, score tables, big figures). Horizontal bars support count vs percent display (authoring flags `|percent` / `|count`, or inferred share-style totals), and can show platform favicons when labels match known brands. Gap, key insight, and CTA rows render below the panels; the CTA copies from the authored block cells. An empty shell section next to the block hosts the nested **report-scores** page-performance cards (no extra grid padding in that shell).
+
+### report-scores
+Page performance cards (URL, score meter, metrics) used inside the AI visibility performance shell and elsewhere. Card grid and meters are scoped under `.report-scores`.
 
 ### header
 Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage.
 
 ### footer
-Renders copyright text and a horizontal list of legal links (Terms of use, Privacy policy, Cookie preferences, etc.).
+Renders copyright text and a horizontal list of legal links (Terms of use, Privacy policy, Cookie preferences, etc.). `loadFooter` awaits block decoration; on **localhost / 127.0.0.1** it skips work if the page has no `<footer>` (avoids fragment fetch noise in local AEM CLI). On other hosts it can create a `<footer>` when missing, then load the footer block.
 
 ## Design Tokens
 

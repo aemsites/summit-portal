@@ -12,10 +12,14 @@ const locales = {
   '/zh': { lang: 'zh' },
 };
 
-const linkBlocks = [];
+const linkBlocks = [
+  { fragment: '/fragments/' },
+  { schedule: '/schedules/' },
+  { youtube: 'https://www.youtube' },
+];
 
 // Blocks with self-managed styles
-const components = [];
+const components = ['fragment', 'schedule'];
 
 // How to decorate an area before loading it
 const decorateArea = ({ area = document }) => {
