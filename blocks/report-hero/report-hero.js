@@ -39,10 +39,10 @@ function buildInsightHero(block, rows) {
   if (textCell) {
     [...textCell.children].forEach((child) => {
       if (child.tagName === 'P') {
-        const picOrImg = child.querySelector('picture') || child.querySelector('img');
+        const pic = child.querySelector('picture');
         const anchor = child.querySelector('a');
-        if (picOrImg && anchor) {
-          const faviconImg = picOrImg.tagName === 'IMG' ? picOrImg : picOrImg.querySelector('img');
+        if (pic && anchor) {
+          const faviconImg = pic.querySelector('img');
           if (faviconImg) {
             faviconImg.alt = '';
             faviconImg.setAttribute('aria-hidden', 'true');

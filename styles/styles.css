@@ -226,12 +226,12 @@ html {
 
 body {
   margin: 0;
-  background-color: light-dark(var(--color-light), var(--color-dark));
+  background-color: light-dark(#f8f8f8, #1c1c1c);
   color: var(--color-text);
   font-family: var(--font-family);
   font-size: var(--body-font-size-m);
   line-height: var(--body-line-height);
-  padding: var(--header-height) 0 0;
+  padding: 0;
 
   &.has-breadcrumb {
     margin: calc(var(--header-height) + var(--breadcrumb-height)) 0 0;
@@ -247,7 +247,6 @@ body {
 header {
   display: none;
   height: var(--header-height);
-  position: fixed;
 }
 
 a {
@@ -387,7 +386,9 @@ svg {
 
 /* @media (width >= 900px) {} */
 
-@media (width >= 1200px) {
+/* @media (width >= 1200px) {} */
+
+@media (width >= 1440px) {
   :root {
     --grid-container-width: 1200px;
   }
