@@ -134,12 +134,14 @@
   font-size: 14px;
   font-weight: 500;
   color: light-dark(#fff, #111);
+  margin-bottom: -8px;
 }
 
 .report-stats.dark .rs-dark-value-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-bottom: 8px;
 }
 
 .report-stats.dark .rs-dark-value {
@@ -207,9 +209,21 @@
   background: #505050;
 }
 
+.report-stats.dark .rs-dark-badge[data-status='warning'] {
+  background: #c2410c;
+}
+
+.report-stats.dark .rs-dark-badge[data-status='nodata'] {
+  background: rgb(72 72 72 / 100%);
+}
+
 /* Speedometer card: color the leading number by badge status */
 .report-stats.dark .rs-dark-card:has([data-status='negative']) .rs-dark-value-main,
 .report-stats.dark .rs-dark-card:has([data-status='critical']) .rs-dark-value-main { color: #d73220; }
+
+.report-stats.dark .rs-dark-card:has([data-status='warning']) .rs-dark-value-main {
+  color: #fb923c;
+}
 
 .report-stats.dark .rs-dark-desc {
   font-size: 14px;

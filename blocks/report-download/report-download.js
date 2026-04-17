@@ -3,13 +3,76 @@
  *
  * Authoring structure (single row, two cells):
  *   Cell 1: Bold heading paragraph | description paragraph(s)
- *   Cell 2: Link (report title + download href) | metadata paragraphs (date, pages, …)
+ *   Cell 2: Link (report title + download href) | metadata paragraphs (date, pages, …).
+ *   Paragraphs may be nested (e.g. default-content wrapper); any <p> in the cell is scanned.
+ *   Rows with 3+ columns use the last column as the PDF cell.
+ *   A single wrapper row may nest two inner columns.
+ *   PDF card `h3` is the static phrase “Full digital performance report”.
  */
+
+/** @param {Element} row */
+function resolveRowCells(row) {
+  const cells = [...row.children].filter((n) => n.nodeType === 1);
+  if (cells.length >= 2) {
+    return { leftCell: cells[0], rightCell: cells[cells.length - 1] };
+  }
+  if (cells.length === 1) {
+    const inner = [...cells[0].children].filter((n) => n.nodeType === 1);
+    if (inner.length >= 2) {
+      return { leftCell: inner[0], rightCell: inner[inner.length - 1] };
+    }
+  }
+  return { leftCell: cells[0], rightCell: cells[1] };
+}
+
+/** Shown on `.rd-pdf-title` (always the same). */
+const PDF_CARD_HEADLINE = 'Full digital performance report';
+
+/**
+ * @param {Element | undefined} rightCell
+ * @returns {{ downloadHref: string, metaItems: string[] }}
+ */
+function extractPdfColumn(rightCell) {
+  let downloadHref = '#';
+  const metaItems = [];
+
+  if (!rightCell) return { downloadHref, metaItems };
+
+  const paragraphs = [...rightCell.querySelectorAll('p')];
+  const linkCandidates = [...rightCell.querySelectorAll('a[href]')].filter((a) => {
+    const h = (a.getAttribute('href') || '').trim();
+    if (!h || h === '#') return false;
+    try {
+      const u = new URL(h, window.location.href);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return h.startsWith('/') || h.startsWith('./') || h.startsWith('../');
+    }
+  });
+
+  const primaryLink = linkCandidates.find((a) => {
+    const h = (a.getAttribute('href') || '').toLowerCase();
+    return h.includes('.pdf') || h.includes('/content/') || h.includes('media_');
+  }) || linkCandidates[0];
+
+  if (primaryLink) {
+    downloadHref = primaryLink.href || '#';
+  }
+
+  paragraphs.forEach((p) => {
+    if (primaryLink && p.contains(primaryLink)) return;
+    const text = p.textContent.trim();
+    if (text) metaItems.push(text);
+  });
+
+  return { downloadHref, metaItems };
+}
+
 export default function init(el) {
   const row = el.querySelector(':scope > div');
   if (!row) return;
 
-  const [leftCell, rightCell] = [...row.children];
+  const { leftCell, rightCell } = resolveRowCells(row);
 
   // --- Left column: heading + description ---
   const left = document.createElement('div');
@@ -41,23 +104,7 @@ export default function init(el) {
   const right = document.createElement('div');
   right.className = 'rd-right';
 
-  let downloadHref = '#';
-  let cardTitle = '';
-  const metaItems = [];
-
-  if (rightCell) {
-    rightCell.querySelectorAll(':scope p').forEach((p) => {
-      const anchor = p.querySelector('a');
-      if (anchor && !cardTitle) {
-        // First link → card title + download URL
-        cardTitle = anchor.textContent.trim();
-        downloadHref = anchor.href || '#';
-      } else {
-        const text = p.textContent.trim();
-        if (text) metaItems.push(text);
-      }
-    });
-  }
+  const { downloadHref, metaItems } = extractPdfColumn(rightCell);
 
   // --- CTA button + metadata row below description ---
   const ctaRow = document.createElement('div');
@@ -98,7 +145,7 @@ export default function init(el) {
 
   const titleEl = document.createElement('h3');
   titleEl.className = 'rd-pdf-title';
-  titleEl.textContent = cardTitle;
+  titleEl.textContent = PDF_CARD_HEADLINE;
   card.append(titleEl);
 
   const tagEl = document.createElement('a');

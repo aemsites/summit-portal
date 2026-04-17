@@ -5,6 +5,77 @@ function gradeClass(score) {
   return 'poor';
 }
 
+function formatPageUrl(href) {
+  try {
+    const u = new URL(href);
+    return u.hostname.replace(/^www\./, '') + (u.pathname === '/' ? '/' : u.pathname);
+  } catch {
+    return href;
+  }
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Ring-style score meter (stroke from 12 o'clock, clockwise; round caps).
+ * @param {string} scoreLabel Displayed score text
+ * @param {number} scoreNum 0–100
+ * @param {'poor'|'warning'|'good'} gradeKey
+ * @returns {HTMLDivElement}
+ */
+function createScoreMeterWrap(scoreLabel, scoreNum, gradeKey) {
+  const vb = 40;
+  const c = vb / 2;
+  /* Ring r = discR - stroke/2 so stroke outer edge meets disc edge. */
+  const discR = 15;
+  const strokeW = 2.5;
+  const ringR = discR - strokeW / 2;
+  const circumference = 2 * Math.PI * ringR;
+  const pct = Math.min(1, Math.max(0, scoreNum / 100));
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'rsc-score-svg');
+  svg.setAttribute('viewBox', `0 0 ${vb} ${vb}`);
+  svg.setAttribute('focusable', 'false');
+  svg.setAttribute('aria-hidden', 'true');
+
+  const disc = document.createElementNS(SVG_NS, 'circle');
+  disc.setAttribute('class', 'rsc-score-disc');
+  disc.setAttribute('cx', String(c));
+  disc.setAttribute('cy', String(c));
+  disc.setAttribute('r', String(discR));
+
+  const arc = document.createElementNS(SVG_NS, 'circle');
+  arc.setAttribute('class', 'rsc-score-arc');
+  arc.setAttribute('cx', String(c));
+  arc.setAttribute('cy', String(c));
+  arc.setAttribute('r', String(ringR));
+  arc.setAttribute('fill', 'none');
+  arc.setAttribute('stroke-width', String(strokeW));
+  arc.setAttribute('stroke-linecap', 'round');
+  arc.setAttribute('transform', `rotate(-90 ${c} ${c})`);
+  const dash = pct * circumference;
+  arc.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+  if (scoreNum <= 0) {
+    arc.setAttribute('opacity', '0');
+  }
+
+  svg.append(disc, arc);
+
+  const wrap = document.createElement('div');
+  wrap.className = `rsc-score-wrap rsc-${gradeKey}`;
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', `Score ${scoreLabel} out of 100`);
+
+  const badge = document.createElement('div');
+  badge.className = 'rsc-score-badge';
+  badge.setAttribute('aria-hidden', 'true');
+  badge.textContent = scoreLabel;
+
+  wrap.append(svg, badge);
+  return wrap;
+}
+
 function metricStatus(label, val) {
   const n = parseFloat(val);
   if (label === 'LCP') {
@@ -42,13 +113,16 @@ export default function init(el) {
     const rec = cells[7]?.textContent.trim() || '';
 
     const gc = gradeClass(score);
+    const scoreNum = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
 
     const card = document.createElement('div');
     card.className = 'rsc-card';
 
-    const badge = document.createElement('div');
-    badge.className = `rsc-score-badge rsc-${gc}`;
-    badge.textContent = score;
+    const header = document.createElement('div');
+    header.className = 'rsc-card-header';
+
+    const headerText = document.createElement('div');
+    headerText.className = 'rsc-card-header-text';
 
     const name = document.createElement('h3');
     name.className = 'rsc-page-name';
@@ -58,38 +132,59 @@ export default function init(el) {
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.textContent = pageName;
+      link.title = pageName;
       name.append(link);
     } else {
       name.textContent = pageName;
     }
+
+    headerText.append(name);
+
+    if (pageUrl) {
+      const urlLine = document.createElement('a');
+      urlLine.className = 'rsc-page-url';
+      urlLine.href = pageUrl;
+      urlLine.target = '_blank';
+      urlLine.rel = 'noopener noreferrer';
+      urlLine.textContent = formatPageUrl(pageUrl);
+      urlLine.title = pageUrl;
+      headerText.append(urlLine);
+    }
+
+    const scoreWrap = createScoreMeterWrap(score, scoreNum, gc);
+    header.append(headerText, scoreWrap);
 
     const metrics = document.createElement('div');
     metrics.className = 'rsc-metrics';
     [['LCP', lcp], ['INP', fid], ['CLS', cls]].forEach(([label, val]) => {
       const m = document.createElement('div');
       m.className = 'rsc-metric';
-      const ml = document.createElement('span');
-      ml.className = 'rsc-metric-label';
-      ml.textContent = label;
       const mv = document.createElement('span');
       mv.className = `rsc-metric-value rsc-mv-${metricStatus(label, val)}`;
       mv.textContent = val;
-      m.append(ml, mv);
+      const ml = document.createElement('span');
+      ml.className = 'rsc-metric-label';
+      ml.textContent = label;
+      m.append(mv, ml);
       metrics.append(m);
     });
+
+    const footer = document.createElement('div');
+    footer.className = 'rsc-card-footer';
 
     const sum = document.createElement('p');
     sum.className = 'rsc-summary';
     sum.textContent = summary;
-
-    card.append(badge, name, metrics, sum);
+    footer.append(sum);
 
     if (rec) {
       const tag = document.createElement('span');
       tag.className = 'rsc-recommendation';
       tag.textContent = rec;
-      card.append(tag);
+      footer.append(tag);
     }
+
+    card.append(header, metrics, footer);
 
     grid.append(card);
   });
