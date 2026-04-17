@@ -91,7 +91,7 @@
 
 /* ── Slides wrapper ─────────────────────────────────────── */
 .report-carousel .rc-slides-wrap {
-  padding: 0;
+  padding: 0 32px;
   display: grid;
   min-height: 450px;
 }
