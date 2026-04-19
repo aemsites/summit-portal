@@ -91,6 +91,29 @@
   }
 }
 
+.report-carousel .rc-download-btn.rc-download-disabled,
+.report-carousel .rc-download-btn.rc-download-disabled:hover {
+  background: #6b6b6b;
+  color: rgb(255 255 255 / 70%);
+  cursor: not-allowed;
+}
+
+.report-carousel .rc-download-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.report-carousel .rc-download-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: light-dark(#6b7280, #9ca3af);
+  text-align: right;
+  max-width: 260px;
+}
+
 /* ── Slides wrapper ─────────────────────────────────────── */
 .report-carousel .rc-slides-wrap {
   padding: 0;
@@ -767,6 +790,25 @@
     justify-content: center;
     width: 100%;
     max-width: 100%;
+  }
+
+  /* When disabled: the tab-bar group (note + button) stays visible on mobile */
+  .report-carousel .rc-tab-bar .rc-download-group {
+    display: inline-flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px 12px;
+  }
+
+  .report-carousel .rc-tab-bar .rc-download-group .rc-download-btn {
+    display: inline-flex;
+  }
+
+  .report-carousel .rc-tab-bar .rc-download-group .rc-download-note {
+    flex: 1 1 100%;
+    text-align: left;
+    max-width: none;
   }
 
   .report-carousel .rc-download-footer {
