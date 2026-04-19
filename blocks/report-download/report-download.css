@@ -72,6 +72,32 @@
   background: #2b50e0;
 }
 
+.report-download .rd-cta-btn-disabled,
+.report-download .rd-cta-btn-disabled:hover {
+  background: #6b6b6b;
+  color: rgb(255 255 255 / 70%);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.report-download .rd-unavailable-msg {
+  font-size: 14px;
+  line-height: 1.5;
+  color: light-dark(rgb(255 255 255 / 70%), rgb(255 255 255 / 60%));
+  margin: 0;
+  max-width: 460px;
+}
+
+.report-download .rd-right-disabled {
+  opacity: 0.5;
+  filter: grayscale(1);
+  pointer-events: none;
+}
+
+.report-download .rd-pdf-card-disabled {
+  cursor: not-allowed;
+}
+
 .report-download .rd-meta-row {
   display: flex;
   align-items: center;
