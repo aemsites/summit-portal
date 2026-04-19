@@ -3,7 +3,16 @@ header {
   --logo-height: 24px;
   --mega-columns: 4;
 
-  display: block;
+  /* Same horizontal alignment as main: `.section > .default-content` (styles.css) */
+  --header-align-margin: max(0px, calc((100% - var(--grid-container-width)) / 2));
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  padding-inline: 24px;
   position: fixed;
   top: 0;
   left: 0;
@@ -11,7 +20,11 @@ header {
   z-index: 1000;
   overflow: hidden;
   max-height: var(--header-height);
-  background-color: light-dark(var(--color-light), var(--color-dark));
+  background-color: light-dark(
+    rgb(var(--color-light-base) / 85%),
+    rgb(var(--color-dark-base) / 85%)
+  );
+  backdrop-filter: blur(40px);
 
   ul {
     margin: 0;
@@ -33,12 +46,17 @@ header {
   }
 
   .header-content {
-    display: grid;
-    grid-template-areas:
-      "brand"
-      "nav"
-      "actions";
-    grid-template-rows: var(--header-height) auto 1fr;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: 0;
+    padding-inline: 0;
+    min-inline-size: 0;
+    overflow: auto hidden;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    scrollbar-width: thin;
   }
 
   .action-wrapper {
@@ -67,6 +85,78 @@ header {
         overflow: hidden;
       }
     }
+  }
+
+  /* Color theme control: inline sun + compact pill (state via aria-checked on the button) */
+  .action-wrapper.header-scheme button {
+    width: auto;
+    min-width: auto;
+    padding-inline: 4px;
+    gap: 6px;
+    color: light-dark(var(--color-gray-900), var(--color-gray-100));
+  }
+
+  .header-scheme .scheme-sun {
+    display: flex;
+    flex-shrink: 0;
+    inline-size: 14px;
+    block-size: 14px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header-scheme .scheme-sun svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .header-scheme .scheme-switch-track {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+    inline-size: 32px;
+    block-size: 18px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .header-scheme .scheme-switch-thumb {
+    position: absolute;
+    inset-block-start: 50%;
+    margin-block-start: -6px;
+    inline-size: 12px;
+    block-size: 12px;
+    border-radius: 50%;
+    box-sizing: border-box;
+    transition:
+      inset-inline-start 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  /* Light theme: white track + border, dark knob on the start side */
+  .header-scheme button[aria-checked='false'] .scheme-switch-track {
+    background-color: #fff;
+    border: 2px solid light-dark(var(--color-gray-900), var(--color-gray-300));
+  }
+
+  .header-scheme button[aria-checked='false'] .scheme-switch-thumb {
+    inset-inline-start: 2px;
+    background-color: light-dark(var(--color-gray-900), var(--color-gray-800));
+  }
+
+  /* Dark theme: filled track, light knob on the end side */
+  .header-scheme button[aria-checked='true'] .scheme-switch-track {
+    background-color: light-dark(var(--color-gray-900), var(--color-gray-700));
+    border: 2px solid transparent;
+  }
+
+  .header-scheme button[aria-checked='true'] .scheme-switch-thumb {
+    inset-inline-start: calc(100% - 2px - 12px);
+    background-color: #fff;
   }
 
   .breadcrumbs {
@@ -120,27 +210,56 @@ header {
   }
 
   .brand-section {
-    grid-area: brand;
+    /* Fills space before .actions-section; collapsed .main-nav-section uses 0 width so
+       theme / language stay on the same row without flex `order` (keeps DOM = visual order). */
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
 
     .default-content {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
       height: var(--header-height);
       display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      padding-right: 120px;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 12px;
+
+      /* Waffle / “more” stays at the trailing edge of the brand cell */
+      > .action-wrapper {
+        margin-inline-start: auto;
+      }
+
+      /* Separate title <p> from CMS stays beside logo; ellipsis if space is tight */
+      > p:has(:is(img, svg)) {
+        flex-shrink: 0;
+      }
+
+      > p:not(:has(:is(img, svg))) {
+        min-width: 0;
+        overflow: visible;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Narrow viewports: icon-only brand; link accessible name stays in .brand-text */
+      &:has(p > a :is(img, picture, svg)) > p:not(:has(:is(img, svg))) {
+        display: none;
+      }
 
       p,
       a {
         display: flex;
         align-items: center;
         position: relative;
-        font-size: var(--heading-font-size-m);
         font-weight: 700;
         text-decoration: none;
         margin: 0;
         color: light-dark(#000, #fff);
         line-height: 1;
-        font-size: 16px;
 
         img {
           height: var(--logo-height);
@@ -158,40 +277,75 @@ header {
           overflow: hidden;
         }
       }
+
+      p {
+        font-size: 18px;
+      }
+
+      a {
+        font-size: 16px;
+        gap: 4px;
+      }
     }
 
     .action-wrapper {
-      right: -23px; /* 64 minus waffle icon inset */
+      flex-shrink: 0;
     }
   }
 
   .actions-section {
-    grid-area: actions;
+    position: relative;
+    flex: 0 0 auto;
+    flex-shrink: 0;
     max-height: 64px;
-    overflow: hidden;
+    overflow: visible hidden;
     transition: all 0.2s ease-in-out;
 
     > .default-content {
       display: flex;
-      justify-content: end;
+      flex-wrap: nowrap;
       align-items: center;
+      gap: 8px;
+      min-height: var(--header-height);
+      flex-shrink: 0;
+      width: max-content;
+      max-width: none;
+
+      /* decorateUserInfo runs before widget links → DOM is scheme, language, toggle, user-info */
+      > .header-scheme {
+        order: 1;
+      }
+
+      > .header-language {
+        order: 2;
+      }
+
+      > .header-nav-toggle {
+        order: 3;
+      }
+
+      > .user-info {
+        order: 4;
+      }
     }
 
     .user-info {
-      position: absolute;
-      top: 0;
-      right: 52px;
+      position: relative;
       display: flex;
       align-items: center;
       height: var(--header-height);
-      padding-inline: 8px;
-      z-index: 1;
-      background-color: inherit;
+      flex-shrink: 0;
+      width: auto;
+      min-width: max-content;
+      max-width: none;
     }
 
     .user-sign-in {
       font-size: 13px;
       white-space: nowrap;
+      width: auto;
+      max-width: none;
+      flex-shrink: 0;
     }
 
     .user-email {
@@ -202,7 +356,7 @@ header {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 45px;
+      max-width: min(200px, 40vw);
       padding: 0;
       color: light-dark(var(--color-gray-600), var(--color-gray-400));
     }
@@ -216,7 +370,7 @@ header {
       flex-direction: column;
       gap: var(--spacing-s);
       position: absolute;
-      right: 0;
+      inset-inline-end: 0;
       top: 100%;
       background-color: var(--color-shaded);
       padding: var(--spacing-m);
@@ -229,11 +383,17 @@ header {
     }
 
     .action-wrapper {
+      flex-shrink: 0;
+      width: fit-content;
       height: var(--header-height);
-      right: -13px;
 
       button {
         width: 44px;
+      }
+
+      &.header-scheme button {
+        width: auto;
+        min-width: auto;
       }
     }
 
@@ -244,7 +404,15 @@ header {
   }
 
   .main-nav-section {
-    grid-area: nav;
+    /* Collapse nav until hamburger opens — keeps the bar a single 64px row.
+       Zero horizontal footprint preserves brand → actions order (toggle vs. sign-in / widgets). */
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    min-height: 0;
+    max-height: 0;
+    overflow: hidden;
+    pointer-events: none;
 
     .default-content {
       max-width: 100%;
@@ -255,8 +423,8 @@ header {
       border-bottom: 1px solid light-dark(var(--color-gray-200), var(--color-gray-600));
 
       > * {
-        max-width: var(--grid-container-width);
-        margin: 0 auto;
+        max-width: 100%;
+        margin: 0;
       }
     }
 
@@ -294,6 +462,16 @@ header {
 
     .header-content {
       height: 100%;
+      flex-wrap: wrap;
+    }
+
+    .main-nav-section {
+      flex: 1 1 100%;
+      width: 100%;
+      max-width: 100%;
+      max-height: none;
+      overflow: visible;
+      pointer-events: auto;
     }
 
     .brand-section {
@@ -302,14 +480,21 @@ header {
   }
 }
 
+@media (width >= 600px) {
+  header .brand-section .default-content:has(p > a :is(img, picture, svg)) > p:not(:has(:is(img, svg))) {
+    display: flex;
+  }
+}
+
 @media (width >= 900px) {
   header {
     overflow: initial;
 
     .header-content {
-      max-width: var(--grid-container-width);
-      margin: 0 auto;
-      grid-template: "brand nav actions" 1fr / auto 1fr auto;
+      max-width: 1200px;
+      margin-inline: 0;
+      flex-flow: row nowrap;
+      align-items: center;
       gap: var(--spacing-l);
     }
 
@@ -349,12 +534,15 @@ header {
     }
 
     .brand-section {
+      flex: 0 0 auto;
+      width: fit-content;
       border-bottom: initial;
 
       .default-content {
+        width: auto;
         max-width: initial;
         margin: 0;
-        padding-right: 0;
+        padding-inline-end: 0;
       }
 
       .action-wrapper.more {
@@ -363,6 +551,14 @@ header {
     }
 
     .main-nav-section {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+      min-height: unset;
+      max-height: none;
+      overflow: visible;
+      pointer-events: auto;
+
       .main-nav-list {
         display: flex;
         gap: var(--spacing-l);
@@ -385,19 +581,22 @@ header {
     }
 
     .actions-section {
+      flex: 0 0 auto;
       position: relative;
       overflow: initial;
 
       .default-content {
-        max-width: initial;
+        width: max-content;
+        max-width: none;
         margin: 0;
+        gap: 16px;
+        min-height: unset;
       }
 
       .user-info {
-        position: relative;
-        top: auto;
-        right: auto;
         height: 100%;
+        min-width: max-content;
+        max-width: none;
       }
 
       .user-email {
@@ -406,7 +605,6 @@ header {
 
       .action-wrapper {
         position: relative;
-        right: -10px;
       }
 
       .block-content {
