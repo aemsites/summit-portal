@@ -347,6 +347,37 @@ function attachDarkSheet(el) {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sheet.dataset.open === 'true') closeDarkSheet(sheet);
   });
+
+  // Swipe-down-to-dismiss on the panel
+  const panel = sheet.querySelector('.rs-sheet-panel');
+  let startY = null;
+  let dragging = false;
+
+  panel.addEventListener('touchstart', (e) => {
+    if (sheet.dataset.open !== 'true') return;
+    if (panel.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    dragging = true;
+    panel.style.transition = 'none';
+  }, { passive: true });
+
+  panel.addEventListener('touchmove', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) {
+      panel.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  panel.addEventListener('touchend', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
+    panel.style.transition = '';
+    panel.style.transform = '';
+    dragging = false;
+    startY = null;
+    if (dy > 80) closeDarkSheet(sheet);
+  });
 }
 
 function buildDarkStats(el, rows) {
