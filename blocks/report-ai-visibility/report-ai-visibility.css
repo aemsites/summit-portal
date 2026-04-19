@@ -518,6 +518,12 @@
   margin: 20px 0 0;
 }
 
+/* When the flex sits at container level (after a stats+story row) it needs its own side padding. */
+.report-ai-visibility .rav-container > .rav-gap-insight-flex {
+  width: auto;
+  margin: 0 16px 16px;
+}
+
 .report-ai-visibility .rav-gap-insight-flex > .rav-gap,
 .report-ai-visibility .rav-gap-insight-flex > .rav-insight {
   flex: 1 1 0;
