@@ -28,7 +28,7 @@ function resolveRowCells(row) {
 /** Shown on `.rd-pdf-title` (always the same). */
 const PDF_CARD_HEADLINE = 'Full digital performance report';
 
-const UNAVAILABLE_MESSAGE = 'Due to SEO data limitations and problems accessing your website, we were unable to generate a report for you.';
+const UNAVAILABLE_MESSAGE = "We weren't able to generate a report that meets our quality bar for your website. Key data sources — like organic traffic, keyword rankings, and performance metrics — were incomplete or inaccessible, and without them we can't deliver insights you can act on with confidence.";
 
 function getReportDownloadState() {
   const meta = document.querySelector('meta[name="report-download-state"]');
