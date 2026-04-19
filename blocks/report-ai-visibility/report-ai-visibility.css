@@ -103,6 +103,56 @@
   margin-top: 4px;
 }
 
+/* ── Stats + adjacent story side-by-side on desktop ─────────────────────── */
+@media (width >= 1000px) {
+  .report-ai-visibility .rav-stats-story-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 20px;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
+    border-radius: 16px;
+    background: light-dark(#fff, #1a1a1a);
+    box-shadow: var(--rpt-card-shadow);
+    overflow: hidden;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card {
+    flex: 1 1 0;
+    justify-content: center;
+    border-right: none;
+    border-bottom: 1px solid var(--rpt-border);
+    padding: 20px 28px;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card:last-child {
+    border-bottom: none;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-panels-outer {
+    padding: 0;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-panels-outer > .rav-panels {
+    height: 100%;
+    padding: 40px;
+  }
+
+  /* Inside the paired row the lone story panel should fill its half, not shrink to 50%. */
+  .report-ai-visibility .rav-stats-story-row
+    .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
+    max-width: 100%;
+  }
+}
+
 /* ── Platform pills (in section head, after title) ───────────────────────── */
 .report-ai-visibility .rav-platforms {
   display: flex;
