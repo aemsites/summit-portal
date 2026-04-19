@@ -360,6 +360,28 @@ export default async function decorate(block) {
 
   container.prepend(sectionHead);
 
+  // Pair stats strip with an adjacent single-panel story into one row on desktop.
+  const statsEl = container.querySelector(':scope > .rav-stats');
+  const nextEl = statsEl?.nextElementSibling;
+  const storyOuter = nextEl?.classList.contains('rav-panels-outer') ? nextEl : null;
+  const storyPanels = storyOuter
+    ? storyOuter.querySelectorAll(':scope > .rav-panels > .rav-panel')
+    : [];
+  if (statsEl && storyOuter && storyPanels.length === 1) {
+    // Move any gap/insight flex that got appended into the panels-outer back to the
+    // container, so it keeps sitting below the paired row rather than beside the story.
+    const gapInsightFlexes = [...storyOuter.querySelectorAll(':scope > .rav-gap-insight-flex')];
+    const row = document.createElement('div');
+    row.className = 'rav-stats-story-row';
+    statsEl.replaceWith(row);
+    storyOuter.remove();
+    row.append(statsEl, storyOuter);
+    gapInsightFlexes.forEach((flex) => {
+      storyOuter.removeChild(flex);
+      row.after(flex);
+    });
+  }
+
   await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
 
   block.textContent = '';

@@ -103,6 +103,62 @@
   margin-top: 4px;
 }
 
+/* ── Stats + adjacent story side-by-side on desktop ─────────────────────── */
+@media (width >= 1000px) {
+  .report-ai-visibility .rav-stats-story-row {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
+    border-radius: 16px;
+    background: light-dark(#fff, #1a1a1a);
+    box-shadow: var(--rpt-card-shadow);
+    overflow: hidden;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card {
+    flex: 1 1 0;
+    justify-content: center;
+    border-right: none;
+    border-bottom: 1px solid var(--rpt-border);
+    padding: 14px 24px;
+    gap: 2px;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card:last-child {
+    border-bottom: none;
+  }
+
+  .report-ai-visibility .rav-stats-story-row .rav-stat-value {
+    font-size: 28px;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-panels-outer {
+    padding: 0;
+  }
+
+  .report-ai-visibility .rav-stats-story-row > .rav-panels-outer > .rav-panels {
+    height: 100%;
+    padding: 24px 28px;
+    justify-content: center;
+  }
+
+  /* Inside the paired row the lone story panel should fill its half, not shrink to 50%. */
+  .report-ai-visibility .rav-stats-story-row
+    .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
+    max-width: 100%;
+  }
+}
+
 /* ── Platform pills (in section head, after title) ───────────────────────── */
 .report-ai-visibility .rav-platforms {
   display: flex;
@@ -564,6 +620,12 @@
 /* Below bar charts card, inside .rav-panels-outer (parent already has horizontal padding) */
 .report-ai-visibility .rav-panels-outer > .rav-gap-insight-flex {
   margin: 20px 0 0;
+}
+
+/* When the flex sits at container level (after a stats+story row) it needs its own side padding. */
+.report-ai-visibility .rav-container > .rav-gap-insight-flex {
+  width: auto;
+  margin: 0 16px 16px;
 }
 
 .report-ai-visibility .rav-gap-insight-flex > .rav-gap,
