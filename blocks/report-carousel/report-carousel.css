@@ -98,6 +98,22 @@
   cursor: not-allowed;
 }
 
+.report-carousel .rc-download-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.report-carousel .rc-download-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: light-dark(#6b7280, #9ca3af);
+  text-align: right;
+  max-width: 260px;
+}
+
 /* ── Slides wrapper ─────────────────────────────────────── */
 .report-carousel .rc-slides-wrap {
   padding: 0;
