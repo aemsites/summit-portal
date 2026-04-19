@@ -2,7 +2,9 @@ function parseValue(text) {
   const t = text.trim();
   const m = t.match(/^([\d.]+)(M|K|%)?$/);
   if (!m) return null;
-  return { num: parseFloat(m[1]), suffix: m[2] || '' };
+  const num = parseFloat(m[1]);
+  if (!Number.isFinite(num)) return null;
+  return { num, suffix: m[2] || '' };
 }
 
 function formatValue(num, suffix, decimals) {
@@ -69,12 +71,13 @@ function animateSpeedometer(svg, targetRatio, duration) {
   const fillPath = svg.querySelector('.rs-gauge-fill') || svg.querySelectorAll('path')[1];
   const needle = svg.querySelector('.rs-gauge-needle') || svg.querySelector('line');
   if (!fillPath || !needle) return;
+  const safeTarget = Number.isFinite(targetRatio) ? targetRatio : 0;
 
   const start = performance.now();
 
   function tick(now) {
     const t = Math.min((now - start) / duration, 1);
-    const ratio = easeOutExpo(t) * targetRatio;
+    const ratio = easeOutExpo(t) * safeTarget;
     fillPath.setAttribute('d', speedometerFillPathD(ratio));
     const tip = speedometerNeedleTip(ratio);
     needle.setAttribute('x2', tip.x);
@@ -83,8 +86,8 @@ function animateSpeedometer(svg, targetRatio, duration) {
     if (t < 1) {
       requestAnimationFrame(tick);
     } else {
-      fillPath.setAttribute('d', speedometerFillPathD(targetRatio));
-      const endTip = speedometerNeedleTip(targetRatio);
+      fillPath.setAttribute('d', speedometerFillPathD(safeTarget));
+      const endTip = speedometerNeedleTip(safeTarget);
       needle.setAttribute('x2', endTip.x);
       needle.setAttribute('y2', endTip.y);
     }
@@ -217,7 +220,7 @@ function animateDarkStats(strip) {
       const target = mainSpan.textContent;
       mainSpan.textContent = '0';
       const parsed = parseValue(target);
-      const targetRatio = parsed ? parsed.num / 100 : 0;
+      const targetRatio = parsed && Number.isFinite(parsed.num) ? parsed.num / 100 : 0;
 
       if (meter) animateSpeedometer(meter, 0, 0.001);
 
