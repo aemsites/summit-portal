@@ -1,4 +1,11 @@
 /* Report Scores — Page Performance Cards */
+.report-scores-wrapper,
+.block-content:has(.report-scores) {
+  max-width: 1200px !important;
+  padding: 0 !important;
+  margin: 24px auto 0 !important;
+}
+
 .report-scores {
   --rsc-poor: light-dark(#ef4444, #f87171);
   --rsc-warning: light-dark(#f59e0b, #fbbf24);
