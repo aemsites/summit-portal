@@ -103,7 +103,7 @@ function buildInsightHero(block, rows) {
         textCol.append(child);
         const lede = document.createElement('p');
         lede.className = 'rh-insight-lede';
-        lede.textContent = 'See how your brand performs across site experience, search, and AI discovery, and where the biggest opportunities to grow are.';
+        lede.innerHTML = 'Where your brand wins today in <strong>site experience</strong>, <strong>search</strong>, and <strong>AI discovery</strong>. And where the next move is.';
         textCol.append(lede);
         return;
       }
