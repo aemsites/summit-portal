@@ -452,6 +452,11 @@ header {
 
   &:has(.user-info.is-open) {
     overflow: visible;
+    z-index: 1001;
+
+    .actions-section {
+      overflow: visible;
+    }
   }
 
   &.is-mobile-open {

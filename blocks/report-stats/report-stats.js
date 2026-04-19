@@ -264,6 +264,122 @@ function sortDarkStatRows(rows) {
   return [...perf, ...monthly, ...rest];
 }
 
+function openDarkSheet(sheet, trigger) {
+  const titleEl = sheet.querySelector('.rs-sheet-label');
+  const valueEl = sheet.querySelector('.rs-sheet-value');
+  const badgeSlot = sheet.querySelector('.rs-sheet-badge-slot');
+  const descEl = sheet.querySelector('.rs-sheet-desc');
+
+  titleEl.textContent = trigger.dataset.sheetLabel || '';
+  valueEl.textContent = trigger.dataset.sheetValue || '';
+  badgeSlot.replaceChildren(
+    buildDarkBadgeEl(trigger.dataset.sheetBadgeLabel || '', trigger.dataset.sheetBadgeStatus || 'neutral'),
+  );
+  descEl.textContent = trigger.dataset.sheetDesc || '';
+
+  sheet.dataset.open = 'true';
+  sheet.setAttribute('aria-hidden', 'false');
+  trigger.setAttribute('aria-expanded', 'true');
+  sheet.activeTrigger = trigger;
+  document.documentElement.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    sheet.querySelector('.rs-sheet-close')?.focus();
+  });
+}
+
+function closeDarkSheet(sheet) {
+  sheet.dataset.open = 'false';
+  sheet.setAttribute('aria-hidden', 'true');
+  if (sheet.activeTrigger) {
+    sheet.activeTrigger.setAttribute('aria-expanded', 'false');
+    sheet.activeTrigger.focus();
+    sheet.activeTrigger = null;
+  }
+  document.documentElement.style.overflow = '';
+}
+
+function attachDarkSheet(el) {
+  if (el.dataset.sheetAttached === 'true') return;
+  el.dataset.sheetAttached = 'true';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'rs-sheet';
+  sheet.setAttribute('aria-hidden', 'true');
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.dataset.open = 'false';
+  sheet.innerHTML = `
+    <div class="rs-sheet-backdrop" data-close="true"></div>
+    <div class="rs-sheet-panel" role="document">
+      <button type="button" class="rs-sheet-close" aria-label="Close" data-close="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+      <div class="rs-sheet-grabber" aria-hidden="true"></div>
+      <div class="rs-sheet-label"></div>
+      <div class="rs-sheet-value-row">
+        <div class="rs-sheet-value"></div>
+        <div class="rs-sheet-badge-slot"></div>
+      </div>
+      <p class="rs-sheet-desc"></p>
+    </div>
+  `;
+  el.append(sheet);
+
+  el.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.rs-dark-card');
+    if (trigger && window.matchMedia('(width < 1000px)').matches) {
+      openDarkSheet(sheet, trigger);
+      return;
+    }
+    if (e.target.closest('[data-close]')) closeDarkSheet(sheet);
+  });
+
+  el.addEventListener('keydown', (e) => {
+    const trigger = e.target.closest?.('.rs-dark-card');
+    if (trigger && (e.key === 'Enter' || e.key === ' ') && window.matchMedia('(width < 1000px)').matches) {
+      e.preventDefault();
+      openDarkSheet(sheet, trigger);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheet.dataset.open === 'true') closeDarkSheet(sheet);
+  });
+
+  // Swipe-down-to-dismiss on the panel
+  const panel = sheet.querySelector('.rs-sheet-panel');
+  let startY = null;
+  let dragging = false;
+
+  panel.addEventListener('touchstart', (e) => {
+    if (sheet.dataset.open !== 'true') return;
+    if (panel.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    dragging = true;
+    panel.style.transition = 'none';
+  }, { passive: true });
+
+  panel.addEventListener('touchmove', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) {
+      panel.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  panel.addEventListener('touchend', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
+    panel.style.transition = '';
+    panel.style.transform = '';
+    dragging = false;
+    startY = null;
+    if (dy > 80) closeDarkSheet(sheet);
+  });
+}
+
 function buildDarkStats(el, rows) {
   const strip = document.createElement('div');
   strip.className = 'rs-dark-strip';
@@ -333,11 +449,24 @@ function buildDarkStats(el, rows) {
 
     card.append(labelEl, valueRow, badgeEl);
     if (desc) card.append(descEl);
+
+    // On mobile (<1000px) the card acts as a button that opens a bottom sheet
+    // with the KPI description. Keep content identical for desktop.
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-expanded', 'false');
+    card.dataset.sheetLabel = label;
+    card.dataset.sheetValue = value;
+    card.dataset.sheetBadgeLabel = badgeLabel;
+    card.dataset.sheetBadgeStatus = statusKey;
+    card.dataset.sheetDesc = desc;
+
     strip.append(card);
   });
 
   el.textContent = '';
   el.append(strip);
+  attachDarkSheet(el);
   animateDarkStats(strip);
 }
 

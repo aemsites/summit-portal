@@ -96,6 +96,84 @@ function metricStatus(label, val) {
   return 'good';
 }
 
+const METRIC_DEFS = [
+  {
+    key: 'LCP',
+    plain: 'Load time',
+    desc: 'How long visitors wait for the main content to appear. Target: under 2.5s.',
+  },
+  {
+    key: 'INP',
+    plain: 'Responsiveness',
+    desc: 'How quickly the page reacts when visitors tap or click. Target: under 200ms.',
+  },
+  {
+    key: 'CLS',
+    plain: 'Layout stability',
+    desc: 'How much the page jumps around as it loads. Target: under 0.1.',
+  },
+];
+
+const SCORE_BANDS = [
+  { range: '90–100', label: 'Good', grade: 'good', desc: 'Performing at or above industry standards.' },
+  { range: '50–89', label: 'Needs improvement', grade: 'warning', desc: 'Targeted optimizations can drive measurable gains.' },
+  { range: '0–49', label: 'Poor', grade: 'poor', desc: 'Significant opportunities. Highest potential impact.' },
+];
+
+function buildLegend() {
+  const legend = document.createElement('div');
+  legend.className = 'rsc-legend';
+
+  const metricsIntro = document.createElement('p');
+  metricsIntro.className = 'rsc-legend-intro';
+  metricsIntro.textContent = 'Each card measures three Core Web Vitals:';
+  legend.append(metricsIntro);
+
+  const list = document.createElement('div');
+  list.className = 'rsc-legend-list';
+  METRIC_DEFS.forEach(({ plain, desc }) => {
+    const item = document.createElement('div');
+    item.className = 'rsc-legend-item';
+    const term = document.createElement('div');
+    term.className = 'rsc-legend-term';
+    term.textContent = plain;
+    const body = document.createElement('div');
+    body.className = 'rsc-legend-desc';
+    body.textContent = desc;
+    item.append(term, body);
+    list.append(item);
+  });
+  legend.append(list);
+
+  const bandsIntro = document.createElement('p');
+  bandsIntro.className = 'rsc-legend-intro rsc-legend-intro-bands';
+  bandsIntro.textContent = 'Each page gets an overall score from 0–100:';
+  legend.append(bandsIntro);
+
+  const bands = document.createElement('div');
+  bands.className = 'rsc-legend-bands';
+  SCORE_BANDS.forEach(({ range, label, grade, desc }) => {
+    const band = document.createElement('div');
+    band.className = `rsc-legend-band rsc-legend-band-${grade}`;
+    band.innerHTML = `
+      <span class="rsc-legend-band-range">${range}</span>
+      <div class="rsc-legend-band-body">
+        <span class="rsc-legend-band-label">${label}</span>
+        <span class="rsc-legend-band-desc">${desc}</span>
+      </div>
+    `;
+    bands.append(band);
+  });
+  legend.append(bands);
+
+  const note = document.createElement('p');
+  note.className = 'rsc-legend-note';
+  note.textContent = 'These scores are based on synthetic lab measurements, not real-user monitoring (RUM). We test each page under a standardized mobile profile — mid-tier device, throttled 4G connection, first-visit conditions — so results are comparable across pages and over time. Real-world performance for returning visitors on faster networks will typically be better.';
+  legend.append(note);
+
+  return legend;
+}
+
 export default function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
   const grid = document.createElement('div');
@@ -156,15 +234,17 @@ export default function init(el) {
 
     const metrics = document.createElement('div');
     metrics.className = 'rsc-metrics';
-    [['LCP', lcp], ['INP', fid], ['CLS', cls]].forEach(([label, val]) => {
+    const vals = { LCP: lcp, INP: fid, CLS: cls };
+    METRIC_DEFS.forEach(({ key, plain }) => {
+      const val = vals[key];
       const m = document.createElement('div');
       m.className = 'rsc-metric';
       const mv = document.createElement('span');
-      mv.className = `rsc-metric-value rsc-mv-${metricStatus(label, val)}`;
+      mv.className = `rsc-metric-value rsc-mv-${metricStatus(key, val)}`;
       mv.textContent = val;
       const ml = document.createElement('span');
       ml.className = 'rsc-metric-label';
-      ml.textContent = label;
+      ml.textContent = plain;
       m.append(mv, ml);
       metrics.append(m);
     });
@@ -184,11 +264,22 @@ export default function init(el) {
       footer.append(tag);
     }
 
+    if (pageUrl) {
+      const verify = document.createElement('a');
+      verify.className = 'rsc-verify-link';
+      verify.href = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(pageUrl)}`;
+      verify.target = '_blank';
+      verify.rel = 'noopener noreferrer';
+      verify.setAttribute('aria-label', `Verify ${pageName} score on Google PageSpeed Insights (opens in new tab)`);
+      verify.innerHTML = '<svg class="rsc-verify-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M11.25 3.75h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.25 3.75 9.375 10.625" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 11.25v4.375A1.875 1.875 0 0 1 13.125 17.5h-8.75A1.875 1.875 0 0 1 2.5 15.625v-8.75A1.875 1.875 0 0 1 4.375 5H8.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verify on Google PageSpeed Insights</span>';
+      footer.append(verify);
+    }
+
     card.append(header, metrics, footer);
 
     grid.append(card);
   });
 
   el.textContent = '';
-  el.append(grid);
+  el.append(grid, buildLegend());
 }

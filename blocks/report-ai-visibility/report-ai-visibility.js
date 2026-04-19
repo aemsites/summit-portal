@@ -122,6 +122,115 @@ const PANEL_ROW_TYPES = new Set([
   'opportunities',
 ]);
 
+/**
+ * Tap-to-expand bottom sheet for .rav-gap / .rav-insight panes on mobile.
+ * Sheet is keyboard-, tap-backdrop-, close-button-, Esc- and swipe-dismissible.
+ * @param {Element} root
+ */
+function attachRavPaneSheet(root) {
+  if (root.dataset.paneSheetAttached === 'true') return;
+  root.dataset.paneSheetAttached = 'true';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'rav-sheet';
+  sheet.setAttribute('aria-hidden', 'true');
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.dataset.open = 'false';
+  sheet.innerHTML = `
+    <div class="rav-sheet-backdrop" data-close="true"></div>
+    <div class="rav-sheet-panel" role="document">
+      <button type="button" class="rav-sheet-close" aria-label="Close" data-close="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+      <div class="rav-sheet-grabber" aria-hidden="true"></div>
+      <div class="rav-sheet-badge"></div>
+      <div class="rav-sheet-body"></div>
+    </div>
+  `;
+  root.append(sheet);
+
+  const openSheet = (trigger) => {
+    const body = sheet.querySelector('.rav-sheet-body');
+    const badge = sheet.querySelector('.rav-sheet-badge');
+    const contentEl = trigger.querySelector('.rav-gap-content, .rav-insight-content');
+    badge.textContent = trigger.dataset.sheetTitle || '';
+    body.innerHTML = contentEl ? contentEl.innerHTML : '';
+    sheet.dataset.open = 'true';
+    sheet.setAttribute('aria-hidden', 'false');
+    trigger.setAttribute('aria-expanded', 'true');
+    sheet.activeTrigger = trigger;
+    document.documentElement.style.overflow = 'hidden';
+    requestAnimationFrame(() => sheet.querySelector('.rav-sheet-close')?.focus());
+  };
+
+  const closeSheet = () => {
+    sheet.dataset.open = 'false';
+    sheet.setAttribute('aria-hidden', 'true');
+    if (sheet.activeTrigger) {
+      sheet.activeTrigger.setAttribute('aria-expanded', 'false');
+      sheet.activeTrigger.focus();
+      sheet.activeTrigger = null;
+    }
+    document.documentElement.style.overflow = '';
+  };
+
+  const mq = window.matchMedia('(width < 1000px)');
+  const makeTriggerable = (el) => {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-expanded', 'false');
+  };
+  root.querySelectorAll('.rav-gap, .rav-insight').forEach(makeTriggerable);
+
+  root.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.rav-gap, .rav-insight');
+    if (trigger && mq.matches && !e.target.closest('a')) {
+      openSheet(trigger);
+      return;
+    }
+    if (e.target.closest('[data-close]')) closeSheet();
+  });
+
+  root.addEventListener('keydown', (e) => {
+    const trigger = e.target.closest?.('.rav-gap, .rav-insight');
+    if (trigger && (e.key === 'Enter' || e.key === ' ') && mq.matches) {
+      e.preventDefault();
+      openSheet(trigger);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheet.dataset.open === 'true') closeSheet();
+  });
+
+  const panel = sheet.querySelector('.rav-sheet-panel');
+  let startY = null;
+  let dragging = false;
+  panel.addEventListener('touchstart', (e) => {
+    if (sheet.dataset.open !== 'true' || panel.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    dragging = true;
+    panel.style.transition = 'none';
+  }, { passive: true });
+  panel.addEventListener('touchmove', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) panel.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  panel.addEventListener('touchend', (e) => {
+    if (!dragging || startY == null) return;
+    const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
+    panel.style.transition = '';
+    panel.style.transform = '';
+    dragging = false;
+    startY = null;
+    if (dy > 80) closeSheet();
+  });
+}
+
 // ── Main decorator ──────────────────────────────────────────────────────────
 
 export default async function decorate(block) {
@@ -201,6 +310,7 @@ export default async function decorate(block) {
   block.textContent = '';
   block.append(container);
   setupRavPanelFootnoteHeightSync(block);
+  attachRavPaneSheet(block);
 
   const performanceShell = buildEmptyVisibilityShell('Performance insights');
   block.after(performanceShell);

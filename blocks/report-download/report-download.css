@@ -217,6 +217,157 @@
   background: #d4d4d4;
 }
 
+/* Methodology — how this report was created (full-width, below CTA) */
+.report-download .rd-methodology {
+  grid-column: 1 / -1;
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+  color: light-dark(rgb(255 255 255 / 85%), rgb(255 255 255 / 75%));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.report-download .rd-methodology-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.report-download .rd-methodology-heading {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+
+.report-download .rd-methodology-lede {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgb(255 255 255 / 70%);
+  margin: 0;
+}
+
+.report-download .rd-methodology-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.report-download .rd-pillar {
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-download .rd-pillar-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ff6b6b;
+}
+
+.report-download .rd-pillar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.report-download .rd-pillar-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 70%);
+  margin: 0;
+}
+
+.report-download .rd-pillar-source {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgb(255 255 255 / 55%);
+  margin: auto 0 0;
+}
+
+.report-download .rd-pillar-source-label {
+  font-weight: 700;
+  color: rgb(255 255 255 / 70%);
+}
+
+.report-download .rd-methodology-subheading {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 65%);
+  margin: 8px 0 0;
+}
+
+.report-download .rd-methodology-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  counter-reset: rd-step;
+}
+
+.report-download .rd-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 12px;
+}
+
+.report-download .rd-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3b63fb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.report-download .rd-step-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.report-download .rd-step-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 65%);
+  margin: 0;
+}
+
+.report-download .rd-methodology-footnote {
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 55%);
+  margin: 0;
+  max-width: 760px;
+}
+
 /* Desktop: 2-column layout */
 @media (width >= 1000px) {
   .report-download {
@@ -227,6 +378,11 @@
 
   .report-download .rd-heading {
     font-size: 40px;
+  }
+
+  .report-download .rd-methodology {
+    margin-top: 40px;
+    padding-top: 40px;
   }
 }
 
@@ -305,5 +461,23 @@
   .report-download .rd-cta-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .report-download .rd-methodology-pillars {
+    grid-template-columns: 1fr;
+  }
+
+  .report-download .rd-methodology-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .report-download .rd-methodology-heading {
+    font-size: 20px;
+  }
+}
+
+@media (width >= 1000px) and (width < 1200px) {
+  .report-download .rd-methodology-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

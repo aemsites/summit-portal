@@ -119,6 +119,9 @@
   padding: 0;
   display: grid;
   min-height: 450px;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .report-carousel .rc-slides-wrap > .rc-slide {
