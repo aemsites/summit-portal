@@ -677,10 +677,6 @@ body:has(.report-hero.insight) main {
 
 /* Insight variant mobile */
 @media (width < 1000px) {
-  .report-hero.insight {
-    position: relative;
-    isolation: isolate;
-  }
 
   .report-hero.insight .rh-insight-text {
     padding: 36px 24px 28px;
