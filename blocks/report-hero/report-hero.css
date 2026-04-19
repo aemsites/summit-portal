@@ -330,11 +330,9 @@ body:has(.report-hero.insight) main {
 }
 
 .report-hero.insight .rh-insight-badge-date-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgb(19 19 19 / 45%);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(19 19 19 / 55%);
 }
 
 .report-hero.insight .rh-insight-image {
