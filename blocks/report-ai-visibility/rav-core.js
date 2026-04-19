@@ -538,7 +538,11 @@ export function renderGap({ cells }) {
   content.className = 'rav-gap-content';
   const raw = (cells[1]?.innerHTML || cells[2]?.innerHTML || '').trim();
   content.innerHTML = stripLeadingStrongLabel(raw);
-  wrap.append(badge, content);
+  const chevron = document.createElement('span');
+  chevron.className = 'rav-pane-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  wrap.append(badge, content, chevron);
+  wrap.dataset.sheetTitle = 'Visibility gap';
   return wrap;
 }
 
@@ -577,7 +581,11 @@ export function renderInsight({ cells }) {
   const content = document.createElement('div');
   content.className = 'rav-insight-content';
   content.innerHTML = stripLeadingStrongLabel(cells[1]?.innerHTML || '');
-  wrap.append(badge, content);
+  const chevron = document.createElement('span');
+  chevron.className = 'rav-pane-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  wrap.append(badge, content, chevron);
+  wrap.dataset.sheetTitle = 'Key insight';
   return wrap;
 }
 

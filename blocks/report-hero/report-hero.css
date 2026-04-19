@@ -763,45 +763,67 @@ body:has(.report-hero.insight) main {
 
 /* Insight variant mobile */
 @media (width < 1000px) {
-
   .report-hero.insight .rh-insight-text {
-    padding: 36px 24px 28px;
+    padding: 32px 22px 18px;
     max-width: none;
     margin: 0;
-    gap: 14px;
+    gap: 10px;
   }
 
   .report-hero.insight .rh-insight-text h1,
   .report-hero.insight .rh-insight-text h2 {
-    font-size: 34px;
-    letter-spacing: -0.75px;
-    line-height: 1.05;
-    margin-bottom: 2px;
+    font-size: 30px;
+    letter-spacing: -0.5px;
+    line-height: 1.03;
+    font-weight: 700;
+    margin-bottom: 0;
   }
 
   .report-hero.insight .rh-insight-text p {
-    font-size: 15.5px;
+    font-size: 14.5px;
     line-height: 1.55;
-    color: rgb(255 255 255 / 92%);
-    max-width: 38ch;
+    color: rgb(255 255 255 / 82%);
+    max-width: none;
+    margin-top: 0;
+    font-weight: 400;
   }
 
   .report-hero.insight .rh-insight-badge {
     font-size: 13px;
-    padding: 8px 14px;
-    margin-top: 8px;
+    font-weight: 500;
+    padding: 8px 14px 8px 12px;
+    margin-top: 12px;
+    gap: 8px;
     border-radius: 999px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+    background: rgb(0 0 0 / 28%);
+    border: 1px solid rgb(255 255 255 / 28%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+    transition: background 160ms ease, transform 160ms ease;
+  }
+
+  .report-hero.insight .rh-insight-badge:hover,
+  .report-hero.insight .rh-insight-badge:focus-visible {
+    background: rgb(0 0 0 / 38%);
+  }
+
+  .report-hero.insight .rh-insight-badge:active {
+    transform: scale(0.98);
+  }
+
+  .report-hero.insight .rh-insight-badge-icon {
+    width: 14px;
+    height: 14px;
   }
 
   .report-hero.insight > .rh-insight-bg-svg {
     display: block;
     top: auto;
-    right: -80px;
-    bottom: -80px;
-    width: 360px;
-    height: 360px;
-    opacity: 0.18;
+    right: -60px;
+    bottom: -60px;
+    width: 320px;
+    height: 320px;
+    opacity: 0.22;
     z-index: 0;
   }
 
@@ -809,16 +831,17 @@ body:has(.report-hero.insight) main {
     display: flex;
     justify-content: center;
     overflow: hidden;
-    padding: 0 24px;
+    padding: 0 16px;
+    margin-top: 8px;
   }
 
   .report-hero.insight .rh-insight-image picture {
     display: block;
-    max-width: 400px;
-    width: 400px;
-    border-radius: 8px 8px 0 0;
+    max-width: 360px;
+    width: 100%;
+    border-radius: 10px 10px 0 0;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
   }
 
   .report-hero.insight .rh-insight-image img {
