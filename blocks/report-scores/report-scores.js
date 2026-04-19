@@ -184,6 +184,17 @@ export default function init(el) {
       footer.append(tag);
     }
 
+    if (pageUrl) {
+      const verify = document.createElement('a');
+      verify.className = 'rsc-verify-link';
+      verify.href = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(pageUrl)}`;
+      verify.target = '_blank';
+      verify.rel = 'noopener noreferrer';
+      verify.setAttribute('aria-label', `Verify ${pageName} score on Google PageSpeed Insights (opens in new tab)`);
+      verify.innerHTML = '<svg class="rsc-verify-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M11.25 3.75h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.25 3.75 9.375 10.625" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 11.25v4.375A1.875 1.875 0 0 1 13.125 17.5h-8.75A1.875 1.875 0 0 1 2.5 15.625v-8.75A1.875 1.875 0 0 1 4.375 5H8.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verify on Google PageSpeed Insights</span>';
+      footer.append(verify);
+    }
+
     card.append(header, metrics, footer);
 
     grid.append(card);

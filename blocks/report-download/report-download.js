@@ -189,4 +189,97 @@ export default function init(el) {
 
   el.textContent = '';
   el.append(left, right);
+
+  if (!isDisabled) {
+    el.append(buildMethodology());
+  }
+}
+
+function buildMethodology() {
+  const section = document.createElement('section');
+  section.className = 'rd-methodology';
+  section.setAttribute('aria-labelledby', 'rd-methodology-heading');
+
+  const intro = document.createElement('div');
+  intro.className = 'rd-methodology-intro';
+  intro.innerHTML = `
+    <h3 id="rd-methodology-heading" class="rd-methodology-heading">How this report was created</h3>
+    <p class="rd-methodology-lede">
+      Every finding comes from publicly observable data, measured with industry-standard tools
+      and validated through automated quality checks before it reaches you.
+    </p>
+  `;
+  section.append(intro);
+
+  const pillars = [
+    {
+      label: 'Performance',
+      title: 'Website performance',
+      desc: 'Mobile speed and Core Web Vitals — how fast your site loads and responds for real visitors.',
+      source: 'Google PageSpeed Insights',
+    },
+    {
+      label: 'Search',
+      title: 'Search visibility',
+      desc: 'Organic traffic, keyword rankings, and competitive positioning in search results.',
+      source: 'Industry SEO intelligence platform',
+    },
+    {
+      label: 'AI presence',
+      title: 'AI discoverability',
+      desc: 'How prominently your brand appears when people ask ChatGPT, Gemini, Perplexity, and Copilot.',
+      source: 'AI visibility monitoring',
+    },
+  ];
+
+  const pillarsGrid = document.createElement('div');
+  pillarsGrid.className = 'rd-methodology-pillars';
+  pillars.forEach((p) => {
+    const item = document.createElement('div');
+    item.className = 'rd-pillar';
+    item.innerHTML = `
+      <span class="rd-pillar-label">${p.label}</span>
+      <h4 class="rd-pillar-title">${p.title}</h4>
+      <p class="rd-pillar-desc">${p.desc}</p>
+      <p class="rd-pillar-source"><span class="rd-pillar-source-label">Source:</span> ${p.source}</p>
+    `;
+    pillarsGrid.append(item);
+  });
+  section.append(pillarsGrid);
+
+  const steps = [
+    { n: 1, title: 'Select pages', desc: 'Homepage, top product, and key conversion pages are identified.' },
+    { n: 2, title: 'Measure', desc: 'Performance, SEO, and AI visibility data are collected from each source.' },
+    { n: 3, title: 'Analyze', desc: 'Patterns, opportunities, and competitive gaps are surfaced across all three dimensions.' },
+    { n: 4, title: 'Validate', desc: 'Every quantitative claim is verified against source data by automated checks.' },
+    { n: 5, title: 'Synthesize', desc: 'Findings become actionable recommendations tailored to your business.' },
+  ];
+
+  const stepsHeading = document.createElement('h4');
+  stepsHeading.className = 'rd-methodology-subheading';
+  stepsHeading.textContent = 'The five-step process';
+  section.append(stepsHeading);
+
+  const stepsList = document.createElement('ol');
+  stepsList.className = 'rd-methodology-steps';
+  steps.forEach((s) => {
+    const li = document.createElement('li');
+    li.className = 'rd-step';
+    li.innerHTML = `
+      <span class="rd-step-number" aria-hidden="true">${s.n}</span>
+      <div class="rd-step-body">
+        <h5 class="rd-step-title">${s.title}</h5>
+        <p class="rd-step-desc">${s.desc}</p>
+      </div>
+    `;
+    stepsList.append(li);
+  });
+  section.append(stepsList);
+
+  const footnote = document.createElement('p');
+  footnote.className = 'rd-methodology-footnote';
+  footnote.textContent = 'This report analyzes publicly accessible data only. It complements — but does not replace — your internal analytics.';
+  section.append(footnote);
+
+  return section;
 }

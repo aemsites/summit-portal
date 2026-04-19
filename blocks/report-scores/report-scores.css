@@ -222,6 +222,32 @@
 .report-scores .rsc-mv-warning { color: var(--rsc-warning); }
 .report-scores .rsc-mv-good { color: var(--rsc-good); }
 
+/* Verify on PageSpeed link */
+.report-scores .rsc-verify-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: light-dark(#505050, #bbb);
+  text-decoration: none;
+  padding: 8px 0 0;
+  align-self: flex-start;
+  min-height: 32px;
+  line-height: 1.3;
+  transition: color 0.15s ease;
+}
+
+.report-scores .rsc-verify-link:hover,
+.report-scores .rsc-verify-link:focus-visible {
+  color: var(--rpt-red-dark);
+  text-decoration: underline;
+}
+
+.report-scores .rsc-verify-icon {
+  flex-shrink: 0;
+}
+
 /* Footer — summary + recommendation */
 .report-scores .rsc-card-footer {
   padding: 16px 24px 20px;
