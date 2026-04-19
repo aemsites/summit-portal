@@ -332,6 +332,75 @@
   }
 }
 
+/* Scroll affordance: a one-shot chevron hint below the KPI grid on mobile
+   so first-time viewers know more content sits below the fold. */
+@media (width < 1000px) {
+  .report-stats.dark {
+    position: relative;
+    padding-bottom: 36px;
+  }
+
+  .report-stats.dark::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    width: 22px;
+    height: 22px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 20px 20px;
+    opacity: 0;
+    pointer-events: none;
+    animation: rs-scroll-hint 4.2s ease-out 2s 1 forwards;
+  }
+
+  @keyframes rs-scroll-hint {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -4px);
+    }
+
+    15% {
+      opacity: 0.85;
+      transform: translate(-50%, 0);
+    }
+
+    30% {
+      opacity: 0.85;
+      transform: translate(-50%, 6px);
+    }
+
+    45% {
+      opacity: 0.85;
+      transform: translate(-50%, 0);
+    }
+
+    60% {
+      opacity: 0.85;
+      transform: translate(-50%, 6px);
+    }
+
+    75% {
+      opacity: 0.85;
+      transform: translate(-50%, 0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+  }
+}
+
+@media (width < 1000px) and (prefers-reduced-motion: reduce) {
+  .report-stats.dark::after {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 @media (width < 768px) {
   .report-stats.dark .rs-dark-card {
     padding: 18px 14px 16px;
