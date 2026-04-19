@@ -1,0 +1,237 @@
+.report-feedback {
+  position: fixed;
+  right: var(--spacing-l);
+  bottom: var(--spacing-l);
+  z-index: 50;
+  font-family: var(--font-family);
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.report-feedback.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: rf-attention 0.9s ease 0.35s 1;
+}
+
+@keyframes rf-attention {
+  0%, 100% { box-shadow: 0 12px 32px rgb(0 0 0 / 14%), 0 4px 10px rgb(0 0 0 / 8%); }
+  50% { box-shadow: 0 12px 32px rgb(0 0 0 / 14%), 0 0 0 6px rgb(230 0 0 / 12%); }
+}
+
+.report-feedback.is-dismissed {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.report-feedback .rf-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: 12px 16px 12px 14px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 14%), 0 4px 10px rgb(0 0 0 / 8%);
+  backdrop-filter: blur(10px);
+  transition: border-radius 0.25s ease, padding 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.report-feedback .rf-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgb(230 0 0 / 6%) 45%, transparent 70%);
+  pointer-events: none;
+}
+
+.report-feedback .rf-sparkle {
+  font-size: 18px;
+  line-height: 1;
+  animation: rf-sparkle-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes rf-sparkle-pulse {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(8deg); }
+}
+
+.report-feedback .rf-prompt-sub {
+  display: block;
+  font-size: var(--body-font-size-xs);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.report-feedback.is-expanded .rf-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-s);
+  padding: 14px 16px;
+  border-radius: 16px;
+  min-width: 280px;
+}
+
+.report-feedback .rf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-m);
+}
+
+.report-feedback .rf-prompt {
+  margin: 0;
+  font-size: var(--body-font-size-s);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+
+.report-feedback.is-expanded .rf-prompt {
+  white-space: normal;
+}
+
+.report-feedback .rf-buttons {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.report-feedback .rf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+}
+
+.report-feedback .rf-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.report-feedback .rf-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--color-surface-hover);
+  border-color: var(--color-adobe-red);
+  color: var(--color-adobe-red);
+}
+
+.report-feedback .rf-btn:focus-visible,
+.report-feedback .rf-close:focus-visible,
+.report-feedback .rf-tag:focus-visible {
+  outline: 2px solid var(--color-adobe-red);
+  outline-offset: 2px;
+}
+
+.report-feedback .rf-btn:disabled,
+.report-feedback .rf-tag:disabled {
+  cursor: default;
+}
+
+.report-feedback .rf-btn-dimmed {
+  opacity: 0.3;
+}
+
+.report-feedback .rf-btn-selected {
+  background: var(--color-adobe-red);
+  border-color: var(--color-adobe-red);
+  color: #fff;
+}
+
+.report-feedback .rf-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.report-feedback .rf-close svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.report-feedback .rf-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.report-feedback .rf-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.report-feedback .rf-tag {
+  font-size: var(--body-font-size-xs);
+  font-weight: 500;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.report-feedback .rf-tag:hover:not(:disabled) {
+  border-color: var(--color-adobe-red);
+  color: var(--color-adobe-red);
+}
+
+.report-feedback .rf-tag-selected {
+  background: var(--color-adobe-red);
+  border-color: var(--color-adobe-red);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-feedback,
+  .report-feedback .rf-card,
+  .report-feedback .rf-btn,
+  .report-feedback .rf-tag {
+    transition: none;
+  }
+}
+
+@media (width < 600px) {
+  .report-feedback {
+    right: var(--spacing-m);
+    bottom: calc(var(--spacing-m) + env(safe-area-inset-bottom, 0px));
+    left: var(--spacing-m);
+  }
+
+  .report-feedback .rf-card {
+    justify-content: space-between;
+  }
+
+  .report-feedback.is-expanded .rf-card {
+    min-width: 0;
+  }
+
+  .report-feedback .rf-prompt {
+    font-size: var(--body-font-size-xs);
+    white-space: normal;
+  }
+}
