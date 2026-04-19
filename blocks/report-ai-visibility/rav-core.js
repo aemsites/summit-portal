@@ -515,7 +515,7 @@ export function renderPlatforms({ cells }) {
 /** Canonical copy for legacy authored subtitles (CMS may still serve old text). */
 const RAV_PANEL_SUB_NIKE_CITATIONS = 'How Nike\'s AI citations are split across each tracked platform for the prompts we monitor.';
 
-export function renderPanel({ cells }) {
+export function renderPanel({ cells }, { skipChart = false } = {}) {
   const panel = document.createElement('div');
   panel.className = 'rav-panel';
   // Title
@@ -539,7 +539,7 @@ export function renderPanel({ cells }) {
     panel.append(sub);
   }
   // Chart
-  const chartData = parseChartCell(cells[2]);
+  const chartData = skipChart ? null : parseChartCell(cells[2]);
   const chart = renderChart(chartData);
   if (chart) {
     const cw = document.createElement('div');

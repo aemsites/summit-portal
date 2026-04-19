@@ -123,6 +123,58 @@ const PANEL_ROW_TYPES = new Set([
 ]);
 
 /**
+ * Pair groups for panel rows — rows in the same group stack side-by-side in
+ * a single `.rav-panels` shell, saving vertical space on desktop.
+ */
+const PANEL_ROW_GROUPS = [
+  new Set(['headline', 'comparison']),
+  new Set(['topic', 'opportunities']),
+];
+
+/** @param {string} type */
+function panelGroupFor(type) {
+  return PANEL_ROW_GROUPS.find((g) => g.has(type)) || new Set([type]);
+}
+
+/**
+ * Collapse long `.rav-rec-list` and `.rav-metric-strip` bodies on mobile
+ * behind a "Show all N" disclosure. Keeps the first row visible so the
+ * user sees the top signal, and reveals the rest inline on tap.
+ * @param {Element} root
+ */
+function attachRavMobileCollapse(root) {
+  const targets = [
+    { sel: '.rav-rec-list', item: '.rav-rec-card', keep: 1, noun: 'opportunity', plural: 'opportunities' },
+    { sel: '.rav-metric-strip', item: '.rav-ms-row', keep: 2, noun: 'metric', plural: 'metrics' },
+  ];
+  targets.forEach(({ sel, item, keep, noun, plural }) => {
+    root.querySelectorAll(sel).forEach((list) => {
+      const items = [...list.querySelectorAll(item)];
+      if (items.length <= keep) return;
+      if (list.dataset.collapseAttached === 'true') return;
+      list.dataset.collapseAttached = 'true';
+      list.dataset.collapsed = 'true';
+      const hidden = items.slice(keep);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'rav-collapse-toggle';
+      const hiddenCount = hidden.length;
+      const moreLabel = `Show all ${items.length} ${hiddenCount === 1 ? noun : plural}`;
+      const lessLabel = 'Show less';
+      btn.textContent = moreLabel;
+      btn.setAttribute('aria-expanded', 'false');
+      list.after(btn);
+      btn.addEventListener('click', () => {
+        const expanded = list.dataset.collapsed === 'false';
+        list.dataset.collapsed = expanded ? 'true' : 'false';
+        btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        btn.textContent = expanded ? moreLabel : lessLabel;
+      });
+    });
+  });
+}
+
+/**
  * Tap-to-expand bottom sheet for .rav-gap / .rav-insight panes on mobile.
  * Sheet is keyboard-, tap-backdrop-, close-button-, Esc- and swipe-dismissible.
  * @param {Element} root
@@ -265,15 +317,18 @@ export default async function decorate(block) {
       panelsOuter.className = 'rav-panels-outer';
       const panelWrap = document.createElement('div');
       panelWrap.className = 'rav-panels';
-      // `headline` pairs with `comparison` (legacy layout). All other
-      // panel row types group only with their own kind so e.g. two
-      // `competitors` rows render side-by-side while a standalone
-      // `topic` or `opportunities` row renders centered.
-      const groupTypes = (type === 'headline' || type === 'comparison')
-        ? new Set(['headline', 'comparison'])
-        : new Set([type]);
+      // Group pairs share one panels shell so paired rows sit side-by-side
+      // on desktop (see PANEL_ROW_GROUPS). Standalone kinds stay centered
+      // on their own row via the existing `:only-child` CSS rule.
+      const groupTypes = panelGroupFor(type);
       while (i < rows.length && groupTypes.has(rows[i].type)) {
-        panelWrap.append(renderPanel(rows[i]));
+        // Skip the headline bigfigure chart — it duplicates the AI
+        // visibility score already shown in the stats strip above.
+        if (rows[i].type === 'headline') {
+          panelWrap.append(renderPanel(rows[i], { skipChart: true }));
+        } else {
+          panelWrap.append(renderPanel(rows[i]));
+        }
         i += 1;
       }
       panelsOuter.append(panelWrap);
@@ -311,6 +366,7 @@ export default async function decorate(block) {
   block.append(container);
   setupRavPanelFootnoteHeightSync(block);
   attachRavPaneSheet(block);
+  attachRavMobileCollapse(block);
 
   const performanceShell = buildEmptyVisibilityShell('Performance insights');
   block.after(performanceShell);

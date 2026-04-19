@@ -438,6 +438,25 @@
   color: var(--rpt-text-faint);
 }
 
+/* ── Mobile collapse toggle (recommendation / metric-strip disclosure) ──── */
+.report-ai-visibility .rav-collapse-toggle {
+  display: none;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--rpt-border, var(--color-border));
+  border-radius: 999px;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-ai-visibility .rav-collapse-toggle:hover {
+  background: light-dark(rgb(243 243 243 / 100%), rgb(50 50 50));
+}
+
 /* ── Metric strip ─────────────────────────────────────────────────────────── */
 .report-ai-visibility .rav-metric-strip {
   width: 100%;
@@ -837,6 +856,17 @@
     gap: 20px;
     padding: 32px;
     align-items: start;
+  }
+
+  /* Mobile collapse: hide rows past the first couple behind a disclosure
+     button so long recommendation / metric lists don't dominate the view. */
+  .report-ai-visibility .rav-collapse-toggle {
+    display: block;
+  }
+
+  .report-ai-visibility .rav-rec-list[data-collapsed="true"] > .rav-rec-card:nth-of-type(n+2),
+  .report-ai-visibility .rav-metric-strip[data-collapsed="true"] > .rav-ms-row:nth-of-type(n+3) {
+    display: none;
   }
 }
 
