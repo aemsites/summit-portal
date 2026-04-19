@@ -180,6 +180,14 @@
   --color-border: light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%));
   --color-border-subtle: light-dark(rgb(0 0 0 / 6%), rgb(255 255 255 / 7%));
 
+  /* Carousel, LLM app, AI visibility — shared section / block chrome (insight report) */
+  --rpt-insight-section-bg: light-dark(#fff, #2a2a2a);
+
+  /* report carousel slide, AI visibility panels, page performance cards (needs overflow: visible on card + ancestors — see block CSS) */
+  --rpt-card-shadow:
+    0 4px 16px 0 rgb(15 23 42 / 4%),
+    0 8px 32px 0 rgb(15 23 42 / 4%);
+
   /* semantic text */
   --color-text-secondary: light-dark(#4b5563, #b0b8c4);
   --color-text-muted: light-dark(#6b7280, #8b95a5);
@@ -212,12 +220,30 @@
   --breadcrumb-height: 24px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rpt-card-shadow:
+      0 1px 4px 0 rgb(0 0 0 / 45%),
+      0 8px 30px 0 rgb(0 0 0 / 38%),
+      0 18px 52px 0 rgb(0 0 0 / 28%);
+  }
+}
+
 .light-scheme {
   color-scheme: light;
+
+  --rpt-card-shadow:
+    0 4px 16px 0 rgb(15 23 42 / 4%),
+    0 8px 32px 0 rgb(15 23 42 / 4%);
 }
 
 .dark-scheme {
   color-scheme: dark;
+
+  --rpt-card-shadow:
+    0 1px 4px 0 rgb(0 0 0 / 45%),
+    0 8px 30px 0 rgb(0 0 0 / 38%),
+    0 18px 52px 0 rgb(0 0 0 / 28%);
 }
 
 html {

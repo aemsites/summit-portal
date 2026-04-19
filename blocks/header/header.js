@@ -54,29 +54,54 @@ function decorateLanguage(btn) {
   });
 }
 
-function decorateScheme(btn) {
-  btn.addEventListener('click', async () => {
-    const { body } = document;
+function getStoredOrPreferredScheme() {
+  const stored = localStorage.getItem('color-scheme');
+  if (stored === 'light-scheme' || stored === 'dark-scheme') {
+    return stored;
+  }
+  return matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark-scheme'
+    : 'light-scheme';
+}
 
-    let currPref = localStorage.getItem('color-scheme');
-    if (!currPref) {
-      currPref = matchMedia('(prefers-color-scheme: dark)')
-        .matches ? 'dark-scheme' : 'light-scheme';
-    }
+/** Keeps the switch visuals in sync with body class / storage / system preference */
+function syncSchemeToggle(btn) {
+  if (!btn) return;
+  const scheme = getStoredOrPreferredScheme();
+  btn.setAttribute('aria-checked', scheme === 'dark-scheme' ? 'true' : 'false');
+}
+
+function decorateScheme(btn) {
+  btn.setAttribute('type', 'button');
+  btn.setAttribute('role', 'switch');
+  btn.setAttribute('aria-label', 'Color theme');
+
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', () => {
+    if (localStorage.getItem('color-scheme')) return;
+    syncSchemeToggle(btn);
+  });
+
+  btn.addEventListener('click', () => {
+    const currPref = localStorage.getItem('color-scheme')
+      || (mq.matches ? 'dark-scheme' : 'light-scheme');
 
     const theme = currPref === 'dark-scheme'
       ? { add: 'light-scheme', remove: 'dark-scheme' }
       : { add: 'dark-scheme', remove: 'light-scheme' };
 
-    body.classList.remove(theme.remove);
-    body.classList.add(theme.add);
+    document.body.classList.remove(theme.remove);
+    document.body.classList.add(theme.add);
     localStorage.setItem('color-scheme', theme.add);
-    // Re-calculatie section schemes
+    syncSchemeToggle(btn);
+
     const sections = document.querySelectorAll('.section');
     for (const section of sections) {
       setColorScheme(section);
     }
   });
+
+  syncSchemeToggle(btn);
 }
 
 function decorateNavToggle(btn) {
@@ -86,6 +111,8 @@ function decorateNavToggle(btn) {
   });
 }
 
+const SCHEME_SUN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" focusable="false"><circle cx="12" cy="12" r="3.5"/><path d="M12 1v2.5M12 20.5V23M4.22 4.22l1.77 1.77M18.01 18.01l1.77 1.77M1 12h2.5M20.5 12H23M4.22 19.78l1.77-1.77M18.01 5.99l1.77-1.77"/></svg>';
+
 async function decorateAction(header, pattern) {
   const link = header.querySelector(`[href*="${pattern}"]`);
   if (!link) return;
@@ -93,7 +120,17 @@ async function decorateAction(header, pattern) {
   const icon = link.querySelector('.icon');
   const text = link.textContent;
   const btn = document.createElement('button');
-  if (icon) btn.append(icon);
+
+  if (pattern === '/tools/widgets/scheme') {
+    const sun = document.createElement('span');
+    sun.className = 'scheme-sun';
+    sun.setAttribute('aria-hidden', 'true');
+    sun.innerHTML = SCHEME_SUN_SVG;
+    btn.append(sun);
+  } else if (icon) {
+    btn.append(icon);
+  }
+
   if (text) {
     const textSpan = document.createElement('span');
     textSpan.className = 'text';
@@ -101,13 +138,30 @@ async function decorateAction(header, pattern) {
     btn.append(textSpan);
   }
   const wrapper = document.createElement('div');
-  wrapper.className = `action-wrapper ${icon.classList[1].replace('icon-', '')}`;
+  const iconSlug = icon?.classList[1]?.replace('icon-', '') ?? 'widget';
+  wrapper.className = `action-wrapper ${iconSlug}`;
   wrapper.append(btn);
   link.parentElement.parentElement.replaceChild(wrapper, link.parentElement);
 
-  if (pattern === '/tools/widgets/language') decorateLanguage(btn);
-  if (pattern === '/tools/widgets/scheme') decorateScheme(btn);
-  if (pattern === '/tools/widgets/toggle') decorateNavToggle(btn);
+  if (pattern === '/tools/widgets/language') {
+    wrapper.classList.add('header-language');
+    decorateLanguage(btn);
+  }
+  if (pattern === '/tools/widgets/scheme') {
+    wrapper.classList.add('header-scheme');
+    const track = document.createElement('span');
+    track.className = 'scheme-switch-track';
+    track.setAttribute('aria-hidden', 'true');
+    const thumb = document.createElement('span');
+    thumb.className = 'scheme-switch-thumb';
+    track.append(thumb);
+    btn.append(track);
+    decorateScheme(btn);
+  }
+  if (pattern === '/tools/widgets/toggle') {
+    wrapper.classList.add('header-nav-toggle');
+    decorateNavToggle(btn);
+  }
 }
 
 function decorateMenu() {
@@ -237,7 +291,7 @@ export default async function init(el) {
     fragment.classList.add('header-content');
     await decorateHeader(fragment);
     el.append(fragment);
-  } catch (e) {
+  } catch {
     // Fragment not found or failed to load — silently skip header
   }
 }
