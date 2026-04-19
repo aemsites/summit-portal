@@ -156,16 +156,40 @@ export default function init(el) {
 
     const metrics = document.createElement('div');
     metrics.className = 'rsc-metrics';
-    [['LCP', lcp], ['INP', fid], ['CLS', cls]].forEach(([label, val]) => {
+    const metricDefs = [
+      {
+        label: 'LCP',
+        plain: 'Load time',
+        desc: 'Largest Contentful Paint — how long visitors wait for the main content to appear. Google\'s target is under 2.5 seconds.',
+        val: lcp,
+      },
+      {
+        label: 'INP',
+        plain: 'Responsiveness',
+        desc: 'Interaction to Next Paint — how quickly the page reacts when visitors tap or click. Google\'s target is under 200 milliseconds.',
+        val: fid,
+      },
+      {
+        label: 'CLS',
+        plain: 'Layout stability',
+        desc: 'Cumulative Layout Shift — how much the page jumps around as it loads. Google\'s target is under 0.1.',
+        val: cls,
+      },
+    ];
+    metricDefs.forEach(({ label, plain, desc, val }) => {
       const m = document.createElement('div');
       m.className = 'rsc-metric';
+      m.title = `${plain} (${label}): ${desc}`;
       const mv = document.createElement('span');
       mv.className = `rsc-metric-value rsc-mv-${metricStatus(label, val)}`;
       mv.textContent = val;
       const ml = document.createElement('span');
       ml.className = 'rsc-metric-label';
-      ml.textContent = label;
-      m.append(mv, ml);
+      ml.textContent = plain;
+      const ma = document.createElement('span');
+      ma.className = 'rsc-metric-acronym';
+      ma.textContent = label;
+      m.append(mv, ml, ma);
       metrics.append(m);
     });
 
