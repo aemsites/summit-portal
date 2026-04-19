@@ -55,12 +55,38 @@ function buildInsightHero(block, rows) {
           globeIcon.setAttribute('aria-hidden', 'true');
           globeIcon.width = 16;
           globeIcon.height = 16;
-          anchor.prepend(globeIcon);
           anchor.className = 'rh-insight-badge';
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+
+          // Pretty-print the URL: drop protocol, www., and trailing slash
+          const rawText = anchor.textContent.trim();
+          let pretty = rawText;
+          try {
+            const u = new URL(anchor.href);
+            pretty = u.hostname.replace(/^www\./, '')
+              + (u.pathname === '/' ? '' : u.pathname)
+              + (u.search || '');
+          } catch {
+            pretty = rawText.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+          }
+          anchor.textContent = '';
+
+          const urlEl = document.createElement('span');
+          urlEl.className = 'rh-insight-badge-url';
+          urlEl.textContent = pretty;
+
+          const extIcon = document.createElement('span');
+          extIcon.className = 'rh-insight-badge-ext';
+          extIcon.setAttribute('aria-hidden', 'true');
+          extIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 20 20" fill="none"><path d="M11.25 3.75h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.25 3.75 9.375 10.625" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 11.25v4.375A1.875 1.875 0 0 1 13.125 17.5h-8.75A1.875 1.875 0 0 1 2.5 15.625v-8.75A1.875 1.875 0 0 1 4.375 5H8.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
           const dateSuffix = document.createElement('span');
           dateSuffix.className = 'rh-insight-badge-date';
           dateSuffix.innerHTML = '<span class="rh-insight-badge-date-label">Measured</span> Apr 10, 2026';
-          anchor.append(dateSuffix);
+
+          anchor.append(globeIcon, urlEl, extIcon, dateSuffix);
+          anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);
           textCol.append(anchor);
           return;
         }
