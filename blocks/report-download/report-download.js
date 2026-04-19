@@ -7,7 +7,7 @@
  *   Paragraphs may be nested (e.g. default-content wrapper); any <p> in the cell is scanned.
  *   Rows with 3+ columns use the last column as the PDF cell.
  *   A single wrapper row may nest two inner columns.
- *   PDF card `h3` is the static phrase “Full digital performance report”.
+ *   PDF card `h3` is the static phrase “Full Digital Opportunity Report”.
  */
 
 /** @param {Element} row */
@@ -26,7 +26,7 @@ function resolveRowCells(row) {
 }
 
 /** Shown on `.rd-pdf-title` (always the same). */
-const PDF_CARD_HEADLINE = 'Full digital performance report';
+const PDF_CARD_HEADLINE = 'Full Digital Opportunity Report';
 
 const UNAVAILABLE_MESSAGE = 'Report unavailable — insufficient data quality to meet our bar.';
 
@@ -123,7 +123,7 @@ export default function init(el) {
   const ctaBtn = document.createElement('a');
   ctaBtn.className = 'rd-cta-btn';
   ctaBtn.href = isDisabled ? '#' : downloadHref;
-  ctaBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M13.53 9.427c-.292-.292-.766-.294-1.06 0l-1.717 1.714V2.75c0-.414-.336-.75-.75-.75s-.75.336-.75.75v8.4L7.53 9.426c-.293-.293-.767-.293-1.06 0s-.293.767 0 1.06l2.998 2.998c.146.147.338.22.53.22.191 0 .384-.073.53-.22l3.002-2.998c.293-.292.293-.767 0-1.06"/><path fill="currentColor" d="M15.75 18H4.25C3.01 18 2 16.99 2 15.75v-2.021c0-.415.336-.75.75-.75s.75.335.75.75v2.021c0 .413.337.75.75.75h11.5c.413 0 .75-.337.75-.75v-2.021c0-.415.336-.75.75-.75s.75.335.75.75v2.021c0 1.24-1.01 2.25-2.25 2.25"/></svg> Download full report';
+  ctaBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M13.53 9.427c-.292-.292-.766-.294-1.06 0l-1.717 1.714V2.75c0-.414-.336-.75-.75-.75s-.75.336-.75.75v8.4L7.53 9.426c-.293-.293-.767-.293-1.06 0s-.293.767 0 1.06l2.998 2.998c.146.147.338.22.53.22.191 0 .384-.073.53-.22l3.002-2.998c.293-.292.293-.767 0-1.06"/><path fill="currentColor" d="M15.75 18H4.25C3.01 18 2 16.99 2 15.75v-2.021c0-.415.336-.75.75-.75s.75.335.75.75v2.021c0 .413.337.75.75.75h11.5c.413 0 .75-.337.75-.75v-2.021c0-.415.336-.75.75-.75s.75.335.75.75v2.021c0 1.24-1.01 2.25-2.25 2.25"/></svg> Download full Digital Opportunity Report';
   if (isDisabled) {
     ctaBtn.classList.add('rd-cta-btn-disabled');
     ctaBtn.setAttribute('aria-disabled', 'true');
@@ -189,4 +189,97 @@ export default function init(el) {
 
   el.textContent = '';
   el.append(left, right);
+
+  if (!isDisabled) {
+    el.append(buildMethodology());
+  }
+}
+
+function buildMethodology() {
+  const section = document.createElement('section');
+  section.className = 'rd-methodology';
+  section.setAttribute('aria-labelledby', 'rd-methodology-heading');
+
+  const intro = document.createElement('div');
+  intro.className = 'rd-methodology-intro';
+  intro.innerHTML = `
+    <h3 id="rd-methodology-heading" class="rd-methodology-heading">How your Digital Opportunity Report was created</h3>
+    <p class="rd-methodology-lede">
+      Every finding comes from publicly observable data, measured with industry-standard tools
+      and validated through automated quality checks before it reaches you.
+    </p>
+  `;
+  section.append(intro);
+
+  const pillars = [
+    {
+      label: 'Performance',
+      title: 'Website performance',
+      desc: 'Mobile speed and Core Web Vitals under a standardized lab profile (mid-tier device, throttled 4G). Comparable across pages and over time; not real-user monitoring.',
+      source: 'Google PageSpeed Insights',
+    },
+    {
+      label: 'Search',
+      title: 'Search visibility',
+      desc: 'Organic traffic, keyword rankings, and competitive positioning in search results.',
+      source: 'Industry SEO intelligence platform',
+    },
+    {
+      label: 'AI presence',
+      title: 'AI discoverability',
+      desc: 'How prominently your brand appears when people ask ChatGPT, Gemini, Perplexity, and Copilot.',
+      source: 'AI visibility monitoring',
+    },
+  ];
+
+  const pillarsGrid = document.createElement('div');
+  pillarsGrid.className = 'rd-methodology-pillars';
+  pillars.forEach((p) => {
+    const item = document.createElement('div');
+    item.className = 'rd-pillar';
+    item.innerHTML = `
+      <span class="rd-pillar-label">${p.label}</span>
+      <h4 class="rd-pillar-title">${p.title}</h4>
+      <p class="rd-pillar-desc">${p.desc}</p>
+      <p class="rd-pillar-source"><span class="rd-pillar-source-label">Source:</span> ${p.source}</p>
+    `;
+    pillarsGrid.append(item);
+  });
+  section.append(pillarsGrid);
+
+  const steps = [
+    { n: 1, title: 'Select pages', desc: 'Homepage, top product, and key conversion pages are identified.' },
+    { n: 2, title: 'Measure', desc: 'Performance, SEO, and AI visibility data are collected from each source.' },
+    { n: 3, title: 'Analyze', desc: 'Patterns, opportunities, and competitive gaps are surfaced across all three dimensions.' },
+    { n: 4, title: 'Validate', desc: 'Every quantitative claim is verified against source data by automated checks.' },
+    { n: 5, title: 'Synthesize', desc: 'Findings become actionable recommendations tailored to your business.' },
+  ];
+
+  const stepsHeading = document.createElement('h4');
+  stepsHeading.className = 'rd-methodology-subheading';
+  stepsHeading.textContent = 'The five-step process';
+  section.append(stepsHeading);
+
+  const stepsList = document.createElement('ol');
+  stepsList.className = 'rd-methodology-steps';
+  steps.forEach((s) => {
+    const li = document.createElement('li');
+    li.className = 'rd-step';
+    li.innerHTML = `
+      <span class="rd-step-number" aria-hidden="true">${s.n}</span>
+      <div class="rd-step-body">
+        <h5 class="rd-step-title">${s.title}</h5>
+        <p class="rd-step-desc">${s.desc}</p>
+      </div>
+    `;
+    stepsList.append(li);
+  });
+  section.append(stepsList);
+
+  const footnote = document.createElement('p');
+  footnote.className = 'rd-methodology-footnote';
+  footnote.textContent = 'This report analyzes publicly accessible data only. It complements — but does not replace — your internal analytics.';
+  section.append(footnote);
+
+  return section;
 }

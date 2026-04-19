@@ -823,6 +823,8 @@ export default function init(el) {
   // ── Slides wrapper ─────────────────────────────────────────
   const slidesWrap = document.createElement('div');
   slidesWrap.className = 'rc-slides-wrap';
+  slidesWrap.setAttribute('aria-live', 'polite');
+  slidesWrap.setAttribute('aria-roledescription', 'carousel');
 
   const slideEls = slides.map((slide) => {
     const slideEl = buildSlideEl(slide);
@@ -992,4 +994,51 @@ export default function init(el) {
   // Trigger cascade on the initial visible slide
   const initialSlide = slideEls.find((s) => !s.hidden);
   if (initialSlide) triggerCascade(initialSlide);
+
+  // ── Touch/pointer swipe navigation ─────────────────────────
+  // Horizontal swipe between slides; vertical scroll is preserved via touch-action: pan-y.
+  const SWIPE_THRESHOLD_PX = 40;
+  const SWIPE_MAX_VERTICAL_RATIO = 0.8;
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  let swipePointerId = null;
+  let swipeActive = false;
+
+  const goPrev = () => {
+    const curr = currentIdxByTab[currentTab];
+    const count = tabSlides[currentTab].length;
+    goToSlide(curr > 0 ? curr - 1 : count - 1, 'prev');
+  };
+  const goNext = () => {
+    const curr = currentIdxByTab[currentTab];
+    const count = tabSlides[currentTab].length;
+    goToSlide(curr < count - 1 ? curr + 1 : 0, 'next');
+  };
+
+  const isInteractive = (target) => !!(target && target.closest
+    && target.closest('button, a, input, select, textarea, [role="button"]'));
+
+  slidesWrap.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (isInteractive(e.target)) return;
+    swipeStartX = e.clientX;
+    swipeStartY = e.clientY;
+    swipePointerId = e.pointerId;
+    swipeActive = true;
+  });
+
+  slidesWrap.addEventListener('pointerup', (e) => {
+    if (!swipeActive || e.pointerId !== swipePointerId) return;
+    swipeActive = false;
+    const dx = e.clientX - swipeStartX;
+    const dy = e.clientY - swipeStartY;
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+    if (Math.abs(dy) > Math.abs(dx) * SWIPE_MAX_VERTICAL_RATIO) return;
+    if (dx < 0) goNext();
+    else goPrev();
+  });
+
+  slidesWrap.addEventListener('pointercancel', () => {
+    swipeActive = false;
+  });
 }
