@@ -96,6 +96,47 @@ function metricStatus(label, val) {
   return 'good';
 }
 
+const METRIC_DEFS = [
+  {
+    key: 'LCP',
+    plain: 'Load time',
+    desc: 'How long visitors wait for the main content to appear. Target: under 2.5s.',
+  },
+  {
+    key: 'INP',
+    plain: 'Responsiveness',
+    desc: 'How quickly the page reacts when visitors tap or click. Target: under 200ms.',
+  },
+  {
+    key: 'CLS',
+    plain: 'Layout stability',
+    desc: 'How much the page jumps around as it loads. Target: under 0.1.',
+  },
+];
+
+function buildLegend() {
+  const legend = document.createElement('div');
+  legend.className = 'rsc-legend';
+  const intro = document.createElement('p');
+  intro.className = 'rsc-legend-intro';
+  intro.textContent = 'Each card measures three Core Web Vitals:';
+  legend.append(intro);
+
+  const list = document.createElement('dl');
+  list.className = 'rsc-legend-list';
+  METRIC_DEFS.forEach(({ plain, desc }) => {
+    const dt = document.createElement('dt');
+    dt.className = 'rsc-legend-term';
+    dt.textContent = plain;
+    const dd = document.createElement('dd');
+    dd.className = 'rsc-legend-desc';
+    dd.textContent = desc;
+    list.append(dt, dd);
+  });
+  legend.append(list);
+  return legend;
+}
+
 export default function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
   const grid = document.createElement('div');
@@ -156,40 +197,18 @@ export default function init(el) {
 
     const metrics = document.createElement('div');
     metrics.className = 'rsc-metrics';
-    const metricDefs = [
-      {
-        label: 'LCP',
-        plain: 'Load time',
-        desc: 'Largest Contentful Paint — how long visitors wait for the main content to appear. Google\'s target is under 2.5 seconds.',
-        val: lcp,
-      },
-      {
-        label: 'INP',
-        plain: 'Responsiveness',
-        desc: 'Interaction to Next Paint — how quickly the page reacts when visitors tap or click. Google\'s target is under 200 milliseconds.',
-        val: fid,
-      },
-      {
-        label: 'CLS',
-        plain: 'Layout stability',
-        desc: 'Cumulative Layout Shift — how much the page jumps around as it loads. Google\'s target is under 0.1.',
-        val: cls,
-      },
-    ];
-    metricDefs.forEach(({ label, plain, desc, val }) => {
+    const vals = { LCP: lcp, INP: fid, CLS: cls };
+    METRIC_DEFS.forEach(({ key, plain }) => {
+      const val = vals[key];
       const m = document.createElement('div');
       m.className = 'rsc-metric';
-      m.title = `${plain} (${label}): ${desc}`;
       const mv = document.createElement('span');
-      mv.className = `rsc-metric-value rsc-mv-${metricStatus(label, val)}`;
+      mv.className = `rsc-metric-value rsc-mv-${metricStatus(key, val)}`;
       mv.textContent = val;
       const ml = document.createElement('span');
       ml.className = 'rsc-metric-label';
       ml.textContent = plain;
-      const ma = document.createElement('span');
-      ma.className = 'rsc-metric-acronym';
-      ma.textContent = label;
-      m.append(mv, ml, ma);
+      m.append(mv, ml);
       metrics.append(m);
     });
 
@@ -225,5 +244,5 @@ export default function init(el) {
   });
 
   el.textContent = '';
-  el.append(grid);
+  el.append(grid, buildLegend());
 }

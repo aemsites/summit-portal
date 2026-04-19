@@ -215,16 +215,45 @@
   color: light-dark(#303030, #e5e5e5);
   font-weight: 600;
   line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
+  hyphens: auto;
 }
 
-.report-scores .rsc-metric-acronym {
-  font-size: 10px;
-  color: light-dark(#707070, #9a9a9a);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 500;
-  line-height: 1;
-  cursor: help;
+/* Legend — explains the three metrics once for the whole grid */
+.report-scores .rsc-legend {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: var(--rsc-metrics-bg);
+  border-radius: 12px;
+}
+
+.report-scores .rsc-legend-intro {
+  font-size: 13px;
+  font-weight: 600;
+  color: light-dark(#303030, #e5e5e5);
+  margin: 0 0 8px;
+}
+
+.report-scores .rsc-legend-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 20px;
+  margin: 0;
+}
+
+.report-scores .rsc-legend-term {
+  font-size: 13px;
+  font-weight: 700;
+  color: light-dark(#1a1a1a, #fff);
+  margin: 0;
+}
+
+.report-scores .rsc-legend-desc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: light-dark(#505050, #bbb);
+  margin: 2px 0 0;
 }
 
 .report-scores .rsc-mv-poor { color: var(--rsc-poor); }
@@ -357,8 +386,20 @@
     font-size: 11px;
   }
 
-  .report-scores .rsc-metric-acronym {
-    font-size: 9px;
+  .report-scores .rsc-legend {
+    margin-top: 16px;
+    padding: 14px 16px;
+  }
+
+  .report-scores .rsc-legend-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .report-scores .rsc-legend-intro,
+  .report-scores .rsc-legend-term,
+  .report-scores .rsc-legend-desc {
+    font-size: 12px;
   }
 
   .report-scores .rsc-card-footer {
