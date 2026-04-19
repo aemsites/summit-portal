@@ -286,6 +286,22 @@ body:has(.report-hero.insight) main {
   object-fit: contain;
 }
 
+.report-hero.insight .rh-insight-measured {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(255 255 255 / 80%);
+  width: fit-content;
+}
+
+.report-hero.insight .rh-insight-measured svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
 .report-hero.insight .rh-insight-image {
   display: none;
 }

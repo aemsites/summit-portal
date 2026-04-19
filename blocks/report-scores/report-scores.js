@@ -114,13 +114,20 @@ const METRIC_DEFS = [
   },
 ];
 
+const SCORE_BANDS = [
+  { range: '90–100', label: 'Good', grade: 'good', desc: 'Performing at or above industry standards.' },
+  { range: '50–89', label: 'Needs improvement', grade: 'warning', desc: 'Targeted optimizations can drive measurable gains.' },
+  { range: '0–49', label: 'Poor', grade: 'poor', desc: 'Significant opportunities. Highest potential impact.' },
+];
+
 function buildLegend() {
   const legend = document.createElement('div');
   legend.className = 'rsc-legend';
-  const intro = document.createElement('p');
-  intro.className = 'rsc-legend-intro';
-  intro.textContent = 'Each card measures three Core Web Vitals:';
-  legend.append(intro);
+
+  const metricsIntro = document.createElement('p');
+  metricsIntro.className = 'rsc-legend-intro';
+  metricsIntro.textContent = 'Each card measures three Core Web Vitals:';
+  legend.append(metricsIntro);
 
   const list = document.createElement('div');
   list.className = 'rsc-legend-list';
@@ -137,6 +144,33 @@ function buildLegend() {
     list.append(item);
   });
   legend.append(list);
+
+  const bandsIntro = document.createElement('p');
+  bandsIntro.className = 'rsc-legend-intro rsc-legend-intro-bands';
+  bandsIntro.textContent = 'Each page gets an overall score from 0–100:';
+  legend.append(bandsIntro);
+
+  const bands = document.createElement('div');
+  bands.className = 'rsc-legend-bands';
+  SCORE_BANDS.forEach(({ range, label, grade, desc }) => {
+    const band = document.createElement('div');
+    band.className = `rsc-legend-band rsc-legend-band-${grade}`;
+    band.innerHTML = `
+      <span class="rsc-legend-band-range">${range}</span>
+      <div class="rsc-legend-band-body">
+        <span class="rsc-legend-band-label">${label}</span>
+        <span class="rsc-legend-band-desc">${desc}</span>
+      </div>
+    `;
+    bands.append(band);
+  });
+  legend.append(bands);
+
+  const note = document.createElement('p');
+  note.className = 'rsc-legend-note';
+  note.textContent = 'These scores are based on synthetic lab measurements, not real-user monitoring (RUM). We test each page under a standardized mobile profile — mid-tier device, throttled 4G connection, first-visit conditions — so results are comparable across pages and over time. Real-world performance for returning visitors on faster networks will typically be better.';
+  legend.append(note);
+
   return legend;
 }
 

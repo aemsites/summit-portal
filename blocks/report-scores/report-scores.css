@@ -260,6 +260,68 @@
   color: light-dark(#505050, #bbb);
 }
 
+.report-scores .rsc-legend-intro-bands {
+  margin-top: 16px;
+}
+
+.report-scores .rsc-legend-bands {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-scores .rsc-legend-band {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: light-dark(rgb(255 255 255 / 60%), rgb(0 0 0 / 15%));
+  border-left: 3px solid transparent;
+  min-width: 0;
+}
+
+.report-scores .rsc-legend-band-good { border-left-color: var(--rsc-good); }
+.report-scores .rsc-legend-band-warning { border-left-color: var(--rsc-warning); }
+.report-scores .rsc-legend-band-poor { border-left-color: var(--rsc-poor); }
+
+.report-scores .rsc-legend-band-range {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(#1a1a1a, #fff);
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.report-scores .rsc-legend-band-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.report-scores .rsc-legend-band-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: light-dark(#1a1a1a, #fff);
+}
+
+.report-scores .rsc-legend-band-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: light-dark(#505050, #bbb);
+}
+
+.report-scores .rsc-legend-note {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%));
+  font-size: 12px;
+  line-height: 1.55;
+  color: light-dark(#606060, #9a9a9a);
+}
+
 .report-scores .rsc-mv-poor { color: var(--rsc-poor); }
 .report-scores .rsc-mv-warning { color: var(--rsc-warning); }
 .report-scores .rsc-mv-good { color: var(--rsc-good); }
@@ -404,6 +466,21 @@
   .report-scores .rsc-legend-term,
   .report-scores .rsc-legend-desc {
     font-size: 12px;
+  }
+
+  .report-scores .rsc-legend-bands {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .report-scores .rsc-legend-band-label,
+  .report-scores .rsc-legend-band-range {
+    font-size: 12px;
+  }
+
+  .report-scores .rsc-legend-band-desc,
+  .report-scores .rsc-legend-note {
+    font-size: 11px;
   }
 
   .report-scores .rsc-card-footer {

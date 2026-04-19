@@ -215,7 +215,7 @@ function buildMethodology() {
     {
       label: 'Performance',
       title: 'Website performance',
-      desc: 'Mobile speed and Core Web Vitals — how fast your site loads and responds for real visitors.',
+      desc: 'Mobile speed and Core Web Vitals under a standardized lab profile (mid-tier device, throttled 4G). Comparable across pages and over time; not real-user monitoring.',
       source: 'Google PageSpeed Insights',
     },
     {
