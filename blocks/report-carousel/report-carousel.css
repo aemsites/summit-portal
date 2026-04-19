@@ -763,8 +763,10 @@
   }
 
   .report-carousel .rc-tab-bar .rc-download-btn {
+    box-sizing: border-box;
     justify-content: center;
     width: 100%;
+    max-width: 100%;
   }
 
   .report-carousel .rc-download-footer {
