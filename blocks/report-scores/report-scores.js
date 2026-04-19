@@ -122,16 +122,19 @@ function buildLegend() {
   intro.textContent = 'Each card measures three Core Web Vitals:';
   legend.append(intro);
 
-  const list = document.createElement('dl');
+  const list = document.createElement('div');
   list.className = 'rsc-legend-list';
   METRIC_DEFS.forEach(({ plain, desc }) => {
-    const dt = document.createElement('dt');
-    dt.className = 'rsc-legend-term';
-    dt.textContent = plain;
-    const dd = document.createElement('dd');
-    dd.className = 'rsc-legend-desc';
-    dd.textContent = desc;
-    list.append(dt, dd);
+    const item = document.createElement('div');
+    item.className = 'rsc-legend-item';
+    const term = document.createElement('div');
+    term.className = 'rsc-legend-term';
+    term.textContent = plain;
+    const body = document.createElement('div');
+    body.className = 'rsc-legend-desc';
+    body.textContent = desc;
+    item.append(term, body);
+    list.append(item);
   });
   legend.append(list);
   return legend;

@@ -238,22 +238,26 @@
 .report-scores .rsc-legend-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 20px;
-  margin: 0;
+  gap: 16px 24px;
+}
+
+.report-scores .rsc-legend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .report-scores .rsc-legend-term {
   font-size: 13px;
   font-weight: 700;
   color: light-dark(#1a1a1a, #fff);
-  margin: 0;
 }
 
 .report-scores .rsc-legend-desc {
   font-size: 13px;
   line-height: 1.45;
   color: light-dark(#505050, #bbb);
-  margin: 2px 0 0;
 }
 
 .report-scores .rsc-mv-poor { color: var(--rsc-poor); }
