@@ -14,6 +14,11 @@ async function loadSidekick() {
   import('./utils/favicon.js');
   import('./utils/footer.js').then(({ default: footer }) => footer());
 
+  if (/^\/insights\/[^/]+/.test(window.location.pathname)) {
+    import('./utils/insights-feedback.js').then(({ default: mount }) => mount());
+    import('./utils/insights-tracking.js').then(({ default: mount }) => mount());
+  }
+
   loadSidekick();
 
   // Author facing tools
