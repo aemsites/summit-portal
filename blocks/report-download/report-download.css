@@ -211,12 +211,13 @@
 
   .report-download {
     gap: 24px;
+    padding: 28px 20px 32px;
   }
 
   .report-download .rd-left,
   .report-download .rd-right {
     width: 100%;
-    max-width: 400px;
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
   }
@@ -225,7 +226,7 @@
     order: -1;
     justify-content: center;
     align-items: center;
-    padding: 16px 0;
+    padding: 8px 0 4px;
   }
 
   .report-download .rd-right::before {
@@ -251,18 +252,32 @@
   .report-download .rd-pdf-card {
     box-sizing: border-box;
     width: 100%;
-    max-width: 400px;
+    max-width: min(320px, 100%);
+    padding: 20px 22px;
   }
 
   .report-download .rd-pdf-title {
-    font-size: 22px;
+    font-size: 20px;
+    min-height: 0;
   }
 
   .report-download .rd-heading {
-    font-size: 28px;
+    font-size: 26px;
+    letter-spacing: -0.4px;
+  }
+
+  .report-download .rd-desc {
+    font-size: 15px;
+    line-height: 1.55;
   }
 
   .report-download .rd-meta-row {
     gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .report-download .rd-cta-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
