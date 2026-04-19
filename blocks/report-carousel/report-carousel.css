@@ -91,6 +91,13 @@
   }
 }
 
+.report-carousel .rc-download-btn.rc-download-disabled,
+.report-carousel .rc-download-btn.rc-download-disabled:hover {
+  background: #6b6b6b;
+  color: rgb(255 255 255 / 70%);
+  cursor: not-allowed;
+}
+
 /* ── Slides wrapper ─────────────────────────────────────── */
 .report-carousel .rc-slides-wrap {
   padding: 0;
