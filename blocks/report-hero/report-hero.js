@@ -88,9 +88,13 @@ function buildInsightHero(block, rows) {
 
           anchor.append(globeIcon, urlEl, extIcon, dateSuffix);
           anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);
-          textCol.append(anchor);
-          scopeParas.forEach((p) => textCol.append(p));
+
+          const meta = document.createElement('div');
+          meta.className = 'rh-insight-meta';
+          meta.append(anchor);
+          scopeParas.forEach((p) => meta.append(p));
           scopeParas.length = 0;
+          textCol.append(meta);
           return;
         }
       }
