@@ -36,6 +36,7 @@ function buildInsightHero(block, rows) {
   block.prepend(bgImg);
 
   // Process text cell: brand badge (generic globe + link; drop authored favicon/picture)
+  const scopeParas = [];
   if (textCell) {
     [...textCell.children].forEach((child) => {
       if (child.tagName === 'P') {
@@ -88,12 +89,29 @@ function buildInsightHero(block, rows) {
           anchor.append(globeIcon, urlEl, extIcon, dateSuffix);
           anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);
           textCol.append(anchor);
+          scopeParas.forEach((p) => textCol.append(p));
+          scopeParas.length = 0;
           return;
         }
       }
-      // h1, description paragraphs → text column
+      // h1 → title (and inject lede right after). Remaining <p> → scope, deferred below badge.
+      if (child.tagName === 'H1' || child.tagName === 'H2') {
+        textCol.append(child);
+        const lede = document.createElement('p');
+        lede.className = 'rh-insight-lede';
+        lede.textContent = 'Your Digital Opportunity Report — a snapshot of how your brand performs today across site experience, search, and AI discovery, and where the biggest opportunities to grow are hiding.';
+        textCol.append(lede);
+        return;
+      }
+      if (child.tagName === 'P') {
+        child.classList.add('rh-insight-scope');
+        scopeParas.push(child);
+        return;
+      }
       textCol.append(child);
     });
+    // Flush any scope paragraphs that appeared without a badge before them.
+    scopeParas.forEach((p) => textCol.append(p));
   }
 
   // Image cell → image column
