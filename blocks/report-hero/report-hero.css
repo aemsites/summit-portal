@@ -677,45 +677,55 @@ body:has(.report-hero.insight) main {
 
 /* Insight variant mobile */
 @media (width < 1000px) {
-
   .report-hero.insight .rh-insight-text {
-    padding: 36px 24px 28px;
+    padding: 32px 22px 18px;
     max-width: none;
     margin: 0;
-    gap: 14px;
+    gap: 10px;
   }
 
   .report-hero.insight .rh-insight-text h1,
   .report-hero.insight .rh-insight-text h2 {
-    font-size: 34px;
-    letter-spacing: -0.75px;
-    line-height: 1.05;
-    margin-bottom: 2px;
+    font-size: 30px;
+    letter-spacing: -0.5px;
+    line-height: 1.03;
+    font-weight: 700;
+    margin-bottom: 0;
   }
 
   .report-hero.insight .rh-insight-text p {
-    font-size: 15.5px;
-    line-height: 1.55;
-    color: rgb(255 255 255 / 92%);
-    max-width: 38ch;
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgb(255 255 255 / 88%);
+    max-width: 42ch;
+    margin-top: 2px;
   }
 
   .report-hero.insight .rh-insight-badge {
-    font-size: 13px;
-    padding: 8px 14px;
-    margin-top: 8px;
+    font-size: 12.5px;
+    padding: 7px 12px 7px 10px;
+    margin-top: 10px;
+    gap: 6px;
     border-radius: 999px;
+    background: rgb(255 255 255 / 10%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    backdrop-filter: blur(8px);
     box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  }
+
+  .report-hero.insight .rh-insight-badge-icon {
+    width: 14px;
+    height: 14px;
   }
 
   .report-hero.insight > .rh-insight-bg-svg {
     display: block;
     top: auto;
-    right: -80px;
-    bottom: -80px;
-    width: 360px;
-    height: 360px;
-    opacity: 0.18;
+    right: -60px;
+    bottom: -60px;
+    width: 320px;
+    height: 320px;
+    opacity: 0.22;
     z-index: 0;
   }
 
@@ -723,16 +733,17 @@ body:has(.report-hero.insight) main {
     display: flex;
     justify-content: center;
     overflow: hidden;
-    padding: 0 24px;
+    padding: 0 16px;
+    margin-top: 8px;
   }
 
   .report-hero.insight .rh-insight-image picture {
     display: block;
-    max-width: 400px;
-    width: 400px;
-    border-radius: 8px 8px 0 0;
+    max-width: 360px;
+    width: 100%;
+    border-radius: 10px 10px 0 0;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
   }
 
   .report-hero.insight .rh-insight-image img {

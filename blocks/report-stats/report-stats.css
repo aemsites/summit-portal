@@ -245,52 +245,113 @@
   }
 
   .report-stats.dark .rs-dark-card {
-    padding: 20px;
-    border-bottom: 1px solid rgb(255 255 255 / 10%);
+    padding: 22px 18px 20px;
+    gap: 4px;
+    border: none;
+    box-shadow:
+      inset -0.5px 0 0 rgb(255 255 255 / 8%),
+      inset 0 -0.5px 0 rgb(255 255 255 / 8%);
   }
 
-  .report-stats.dark .rs-dark-card:nth-child(odd) {
-    border-right: 1px solid rgb(255 255 255 / 10%);
+  /* Remove right-edge border from right column and bottom-edge from last row */
+  .report-stats.dark .rs-dark-card:nth-child(even) {
+    box-shadow: inset 0 -0.5px 0 rgb(255 255 255 / 8%);
   }
 
   .report-stats.dark .rs-dark-card:nth-last-child(-n+2) {
-    border-bottom: none;
+    box-shadow: inset -0.5px 0 0 rgb(255 255 255 / 8%);
+  }
+
+  .report-stats.dark .rs-dark-card:nth-last-child(-n+2):nth-child(even) {
+    box-shadow: none;
+  }
+
+  .report-stats.dark .rs-dark-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: light-dark(rgb(255 255 255 / 72%), rgb(0 0 0 / 62%));
+    margin-bottom: 10px;
+  }
+
+  .report-stats.dark .rs-dark-value-row {
+    gap: 10px;
+    padding-bottom: 6px;
+    align-items: baseline;
+  }
+
+  .report-stats.dark .rs-dark-value {
+    font-size: 30px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.4px;
+  }
+
+  .report-stats.dark .rs-dark-value-denom {
+    font-size: 14px;
+    color: rgb(255 255 255 / 55%);
+  }
+
+  .report-stats.dark .rs-speedometer {
+    width: 56px;
+    height: 34px;
+    opacity: 0.95;
+  }
+
+  .report-stats.dark .rs-dark-badge {
+    background: transparent !important;
+    padding: 0;
+    border-radius: 0;
+    color: light-dark(rgb(255 255 255 / 92%), rgb(0 0 0 / 85%));
+    font-size: 11.5px;
+    font-weight: 600;
+    gap: 6px;
+  }
+
+  .report-stats.dark .rs-dark-badge svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .report-stats.dark .rs-dark-badge[data-status='negative'] svg,
+  .report-stats.dark .rs-dark-badge[data-status='critical'] svg { color: #ff6b58; }
+
+  .report-stats.dark .rs-dark-badge[data-status='positive'] svg { color: #1fc47d; }
+
+  .report-stats.dark .rs-dark-badge[data-status='warning'] svg { color: #fb923c; }
+
+  .report-stats.dark .rs-dark-badge[data-status='neutral'] svg,
+  .report-stats.dark .rs-dark-badge[data-status='nodata'] svg { color: rgb(255 255 255 / 55%); }
+
+  .report-stats.dark .rs-dark-desc {
+    font-size: 12.5px;
+    color: light-dark(rgb(255 255 255 / 68%), rgb(0 0 0 / 60%));
+    line-height: 1.45;
+    margin-top: 6px;
   }
 }
 
 @media (width < 768px) {
   .report-stats.dark .rs-dark-card {
-    padding: 16px 14px;
-    gap: 4px;
-  }
-
-  .report-stats.dark .rs-dark-label {
-    font-size: 12px;
-    margin-bottom: -4px;
+    padding: 18px 14px 16px;
   }
 
   .report-stats.dark .rs-dark-value {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .report-stats.dark .rs-dark-value-row {
     gap: 8px;
-    padding-bottom: 4px;
   }
 
   .report-stats.dark .rs-speedometer {
-    width: 52px;
-    height: 32px;
+    width: 50px;
+    height: 30px;
   }
 
   .report-stats.dark .rs-dark-desc {
     font-size: 12px;
-    line-height: 1.4;
-  }
-
-  .report-stats.dark .rs-dark-badge {
-    font-size: 10px;
-    padding: 3px 8px;
   }
 }
 
