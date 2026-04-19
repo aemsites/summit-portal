@@ -396,12 +396,62 @@ function renderScoreTable(data) {
   return wrap;
 }
 
+function renderMetricStrip(data) {
+  const { items } = data;
+  if (!items.length) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'rav-metric-strip';
+  items.forEach((d) => {
+    const row = document.createElement('div');
+    row.className = 'rav-ms-row';
+    const note = d.raw?.[2] || '';
+    row.innerHTML = `
+      <div class="rav-ms-label">${d.label}</div>
+      <div class="rav-ms-value">${d.raw?.[1] || d.value || ''}</div>
+      ${note ? `<div class="rav-ms-note">${note}</div>` : ''}`;
+    wrap.append(row);
+  });
+  return wrap;
+}
+
+const REC_TONE_ICONS = {
+  growth: '↗',
+  risk: '⏱',
+  action: '✓',
+  priority: '⚠',
+  default: '📄',
+};
+
+function renderRecommendationList(data) {
+  const { items } = data;
+  if (!items.length) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'rav-rec-list';
+  items.forEach((d) => {
+    const tone = (d.raw?.[2] || 'default').trim().toLowerCase();
+    const icon = REC_TONE_ICONS[tone] || REC_TONE_ICONS.default;
+    const detail = d.raw?.[1] || '';
+    const card = document.createElement('div');
+    card.className = `rav-rec-card rav-rec-${tone}`;
+    card.innerHTML = `
+      <div class="rav-rec-icon">${icon}</div>
+      <div class="rav-rec-body">
+        <div class="rav-rec-title">${d.label}</div>
+        ${detail ? `<div class="rav-rec-detail">${detail}</div>` : ''}
+      </div>`;
+    wrap.append(card);
+  });
+  return wrap;
+}
+
 export function renderChart(data) {
   if (!data) return null;
   if (data.type === 'bigfigure') return renderBigFigure(data);
   if (data.type === 'horizontalbars') return renderHorizontalBars(data);
   if (data.type === 'platformbars') return renderPlatformBars(data);
   if (data.type === 'scoretable') return renderScoreTable(data);
+  if (data.type === 'metricstrip') return renderMetricStrip(data);
+  if (data.type === 'recommendationlist') return renderRecommendationList(data);
   return null;
 }
 
@@ -465,7 +515,7 @@ export function renderPlatforms({ cells }) {
 /** Canonical copy for legacy authored subtitles (CMS may still serve old text). */
 const RAV_PANEL_SUB_NIKE_CITATIONS = 'How Nike\'s AI citations are split across each tracked platform for the prompts we monitor.';
 
-export function renderPanel({ cells }) {
+export function renderPanel({ cells }, { skipChart = false } = {}) {
   const panel = document.createElement('div');
   panel.className = 'rav-panel';
   // Title
@@ -489,7 +539,7 @@ export function renderPanel({ cells }) {
     panel.append(sub);
   }
   // Chart
-  const chartData = parseChartCell(cells[2]);
+  const chartData = skipChart ? null : parseChartCell(cells[2]);
   const chart = renderChart(chartData);
   if (chart) {
     const cw = document.createElement('div');
