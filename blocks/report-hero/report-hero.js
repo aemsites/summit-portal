@@ -35,21 +35,27 @@ function buildInsightHero(block, rows) {
   bgImg.className = 'rh-insight-bg-svg';
   block.prepend(bgImg);
 
-  // Process text cell: transform favicon+link p into brand badge
+  // Process text cell: brand badge (generic globe + link; drop authored favicon/picture)
   if (textCell) {
     [...textCell.children].forEach((child) => {
       if (child.tagName === 'P') {
-        const picOrImg = child.querySelector('picture') || child.querySelector('img');
         const anchor = child.querySelector('a');
-        if (picOrImg && anchor) {
-          const faviconImg = picOrImg.tagName === 'IMG' ? picOrImg : picOrImg.querySelector('img');
-          if (faviconImg) {
-            faviconImg.alt = '';
-            faviconImg.setAttribute('aria-hidden', 'true');
-            faviconImg.width = 16;
-            faviconImg.height = 16;
-            anchor.prepend(faviconImg);
+        const picOrImg = child.querySelector('picture') || child.querySelector(':scope > img');
+        const onlyAnchor = anchor
+          && child.children.length === 1
+          && child.firstElementChild === anchor;
+        if (anchor && (picOrImg || onlyAnchor)) {
+          if (picOrImg) {
+            picOrImg.remove();
           }
+          const globeIcon = document.createElement('img');
+          globeIcon.className = 'rh-insight-badge-icon';
+          globeIcon.src = '/img/icons/globe.svg';
+          globeIcon.alt = '';
+          globeIcon.setAttribute('aria-hidden', 'true');
+          globeIcon.width = 16;
+          globeIcon.height = 16;
+          anchor.prepend(globeIcon);
           anchor.className = 'rh-insight-badge';
           textCol.append(anchor);
           return;

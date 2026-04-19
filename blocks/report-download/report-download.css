@@ -166,6 +166,8 @@
   letter-spacing: -0.3px;
   grid-row: 1;
   grid-column: 1 / -1;
+  min-height: 2.6rem;
+  word-break: break-word;
 }
 
 .report-download .rd-pdf-tag {
