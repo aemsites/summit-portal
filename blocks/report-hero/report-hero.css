@@ -262,11 +262,11 @@ body:has(.report-hero.insight) main {
 }
 
 .report-hero.insight .rh-insight-text .rh-insight-lede {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
-  line-height: 1.55;
-  color: rgb(255 255 255 / 92%);
-  max-width: 560px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 88%);
+  max-width: none;
   margin-top: 4px;
 }
 

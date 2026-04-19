@@ -99,7 +99,7 @@ function buildInsightHero(block, rows) {
         textCol.append(child);
         const lede = document.createElement('p');
         lede.className = 'rh-insight-lede';
-        lede.textContent = 'Your Digital Opportunity Report — a snapshot of how your brand performs today across site experience, search, and AI discovery, and where the biggest opportunities to grow are hiding.';
+        lede.textContent = 'See how your brand performs across site experience, search, and AI discovery, and where the biggest opportunities to grow are.';
         textCol.append(lede);
         return;
       }
