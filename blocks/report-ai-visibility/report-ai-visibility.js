@@ -113,6 +113,15 @@ function setupRavPanelFootnoteHeightSync(block) {
   window.addEventListener('resize', run);
 }
 
+/** Row types that render as `.rav-panel` (subtitle + chart + footnote). */
+const PANEL_ROW_TYPES = new Set([
+  'headline',
+  'comparison',
+  'competitors',
+  'topic',
+  'opportunities',
+]);
+
 // ── Main decorator ──────────────────────────────────────────────────────────
 
 export default async function decorate(block) {
@@ -142,12 +151,19 @@ export default async function decorate(block) {
     } else if (type === 'platforms') {
       sectionHead.append(renderPlatforms(rows[i]));
       i += 1;
-    } else if (type === 'headline' || type === 'comparison') {
+    } else if (PANEL_ROW_TYPES.has(type)) {
       const panelsOuter = document.createElement('div');
       panelsOuter.className = 'rav-panels-outer';
       const panelWrap = document.createElement('div');
       panelWrap.className = 'rav-panels';
-      while (i < rows.length && (rows[i].type === 'headline' || rows[i].type === 'comparison')) {
+      // `headline` pairs with `comparison` (legacy layout). All other
+      // panel row types group only with their own kind so e.g. two
+      // `competitors` rows render side-by-side while a standalone
+      // `topic` or `opportunities` row renders centered.
+      const groupTypes = (type === 'headline' || type === 'comparison')
+        ? new Set(['headline', 'comparison'])
+        : new Set([type]);
+      while (i < rows.length && groupTypes.has(rows[i].type)) {
         panelWrap.append(renderPanel(rows[i]));
         i += 1;
       }
