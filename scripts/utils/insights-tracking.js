@@ -1,8 +1,13 @@
 const SCROLL_MILESTONES = [25, 50, 75, 100];
 
 function getSlug() {
-  const match = window.location.pathname.match(/\/insights\/([^/]+)/);
-  return match ? match[1] : 'unknown';
+  const badge = document.querySelector('.rh-insight-badge');
+  if (badge?.href) {
+    try {
+      return new URL(badge.href).hostname.replace(/^www\./, '');
+    } catch { /* fall through */ }
+  }
+  return 'unknown';
 }
 
 function track(event, metadata) {

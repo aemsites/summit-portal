@@ -16,8 +16,13 @@ const SCROLL_THRESHOLD = 0.2;
 const AUTO_DISMISS_MS = 25000;
 
 function getSlug() {
-  const match = window.location.pathname.match(/\/insights\/([^/]+)/);
-  return match ? match[1] : 'unknown';
+  const badge = document.querySelector('.rh-insight-badge');
+  if (badge?.href) {
+    try {
+      return new URL(badge.href).hostname.replace(/^www\./, '');
+    } catch { /* fall through */ }
+  }
+  return 'unknown';
 }
 
 function storageKey(slug) {
