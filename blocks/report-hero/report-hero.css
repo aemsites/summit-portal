@@ -677,19 +677,50 @@ body:has(.report-hero.insight) main {
 
 /* Insight variant mobile */
 @media (width < 1000px) {
+  .report-hero.insight {
+    position: relative;
+    isolation: isolate;
+  }
+
   .report-hero.insight .rh-insight-text {
-    padding: 32px 24px;
-    max-width: 400px;
-    margin: 0 auto;
+    padding: 36px 24px 28px;
+    max-width: none;
+    margin: 0;
+    gap: 14px;
   }
 
   .report-hero.insight .rh-insight-text h1,
   .report-hero.insight .rh-insight-text h2 {
-    font-size: 32px;
+    font-size: 34px;
+    letter-spacing: -0.75px;
+    line-height: 1.05;
+    margin-bottom: 2px;
+  }
+
+  .report-hero.insight .rh-insight-text p {
+    font-size: 15.5px;
+    line-height: 1.55;
+    color: rgb(255 255 255 / 92%);
+    max-width: 38ch;
+  }
+
+  .report-hero.insight .rh-insight-badge {
+    font-size: 13px;
+    padding: 8px 14px;
+    margin-top: 8px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
   }
 
   .report-hero.insight > .rh-insight-bg-svg {
-    display: none;
+    display: block;
+    top: auto;
+    right: -80px;
+    bottom: -80px;
+    width: 360px;
+    height: 360px;
+    opacity: 0.18;
+    z-index: 0;
   }
 
   .report-hero.insight .rh-insight-image {
@@ -721,5 +752,9 @@ body:has(.report-hero.insight) main {
 
   .section:has(.report-hero) > div {
     padding: 0;
+  }
+
+  .section:has(.report-hero) + .section {
+    padding-top: 20px;
   }
 }

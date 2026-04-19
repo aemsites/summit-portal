@@ -29,9 +29,34 @@
     border-bottom: 2px solid transparent;
     box-sizing: border-box;
     transition: border-bottom 0.2s ease-in-out;
+    white-space: nowrap;
 
     &.is-active {
       border-bottom: 2px solid light-dark(#000, #fff);
+    }
+  }
+}
+
+@media (width < 768px) {
+  .tab-list {
+    justify-content: flex-start;
+    gap: 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 0 16px 4px;
+    margin-inline: -16px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    button {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      font-size: 14px;
+      min-height: 44px;
+      scroll-snap-align: start;
     }
   }
 }

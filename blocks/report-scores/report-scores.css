@@ -258,17 +258,74 @@
   }
 }
 
-@media (width < 640px) {
+@media (width < 768px) {
+  .report-scores .rsc-grid {
+    gap: 12px;
+  }
+
   .report-scores .rsc-card {
-    flex: 0 0 100%;
-    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .report-scores .rsc-card-header {
+    padding: 14px 16px 10px;
+    gap: 12px;
+  }
+
+  .report-scores .rsc-page-name {
+    font-size: 15px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .report-scores .rsc-page-name a {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .report-scores .rsc-page-url {
+    font-size: 12px;
+  }
+
+  .report-scores .rsc-score-wrap {
+    width: 48px;
+    height: 48px;
+  }
+
+  .report-scores .rsc-score-badge {
+    font-size: 13px;
   }
 
   .report-scores .rsc-metrics {
-    padding: 18px 12px;
+    padding: 16px 12px;
+    gap: 6px;
   }
 
   .report-scores .rsc-metric-value {
     font-size: 14px;
+  }
+
+  .report-scores .rsc-metric-label {
+    font-size: 10px;
+  }
+
+  .report-scores .rsc-card-footer {
+    padding: 14px 16px 16px;
+    gap: 10px;
+  }
+
+  .report-scores .rsc-summary {
+    font-size: 14px;
+  }
+
+  .report-scores .rsc-recommendation {
+    font-size: 13px;
+    padding: 8px 12px;
   }
 }

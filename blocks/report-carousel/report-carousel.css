@@ -753,16 +753,24 @@
 @media (width < 1000px) {
   .report-carousel .rc-tab-bar {
     padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .report-carousel .rc-tabs {
+    width: 100%;
   }
 
   .report-carousel .rc-tab-bar .rc-download-btn {
-    display: none;
+    box-sizing: border-box;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
   }
 
   .report-carousel .rc-download-footer {
-    display: inline-flex;
+    display: none;
   }
 
   .report-carousel .rc-slides-wrap {
