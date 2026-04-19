@@ -59,7 +59,7 @@ function buildInsightHero(block, rows) {
           anchor.className = 'rh-insight-badge';
           const dateSuffix = document.createElement('span');
           dateSuffix.className = 'rh-insight-badge-date';
-          dateSuffix.textContent = 'Apr 10, 2026';
+          dateSuffix.innerHTML = '<span class="rh-insight-badge-date-label">Measured</span> Apr 10, 2026';
           anchor.append(dateSuffix);
           textCol.append(anchor);
           return;
