@@ -133,8 +133,9 @@ function buildCard(company, onOpen) {
 }
 
 function buildGrid(companies, websiteMap, domainMap) {
+  const sorted = [...companies].sort((a, b) => a.Company.localeCompare(b.Company, undefined, { sensitivity: 'base' }));
   const grouped = new Map();
-  for (const c of companies) {
+  for (const c of sorted) {
     const letter = getLetterGroup(c.Company);
     if (!grouped.has(letter)) grouped.set(letter, []);
     grouped.get(letter).push(c);
