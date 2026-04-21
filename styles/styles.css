@@ -270,7 +270,8 @@ body {
   }
 }
 
-header {
+/* Site chrome only — nested <header> (e.g. report-scores .rsc-title) must not match */
+body > header {
   display: none;
   height: var(--header-height);
   position: fixed;

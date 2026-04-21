@@ -71,6 +71,33 @@ function buildEmptyVisibilityShell(sectionTitleText) {
 }
 
 /**
+ * Same chrome as the Performance insights row appended by decorate() — for pages
+ * that only author report-scores (no report-ai-visibility block).
+ * @returns {HTMLDivElement}
+ */
+export function createPerformanceInsightsShell() {
+  return buildEmptyVisibilityShell('Performance insights');
+}
+
+/**
+ * Move a decorated report-scores element into the shell and hoist summary pills.
+ * @param {Element} scoresEl
+ * @param {Element} performanceShell
+ */
+export function attachReportScoresToPerformanceShell(scoresEl, performanceShell) {
+  const perfPanelsOuter = performanceShell.querySelector('.rav-panels-outer');
+  if (!perfPanelsOuter) return;
+  if (!perfPanelsOuter.contains(scoresEl)) {
+    perfPanelsOuter.prepend(scoresEl);
+  }
+  const perfHead = performanceShell.querySelector('.rav-container > .rav-section-head');
+  const perfPills = scoresEl.querySelector(':scope > .rsc-summary-pills');
+  if (perfHead && perfPills && !perfHead.contains(perfPills)) {
+    perfHead.append(perfPills);
+  }
+}
+
+/**
  * Match `.rav-panel-footnote` min-heights within each `.rav-panels` row (tallest wins).
  * @param {Element} root
  */
@@ -382,6 +409,20 @@ export default async function decorate(block) {
     });
   }
 
+  // Stack a second top-level `.rav-panels-outer` (topic + gap/insight) into the first
+  // so one outer wraps competitors + topic + visibility gap (matches author layout).
+  const topOuters = [...container.children].filter((el) => el.classList.contains('rav-panels-outer'));
+  if (topOuters.length >= 2) {
+    const [firstOuter, secondOuter] = topOuters;
+    const toMove = [...secondOuter.children].filter(
+      (el) => el.classList.contains('rav-panels') || el.classList.contains('rav-gap-insight-flex'),
+    );
+    toMove.forEach((el) => firstOuter.append(el));
+    if (secondOuter.childElementCount === 0) {
+      secondOuter.remove();
+    }
+  }
+
   await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
 
   block.textContent = '';
@@ -390,7 +431,7 @@ export default async function decorate(block) {
   attachRavPaneSheet(block);
   attachRavMobileCollapse(block);
 
-  const performanceShell = buildEmptyVisibilityShell('Performance insights');
+  const performanceShell = createPerformanceInsightsShell();
   block.after(performanceShell);
 
   const perfPanelsOuter = performanceShell.querySelector('.rav-panels-outer');
@@ -423,7 +464,9 @@ export default async function decorate(block) {
         s = s.previousElementSibling;
       }
     }
-    if (strip) perfPanelsOuter.prepend(strip);
+    if (strip) {
+      attachReportScoresToPerformanceShell(strip, performanceShell);
+    }
   }
 
   const observer = new IntersectionObserver((entries) => {
