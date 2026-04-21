@@ -291,7 +291,6 @@ body:has(.report-hero.insight) main {
   gap: 10px;
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid rgb(255 255 255 / 18%);
 }
 
 .report-hero.insight .rh-insight-text .rh-insight-meta .rh-insight-badge {
@@ -399,13 +398,13 @@ body:has(.report-hero.insight) main {
     display: flex;
     align-items: flex-start;
     justify-content: flex-end;
-    padding: 32px 64px 0 0;
+    padding: 48px 64px 0 0;
     overflow: hidden;
   }
 
   .report-hero.insight .rh-insight-image picture {
     display: block;
-    border-radius: 8px 8px 0 0;
+    border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
     width: 400px;
@@ -786,34 +785,6 @@ body:has(.report-hero.insight) main {
     max-width: none;
     margin-top: 0;
     font-weight: 400;
-  }
-
-  .report-hero.insight .rh-insight-badge {
-    font-size: 13px;
-    font-weight: 500;
-    padding: 8px 14px 8px 12px;
-    margin-top: 12px;
-    gap: 8px;
-    border-radius: 999px;
-    background: rgb(0 0 0 / 28%);
-    border: 1px solid rgb(255 255 255 / 28%);
-    color: #fff;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
-    transition: background 160ms ease, transform 160ms ease;
-  }
-
-  .report-hero.insight .rh-insight-badge:hover,
-  .report-hero.insight .rh-insight-badge:focus-visible {
-    background: rgb(0 0 0 / 38%);
-  }
-
-  .report-hero.insight .rh-insight-badge:active {
-    transform: scale(0.98);
-  }
-
-  .report-hero.insight .rh-insight-badge-icon {
-    width: 14px;
-    height: 14px;
   }
 
   .report-hero.insight > .rh-insight-bg-svg {

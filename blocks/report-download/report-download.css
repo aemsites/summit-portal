@@ -6,8 +6,8 @@
 }
 
 .report-download {
-  background: light-dark(#f5f5f5, #2a2a2a);
-  color: light-dark(#1a1a1a, #e5e5e5);
+  background: light-dark(#fff, #2a2a2a);
+  color: light-dark(rgba(26, 26, 26, 1), #e5e5e5);
   display: grid;
   grid-template-columns: 1fr;
   gap: 48px;
@@ -238,7 +238,7 @@
 
 .report-download .rd-methodology-heading {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: light-dark(#1a1a1a, #fff);
   margin: 0;
   line-height: 1.2;
@@ -259,10 +259,10 @@
 }
 
 .report-download .rd-pillar {
-  background: light-dark(rgb(0 0 0 / 3%), rgb(255 255 255 / 4%));
-  border: 1px solid light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 8%));
+  background: light-dark(rgb(248 248 248), rgb(255 255 255 / 4%));
+  border: none;
   border-radius: 12px;
-  padding: 20px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -309,7 +309,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: light-dark(rgb(0 0 0 / 65%), rgb(255 255 255 / 65%));
-  margin: 8px 0 0;
+  margin: 8px 0 -8px;
 }
 
 .report-download .rd-methodology-steps {
@@ -325,10 +325,11 @@
 .report-download .rd-step {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  background: light-dark(rgb(0 0 0 / 3%), rgb(255 255 255 / 4%));
-  border: 1px solid light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 8%));
+  gap: 16px;
+  margin-block: 0;
+  padding: 20px 24px;
+  background: light-dark(rgb(248 248 248), rgb(255 255 255 / 4%));
+  border: none;
   border-radius: 12px;
 }
 
@@ -349,7 +350,7 @@
   font-size: 14px;
   font-weight: 700;
   color: light-dark(#1a1a1a, #fff);
-  margin: 0;
+  margin: 0 0 8px;
   line-height: 1.25;
 }
 

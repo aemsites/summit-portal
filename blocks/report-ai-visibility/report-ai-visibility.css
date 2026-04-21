@@ -107,35 +107,37 @@
 @media (width >= 1000px) {
   .report-ai-visibility .rav-stats-story-row {
     display: grid;
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    grid-template-columns: repeat(1, 1fr);
     align-items: stretch;
-    gap: 16px;
-    padding: 16px;
+    gap: 0;
+    padding: 0;
     box-sizing: border-box;
   }
 
   .report-ai-visibility .rav-stats-story-row > .rav-stats {
     display: flex;
-    flex-direction: column;
+    flex-flow: row nowrap;
     padding: 0;
-    border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
-    border-radius: 16px;
-    background: light-dark(#fff, #1a1a1a);
-    box-shadow: var(--rpt-card-shadow);
-    overflow: hidden;
+    border: none;
+    border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
+    border-image: none;
+    border-radius: 0;
+    background: unset;
+    box-shadow: none;
+    overflow: visible;
   }
 
   .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card {
     flex: 1 1 0;
     justify-content: center;
-    border-right: none;
-    border-bottom: 1px solid var(--rpt-border);
-    padding: 14px 24px;
+    border: none;
+    border-right: 1px solid rgb(0 0 0 / 8%);
+    padding: 20px 24px;
     gap: 2px;
   }
 
   .report-ai-visibility .rav-stats-story-row > .rav-stats > .rav-stat-card:last-child {
-    border-bottom: none;
+    border-right: none;
   }
 
   .report-ai-visibility .rav-stats-story-row .rav-stat-value {
@@ -150,6 +152,11 @@
     height: 100%;
     padding: 24px 28px;
     justify-content: center;
+    box-shadow: none;
+    border-radius: 0;
+    border: none;
+    border-image: none;
+    border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
   }
 
   /* Inside the paired row the lone story panel should fill its half, not shrink to 50%. */
@@ -228,6 +235,11 @@
   border-image: none;
 }
 
+/* Two `.rav-panels` shells merged into one outer (see report-ai-visibility.js) */
+.report-ai-visibility .rav-panels-outer > .rav-panels + .rav-panels {
+  margin-top: 20px;
+}
+
 .report-ai-visibility .rav-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -286,7 +298,7 @@
 }
 
 .report-ai-visibility .rav-panel-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--rpt-text-heading, var(--color-text-heading));
   margin: 0 0 -4px;
@@ -311,7 +323,7 @@
   color: light-dark(rgb(80 80 80 / 100%), #ccc);
   margin: 0;
   padding-top: 10px;
-  border-top: 1px solid var(--rpt-border, var(--color-border));
+  border-top: none;
   line-height: 1.5;
   font-style: italic;
 }
@@ -515,6 +527,7 @@
 
 /* ── Metric strip ─────────────────────────────────────────────────────────── */
 .report-ai-visibility .rav-metric-strip {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -525,11 +538,12 @@
 }
 
 .report-ai-visibility .rav-ms-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
   padding: 12px 16px;
-  align-items: center;
   border-bottom: 1px solid light-dark(#e5e7eb, #444);
 }
 
@@ -539,18 +553,18 @@
 
 .report-ai-visibility .rav-ms-label {
   font-size: 13px;
-  color: light-dark(#4b5563, #9ca3af);
+  color: light-dark(#505050, #9ca3af);
 }
 
 .report-ai-visibility .rav-ms-value {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: light-dark(#111, #f9fafb);
 }
 
 .report-ai-visibility .rav-ms-note {
   font-size: 11px;
-  color: light-dark(#9ca3af, #6b7280);
+  color: light-dark(#7a7a7a, #6b7280);
 }
 
 /* ── Recommendation list ──────────────────────────────────────────────────── */
@@ -704,7 +718,8 @@
   display: block;
 }
 
-.report-ai-visibility #discover-adobe-llm-optimizer {
+.report-ai-visibility #discover-adobe-llm-optimizer,
+.report-ai-visibility #visit-your-adobe-llm-optimizer-dashboard-to-learn-more {
   font-size: 20px;
   margin-bottom: 8px;
 }
@@ -890,6 +905,17 @@
     flex-wrap: nowrap;
   }
 
+  .report-ai-visibility.rav-empty-shell .rav-section-head {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: 10px;
+  }
+
+  .report-ai-visibility.rav-empty-shell .rav-section-head .rsc-summary-pills {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
   .report-ai-visibility .rav-section-title {
     font-size: 16px;
   }
@@ -954,7 +980,7 @@
   }
 
   .report-ai-visibility .rav-panels-outer {
-    padding: 12px;
+    padding: 20px 12px 12px;
   }
 
   .report-ai-visibility .rav-panels {
@@ -1008,6 +1034,38 @@
     text-transform: uppercase;
     margin-bottom: 6px;
   }
+}
+
+/* Performance insights shell: --rsc-* tokens for summary pills hoisted into .rav-section-head
+   (they are no longer descendants of .report-scores where those vars are defined). */
+.report-ai-visibility.rav-empty-shell {
+  --rsc-poor: light-dark(#d93025, #f87171);
+  --rsc-poor-bg: light-dark(#fde8e6, rgb(239 68 68 / 14%));
+  --rsc-warning: light-dark(#b86e00, #fbbf24);
+  --rsc-warning-bg: light-dark(#fff4e0, rgb(245 158 11 / 14%));
+  --rsc-good: light-dark(#1e9029, #4ade80);
+  --rsc-good-bg: light-dark(#e7f6ea, rgb(34 197 94 / 14%));
+  --rsc-surface: var(--rpt-surface, light-dark(#fff, #1a1a1a));
+  --rsc-surface-2: light-dark(#fafafa, #222);
+  --rsc-border: light-dark(#e9e9e9, #333);
+  --rsc-text-muted: light-dark(#5a5a5a, #a8a8a8);
+  --rsc-text-faint: light-dark(#7a7a7a, #888);
+  --rsc-red: var(--rpt-red, #e60000);
+  --rsc-red-bg: light-dark(#fff0f0, rgb(230 0 0 / 12%));
+}
+
+/* Performance insights shell: summary pills live in the section head, right of the title */
+.report-ai-visibility.rav-empty-shell .rav-section-head {
+  justify-content: space-between;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-section-head .rsc-summary-pills {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-section-title {
+  min-width: 0;
 }
 
 /* Page performance cards (report-scores) nested under Performance insights shell */
