@@ -1,3 +1,9 @@
+import { getConfig, loadStyle } from '../../scripts/ak.js';
+import {
+  attachReportScoresToPerformanceShell,
+  createPerformanceInsightsShell,
+} from '../report-ai-visibility/report-ai-visibility.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function gradeClass(score) {
@@ -254,8 +260,8 @@ function buildCard(data) {
   const body = document.createElement('div');
   body.className = 'rsc-body';
 
-  // Title
-  const title = document.createElement('header');
+  // Title (use div — global styles target body > header for site chrome only)
+  const title = document.createElement('div');
   title.className = 'rsc-title';
   const name = document.createElement('h3');
   name.className = 'rsc-page-name';
@@ -344,7 +350,26 @@ function buildCard(data) {
   return card;
 }
 
-export default function init(el) {
+/**
+ * When the section has no authored report-ai-visibility block, that decorator
+ * never creates the Performance insights shell — mirror it here so layout matches.
+ * @param {Element} scoresEl
+ */
+async function ensureStandalonePerformanceShell(scoresEl) {
+  if (scoresEl.closest('.report-ai-visibility.rav-empty-shell')) return;
+  const section = scoresEl.closest('.section');
+  const hasAiVisibility = Boolean(
+    section?.querySelector(':scope .report-ai-visibility:not(.rav-empty-shell)'),
+  );
+  if (hasAiVisibility) return;
+
+  await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
+  const shell = createPerformanceInsightsShell();
+  scoresEl.before(shell);
+  attachReportScoresToPerformanceShell(scoresEl, shell);
+}
+
+export default async function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
   const grid = document.createElement('div');
   grid.className = 'rsc-grid';
@@ -371,5 +396,14 @@ export default function init(el) {
   });
 
   el.textContent = '';
-  el.append(buildSummaryPills(counts), grid, buildHowTo());
+  const summaryPills = buildSummaryPills(counts);
+  el.append(summaryPills, grid, buildHowTo());
+
+  await ensureStandalonePerformanceShell(el);
+
+  const perfShell = el.closest('.report-ai-visibility.rav-empty-shell');
+  const sectionHead = perfShell?.querySelector(':scope .rav-container > .rav-section-head');
+  if (sectionHead && summaryPills.parentElement === el) {
+    sectionHead.append(summaryPills);
+  }
 }

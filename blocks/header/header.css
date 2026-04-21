@@ -1,4 +1,4 @@
-header {
+body > header {
   --logo-width: 40px;
   --logo-height: 24px;
   --mega-columns: 4;
@@ -487,13 +487,13 @@ header {
 }
 
 @media (width >= 600px) {
-  header .brand-section .default-content:has(p > a :is(img, picture, svg)) > p:not(:has(:is(img, svg))) {
+  body > header .brand-section .default-content:has(p > a :is(img, picture, svg)) > p:not(:has(:is(img, svg))) {
     display: flex;
   }
 }
 
 @media (width >= 900px) {
-  header {
+  body > header {
     overflow: initial;
 
     .header-content {
