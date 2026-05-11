@@ -5,13 +5,38 @@ function getLetterGroup(name) {
   return /\d/.test(first) ? '0-9' : first;
 }
 
+function buildModeToggle(onChange) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'cp-mode-toggle';
+
+  for (const { id, label } of [
+    { id: 'insights', label: 'Insight Reports' },
+    { id: 'portal', label: 'Customer Portal' },
+  ]) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cp-mode-btn';
+    btn.dataset.mode = id;
+    btn.textContent = label;
+    if (id === 'insights') btn.classList.add('cp-mode-btn--active');
+    btn.addEventListener('click', () => {
+      wrapper.querySelectorAll('.cp-mode-btn').forEach((b) => b.classList.remove('cp-mode-btn--active'));
+      btn.classList.add('cp-mode-btn--active');
+      onChange(id);
+    });
+    wrapper.append(btn);
+  }
+
+  return wrapper;
+}
+
 function buildSearch() {
   const wrapper = document.createElement('div');
   wrapper.className = 'cp-search';
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.placeholder = 'Search customers…';
+  input.placeholder = 'Search insight reports…';
   input.className = 'cp-search-input';
   wrapper.append(input);
 
@@ -69,9 +94,10 @@ function buildDialog() {
   return { backdrop, close, content };
 }
 
-function renderDialog(content, company, websiteMap, domainMap) {
-  const websites = websiteMap.get(company.Company) || [];
-  const domains = domainMap.get(company.Company) || [];
+function renderDialog(content, company, websiteMap, domainMap, mode) {
+  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+  const websites = websiteMap.get(lookupKey) || [];
+  const domains = domainMap.get(lookupKey) || [];
 
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
@@ -80,14 +106,21 @@ function renderDialog(content, company, websiteMap, domainMap) {
       <h4>Websites</h4>
       <ul class="cp-dialog-list">
         ${websites.map((w) => {
-    const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
-    return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
-  }).join('')}
+          const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
+          return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
+        }).join('')}
       </ul>
     </div>`;
   }
 
-  if (domains.length) {
+  if (mode === 'insights' && company.Customers) {
+    html += `<div class="cp-dialog-section">
+      <h4>Customer</h4>
+      <ul class="cp-dialog-list">
+        <li>${company.Customers}</li>
+      </ul>
+    </div>`;
+  } else if (domains.length) {
     html += `<div class="cp-dialog-section">
       <h4>Email Domains</h4>
       <ul class="cp-dialog-list">
@@ -103,10 +136,11 @@ function renderDialog(content, company, websiteMap, domainMap) {
     } catch {
       folderPath = company.Folder.replace(/\/$/, '');
     }
-    const daUrl = `https://da.live/canvas?nx=exp-workspace#/aemsites/summit-portal${folderPath}/index.html`;
+    const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
+    const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index`;
     html += `<div class="cp-dialog-actions">
-      <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open customer portal page &rarr;</a>
-      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${daUrl}" target="_blank" rel="noopener">Edit customer portal page</a>
+      <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
+      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
     </div>`;
   }
 
@@ -132,10 +166,9 @@ function buildCard(company, onOpen) {
   return card;
 }
 
-function buildGrid(companies, websiteMap, domainMap) {
-  const sorted = [...companies].sort((a, b) => a.Company.localeCompare(b.Company, undefined, { sensitivity: 'base' }));
+function buildGrid(companies, onOpen) {
   const grouped = new Map();
-  for (const c of sorted) {
+  for (const c of companies) {
     const letter = getLetterGroup(c.Company);
     if (!grouped.has(letter)) grouped.set(letter, []);
     grouped.get(letter).push(c);
@@ -145,31 +178,6 @@ function buildGrid(companies, websiteMap, domainMap) {
   for (const letter of LETTERS) {
     if (grouped.has(letter)) sortedGroups.set(letter, grouped.get(letter));
   }
-
-  const { backdrop, close, content } = buildDialog();
-  let activeCard = null;
-
-  function closeDialog() {
-    backdrop.hidden = true;
-    if (activeCard) {
-      activeCard.classList.remove('cp-card--active');
-      activeCard.focus();
-      activeCard = null;
-    }
-  }
-
-  function openDialog(card, company) {
-    if (activeCard) activeCard.classList.remove('cp-card--active');
-    activeCard = card;
-    card.classList.add('cp-card--active');
-    renderDialog(content, company, websiteMap, domainMap);
-    backdrop.hidden = false;
-    close.focus();
-  }
-
-  close.addEventListener('click', closeDialog);
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeDialog(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !backdrop.hidden) closeDialog(); });
 
   const grid = document.createElement('div');
   grid.className = 'cp-grid';
@@ -187,7 +195,7 @@ function buildGrid(companies, websiteMap, domainMap) {
     const cards = document.createElement('div');
     cards.className = 'cp-cards';
     for (const company of items) {
-      cards.append(buildCard(company, openDialog));
+      cards.append(buildCard(company, onOpen));
     }
     section.append(cards);
     grid.append(section);
@@ -251,18 +259,23 @@ export default async function init(el) {
   const link = el.querySelector('a[href$=".json"]');
   if (!link) return;
 
-  const origin = new URL(link.href).origin;
+  const { origin } = new URL(link.href);
+  const insightsUrl = `${origin}/data/insights-list.json`;
   const companyUrl = `${origin}/data/company-list.json`;
   const cugUrl = `${origin}/closed-user-groups.json`;
 
-  const [mappingResp, companyResp, cugResp] = await Promise.all([
+  const [portalResp, insightsResp, companyResp, cugResp] = await Promise.all([
     fetch(link.href),
+    fetch(insightsUrl),
     fetch(companyUrl),
     fetch(cugUrl),
   ]);
-  if (!mappingResp.ok) return;
+  if (!portalResp.ok) return;
 
-  const companies = (await mappingResp.json()).data || [];
+  const portalCompanies = (await portalResp.json()).data || [];
+  const insightsCompanies = insightsResp.ok
+    ? (await insightsResp.json()).data.map((r) => ({ ...r, Company: r.Report }))
+    : [];
   const companyData = companyResp.ok ? await companyResp.json() : null;
   const cugData = cugResp.ok ? await cugResp.json() : null;
 
@@ -270,15 +283,58 @@ export default async function init(el) {
 
   el.textContent = '';
 
-  const { wrapper: searchWrapper, input: searchInput } = buildSearch();
-  const { grid, groups } = buildGrid(companies, websiteMap, domainMap);
-  const letterNav = buildLetterNav(groups);
+  const { backdrop, close, content: dialogContent } = buildDialog();
+  let activeCard = null;
+  let currentMode = 'insights';
 
-  el.append(searchWrapper, letterNav, grid);
+  function closeDialog() {
+    backdrop.hidden = true;
+    if (activeCard) {
+      activeCard.classList.remove('cp-card--active');
+      activeCard.focus();
+      activeCard = null;
+    }
+  }
+
+  function openDialog(card, company) {
+    if (activeCard) activeCard.classList.remove('cp-card--active');
+    activeCard = card;
+    card.classList.add('cp-card--active');
+    renderDialog(dialogContent, company, websiteMap, domainMap, currentMode);
+    backdrop.hidden = false;
+    close.focus();
+  }
+
+  close.addEventListener('click', closeDialog);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeDialog(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !backdrop.hidden) closeDialog(); });
+
+  const { wrapper: searchWrapper, input: searchInput } = buildSearch();
+  const navContainer = document.createElement('div');
+  const gridContainer = document.createElement('div');
+
+  function renderMode(mode) {
+    currentMode = mode;
+    closeDialog();
+    const companies = mode === 'insights' ? insightsCompanies : portalCompanies;
+    searchInput.value = '';
+    searchInput.placeholder = mode === 'insights' ? 'Search insight reports…' : 'Search customers…';
+
+    const { grid, groups } = buildGrid(companies, openDialog);
+    const letterNav = buildLetterNav(groups);
+
+    navContainer.replaceChildren(letterNav);
+    gridContainer.replaceChildren(grid);
+  }
+
+  const modeToggle = buildModeToggle(renderMode);
+  el.append(modeToggle, searchWrapper, navContainer, gridContainer);
+  renderMode('insights');
 
   let debounce;
   searchInput.addEventListener('input', () => {
     clearTimeout(debounce);
+    const grid = gridContainer.querySelector('.cp-grid');
     debounce = setTimeout(() => applyFilter(grid, searchInput.value), 120);
   });
 }
