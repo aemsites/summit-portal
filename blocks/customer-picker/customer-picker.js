@@ -266,7 +266,7 @@ export default async function init(el) {
 
   const portalCompanies = (await portalResp.json()).data || [];
   const insightsCompanies = insightsResp.ok
-    ? (await insightsResp.json()).data.map((r) => ({ ...r, Company: r.Customers }))
+    ? (await insightsResp.json()).data.map((r) => ({ ...r, Company: r.Report }))
     : [];
   const companyData = companyResp.ok ? await companyResp.json() : null;
   const cugData = cugResp.ok ? await cugResp.json() : null;
