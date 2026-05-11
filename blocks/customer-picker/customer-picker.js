@@ -137,10 +137,10 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       folderPath = company.Folder.replace(/\/$/, '');
     }
     const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
-    const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index.html`;
+    const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index`;
     html += `<div class="cp-dialog-actions">
       <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
-      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit customer portal page</a>
+      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
     </div>`;
   }
 
