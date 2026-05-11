@@ -5,6 +5,40 @@
   padding: var(--spacing-xl) 0;
 }
 
+/* Mode Toggle */
+.cp-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-surface-alt);
+  border-radius: 12px;
+  width: fit-content;
+  margin-bottom: var(--spacing-l);
+}
+
+.cp-mode-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: var(--body-font-size-s);
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family);
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.cp-mode-btn--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+}
+
+.cp-mode-btn:not(.cp-mode-btn--active):hover {
+  color: var(--color-text);
+}
+
 /* Search */
 .cp-search {
   position: sticky;
