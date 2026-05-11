@@ -95,8 +95,9 @@ function buildDialog() {
 }
 
 function renderDialog(content, company, websiteMap, domainMap, mode) {
-  const websites = websiteMap.get(company.Company) || [];
-  const domains = domainMap.get(company.Company) || [];
+  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+  const websites = websiteMap.get(lookupKey) || [];
+  const domains = domainMap.get(lookupKey) || [];
 
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
@@ -112,7 +113,14 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
     </div>`;
   }
 
-  if (domains.length) {
+  if (mode === 'insights' && company.Customers) {
+    html += `<div class="cp-dialog-section">
+      <h4>Customer</h4>
+      <ul class="cp-dialog-list">
+        <li>${company.Customers}</li>
+      </ul>
+    </div>`;
+  } else if (domains.length) {
     html += `<div class="cp-dialog-section">
       <h4>Email Domains</h4>
       <ul class="cp-dialog-list">
@@ -132,7 +140,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
     const editUrl = `https://da.live/canvas?nx=exp-workspace#/aemsites/summit-portal${folderPath}/index.html`;
     html += `<div class="cp-dialog-actions">
       <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
-      ${mode === 'portal' ? `<a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit customer portal page</a>` : ''}
+      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit customer portal page</a>
     </div>`;
   }
 
