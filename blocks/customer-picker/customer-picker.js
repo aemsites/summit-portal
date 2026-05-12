@@ -11,7 +11,8 @@ function buildModeToggle(onChange) {
 
   for (const { id, label } of [
     { id: 'insights', label: 'Insight Reports' },
-    { id: 'portal', label: 'Customer Portal' },
+    { id: 'accounts', label: 'Accounts' },
+    { id: 'portal', label: 'Summit 26 Portal' },
   ]) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -95,53 +96,77 @@ function buildDialog() {
 }
 
 function renderDialog(content, company, websiteMap, domainMap, mode) {
-  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
-  const websites = websiteMap.get(lookupKey) || [];
-  const domains = domainMap.get(lookupKey) || [];
-
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
-  if (websites.length) {
-    html += `<div class="cp-dialog-section">
-      <h4>Websites</h4>
-      <ul class="cp-dialog-list">
-        ${websites.map((w) => {
-          const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
-          return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
-        }).join('')}
-      </ul>
-    </div>`;
-  }
-
-  if (mode === 'insights' && company.Customers) {
-    html += `<div class="cp-dialog-section">
-      <h4>Customer</h4>
-      <ul class="cp-dialog-list">
-        <li>${company.Customers}</li>
-      </ul>
-    </div>`;
-  } else if (domains.length) {
-    html += `<div class="cp-dialog-section">
-      <h4>Email Domains</h4>
-      <ul class="cp-dialog-list">
-        ${domains.map((d) => `<li>${d}</li>`).join('')}
-      </ul>
-    </div>`;
-  }
-
-  if (company.Folder) {
-    let folderPath;
-    try {
-      folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
-    } catch {
-      folderPath = company.Folder.replace(/\/$/, '');
+  if (mode === 'accounts') {
+    if (company['Account Manager']) {
+      html += `<div class="cp-dialog-section">
+        <h4>Account Manager</h4>
+        <ul class="cp-dialog-list">
+          <li>${company['Account Manager']}</li>
+        </ul>
+      </div>`;
     }
-    const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
-    const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index`;
-    html += `<div class="cp-dialog-actions">
-      <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
-      <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
-    </div>`;
+    if (company.Folder) {
+      let folderPath;
+      try {
+        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
+      } catch {
+        folderPath = company.Folder.replace(/\/$/, '');
+      }
+      const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index`;
+      html += `<div class="cp-dialog-actions">
+        <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open account page &rarr;</a>
+        <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
+      </div>`;
+    }
+  } else {
+    const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+    const websites = websiteMap.get(lookupKey) || [];
+    const domains = domainMap.get(lookupKey) || [];
+
+    if (websites.length) {
+      html += `<div class="cp-dialog-section">
+        <h4>Websites</h4>
+        <ul class="cp-dialog-list">
+          ${websites.map((w) => {
+            const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
+            return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
+          }).join('')}
+        </ul>
+      </div>`;
+    }
+
+    if (mode === 'insights' && company.Customers) {
+      html += `<div class="cp-dialog-section">
+        <h4>Customer</h4>
+        <ul class="cp-dialog-list">
+          <li>${company.Customers}</li>
+        </ul>
+      </div>`;
+    } else if (domains.length) {
+      html += `<div class="cp-dialog-section">
+        <h4>Email Domains</h4>
+        <ul class="cp-dialog-list">
+          ${domains.map((d) => `<li>${d}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    if (company.Folder) {
+      let folderPath;
+      try {
+        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
+      } catch {
+        folderPath = company.Folder.replace(/\/$/, '');
+      }
+      const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
+      const editUrl = `https://da.live/canvas?nx=ew&nxver=2#/aemsites/summit-portal${folderPath}/index`;
+      html += `<div class="cp-dialog-actions">
+        <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
+        <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
+      </div>`;
+    }
   }
 
   content.innerHTML = html;
@@ -255,18 +280,26 @@ function buildLookupMaps(companyData, cugData) {
   return { websiteMap, domainMap };
 }
 
+const SEARCH_PLACEHOLDERS = {
+  insights: 'Search insight reports…',
+  accounts: 'Search accounts…',
+  portal: 'Search customers…',
+};
+
 export default async function init(el) {
   const link = el.querySelector('a[href$=".json"]');
   if (!link) return;
 
   const { origin } = new URL(link.href);
   const insightsUrl = `${origin}/data/insights-list.json`;
+  const accountsUrl = `${origin}/data/account-list.json`;
   const companyUrl = `${origin}/data/company-list.json`;
   const cugUrl = `${origin}/closed-user-groups.json`;
 
-  const [portalResp, insightsResp, companyResp, cugResp] = await Promise.all([
+  const [portalResp, insightsResp, accountsResp, companyResp, cugResp] = await Promise.all([
     fetch(link.href),
     fetch(insightsUrl),
+    fetch(accountsUrl),
     fetch(companyUrl),
     fetch(cugUrl),
   ]);
@@ -275,6 +308,9 @@ export default async function init(el) {
   const portalCompanies = (await portalResp.json()).data || [];
   const insightsCompanies = insightsResp.ok
     ? (await insightsResp.json()).data.map((r) => ({ ...r, Company: r.Report }))
+    : [];
+  const accountsCompanies = accountsResp.ok
+    ? (await accountsResp.json()).data.map((r) => ({ ...r, Company: r.Account }))
     : [];
   const companyData = companyResp.ok ? await companyResp.json() : null;
   const cugData = cugResp.ok ? await cugResp.json() : null;
@@ -316,9 +352,10 @@ export default async function init(el) {
   function renderMode(mode) {
     currentMode = mode;
     closeDialog();
-    const companies = mode === 'insights' ? insightsCompanies : portalCompanies;
+    const companiesMap = { insights: insightsCompanies, accounts: accountsCompanies, portal: portalCompanies };
+    const companies = companiesMap[mode] || [];
     searchInput.value = '';
-    searchInput.placeholder = mode === 'insights' ? 'Search insight reports…' : 'Search customers…';
+    searchInput.placeholder = SEARCH_PLACEHOLDERS[mode] || 'Search…';
 
     const { grid, groups } = buildGrid(companies, openDialog);
     const letterNav = buildLetterNav(groups);
