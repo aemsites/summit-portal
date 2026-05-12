@@ -99,11 +99,11 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
   if (mode === 'accounts') {
-    if (company['Account Manager']) {
+    if (company.AM) {
       html += `<div class="cp-dialog-section">
         <h4>Account Manager</h4>
         <ul class="cp-dialog-list">
-          <li>${company['Account Manager']}</li>
+          <li>${company.AM}</li>
         </ul>
       </div>`;
     }
