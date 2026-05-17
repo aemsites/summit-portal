@@ -10,8 +10,8 @@ function buildModeToggle(onChange) {
   wrapper.className = 'cp-mode-toggle';
 
   for (const { id, label } of [
-    { id: 'insights', label: 'Insight Reports' },
     { id: 'accounts', label: 'Accounts' },
+    { id: 'insights', label: 'Insight Reports' },
     { id: 'portal', label: 'Summit 26 Portal' },
   ]) {
     const btn = document.createElement('button');
