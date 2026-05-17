@@ -19,7 +19,7 @@ function buildModeToggle(onChange) {
     btn.className = 'cp-mode-btn';
     btn.dataset.mode = id;
     btn.textContent = label;
-    if (id === 'insights') btn.classList.add('cp-mode-btn--active');
+    if (id === 'accounts') btn.classList.add('cp-mode-btn--active');
     btn.addEventListener('click', () => {
       wrapper.querySelectorAll('.cp-mode-btn').forEach((b) => b.classList.remove('cp-mode-btn--active'));
       btn.classList.add('cp-mode-btn--active');
@@ -366,7 +366,7 @@ export default async function init(el) {
 
   const modeToggle = buildModeToggle(renderMode);
   el.append(modeToggle, searchWrapper, navContainer, gridContainer);
-  renderMode('insights');
+  renderMode('accounts');
 
   let debounce;
   searchInput.addEventListener('input', () => {
