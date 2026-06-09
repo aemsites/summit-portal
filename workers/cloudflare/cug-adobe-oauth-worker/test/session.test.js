@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink,
+  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, MAGIC_LINK_MAX_AGE,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
@@ -136,7 +136,7 @@ describe('session (JWT)', () => {
     });
 
     it('returns null when iat is older than 30 minutes', async () => {
-      const oldIat = Math.floor(Date.now() / 1000) - 31 * 60;
+      const oldIat = Math.floor(Date.now() / 1000) - MAGIC_LINK_MAX_AGE - 60;
       const token = await signedJwt({ email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
       const result = await verifyMagicLink(token, env);
@@ -171,11 +171,14 @@ describe('session (JWT)', () => {
     });
 
     it('accepts a token at exactly the 30-minute boundary', async () => {
-      const boundary = Math.floor(Date.now() / 1000) - 30 * 60;
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: boundary }, env.JWT_SECRET);
+      const fixedNow = 2000000000;
+      vi.spyOn(Date, 'now').mockReturnValue(fixedNow * 1000);
 
+      const boundary = fixedNow - MAGIC_LINK_MAX_AGE;
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: boundary }, env.JWT_SECRET);
       const result = await verifyMagicLink(token, env);
 
+      vi.restoreAllMocks();
       expect(result).not.toBeNull();
     });
   });

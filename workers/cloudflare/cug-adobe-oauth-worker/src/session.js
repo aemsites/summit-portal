@@ -83,7 +83,7 @@ export function clearSessionCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
-const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
+export const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
 
 /**
  * Verify an externally-issued magic link JWT.
@@ -96,7 +96,7 @@ export async function verifyMagicLink(token, env) {
   if (!payload || !payload.email) return null;
 
   const now = Math.floor(Date.now() / 1000);
-  if (!payload.iat || now - payload.iat > MAGIC_LINK_MAX_AGE) return null;
+  if (!payload.iat || payload.iat > now || now - payload.iat > MAGIC_LINK_MAX_AGE) return null;
 
   return payload;
 }
