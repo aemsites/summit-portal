@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from '../src/index.js';
-import { createMockEnv, fakeJwt } from './helpers.js';
+import { createMockEnv, fakeJwt, signedJwt } from './helpers.js';
+import { MAGIC_LINK_MAX_AGE } from '../src/session.js';
 
 function mockOriginFetch(body = '<html>ok</html>', headers = {}, status = 200) {
   return vi.fn().mockResolvedValue(
@@ -184,6 +185,106 @@ describe('index (request routing)', () => {
       expect(spy).toHaveBeenCalled();
 
       spy.mockRestore();
+    });
+  });
+
+  describe('magic link (?token=)', () => {
+    it('creates a session and redirects to the clean URL when token is valid', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/customers/test/');
+      expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
+    });
+
+    it('returns 401 with a login link when iat is older than 30 minutes', async () => {
+      const oldIat = Math.floor(Date.now() / 1000) - MAGIC_LINK_MAX_AGE - 60;
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(401);
+      const body = await resp.text();
+      expect(body).toContain('href="https://mysite.com/customers/test/"');
+    });
+
+    it('returns 401 when the token signature is invalid', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, 'wrong-secret');
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(401);
+    });
+
+    it('replaces an existing session cookie when a valid token is provided', async () => {
+      const { createSession, getSession } = await import('../src/session.js');
+      const oldSession = await createSession(env, {
+        email: 'old@test.com', name: 'Old', groups: ['test.com'],
+      });
+
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`, {
+          headers: { Cookie: `auth_token=${oldSession}` },
+        }),
+        env,
+      );
+
+      expect(resp.status).toBe(302);
+
+      const newCookieHeader = resp.headers.get('Set-Cookie');
+      const newToken = newCookieHeader.match(/auth_token=([^;]+)/)[1];
+      const newSession = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(newSession.email).toBe('alice@adobe.com');
+    });
+
+    it('preserves other query params in the redirect', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?foo=bar&token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/customers/test/?foo=bar');
+    });
+
+    it('derives the group from the email domain', async () => {
+      const { getSession } = await import('../src/session.js');
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ email: 'alice@partner.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      const newToken = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(session.groups).toEqual(['partner.com']);
     });
   });
 });

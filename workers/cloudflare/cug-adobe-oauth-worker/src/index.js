@@ -13,7 +13,7 @@
  */
 
 import { redirectToLogin, handleCallback } from './oauth.js';
-import { createSession, getSession, sessionCookie, clearSessionCookie } from './session.js';
+import { createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect } from './portal.js';
 
@@ -171,6 +171,35 @@ const handleRequest = async (request, env) => {
   // RUM and media requests bypass authentication
   if (isRUMRequest(url) || isMediaRequest(url)) {
     return proxyToOrigin(request, env, url);
+  }
+
+  // Magic link: ?token= creates or replaces the session without an IMS round-trip
+  const magicToken = url.searchParams.get('token');
+  if (magicToken) {
+    const claims = await verifyMagicLink(magicToken, env);
+    if (!claims) {
+      const loginUrl = new URL(url.href);
+      loginUrl.searchParams.delete('token');
+      return new Response(
+        `<!DOCTYPE html><html lang="en"><body><p>This link has expired or is invalid. <a href="${loginUrl.href}">Click here to log in.</a></p></body></html>`,
+        { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+      );
+    }
+
+    const email = claims.email.toLowerCase();
+    const domain = email.split('@')[1] || '';
+    const newToken = await createSession(env, { email, name: claims.name || email, groups: [domain] });
+
+    const cleanUrl = new URL(url.href);
+    cleanUrl.searchParams.delete('token');
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: cleanUrl.href,
+        'Set-Cookie': sessionCookie(newToken),
+      },
+    });
   }
 
   // All other requests: fetch from origin, then enforce CUG access control
