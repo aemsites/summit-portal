@@ -180,14 +180,22 @@ const handleRequest = async (request, env) => {
     if (!claims) {
       const loginUrl = new URL(url.href);
       loginUrl.searchParams.delete('token');
+      const safeHref = loginUrl.href
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
       return new Response(
-        `<!DOCTYPE html><html lang="en"><body><p>This link has expired or is invalid. <a href="${loginUrl.href}">Click here to log in.</a></p></body></html>`,
+        `<!DOCTYPE html><html lang="en"><body><p>This link has expired or is invalid. <a href="${safeHref}">Click here to log in.</a></p></body></html>`,
         { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
       );
     }
 
     const email = claims.email.toLowerCase();
-    const domain = email.split('@')[1] || '';
+    const domain = email.split('@')[1];
+    if (!domain) {
+      return new Response('Invalid token', { status: 400 });
+    }
     const newToken = await createSession(env, { email, name: claims.name || email, groups: [domain] });
 
     const cleanUrl = new URL(url.href);

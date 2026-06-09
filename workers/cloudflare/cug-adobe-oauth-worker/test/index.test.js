@@ -286,5 +286,17 @@ describe('index (request routing)', () => {
       );
       expect(session.groups).toEqual(['partner.com']);
     });
+
+    it('returns 401 when the token has no email claim', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(401);
+    });
   });
 });
