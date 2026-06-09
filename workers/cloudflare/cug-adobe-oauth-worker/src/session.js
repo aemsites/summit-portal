@@ -82,3 +82,21 @@ export function sessionCookie(token) {
 export function clearSessionCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
+
+const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
+
+/**
+ * Verify an externally-issued magic link JWT.
+ * Magic link tokens carry `email` and `iat` but no `exp`.
+ * Returns the payload when the signature is valid and the token is at most
+ * 30 minutes old; returns null otherwise.
+ */
+export async function verifyMagicLink(token, env) {
+  const payload = await verifyJwt(token, env.JWT_SECRET);
+  if (!payload || !payload.email) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (!payload.iat || now - payload.iat > MAGIC_LINK_MAX_AGE) return null;
+
+  return payload;
+}
