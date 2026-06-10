@@ -109,6 +109,16 @@ describe('notification', () => {
       await expect(sendMagicLinkConfirm('alice@adobe.com', 'https://act.aem.now/adobe?token=abc', env))
         .rejects.toThrow('APO returned non-OK');
     });
+
+    it('XML-escapes ampersands in data values', async () => {
+      const fetchMock = mockImsAndApo();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await sendMagicLinkConfirm('alice@adobe.com', 'https://example.com/?a=1&b=2', env);
+
+      const apoBody = fetchMock.mock.calls[1][1].body;
+      expect(apoBody).toContain('<value>https://example.com/?a=1&amp;b=2</value>');
+    });
   });
 
   describe('sendMagicLinkNotFound', () => {
@@ -124,6 +134,12 @@ describe('notification', () => {
       expect(apoOpts.body).not.toContain('<ccList>');
       expect(apoOpts.body).toContain('<key>email</key>');
       expect(apoOpts.body).toContain('<value>unknown@mystery.com</value>');
+    });
+
+    it('throws when IMS returns a non-2xx status', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('', { status: 401 })));
+
+      await expect(sendMagicLinkNotFound('x@y.com', env)).rejects.toThrow('IMS auth failed: 401');
     });
   });
 });

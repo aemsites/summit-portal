@@ -37,9 +37,11 @@ async function getImsToken(env) {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params,
+    signal: AbortSignal.timeout(5000),
   });
   if (!resp.ok) throw new Error(`IMS auth failed: ${resp.status}`);
   const { access_token } = await resp.json();
+  if (!access_token) throw new Error('IMS response missing access_token');
   return access_token;
 }
 
@@ -52,8 +54,11 @@ async function sendApoEmail({
   const dataXml = Object.entries(data)
     .map(([k, v]) => `<data><key>${xmlEscape(k)}</key><value>${xmlEscape(v)}</value></data>`)
     .join('');
-  const ccBlock = ccEmails.length ? `<ccList>${xmlEscape(ccEmails.join(','))}</ccList>` : '';
-  const body = `<sendTemplateEmailReq><toList>${xmlEscape(toEmails.join(','))}</toList>${ccBlock}<templateData>${dataXml}</templateData></sendTemplateEmailReq>`;
+  const ccBlock = ccEmails.length
+    ? `<ccList>${ccEmails.map(xmlEscape).join(',')}</ccList>`
+    : '';
+  const toList = toEmails.map(xmlEscape).join(',');
+  const body = `<sendTemplateEmailReq><toList>${toList}</toList>${ccBlock}<templateData>${dataXml}</templateData></sendTemplateEmailReq>`;
 
   const resp = await fetch(
     `${apoHost}/po-server/message?templateName=${encodeURIComponent(templateName)}&locale=en-us`,
@@ -65,11 +70,12 @@ async function sendApoEmail({
         'Content-Type': 'application/xml',
       },
       body,
+      signal: AbortSignal.timeout(5000),
     },
   );
   if (!resp.ok) throw new Error(`APO request failed: ${resp.status}`);
   const text = await resp.text();
-  if (!text.includes('status="OK"')) throw new Error(`APO returned non-OK: ${text}`);
+  if (!text.includes('status="OK"')) throw new Error('APO returned non-OK status');
 }
 
 export async function sendMagicLinkConfirm(email, magicLinkUrl, env) {
