@@ -47,7 +47,7 @@ describe('notification', () => {
       await sendMagicLinkConfirm('alice@adobe.com', 'https://act.aem.now/adobe?token=abc', env);
 
       const [apoUrl, apoOpts] = fetchMock.mock.calls[1];
-      expect(apoUrl).toContain('templateName=expdev_portal_magic_link_confirm');
+      expect(apoUrl).toContain('templateName=expdev_actnow_magiclink');
       expect(apoOpts.headers.Authorization).toBe('IMS test-token');
       expect(apoOpts.body).toContain('<toList>alice@adobe.com</toList>');
       expect(apoOpts.body).not.toContain('<ccList>');

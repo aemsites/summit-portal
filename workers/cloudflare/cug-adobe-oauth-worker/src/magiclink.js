@@ -63,7 +63,7 @@ export async function handleMagicLinkRequest(request, env) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return new Response(JSON.stringify({ result: 'success' }), {
+    return new Response(JSON.stringify({ result: 'sent' }), {
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -76,7 +76,7 @@ export async function handleMagicLinkRequest(request, env) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  return new Response(JSON.stringify({ result: 'success' }), {
+  return new Response(JSON.stringify({ result: 'not_found' }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }

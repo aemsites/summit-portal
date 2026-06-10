@@ -80,7 +80,7 @@ async function sendApoEmail({
 
 export async function sendMagicLinkConfirm(email, magicLinkUrl, env) {
   await sendApoEmail({
-    templateName: 'expdev_portal_magic_link_confirm',
+    templateName: 'expdev_actnow_magiclink',
     toEmails: [email],
     data: { magic_link: magicLinkUrl, email },
     env,

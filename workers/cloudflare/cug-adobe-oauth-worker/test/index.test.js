@@ -195,7 +195,7 @@ describe('index (request routing)', () => {
   });
 
   describe('POST /auth/magiclink', () => {
-    it('routes to the magic link handler and returns { result: "success" } for a known domain', async () => {
+    it('routes to the magic link handler and returns { result: "sent" } for a known domain', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
         new Response(
           JSON.stringify({ data: [{ group: 'adobe.com', url: '/members/adobe' }] }),
@@ -211,7 +211,7 @@ describe('index (request routing)', () => {
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(200);
-      expect(await resp.json()).toEqual({ result: 'success' });
+      expect(await resp.json()).toEqual({ result: 'sent' });
       expect(sendMagicLinkConfirm).toHaveBeenCalledOnce();
       const [calledEmail, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
       expect(calledEmail).toBe('alice@adobe.com');
