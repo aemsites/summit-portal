@@ -1,7 +1,11 @@
+vi.mock('../src/notification.js', () => ({
+  sendMagicLinkConfirm: vi.fn().mockResolvedValue(undefined),
+  sendMagicLinkNotFound: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from '../src/index.js';
 import { createMockEnv, fakeJwt, signedJwt } from './helpers.js';
-import { MAGIC_LINK_MAX_AGE } from '../src/session.js';
 
 function mockOriginFetch(body = '<html>ok</html>', headers = {}, status = 200) {
   return vi.fn().mockResolvedValue(
@@ -188,6 +192,38 @@ describe('index (request routing)', () => {
     });
   });
 
+  describe('POST /auth/magiclink', () => {
+    it('routes to the magic link handler and returns { result: "success" } for a known domain', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: [{ group: 'adobe.com', url: '/members/adobe' }] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ));
+
+      const request = new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(200);
+      expect(await resp.json()).toEqual({ result: 'success' });
+    });
+
+    it('returns 400 for an invalid email', async () => {
+      const request = new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'bad' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(400);
+    });
+  });
+
   describe('magic link (?token=)', () => {
     it('creates a session and redirects to the clean URL when token is valid', async () => {
       const now = Math.floor(Date.now() / 1000);
@@ -204,7 +240,7 @@ describe('index (request routing)', () => {
     });
 
     it('returns 401 with a login link when iat is older than 30 minutes', async () => {
-      const oldIat = Math.floor(Date.now() / 1000) - MAGIC_LINK_MAX_AGE - 60;
+      const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
       const token = await signedJwt({ email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
       const resp = await worker.fetch(

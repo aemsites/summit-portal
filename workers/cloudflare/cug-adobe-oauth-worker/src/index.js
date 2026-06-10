@@ -8,6 +8,7 @@
  *   /auth/logout       — Destroys session and logs out of Adobe IMS
  *   /auth/portal       — Redirects authenticated user based on group mapping
  *   /auth/me           — Returns current user info as JSON (email, name, groups)
+ *   /auth/magiclink    — POST email, check CUG mapping, send signed magic link
  *   RUM / media        — Passed through to origin without auth
  *   Everything else    — Proxied to origin, then CUG headers are checked
  */
@@ -16,6 +17,7 @@ import { redirectToLogin, handleCallback } from './oauth.js';
 import { createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect } from './portal.js';
+import { handleMagicLinkRequest } from './magiclink.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -89,14 +91,14 @@ const handleRequest = async (request, env) => {
   const url = new URL(request.url);
 
   // Strip non-standard ports
-  if (url.port) {
-    const redirectTo = new URL(request.url);
-    redirectTo.port = '';
-    return new Response('Moved permanently to ' + redirectTo.href, {
-      status: 301,
-      headers: { location: redirectTo.href },
-    });
-  }
+  // if (url.port) {
+  //   const redirectTo = new URL(request.url);
+  //   redirectTo.port = '';
+  //   return new Response('Moved permanently to ' + redirectTo.href, {
+  //     status: 301,
+  //     headers: { location: redirectTo.href },
+  //   });
+  // }
 
   if (url.pathname.startsWith('/drafts/')) {
     return new Response('Not Found', { status: 404 });
@@ -109,6 +111,11 @@ const handleRequest = async (request, env) => {
   }
 
   // --- Auth routes ---
+
+  // Magic link request: POST email, check CUG domain, send signed link
+  if (url.pathname === '/auth/magiclink') {
+    return handleMagicLinkRequest(request, env);
+  }
 
   // OAuth callback: exchange authorization code for tokens, create session
   if (url.pathname === '/auth/callback') {
