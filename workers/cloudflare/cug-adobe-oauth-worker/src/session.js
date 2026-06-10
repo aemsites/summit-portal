@@ -8,6 +8,7 @@
 
 const SESSION_TTL = 3600; // 1 hour
 const COOKIE_NAME = 'auth_token';
+const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -83,7 +84,11 @@ export function clearSessionCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
-export const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
+/** Create a signed JWT for use as a magic link. Valid for 30 minutes. */
+export async function createMagicLinkToken(email, env) {
+  const now = Math.floor(Date.now() / 1000);
+  return signJwt({ email, iat: now, exp: now + MAGIC_LINK_MAX_AGE }, env.JWT_SECRET);
+}
 
 /**
  * Verify an externally-issued magic link JWT.
