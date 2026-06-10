@@ -144,7 +144,9 @@ describe('magiclink', () => {
     );
 
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'not_found' });
+    const json = await resp.json();
+    expect(json.result).toBe('not_found');
+    expect(json.reason).toBe('network error');
     expect(sendMagicLinkNotFound).toHaveBeenCalledOnce();
     expect(sendMagicLinkNotFound.mock.calls[0][0]).toBe('alice@adobe.com');
   });

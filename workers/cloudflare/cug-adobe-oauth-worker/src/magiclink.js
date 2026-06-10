@@ -10,11 +10,11 @@ async function fetchCugMapping(env) {
   if (env.ORIGIN_AUTHENTICATION) headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
   try {
     const resp = await fetch(url, { headers });
-    if (!resp.ok) return [];
+    if (!resp.ok) return { error: `mapping fetch failed (${resp.status})`, entries: [] };
     const json = await resp.json();
-    return Array.isArray(json.data) ? json.data : [];
-  } catch {
-    return [];
+    return { entries: Array.isArray(json.data) ? json.data : [] };
+  } catch (err) {
+    return { error: err.message || 'mapping fetch failed', entries: [] };
   }
 }
 
@@ -42,7 +42,7 @@ export async function handleMagicLinkRequest(request, env) {
   }
 
   const domain = email.split('@')[1];
-  const entries = await fetchCugMapping(env);
+  const { entries, error: mappingError } = await fetchCugMapping(env);
   const match = entries.find((e) => (e.group || '').trim().toLowerCase() === domain);
 
   if (match) {
@@ -76,7 +76,10 @@ export async function handleMagicLinkRequest(request, env) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  return new Response(JSON.stringify({ result: 'not_found' }), {
+  const body = mappingError
+    ? { result: 'not_found', reason: mappingError }
+    : { result: 'not_found' };
+  return new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },
   });
 }
