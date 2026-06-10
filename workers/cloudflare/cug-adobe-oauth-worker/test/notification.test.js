@@ -40,7 +40,7 @@ describe('notification', () => {
       expect(fetchMock.mock.calls[1][0]).toContain('stage.postoffice.adobe.com');
     });
 
-    it('sends to the user with admin CC, correct template, and magic_link + email data', async () => {
+    it('sends to the user, correct template, magic_link and email data, no CC', async () => {
       const fetchMock = mockImsAndApo();
       vi.stubGlobal('fetch', fetchMock);
 
@@ -50,7 +50,7 @@ describe('notification', () => {
       expect(apoUrl).toContain('templateName=expdev_portal_magic_link_confirm');
       expect(apoOpts.headers.Authorization).toBe('IMS test-token');
       expect(apoOpts.body).toContain('<toList>alice@adobe.com</toList>');
-      expect(apoOpts.body).toContain('<ccList>aemsitestrial@adobe.com</ccList>');
+      expect(apoOpts.body).not.toContain('<ccList>');
       expect(apoOpts.body).toContain('<key>magic_link</key>');
       expect(apoOpts.body).toContain('<value>https://act.aem.now/adobe?token=abc</value>');
       expect(apoOpts.body).toContain('<key>email</key>');

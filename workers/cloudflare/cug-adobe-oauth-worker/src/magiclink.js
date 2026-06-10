@@ -76,7 +76,7 @@ export async function handleMagicLinkRequest(request, env) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  return new Response(JSON.stringify({ result: 'not_found' }), {
+  return new Response(JSON.stringify({ result: 'success' }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }

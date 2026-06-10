@@ -233,7 +233,7 @@ describe('index (request routing)', () => {
   describe('magic link (?token=)', () => {
     it('creates a session and redirects to the clean URL when token is valid', async () => {
       const now = Math.floor(Date.now() / 1000);
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?token=${token}`),
@@ -247,7 +247,7 @@ describe('index (request routing)', () => {
 
     it('returns 401 with a login link when iat is older than 30 minutes', async () => {
       const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?token=${token}`),
@@ -261,7 +261,7 @@ describe('index (request routing)', () => {
 
     it('returns 401 when the token signature is invalid', async () => {
       const now = Math.floor(Date.now() / 1000);
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, 'wrong-secret');
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, 'wrong-secret');
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?token=${token}`),
@@ -278,7 +278,7 @@ describe('index (request routing)', () => {
       });
 
       const now = Math.floor(Date.now() / 1000);
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?token=${token}`, {
@@ -300,7 +300,7 @@ describe('index (request routing)', () => {
 
     it('preserves other query params in the redirect', async () => {
       const now = Math.floor(Date.now() / 1000);
-      const token = await signedJwt({ email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?foo=bar&token=${token}`),
@@ -314,7 +314,7 @@ describe('index (request routing)', () => {
     it('derives the group from the email domain', async () => {
       const { getSession } = await import('../src/session.js');
       const now = Math.floor(Date.now() / 1000);
-      const token = await signedJwt({ email: 'alice@partner.com', iat: now }, env.JWT_SECRET);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@partner.com', iat: now }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
         new Request(`https://mysite.com/customers/test/?token=${token}`),

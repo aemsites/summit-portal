@@ -98,7 +98,7 @@ describe('magiclink', () => {
     expect(calledUrl).toBe('https://mysite.com/members/adobe?token=mock-token');
   });
 
-  it('returns { result: "not_found" } and calls sendMagicLinkNotFound when domain is not in CUG', async () => {
+  it('returns { result: "success" } and calls sendMagicLinkNotFound when domain is not in CUG', async () => {
     vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
 
     const resp = await handleMagicLinkRequest(
@@ -111,7 +111,7 @@ describe('magiclink', () => {
     );
 
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'not_found' });
+    expect(await resp.json()).toEqual({ result: 'success' });
     expect(sendMagicLinkNotFound).toHaveBeenCalledOnce();
     expect(sendMagicLinkNotFound.mock.calls[0][0]).toBe('stranger@unknown.com');
   });
@@ -131,7 +131,7 @@ describe('magiclink', () => {
     expect(sendMagicLinkConfirm.mock.calls[0][0]).toBe('alice@adobe.com');
   });
 
-  it('returns { result: "not_found" } when the CUG mapping fetch fails (network error)', async () => {
+  it('returns { result: "success" } when the CUG mapping fetch fails (network error)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
 
     const resp = await handleMagicLinkRequest(
@@ -144,7 +144,7 @@ describe('magiclink', () => {
     );
 
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'not_found' });
+    expect(await resp.json()).toEqual({ result: 'success' });
     expect(sendMagicLinkNotFound).toHaveBeenCalledOnce();
     expect(sendMagicLinkNotFound.mock.calls[0][0]).toBe('alice@adobe.com');
   });

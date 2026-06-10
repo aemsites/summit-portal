@@ -87,7 +87,7 @@ export function clearSessionCookie() {
 /** Create a signed JWT for use as a magic link. Valid for 30 minutes. */
 export async function createMagicLinkToken(email, env) {
   const now = Math.floor(Date.now() / 1000);
-  return signJwt({ email, iat: now }, env.JWT_SECRET);
+  return signJwt({ purpose: 'magiclink', email, iat: now }, env.JWT_SECRET);
 }
 
 /**
@@ -98,7 +98,7 @@ export async function createMagicLinkToken(email, env) {
  */
 export async function verifyMagicLink(token, env) {
   const payload = await verifyJwt(token, env.JWT_SECRET);
-  if (!payload || !payload.email) return null;
+  if (!payload || !payload.email || payload.purpose !== 'magiclink') return null;
 
   const now = Math.floor(Date.now() / 1000);
   if (!payload.iat || payload.iat > now || now - payload.iat > MAGIC_LINK_MAX_AGE) return null;
