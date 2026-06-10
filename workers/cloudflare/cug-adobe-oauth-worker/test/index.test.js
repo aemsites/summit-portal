@@ -1,11 +1,12 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import worker from '../src/index.js';
+import { createMockEnv, fakeJwt, signedJwt } from './helpers.js';
+import { sendMagicLinkConfirm } from '../src/notification.js';
+
 vi.mock('../src/notification.js', () => ({
   sendMagicLinkConfirm: vi.fn().mockResolvedValue(undefined),
   sendMagicLinkNotFound: vi.fn().mockResolvedValue(undefined),
 }));
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import worker from '../src/index.js';
-import { createMockEnv, fakeJwt, signedJwt } from './helpers.js';
 
 function mockOriginFetch(body = '<html>ok</html>', headers = {}, status = 200) {
   return vi.fn().mockResolvedValue(
@@ -19,6 +20,7 @@ describe('index (request routing)', () => {
   beforeEach(() => {
     env = createMockEnv();
     vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   describe('port stripping', () => {
@@ -210,6 +212,10 @@ describe('index (request routing)', () => {
 
       expect(resp.status).toBe(200);
       expect(await resp.json()).toEqual({ result: 'success' });
+      expect(sendMagicLinkConfirm).toHaveBeenCalledOnce();
+      const [calledEmail, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+      expect(calledEmail).toBe('alice@adobe.com');
+      expect(calledUrl).toMatch(/^https:\/\/mysite\.com\/members\/adobe\?token=/);
     });
 
     it('returns 400 for an invalid email', async () => {
