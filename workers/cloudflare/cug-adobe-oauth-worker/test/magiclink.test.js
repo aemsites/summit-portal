@@ -5,8 +5,13 @@ vi.mock('../src/notification.js', () => ({
   sendMagicLinkNotFound: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../src/session.js', () => ({
+  createMagicLinkToken: vi.fn().mockResolvedValue('mock-token'),
+}));
+
 import { handleMagicLinkRequest } from '../src/magiclink.js';
 import { sendMagicLinkConfirm, sendMagicLinkNotFound } from '../src/notification.js';
+import { createMagicLinkToken } from '../src/session.js';
 import { createMockEnv } from './helpers.js';
 
 function mockCugFetch(entries) {
@@ -90,7 +95,7 @@ describe('magiclink', () => {
     expect(sendMagicLinkConfirm).toHaveBeenCalledOnce();
     const [calledEmail, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
     expect(calledEmail).toBe('alice@adobe.com');
-    expect(calledUrl).toMatch(/^https:\/\/mysite\.com\/members\/adobe\?token=.+/);
+    expect(calledUrl).toBe('https://mysite.com/members/adobe?token=mock-token');
   });
 
   it('returns { result: "not_found" } and calls sendMagicLinkNotFound when domain is not in CUG', async () => {
@@ -140,6 +145,8 @@ describe('magiclink', () => {
 
     expect(resp.status).toBe(200);
     expect(await resp.json()).toEqual({ result: 'not_found' });
+    expect(sendMagicLinkNotFound).toHaveBeenCalledOnce();
+    expect(sendMagicLinkNotFound.mock.calls[0][0]).toBe('alice@adobe.com');
   });
 
   it('sends ORIGIN_AUTHENTICATION as authorization header when fetching the CUG mapping', async () => {
