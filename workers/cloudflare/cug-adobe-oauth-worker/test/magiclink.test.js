@@ -197,6 +197,22 @@ describe('magiclink', () => {
     expect(sendMagicLinkConfirm).not.toHaveBeenCalled();
   });
 
+  it('returns 500 when matched CUG entry has a protocol-relative url (phishing guard)', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '//evil.example.com/phish' }]));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(500);
+    expect(sendMagicLinkConfirm).not.toHaveBeenCalled();
+  });
+
   it('returns 502 when sendMagicLinkConfirm throws', async () => {
     vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
     sendMagicLinkConfirm.mockRejectedValueOnce(new Error('APO error'));
