@@ -46,15 +46,36 @@ export async function handleMagicLinkRequest(request, env) {
   const match = entries.find((e) => (e.group || '').trim().toLowerCase() === domain);
 
   if (match) {
+    // Guard against absolute URLs or missing paths in the CUG mapping
+    if (!match.url || !match.url.startsWith('/') || match.url.startsWith('//')) {
+      return new Response(JSON.stringify({ error: 'Invalid CUG mapping entry' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     const token = await createMagicLinkToken(email, env);
     const magicLinkUrl = `${new URL(request.url).origin}${match.url}?token=${token}`;
-    await sendMagicLinkConfirm(email, magicLinkUrl, env);
+    try {
+      await sendMagicLinkConfirm(email, magicLinkUrl, env);
+    } catch {
+      return new Response(JSON.stringify({ error: 'Failed to send magic link email' }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     return new Response(JSON.stringify({ result: 'success' }), {
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  await sendMagicLinkNotFound(email, env);
+  try {
+    await sendMagicLinkNotFound(email, env);
+  } catch {
+    return new Response(JSON.stringify({ error: 'Failed to send notification email' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   return new Response(JSON.stringify({ result: 'not_found' }), {
     headers: { 'Content-Type': 'application/json' },
   });

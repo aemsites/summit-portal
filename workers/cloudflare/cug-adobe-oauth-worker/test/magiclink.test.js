@@ -164,4 +164,70 @@ describe('magiclink', () => {
 
     expect(fetchMock.mock.calls[0][1].headers.authorization).toBe('token site-token-xyz');
   });
+
+  it('returns 500 when matched CUG entry has no url field', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com' }])); // no url field
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(500);
+    expect(sendMagicLinkConfirm).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when matched CUG entry has an absolute url (phishing guard)', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: 'https://evil.example.com/phish' }]));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(500);
+    expect(sendMagicLinkConfirm).not.toHaveBeenCalled();
+  });
+
+  it('returns 502 when sendMagicLinkConfirm throws', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+    sendMagicLinkConfirm.mockRejectedValueOnce(new Error('APO error'));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(502);
+    expect(await resp.json()).toMatchObject({ error: 'Failed to send magic link email' });
+  });
+
+  it('returns 502 when sendMagicLinkNotFound throws', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([])); // no entries → not found
+    sendMagicLinkNotFound.mockRejectedValueOnce(new Error('APO error'));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(502);
+    expect(await resp.json()).toMatchObject({ error: 'Failed to send notification email' });
+  });
 });
