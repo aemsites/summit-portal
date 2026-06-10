@@ -55,14 +55,20 @@ export async function handleMagicLinkRequest(request, env) {
     }
     const token = await createMagicLinkToken(email, env);
     const magicLinkUrl = `${new URL(request.url).origin}${match.url}?token=${token}`;
+    const org = (match.org || '').trim().toLowerCase();
+    const templateName = org === 'semrush' ? 'expdev_actnow_magiclink_semrush' : 'expdev_actnow_magiclink';
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] sending magic link to domain=${domain} template=${templateName}`);
     try {
-      await sendMagicLinkConfirm(email, magicLinkUrl, env);
+      await sendMagicLinkConfirm(email, magicLinkUrl, env, templateName);
     } catch {
       return new Response(JSON.stringify({ error: 'Failed to send magic link email' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] magic link email sent to=${email} template=${templateName}`);
     return new Response(JSON.stringify({ result: 'sent' }), {
       headers: { 'Content-Type': 'application/json' },
     });

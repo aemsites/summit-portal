@@ -78,9 +78,9 @@ async function sendApoEmail({
   if (!text.includes('status="OK"')) throw new Error('APO returned non-OK status');
 }
 
-export async function sendMagicLinkConfirm(email, magicLinkUrl, env) {
+export async function sendMagicLinkConfirm(email, magicLinkUrl, env, templateName = 'expdev_actnow_magiclink') {
   await sendApoEmail({
-    templateName: 'expdev_actnow_magiclink',
+    templateName,
     toEmails: [email],
     data: { magic_link: magicLinkUrl, email },
     env,

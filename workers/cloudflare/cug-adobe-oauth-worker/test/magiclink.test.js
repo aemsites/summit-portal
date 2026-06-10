@@ -93,9 +93,46 @@ describe('magiclink', () => {
     expect(resp.status).toBe(200);
     expect(await resp.json()).toEqual({ result: 'sent' });
     expect(sendMagicLinkConfirm).toHaveBeenCalledOnce();
-    const [calledEmail, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+    const [calledEmail, calledUrl, , calledTemplate] = sendMagicLinkConfirm.mock.calls[0];
     expect(calledEmail).toBe('alice@adobe.com');
     expect(calledUrl).toBe('https://mysite.com/members/adobe?token=mock-token');
+    expect(calledTemplate).toBe('expdev_actnow_magiclink');
+  });
+
+  it('uses semrush template when CUG entry has org=semrush', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'semrush.com', url: '/members/semrush', org: 'semrush' }]));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'bob@semrush.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(sendMagicLinkConfirm).toHaveBeenCalledOnce();
+    const [, , , calledTemplate] = sendMagicLinkConfirm.mock.calls[0];
+    expect(calledTemplate).toBe('expdev_actnow_magiclink_semrush');
+  });
+
+  it('uses semrush template when org field has mixed case (e.g. SEMRUSH)', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'semrush.com', url: '/members/semrush', org: 'SEMRUSH' }]));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'bob@semrush.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(200);
+    const [, , , calledTemplate] = sendMagicLinkConfirm.mock.calls[0];
+    expect(calledTemplate).toBe('expdev_actnow_magiclink_semrush');
   });
 
   it('returns { result: "not_found" } and calls sendMagicLinkNotFound when domain is not in CUG', async () => {
