@@ -67,8 +67,6 @@ export async function handleMagicLinkRequest(request, env) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    // eslint-disable-next-line no-console
-    console.log(`[magiclink] magic link email sent to=${email} template=${templateName}`);
     return new Response(JSON.stringify({ result: 'sent' }), {
       headers: { 'Content-Type': 'application/json' },
     });
