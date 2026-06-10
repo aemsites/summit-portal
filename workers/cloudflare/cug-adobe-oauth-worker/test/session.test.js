@@ -192,15 +192,18 @@ describe('session (JWT)', () => {
     });
 
     it('produces a token that verifyMagicLink accepts (round-trip)', async () => {
+      const before = Math.floor(Date.now() / 1000);
       const token = await createMagicLinkToken('alice@adobe.com', env);
 
       const result = await verifyMagicLink(token, env);
 
       expect(result).not.toBeNull();
       expect(result.email).toBe('alice@adobe.com');
+      expect(result.iat).toBeGreaterThanOrEqual(before);
+      expect(result.exp).toBeUndefined();
     });
 
-    it('embeds email, iat and exp=iat+1800 in the payload', async () => {
+    it('embeds email and iat in the payload, no exp', async () => {
       const before = Math.floor(Date.now() / 1000);
       const token = await createMagicLinkToken('bob@test.com', env);
       const after = Math.floor(Date.now() / 1000);
@@ -210,7 +213,7 @@ describe('session (JWT)', () => {
       expect(payload.email).toBe('bob@test.com');
       expect(payload.iat).toBeGreaterThanOrEqual(before);
       expect(payload.iat).toBeLessThanOrEqual(after);
-      expect(payload.exp).toBe(payload.iat + 1800);
+      expect(payload.exp).toBeUndefined();
     });
   });
 });

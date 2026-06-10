@@ -87,14 +87,14 @@ export function clearSessionCookie() {
 /** Create a signed JWT for use as a magic link. Valid for 30 minutes. */
 export async function createMagicLinkToken(email, env) {
   const now = Math.floor(Date.now() / 1000);
-  return signJwt({ email, iat: now, exp: now + MAGIC_LINK_MAX_AGE }, env.JWT_SECRET);
+  return signJwt({ email, iat: now }, env.JWT_SECRET);
 }
 
 /**
- * Verify an externally-issued magic link JWT.
- * Magic link tokens carry `email` and `iat` but no `exp`.
- * Returns the payload when the signature is valid and the token is at most
- * 30 minutes old; returns null otherwise.
+ * Verify a magic link JWT produced by createMagicLinkToken.
+ * Tokens carry `email` and `iat` but no `exp` — freshness is enforced
+ * by the iat-age check (max 30 minutes).
+ * Returns the payload when valid; null otherwise.
  */
 export async function verifyMagicLink(token, env) {
   const payload = await verifyJwt(token, env.JWT_SECRET);
