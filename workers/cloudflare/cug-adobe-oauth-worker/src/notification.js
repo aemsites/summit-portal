@@ -48,7 +48,8 @@ async function getImsToken(env) {
     signal: AbortSignal.timeout(5000),
   });
   if (!resp.ok) {
-    logError(`IMS token request failed status=${resp.status}`);
+    const headers = Object.fromEntries(resp.headers.entries());
+    logError(`IMS token request failed status=${resp.status} headers=${JSON.stringify(headers)}`);
     throw new Error(`IMS auth failed: ${resp.status}`);
   }
   const { access_token } = await resp.json();
