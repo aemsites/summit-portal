@@ -66,6 +66,8 @@
   display: block;
   width: 100%;
   text-align: center;
+  padding: 10px var(--spacing-m);
+  line-height: var(--body-line-height);
 }
 
 /* Magic link form */
