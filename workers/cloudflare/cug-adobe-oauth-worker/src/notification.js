@@ -10,6 +10,11 @@ const APO_HOSTS = {
 
 const ADMIN_EMAIL = 'aemsitestrial@adobe.com';
 
+// eslint-disable-next-line no-console
+const log = (...args) => console.log('[notification]', ...args);
+// eslint-disable-next-line no-console
+const logError = (...args) => console.error('[notification]', ...args);
+
 function xmlEscape(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -21,6 +26,9 @@ function xmlEscape(str) {
 
 async function getImsToken(env) {
   const imsHost = IMS_HOSTS[env.ENVIRONMENT] ?? IMS_HOSTS.stage;
+  const grantType = env.APO_AUTHORIZATION_CODE ? 'authorization_code' : 'client_credentials';
+  log(`requesting IMS token host=${imsHost} grant=${grantType}`);
+
   const params = new URLSearchParams({
     client_id: env.APO_CLIENT_ID,
     client_secret: env.APO_CLIENT_SECRET,
@@ -39,9 +47,16 @@ async function getImsToken(env) {
     body: params,
     signal: AbortSignal.timeout(5000),
   });
-  if (!resp.ok) throw new Error(`IMS auth failed: ${resp.status}`);
+  if (!resp.ok) {
+    logError(`IMS token request failed status=${resp.status}`);
+    throw new Error(`IMS auth failed: ${resp.status}`);
+  }
   const { access_token } = await resp.json();
-  if (!access_token) throw new Error('IMS response missing access_token');
+  if (!access_token) {
+    logError('IMS response missing access_token');
+    throw new Error('IMS response missing access_token');
+  }
+  log('IMS token obtained');
   return access_token;
 }
 
@@ -50,6 +65,7 @@ async function sendApoEmail({
 }) {
   const token = await getImsToken(env);
   const apoHost = APO_HOSTS[env.ENVIRONMENT] ?? APO_HOSTS.stage;
+  log(`sending APO email template=${templateName} host=${apoHost}`);
 
   const dataXml = Object.entries(data)
     .map(([k, v]) => `<data><key>${xmlEscape(k)}</key><value>${xmlEscape(v)}</value></data>`)
@@ -73,9 +89,16 @@ async function sendApoEmail({
       signal: AbortSignal.timeout(5000),
     },
   );
-  if (!resp.ok) throw new Error(`APO request failed: ${resp.status}`);
+  if (!resp.ok) {
+    logError(`APO request failed status=${resp.status} template=${templateName}`);
+    throw new Error(`APO request failed: ${resp.status}`);
+  }
   const text = await resp.text();
-  if (!text.includes('status="OK"')) throw new Error('APO returned non-OK status');
+  if (!text.includes('status="OK"')) {
+    logError(`APO non-OK response template=${templateName} body=${text}`);
+    throw new Error('APO returned non-OK status');
+  }
+  log(`APO email sent successfully template=${templateName}`);
 }
 
 export async function sendMagicLinkConfirm(email, magicLinkUrl, env, templateName = 'expdev_actnow_magiclink') {
