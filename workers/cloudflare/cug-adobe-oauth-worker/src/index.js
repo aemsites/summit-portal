@@ -183,8 +183,12 @@ const handleRequest = async (request, env) => {
   // Magic link: ?token= creates or replaces the session without an IMS round-trip
   const magicToken = url.searchParams.get('token');
   if (magicToken) {
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] token present on ${url.pathname}`);
     const claims = await verifyMagicLink(magicToken, env);
     if (!claims) {
+      // eslint-disable-next-line no-console
+      console.warn(`[magiclink] token verification failed for path=${url.pathname}`);
       const loginUrl = new URL(url.href);
       loginUrl.searchParams.delete('token');
       const safeHref = loginUrl.href
@@ -200,13 +204,20 @@ const handleRequest = async (request, env) => {
 
     const email = claims.email.toLowerCase();
     const domain = email.split('@')[1];
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] token valid email=***@${domain} iat=${claims.iat}`);
+
     if (!domain) {
+      // eslint-disable-next-line no-console
+      console.error('[magiclink] token missing domain in email claim');
       return new Response('Invalid token', { status: 400 });
     }
     const newToken = await createSession(env, { email, name: claims.name || email, groups: [domain] });
 
     const cleanUrl = new URL(url.href);
     cleanUrl.searchParams.delete('token');
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
 
     return new Response(null, {
       status: 302,
