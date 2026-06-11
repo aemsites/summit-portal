@@ -57,17 +57,25 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Adobe ID column — push button to bottom, make it full-width */
-.portal-login .pl-col-adobe p:has(a.btn) {
-  margin-top: auto;
-}
-
-.portal-login .pl-col-adobe a.btn {
+/* Shared button layout — identical sizing for both cards */
+.portal-login .pl-col-adobe a.btn,
+.portal-login .pl-submit {
   display: block;
   width: 100%;
-  text-align: center;
   padding: 10px var(--spacing-m);
   line-height: var(--body-line-height);
+  text-align: center;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Adobe ID button — push to card bottom */
+.portal-login .pl-col-adobe p:has(a.btn) {
+  margin-top: auto;
+  margin-bottom: 0;
 }
 
 /* Magic link form */
@@ -99,18 +107,11 @@
   }
 }
 
+/* Magic link submit — red color variant */
 .portal-login .pl-submit {
-  display: block;
-  width: 100%;
-  padding: 10px var(--spacing-m);
   background: var(--color-adobe-red);
   color: #fff;
   border: 2px solid var(--color-adobe-red);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  text-align: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
 
   &:hover:not(:disabled) {
     background: var(--color-adobe-red-hover);
