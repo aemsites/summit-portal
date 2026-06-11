@@ -251,6 +251,9 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
   margin: 0;
   background-color: light-dark(var(--color-light), var(--color-dark));
   color: var(--color-text);
@@ -352,6 +355,8 @@ a {
 }
 
 main {
+  flex: 1;
+
   ul,
   ol {
     padding-inline-start: 24px;
