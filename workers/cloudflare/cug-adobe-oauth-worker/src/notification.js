@@ -123,7 +123,7 @@ export async function sendMagicLinkInternalNotify(email, domain, org, env) {
 
 export async function sendMagicLinkNotFound(email, env) {
   await sendApoEmail({
-    templateName: 'expdev_portal_magic_link_notify',
+    templateName: 'expdev_actnow_no_report',
     toEmails: [ADMIN_EMAIL],
     data: { email },
     env,
