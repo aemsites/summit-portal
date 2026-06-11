@@ -112,6 +112,15 @@ export async function sendMagicLinkConfirm(email, magicLinkUrl, env, templateNam
   });
 }
 
+export async function sendMagicLinkInternalNotify(email, domain, org, env) {
+  await sendApoEmail({
+    templateName: 'expdev_actnow_magiclink_notify',
+    toEmails: [ADMIN_EMAIL],
+    data: { email, company: domain, org: org || 'Adobe' },
+    env,
+  });
+}
+
 export async function sendMagicLinkNotFound(email, env) {
   await sendApoEmail({
     templateName: 'expdev_portal_magic_link_notify',

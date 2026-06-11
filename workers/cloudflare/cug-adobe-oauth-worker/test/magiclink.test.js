@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../src/notification.js', () => ({
   sendMagicLinkConfirm: vi.fn().mockResolvedValue(undefined),
+  sendMagicLinkInternalNotify: vi.fn().mockResolvedValue(undefined),
   sendMagicLinkNotFound: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -10,7 +11,7 @@ vi.mock('../src/session.js', () => ({
 }));
 
 import { handleMagicLinkRequest } from '../src/magiclink.js';
-import { sendMagicLinkConfirm, sendMagicLinkNotFound } from '../src/notification.js';
+import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFound } from '../src/notification.js';
 import { createMagicLinkToken } from '../src/session.js';
 import { createMockEnv } from './helpers.js';
 
@@ -133,6 +134,73 @@ describe('magiclink', () => {
     expect(resp.status).toBe(200);
     const [, , , calledTemplate] = sendMagicLinkConfirm.mock.calls[0];
     expect(calledTemplate).toBe('expdev_actnow_magiclink_semrush');
+  });
+
+  it('calls sendMagicLinkInternalNotify with domain and org after a successful send', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe', org: 'adobe' }]));
+
+    await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(sendMagicLinkInternalNotify).toHaveBeenCalledOnce();
+    const [notifyEmail, notifyDomain, notifyOrg] = sendMagicLinkInternalNotify.mock.calls[0];
+    expect(notifyEmail).toBe('alice@adobe.com');
+    expect(notifyDomain).toBe('adobe.com');
+    expect(notifyOrg).toBe('adobe');
+  });
+
+  it('defaults org to Adobe in internal notify when CUG entry has no org field', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    const [, , notifyOrg] = sendMagicLinkInternalNotify.mock.calls[0];
+    expect(notifyOrg).toBe('Adobe');
+  });
+
+  it('does not call sendMagicLinkInternalNotify when domain is not in CUG', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'stranger@unknown.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(sendMagicLinkInternalNotify).not.toHaveBeenCalled();
+  });
+
+  it('still returns { result: "sent" } when sendMagicLinkInternalNotify throws', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+    sendMagicLinkInternalNotify.mockRejectedValueOnce(new Error('APO error'));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'sent' });
   });
 
   it('returns { result: "not_found" } and calls sendMagicLinkNotFound when domain is not in CUG', async () => {

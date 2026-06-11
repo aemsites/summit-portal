@@ -1,5 +1,5 @@
 import { createMagicLinkToken } from './session.js';
-import { sendMagicLinkConfirm, sendMagicLinkNotFound } from './notification.js';
+import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFound } from './notification.js';
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -96,6 +96,15 @@ export async function handleMagicLinkRequest(request, env) {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    const notifyOrg = (match.org || '').trim() || 'Adobe';
+    log(`sending internal notification domain=${domain} org=${notifyOrg}`);
+    try {
+      await sendMagicLinkInternalNotify(email, domain, notifyOrg, env);
+      log('internal notification dispatched');
+    } catch (err) {
+      logError(`sendMagicLinkInternalNotify failed: ${err.message}`);
     }
 
     return new Response(JSON.stringify({ result: 'sent' }), {

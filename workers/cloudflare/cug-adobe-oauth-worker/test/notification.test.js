@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sendMagicLinkConfirm, sendMagicLinkNotFound } from '../src/notification.js';
+import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFound } from '../src/notification.js';
 import { createMockEnv } from './helpers.js';
 
 const APO_OK = '<result status="OK"><messageId>123</messageId></result>';
@@ -118,6 +118,32 @@ describe('notification', () => {
 
       const apoBody = fetchMock.mock.calls[1][1].body;
       expect(apoBody).toContain('<value>https://example.com/?a=1&amp;b=2</value>');
+    });
+  });
+
+  describe('sendMagicLinkInternalNotify', () => {
+    it('sends to admin using the notify template with email, company and org data', async () => {
+      const fetchMock = mockImsAndApo();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await sendMagicLinkInternalNotify('bob@semrush.com', 'semrush.com', 'semrush', env);
+
+      const [apoUrl, apoOpts] = fetchMock.mock.calls[1];
+      expect(apoUrl).toContain('templateName=expdev_actnow_magiclink_notify');
+      expect(apoOpts.body).toContain('<toList>aemsitestrial@adobe.com</toList>');
+      expect(apoOpts.body).toContain('<key>email</key><value>bob@semrush.com</value>');
+      expect(apoOpts.body).toContain('<key>company</key><value>semrush.com</value>');
+      expect(apoOpts.body).toContain('<key>org</key><value>semrush</value>');
+    });
+
+    it('defaults org to Adobe when not provided', async () => {
+      const fetchMock = mockImsAndApo();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await sendMagicLinkInternalNotify('alice@adobe.com', 'adobe.com', '', env);
+
+      const apoBody = fetchMock.mock.calls[1][1].body;
+      expect(apoBody).toContain('<key>org</key><value>Adobe</value>');
     });
   });
 
