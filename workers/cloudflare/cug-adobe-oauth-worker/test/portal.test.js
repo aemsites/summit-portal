@@ -125,6 +125,53 @@ describe('portal', () => {
     expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
   });
 
+  it('honors a same-origin ?redirect= path over the CUG mapping', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const session = { email: 'alice@adobe.com', groups: ['adobe.com'] };
+    const reqWithRedirect = new Request(
+      'https://mysite.com/auth/portal?redirect=%2Faccounts%2F0-9%2F1-800-flowers%2Finsights%2F1800flowers-com%2F',
+    );
+    const resp = await handlePortalRedirect(session, reqWithRedirect, env);
+
+    expect(resp.status).toBe(302);
+    expect(resp.headers.get('Location')).toBe(
+      'https://mysite.com/accounts/0-9/1-800-flowers/insights/1800flowers-com/',
+    );
+    // No need to fetch mapping when redirect is already provided.
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores a malformed redirect param and falls back to mapping logic', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+      mappingResponse([{ group: 'adobe.com', url: '/members/adobe-portal' }]),
+    ));
+
+    const session = { email: 'alice@adobe.com', groups: ['adobe.com'] };
+    const reqWithBadRedirect = new Request(
+      'https://mysite.com/auth/portal?redirect=https%3A%2F%2Fevil.example.com%2Fphish',
+    );
+    const resp = await handlePortalRedirect(session, reqWithBadRedirect, env);
+
+    expect(resp.status).toBe(302);
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/members/adobe-portal');
+  });
+
+  it('rejects protocol-relative redirect (//) and falls back to mapping', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+      mappingResponse([{ group: 'adobe.com', url: '/members/adobe-portal' }]),
+    ));
+
+    const session = { email: 'alice@adobe.com', groups: ['adobe.com'] };
+    const reqWithBadRedirect = new Request(
+      'https://mysite.com/auth/portal?redirect=%2F%2Fevil.example.com%2Fphish',
+    );
+    const resp = await handlePortalRedirect(session, reqWithBadRedirect, env);
+
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/members/adobe-portal');
+  });
+
   it('fetches the mapping from the origin hostname', async () => {
     const fetchSpy = vi.fn().mockResolvedValueOnce(
       mappingResponse([{ group: 'adobe.com', url: '/members/portal' }]),

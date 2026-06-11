@@ -337,6 +337,85 @@ describe('magiclink', () => {
     expect(await resp.json()).toMatchObject({ error: 'Failed to send magic link email' });
   });
 
+  it('uses the redirect path as the magic link target when provided', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    const resp = await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'alice@adobe.com',
+          redirect: '/accounts/0-9/1-800-flowers/insights/1800flowers-com/',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'sent' });
+    const [, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+    expect(calledUrl).toBe(
+      'https://mysite.com/accounts/0-9/1-800-flowers/insights/1800flowers-com/?token=mock-token',
+    );
+  });
+
+  it('preserves an existing query string on the redirect path with & separator', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com', redirect: '/insights/x?ref=y' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    const [, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+    expect(calledUrl).toBe('https://mysite.com/insights/x?ref=y&token=mock-token');
+  });
+
+  it('falls back to CUG mapping URL when redirect is malformed', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    const malformedCases = ['//evil.example.com/phish', 'https://evil.example.com/x', 'no-leading-slash', '/path with space'];
+    for (const malformed of malformedCases) {
+      vi.clearAllMocks();
+      vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+      // eslint-disable-next-line no-await-in-loop
+      const resp = await handleMagicLinkRequest(
+        new Request('https://mysite.com/auth/magiclink', {
+          method: 'POST',
+          body: JSON.stringify({ email: 'alice@adobe.com', redirect: malformed }),
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        env,
+      );
+
+      expect(resp.status).toBe(200);
+      const [, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+      expect(calledUrl).toBe('https://mysite.com/members/adobe?token=mock-token');
+    }
+  });
+
+  it('strips fragments from the redirect path before building the magic link', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+
+    await handleMagicLinkRequest(
+      new Request('https://mysite.com/auth/magiclink', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@adobe.com', redirect: '/insights/x#section' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      env,
+    );
+
+    const [, calledUrl] = sendMagicLinkConfirm.mock.calls[0];
+    expect(calledUrl).toBe('https://mysite.com/insights/x?token=mock-token');
+  });
+
   it('returns 502 when sendMagicLinkNotFound throws', async () => {
     vi.stubGlobal('fetch', mockCugFetch([])); // no entries → not found
     sendMagicLinkNotFound.mockRejectedValueOnce(new Error('APO error'));

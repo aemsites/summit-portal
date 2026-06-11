@@ -3,11 +3,40 @@ import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFoun
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Reject characters that could break out of the URL or smuggle CRLF.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
 
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[magiclink]', ...args);
 // eslint-disable-next-line no-console
 const logError = (...args) => console.error('[magiclink]', ...args);
+
+/**
+ * Validate a caller-supplied redirect path. Must be a same-origin path:
+ *   - starts with '/' (not '//' which would be protocol-relative)
+ *   - contains no control characters, whitespace, or backslashes
+ *   - parses as a relative URL
+ * Returns the cleaned path+search (no fragment) or null when invalid.
+ */
+function safeRedirectPath(raw) {
+  if (typeof raw !== 'string') return null;
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (UNSAFE_PATH_RE.test(raw)) return null;
+  try {
+    const parsed = new URL(raw, 'https://placeholder.invalid');
+    if (parsed.origin !== 'https://placeholder.invalid') return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Append `token=<jwt>` to a path, preserving any existing query string. */
+function appendTokenParam(path, token) {
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}token=${token}`;
+}
 
 async function fetchCugMapping(env) {
   const url = `https://${env.ORIGIN_HOSTNAME}${MAPPING_PATH}`;
@@ -36,9 +65,11 @@ export async function handleMagicLinkRequest(request, env) {
   }
 
   let email;
+  let redirectRaw;
   try {
     const body = await request.json();
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    redirectRaw = typeof body.redirect === 'string' ? body.redirect : undefined;
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
@@ -53,8 +84,15 @@ export async function handleMagicLinkRequest(request, env) {
     });
   }
 
+  // Optional deep-link target: where the user should land after clicking the
+  // magic link. Falls back to the group's mapped URL when absent or invalid.
+  const redirectPath = redirectRaw ? safeRedirectPath(redirectRaw) : null;
+  if (redirectRaw && !redirectPath) {
+    log(`ignoring invalid redirect path raw=${JSON.stringify(redirectRaw)}`);
+  }
+
   const domain = email.split('@')[1];
-  log(`request for domain=${domain}`);
+  log(`request for domain=${domain}${redirectPath ? ` redirect=${redirectPath}` : ''}`);
 
   const { entries, error: mappingError } = await fetchCugMapping(env);
   const match = entries.find((e) => (e.group || '').trim().toLowerCase() === domain);
@@ -82,7 +120,11 @@ export async function handleMagicLinkRequest(request, env) {
       });
     }
 
-    const magicLinkUrl = `${new URL(request.url).origin}${match.url}?token=${token}`;
+    // Prefer the caller-supplied deep link (e.g. the page that triggered the
+    // login redirect) over the group's default mapped URL.
+    const targetPath = redirectPath || match.url;
+    const magicLinkUrl = `${new URL(request.url).origin}${appendTokenParam(targetPath, token)}`;
+    log(`magic link target=${targetPath}${redirectPath ? ' (from redirect)' : ' (from CUG mapping)'}`);
     const org = (match.org || '').trim().toLowerCase();
     const templateName = org === 'semrush' ? 'expdev_actnow_magiclink_semrush' : 'expdev_actnow_magiclink';
     log(`sending magic link to domain=${domain} template=${templateName}`);

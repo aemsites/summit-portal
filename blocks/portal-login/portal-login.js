@@ -1,9 +1,32 @@
 const MAGIC_LINK_ENDPOINT = 'https://act.aem.now/auth/magiclink';
 
+/**
+ * Read the `?redirect=` query param from the current URL and return it only
+ * when it is a safe same-origin path (starts with `/`, not `//`). The worker
+ * re-validates this on the server, so this is just a UX best-effort.
+ */
+function getRedirectPath() {
+  const raw = new URLSearchParams(window.location.search).get('redirect');
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null;
+  return raw;
+}
+
 function decorateAdobeButton(col) {
   const link = col.querySelector('strong > a');
   if (!link) return;
   link.classList.add('btn', 'btn-primary');
+  // Forward the deep-link target through the OAuth flow so the user lands on
+  // the originally requested page after signing in with Adobe ID.
+  const redirect = getRedirectPath();
+  if (redirect) {
+    try {
+      const url = new URL(link.getAttribute('href'), window.location.origin);
+      url.searchParams.set('redirect', redirect);
+      link.setAttribute('href', `${url.pathname}${url.search}`);
+    } catch {
+      // leave href untouched on parse failure
+    }
+  }
 }
 
 function createMagicForm() {
@@ -52,10 +75,12 @@ function attachSubmitHandler(form) {
     btn.textContent = 'Sending…';
 
     try {
+      const redirect = getRedirectPath();
+      const payload = redirect ? { email, redirect } : { email };
       const resp = await fetch(MAGIC_LINK_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(payload),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const msg = document.createElement('p');

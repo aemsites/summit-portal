@@ -45,14 +45,28 @@ describe('cug', () => {
   });
 
   describe('CUG required, no session', () => {
-    it('redirects to /login', async () => {
+    it('redirects to /login with the original path preserved as ?redirect=', async () => {
       const resp = await checkCugAccess(
         originResponse({ 'x-aem-cug-required': 'true' }),
         null, request, env,
       );
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/login');
+      const location = new URL(resp.headers.get('Location'));
+      expect(location.origin).toBe('https://mysite.com');
+      expect(location.pathname).toBe('/login');
+      expect(location.searchParams.get('redirect')).toBe('/members/page');
+    });
+
+    it('preserves query string in the redirect param', async () => {
+      const reqWithSearch = new Request('https://mysite.com/members/page?utm=foo&id=42');
+      const resp = await checkCugAccess(
+        originResponse({ 'x-aem-cug-required': 'true' }),
+        null, reqWithSearch, env,
+      );
+
+      const location = new URL(resp.headers.get('Location'));
+      expect(location.searchParams.get('redirect')).toBe('/members/page?utm=foo&id=42');
     });
   });
 

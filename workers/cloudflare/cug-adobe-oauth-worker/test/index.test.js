@@ -109,7 +109,7 @@ describe('index (request routing)', () => {
   });
 
   describe('protected page (CUG)', () => {
-    it('redirects to /login when no session and CUG is required', async () => {
+    it('redirects to /login with the original path preserved when no session and CUG is required', async () => {
       vi.stubGlobal('fetch', mockOriginFetch('<html>secret</html>', {
         'x-aem-cug-required': 'true',
       }));
@@ -118,7 +118,9 @@ describe('index (request routing)', () => {
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/login');
+      const location = new URL(resp.headers.get('Location'));
+      expect(location.pathname).toBe('/login');
+      expect(location.searchParams.get('redirect')).toBe('/members/page');
     });
 
     it('serves content when session exists and CUG is satisfied', async () => {

@@ -11,6 +11,30 @@
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
 const FALLBACK_PATH = '/';
+// Reject characters that could break out of the URL or smuggle CRLF.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
+
+/**
+ * Validate a caller-supplied redirect path. Must be a same-origin path
+ * (starts with '/' but not '//'). Returns the cleaned path+search or null.
+ */
+function safeRedirectPath(raw) {
+  if (typeof raw !== 'string') return null;
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (UNSAFE_PATH_RE.test(raw)) return null;
+  try {
+    const parsed = new URL(raw, 'https://placeholder.invalid');
+    if (parsed.origin !== 'https://placeholder.invalid') return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
+function redirect(request, path) {
+  return Response.redirect(new URL(path, request.url).href, 302);
+}
 
 /**
  * Fetches the group-to-URL mapping from the origin and redirects the user
@@ -18,6 +42,15 @@ const FALLBACK_PATH = '/';
  * mapping is unavailable or no group matches.
  */
 export async function handlePortalRedirect(session, request, env) {
+  const requestUrl = new URL(request.url);
+
+  // Caller-supplied deep link wins over the group's default mapped URL,
+  // so users dropped on /login?redirect=... land on the originally requested page.
+  const redirectParam = safeRedirectPath(requestUrl.searchParams.get('redirect'));
+  if (redirectParam) {
+    return redirect(request, redirectParam);
+  }
+
   const origin = new URL(request.url);
   origin.hostname = env.ORIGIN_HOSTNAME;
   origin.pathname = MAPPING_PATH;
@@ -47,8 +80,4 @@ export async function handlePortalRedirect(session, request, env) {
   });
 
   return redirect(request, match ? match.url : FALLBACK_PATH);
-}
-
-function redirect(request, path) {
-  return Response.redirect(new URL(path, request.url).href, 302);
 }

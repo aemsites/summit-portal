@@ -25,10 +25,17 @@ export async function checkCugAccess(originResponse, session, request, env) {
     return stripCugHeaders(originResponse);
   }
 
-  // CUG required but no session — redirect to login page
+  // CUG required but no session — redirect to login page, preserving the
+  // requested URL so the magic-link / OAuth flow can return the user here.
   if (!session) {
-    log(`path=${url.pathname} CUG required, no session — redirecting to /login`);
-    return Response.redirect(new URL('/login', request.url).href, 302);
+    const loginUrl = new URL('/login', request.url);
+    // Only preserve same-origin paths; never echo user-controlled origins.
+    const original = `${url.pathname}${url.search}`;
+    if (original && original.startsWith('/') && !original.startsWith('//')) {
+      loginUrl.searchParams.set('redirect', original);
+    }
+    log(`path=${url.pathname} CUG required, no session — redirecting to ${loginUrl.pathname}${loginUrl.search}`);
+    return Response.redirect(loginUrl.href, 302);
   }
 
   log(`path=${url.pathname} session email=***@${(session.email || '').split('@')[1]} groups=${JSON.stringify(session.groups)}`);
