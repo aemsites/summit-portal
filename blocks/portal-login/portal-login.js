@@ -1,5 +1,4 @@
-// blocks/portal-login/portal-login.js
-const MAGIC_LINK_ENDPOINT = '';
+const MAGIC_LINK_ENDPOINT = 'https://act.aem.now/auth/magiclink';
 
 function injectHeading(col, text) {
   const h3 = document.createElement('h3');
