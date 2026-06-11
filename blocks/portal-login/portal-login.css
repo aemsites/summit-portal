@@ -57,6 +57,7 @@
 /* Adobe ID column — make the .btn full-width */
 .portal-login .pl-col-adobe a.btn {
   display: block;
+  width: 100%;
   text-align: center;
   margin-top: var(--spacing-m);
 }
