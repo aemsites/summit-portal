@@ -155,7 +155,7 @@ describe('notification', () => {
       await sendMagicLinkNotFound('unknown@mystery.com', env);
 
       const [apoUrl, apoOpts] = fetchMock.mock.calls[1];
-      expect(apoUrl).toContain('templateName=expdev_portal_magic_link_notify');
+      expect(apoUrl).toContain('templateName=expdev_portal_no_report_notify');
       expect(apoOpts.body).toContain('<toList>aemsitestrial@adobe.com</toList>');
       expect(apoOpts.body).not.toContain('<ccList>');
       expect(apoOpts.body).toContain('<key>email</key>');
