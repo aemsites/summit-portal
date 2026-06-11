@@ -39,4 +39,28 @@ describe('portal-login', () => {
       expect(col.classList.contains('pl-col-magic')).to.be.true;
     });
   });
+
+  describe('card headings', () => {
+    let el;
+    before(() => {
+      el = makeBlock();
+      init(el);
+    });
+
+    it('injects "Adobe ID" heading as first child of col-adobe', () => {
+      const col = el.querySelector('.pl-col-adobe');
+      const h3 = col.querySelector('h3.pl-card-title');
+      expect(h3).to.exist;
+      expect(h3.textContent).to.equal('Adobe ID');
+      expect(col.firstElementChild).to.equal(h3);
+    });
+
+    it('injects "Magic Link" heading as first child of col-magic', () => {
+      const col = el.querySelector('.pl-col-magic');
+      const h3 = col.querySelector('h3.pl-card-title');
+      expect(h3).to.exist;
+      expect(h3.textContent).to.equal('Magic Link');
+      expect(col.firstElementChild).to.equal(h3);
+    });
+  });
 });
