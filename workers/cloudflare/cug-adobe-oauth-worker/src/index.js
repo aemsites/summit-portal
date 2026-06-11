@@ -189,17 +189,7 @@ const handleRequest = async (request, env) => {
     if (!claims) {
       // eslint-disable-next-line no-console
       console.warn(`[magiclink] token verification failed for path=${url.pathname}`);
-      const loginUrl = new URL(url.href);
-      loginUrl.searchParams.delete('token');
-      const safeHref = loginUrl.href
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      return new Response(
-        `<!DOCTYPE html><html lang="en"><body><p>This link has expired or is invalid. <a href="${safeHref}">Click here to log in.</a></p></body></html>`,
-        { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-      );
+      return Response.redirect(new URL('/expired', request.url).href, 302);
     }
 
     const email = claims.email.toLowerCase();

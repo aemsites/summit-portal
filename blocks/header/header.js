@@ -237,7 +237,7 @@ async function decorateUserInfo(section) {
 
   if (!user?.authenticated) {
     const signIn = document.createElement('a');
-    signIn.href = '/auth/portal';
+    signIn.href = '/login';
     signIn.className = 'user-sign-in';
     signIn.textContent = 'Sign in';
     wrapper.append(signIn);

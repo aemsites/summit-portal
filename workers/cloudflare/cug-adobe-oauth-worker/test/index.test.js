@@ -109,7 +109,7 @@ describe('index (request routing)', () => {
   });
 
   describe('protected page (CUG)', () => {
-    it('redirects to login when no session and CUG is required', async () => {
+    it('redirects to /login when no session and CUG is required', async () => {
       vi.stubGlobal('fetch', mockOriginFetch('<html>secret</html>', {
         'x-aem-cug-required': 'true',
       }));
@@ -118,7 +118,7 @@ describe('index (request routing)', () => {
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toContain(env.OAUTH_AUTHORIZE_URL);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login');
     });
 
     it('serves content when session exists and CUG is satisfied', async () => {
@@ -245,7 +245,7 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
     });
 
-    it('returns 401 with a login link when iat is older than 30 minutes', async () => {
+    it('redirects to /expired when iat is older than 30 minutes', async () => {
       const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
@@ -254,12 +254,11 @@ describe('index (request routing)', () => {
         env,
       );
 
-      expect(resp.status).toBe(401);
-      const body = await resp.text();
-      expect(body).toContain('href="https://mysite.com/customers/test/"');
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
     });
 
-    it('returns 401 when the token signature is invalid', async () => {
+    it('redirects to /expired when the token signature is invalid', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, 'wrong-secret');
 
@@ -268,7 +267,8 @@ describe('index (request routing)', () => {
         env,
       );
 
-      expect(resp.status).toBe(401);
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
     });
 
     it('replaces an existing session cookie when a valid token is provided', async () => {
@@ -329,7 +329,7 @@ describe('index (request routing)', () => {
       expect(session.groups).toEqual(['partner.com']);
     });
 
-    it('returns 401 when the token has no email claim', async () => {
+    it('redirects to /expired when the token has no email claim', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({ iat: now }, env.JWT_SECRET);
 
@@ -338,7 +338,8 @@ describe('index (request routing)', () => {
         env,
       );
 
-      expect(resp.status).toBe(401);
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
     });
   });
 });
