@@ -7,6 +7,12 @@ function injectHeading(col, text) {
   col.prepend(h3);
 }
 
+function decorateAdobeButton(col) {
+  const link = col.querySelector('strong > a');
+  if (!link) return;
+  link.classList.add('btn', 'btn-primary');
+}
+
 export default function init(el) {
   const [row] = [...el.children];
   row.classList.add('pl-row');
@@ -17,4 +23,6 @@ export default function init(el) {
 
   injectHeading(colAdobe, 'Adobe ID');
   injectHeading(colMagic, 'Magic Link');
+
+  decorateAdobeButton(colAdobe);
 }

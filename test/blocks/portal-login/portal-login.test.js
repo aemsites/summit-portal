@@ -63,4 +63,18 @@ describe('portal-login', () => {
       expect(col.firstElementChild).to.equal(h3);
     });
   });
+
+  describe('Adobe ID button', () => {
+    let el;
+    before(() => {
+      el = makeBlock();
+      init(el);
+    });
+
+    it('adds .btn and .btn-primary to the Adobe ID link', () => {
+      const link = el.querySelector('.pl-col-adobe a');
+      expect(link.classList.contains('btn')).to.be.true;
+      expect(link.classList.contains('btn-primary')).to.be.true;
+    });
+  });
 });
