@@ -1,12 +1,5 @@
 const MAGIC_LINK_ENDPOINT = 'https://act.aem.now/auth/magiclink';
 
-function injectHeading(col, text) {
-  const h3 = document.createElement('h3');
-  h3.className = 'pl-card-title';
-  h3.textContent = text;
-  col.prepend(h3);
-}
-
 function decorateAdobeButton(col) {
   const link = col.querySelector('strong > a');
   if (!link) return;
@@ -95,8 +88,8 @@ export default function init(el) {
   colAdobe.classList.add('pl-col', 'pl-col-adobe');
   colMagic.classList.add('pl-col', 'pl-col-magic');
 
-  injectHeading(colAdobe, 'Adobe ID');
-  injectHeading(colMagic, 'Magic Link');
+  colAdobe.querySelector('h3')?.classList.add('pl-card-title');
+  colMagic.querySelector('h3')?.classList.add('pl-card-title');
 
   decorateAdobeButton(colAdobe);
 
