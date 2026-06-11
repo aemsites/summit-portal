@@ -144,12 +144,12 @@ describe('index (request routing)', () => {
   });
 
   describe('portal redirect', () => {
-    it('redirects to /login when no session', async () => {
+    it('redirects to IMS login when no session', async () => {
       const request = new Request('https://mysite.com/auth/portal');
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/login');
+      expect(resp.headers.get('Location')).toContain(env.OAUTH_AUTHORIZE_URL);
     });
 
     it('fetches mapping and redirects to matched page when session exists', async () => {

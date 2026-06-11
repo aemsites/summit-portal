@@ -13,7 +13,7 @@
  *   Everything else    — Proxied to origin, then CUG headers are checked
  */
 
-import { handleCallback } from './oauth.js';
+import { redirectToLogin, handleCallback } from './oauth.js';
 import { createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect } from './portal.js';
@@ -148,7 +148,7 @@ const handleRequest = async (request, env) => {
   if (url.pathname === '/auth/portal') {
     const session = await getSession(request, env);
     if (!session) {
-      return Response.redirect(new URL('/login', request.url).href, 302);
+      return redirectToLogin(request.url, env);
     }
     return handlePortalRedirect(session, request, env);
   }
