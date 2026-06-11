@@ -9,8 +9,6 @@
  * user's domain matches at least one (OR logic).
  */
 
-import { redirectToLogin } from './oauth.js';
-
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[cug]', ...args);
 
@@ -27,10 +25,10 @@ export async function checkCugAccess(originResponse, session, request, env) {
     return stripCugHeaders(originResponse);
   }
 
-  // CUG required but no session — redirect to login
+  // CUG required but no session — redirect to login page
   if (!session) {
-    log(`path=${url.pathname} CUG required, no session — redirecting to login`);
-    return redirectToLogin(request.url, env);
+    log(`path=${url.pathname} CUG required, no session — redirecting to /login`);
+    return Response.redirect(new URL('/login', request.url).href, 302);
   }
 
   log(`path=${url.pathname} session email=***@${(session.email || '').split('@')[1]} groups=${JSON.stringify(session.groups)}`);
