@@ -1,4 +1,5 @@
 // blocks/portal-login/portal-login.js
+const MAGIC_LINK_ENDPOINT = '';
 
 function injectHeading(col, text) {
   const h3 = document.createElement('h3');
@@ -46,6 +47,37 @@ function createMagicForm() {
   return form;
 }
 
+function attachSubmitHandler(form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = form.querySelector('#pl-email');
+    const btn = form.querySelector('.pl-submit');
+    const errorEl = form.querySelector('.pl-error');
+    const email = input.value.trim();
+
+    errorEl.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      const resp = await fetch(MAGIC_LINK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const msg = document.createElement('p');
+      msg.className = 'pl-success';
+      msg.textContent = `Check your inbox — we've sent a login link to ${email}.`;
+      form.replaceWith(msg);
+    } catch {
+      btn.disabled = false;
+      btn.textContent = 'Send login link';
+      errorEl.hidden = false;
+    }
+  });
+}
+
 export default function init(el) {
   const [row] = [...el.children];
   row.classList.add('pl-row');
@@ -61,4 +93,5 @@ export default function init(el) {
 
   const form = createMagicForm();
   colMagic.append(form);
+  attachSubmitHandler(form);
 }

@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import init from '../../../blocks/portal-login/portal-login.js';
 
 function makeBlock() {
@@ -115,6 +116,65 @@ describe('portal-login', () => {
       expect(err).to.exist;
       expect(err.hidden).to.be.true;
       expect(err.getAttribute('role')).to.equal('alert');
+    });
+  });
+
+  describe('form submit', () => {
+    let el;
+    let fetchStub;
+
+    beforeEach(() => {
+      el = makeBlock();
+      init(el);
+      fetchStub = sinon.stub(window, 'fetch');
+    });
+
+    afterEach(() => {
+      fetchStub.restore();
+    });
+
+    it('calls fetch with POST and the entered email on submit', async () => {
+      fetchStub.resolves(new Response('{}', { status: 200 }));
+      const form = el.querySelector('.pl-magic-form');
+      form.querySelector('#pl-email').value = 'user@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(fetchStub.calledOnce).to.be.true;
+      const [, options] = fetchStub.firstCall.args;
+      expect(options.method).to.equal('POST');
+      expect(JSON.parse(options.body).email).to.equal('user@example.com');
+    });
+
+    it('replaces form with success message on 200 response', async () => {
+      fetchStub.resolves(new Response('{}', { status: 200 }));
+      const col = el.querySelector('.pl-col-magic');
+      const form = col.querySelector('.pl-magic-form');
+      form.querySelector('#pl-email').value = 'user@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(col.querySelector('.pl-magic-form')).to.be.null;
+      const msg = col.querySelector('.pl-success');
+      expect(msg).to.exist;
+      expect(msg.textContent).to.include('user@example.com');
+    });
+
+    it('shows error element on failed fetch (non-2xx)', async () => {
+      fetchStub.resolves(new Response('{}', { status: 500 }));
+      const form = el.querySelector('.pl-magic-form');
+      form.querySelector('#pl-email').value = 'user@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(form.querySelector('.pl-error').hidden).to.be.false;
+      expect(form.querySelector('.pl-submit').disabled).to.be.false;
+    });
+
+    it('shows error element on network failure', async () => {
+      fetchStub.rejects(new Error('Network error'));
+      const form = el.querySelector('.pl-magic-form');
+      form.querySelector('#pl-email').value = 'user@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(form.querySelector('.pl-error').hidden).to.be.false;
     });
   });
 });
