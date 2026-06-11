@@ -1,5 +1,4 @@
 // blocks/portal-login/portal-login.js
-const MAGIC_LINK_ENDPOINT = '';
 
 export default function init(el) {
   const [row] = [...el.children];
