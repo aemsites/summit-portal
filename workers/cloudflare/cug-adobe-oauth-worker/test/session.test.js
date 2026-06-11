@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  createSession, getSession, sessionCookie, clearSessionCookie,
+  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken
 } from '../src/session.js';
-import { createMockEnv } from './helpers.js';
+import { createMockEnv, signedJwt } from './helpers.js';
 
 describe('session (JWT)', () => {
   let env;
@@ -121,6 +121,107 @@ describe('session (JWT)', () => {
       const cookie = clearSessionCookie();
       expect(cookie).toContain('Max-Age=0');
       expect(cookie).toContain('auth_token=;');
+    });
+  });
+
+  describe('verifyMagicLink', () => {
+    it('returns payload for a valid fresh token', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result.email).toBe('alice@adobe.com');
+      expect(result.iat).toBe(now);
+    });
+
+    it('returns null when iat is older than 30 minutes', async () => {
+      const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null when email is missing', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', iat: now }, env.JWT_SECRET);
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null when iat is missing', async () => {
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com' }, env.JWT_SECRET);
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null when signature is wrong', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, 'wrong-secret');
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result).toBeNull();
+    });
+
+    it('accepts a token at exactly the 30-minute boundary', async () => {
+      const fixedNow = 2000000000;
+      vi.spyOn(Date, 'now').mockReturnValue(fixedNow * 1000);
+
+      const boundary = fixedNow - 30 * 60;
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: boundary }, env.JWT_SECRET);
+      const result = await verifyMagicLink(token, env);
+
+      vi.restoreAllMocks();
+      expect(result).not.toBeNull();
+    });
+
+    it('rejects a token missing the magiclink purpose claim', async () => {
+      // a regular session token should NOT be accepted by verifyMagicLink
+      const sessionToken = await createSession(env, { email: 'alice@adobe.com', name: 'Alice', groups: ['adobe.com'] });
+      const result = await verifyMagicLink(sessionToken, env);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('createMagicLinkToken', () => {
+    it('returns a three-part JWT string', async () => {
+      const token = await createMagicLinkToken('alice@adobe.com', env);
+
+      expect(typeof token).toBe('string');
+      expect(token.split('.')).toHaveLength(3);
+    });
+
+    it('produces a token that verifyMagicLink accepts (round-trip)', async () => {
+      const before = Math.floor(Date.now() / 1000);
+      const token = await createMagicLinkToken('alice@adobe.com', env);
+
+      const result = await verifyMagicLink(token, env);
+
+      expect(result).not.toBeNull();
+      expect(result.email).toBe('alice@adobe.com');
+      expect(result.iat).toBeGreaterThanOrEqual(before);
+      expect(result.exp).toBeUndefined();
+    });
+
+    it('embeds email and iat in the payload, no exp', async () => {
+      const before = Math.floor(Date.now() / 1000);
+      const token = await createMagicLinkToken('bob@test.com', env);
+      const after = Math.floor(Date.now() / 1000);
+
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+      expect(payload.purpose).toBe('magiclink');
+      expect(payload.email).toBe('bob@test.com');
+      expect(payload.iat).toBeGreaterThanOrEqual(before);
+      expect(payload.iat).toBeLessThanOrEqual(after);
+      expect(payload.exp).toBeUndefined();
     });
   });
 });

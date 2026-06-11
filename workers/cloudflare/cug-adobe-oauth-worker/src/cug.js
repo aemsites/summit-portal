@@ -11,19 +11,29 @@
 
 import { redirectToLogin } from './oauth.js';
 
+// eslint-disable-next-line no-console
+const log = (...args) => console.log('[cug]', ...args);
+
 export async function checkCugAccess(originResponse, session, request, env) {
+  const url = new URL(request.url);
   const cugRequired = originResponse.headers.get('x-aem-cug-required');
   const cugGroups = originResponse.headers.get('x-aem-cug-groups');
 
+  log(`path=${url.pathname} cug-required=${cugRequired} cug-groups=${cugGroups}`);
+
   // No CUG protection on this path — serve publicly
   if (cugRequired !== 'true') {
+    log(`path=${url.pathname} public, no CUG protection`);
     return stripCugHeaders(originResponse);
   }
 
   // CUG required but no session — redirect to login
   if (!session) {
+    log(`path=${url.pathname} CUG required, no session — redirecting to login`);
     return redirectToLogin(request.url, env);
   }
+
+  log(`path=${url.pathname} session email=***@${(session.email || '').split('@')[1]} groups=${JSON.stringify(session.groups)}`);
 
   // If specific domains are required, check the user's email domain
   if (cugGroups) {
@@ -31,11 +41,15 @@ export async function checkCugAccess(originResponse, session, request, env) {
     const userGroups = session.groups || [];
     const hasAccess = allowedGroups.some((g) => userGroups.includes(g));
 
+    log(`path=${url.pathname} allowed=${JSON.stringify(allowedGroups)} userGroups=${JSON.stringify(userGroups)} hasAccess=${hasAccess}`);
+
     if (!hasAccess) {
+      log(`path=${url.pathname} access denied — redirecting to /403`);
       return Response.redirect(new URL('/403', request.url).href, 302);
     }
   }
 
+  log(`path=${url.pathname} access granted`);
   const resp = stripCugHeaders(originResponse);
   resp.headers.set('Cache-Control', 'private, no-store');
   return resp;

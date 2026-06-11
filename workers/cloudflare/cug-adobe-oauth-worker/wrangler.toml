@@ -10,10 +10,15 @@ OAUTH_LOGOUT_URL = "https://ims-na1.adobelogin.com/ims/logout/v1"
 OAUTH_REDIRECT_URI = "https://aem-cug-cloudfare-jck1.com/auth/callback"
 OAUTH_SCOPE = "openid,AdobeID,email,profile"
 OAUTH_CLIENT_ID = "aem-sites-cug"
+ENVIRONMENT = "stage"
 
 # Secrets (set via: wrangler secret put <NAME>)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
+# APO_CLIENT_ID = "..."
+# APO_CLIENT_SECRET = "..."
+# APO_SCOPE = "..."
+# APO_AUTHORIZATION_CODE = "..."  (optional — enables authorization_code IMS grant)
 
 [[kv_namespaces]]
 binding = "SESSIONS"
@@ -37,11 +42,16 @@ OAUTH_LOGOUT_URL = "https://ims-na1.adobelogin.com/ims/logout/v1"
 OAUTH_REDIRECT_URI = "https://act.aem.now/auth/callback"
 OAUTH_SCOPE = "openid,AdobeID,email,profile"
 OAUTH_CLIENT_ID = "aem-sites-cug"
+ENVIRONMENT = "prod"
 
 # Secrets (set via: wrangler secret put <NAME> --env summit)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
 # ORIGIN_AUTHENTICATION = "..."  (site token for the protected origin)
+# APO_CLIENT_ID = "..."
+# APO_CLIENT_SECRET = "..."
+# APO_SCOPE = "..."
+# APO_AUTHORIZATION_CODE = "..."  (optional — enables authorization_code IMS grant)
 
 [[env.summit.kv_namespaces]]
 binding = "SESSIONS"

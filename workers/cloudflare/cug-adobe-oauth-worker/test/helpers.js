@@ -47,3 +47,25 @@ export function fakeJwt(payload) {
     .replace(/=+$/, '');
   return `${header}.${body}.fakesig`;
 }
+
+/**
+ * Create a properly HMAC-SHA256-signed JWT for use in magic link tests.
+ * Unlike fakeJwt(), this produces a real signature verifyMagicLink will accept.
+ */
+export async function signedJwt(payload, secret) {
+  function b64u(bytes) {
+    return btoa(String.fromCharCode(...new Uint8Array(bytes)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  }
+  const enc = new TextEncoder();
+  const header = b64u(enc.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
+  const body = b64u(enc.encode(JSON.stringify(payload)));
+  const data = enc.encode(`${header}.${body}`);
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, data);
+  return `${header}.${body}.${b64u(sig)}`;
+}

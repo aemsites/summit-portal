@@ -1,0 +1,168 @@
+/* blocks/portal-login/portal-login.css */
+
+/* Wrapper centering — support both ak.js and aem.js conventions */
+.portal-login-wrapper,
+.block-content:has(.portal-login) {
+  padding-inline: 0;
+}
+
+@media (width >= 1000px) {
+  .portal-login-wrapper,
+  .block-content:has(.portal-login) {
+    padding-inline: var(--spacing-l);
+  }
+
+  .portal-login {
+    max-width: 1200px;
+    margin-inline: auto;
+  }
+}
+
+/* Grid layout */
+.portal-login .pl-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
+}
+
+@media (width >= 1000px) {
+  .portal-login .pl-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+  }
+}
+
+/* Card chrome */
+.portal-login .pl-col {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--rpt-card-shadow);
+}
+
+@media (width >= 1000px) {
+  .portal-login .pl-col {
+    border-radius: 16px;
+  }
+}
+
+/* Card heading */
+.portal-login .pl-card-title {
+  margin: 0 0 var(--spacing-m);
+  padding-bottom: var(--spacing-s);
+  font-size: var(--heading-font-size-xs);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Shared button layout — identical sizing for both cards */
+.portal-login .pl-col-adobe a.btn,
+.portal-login .pl-submit {
+  display: block;
+  width: 100%;
+  padding: 10px var(--spacing-m);
+  line-height: var(--body-line-height);
+  text-align: center;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Adobe ID button — push to card bottom */
+.portal-login .pl-col-adobe p:has(a.btn) {
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
+/* Magic link form */
+.portal-login .pl-magic-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  margin-top: auto;
+}
+
+.portal-login .pl-label {
+  font-size: var(--body-font-size-s);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.portal-login .pl-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px var(--spacing-m);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+
+  &:focus {
+    outline: 2px solid var(--color-adobe-red);
+    outline-offset: 2px;
+  }
+}
+
+/* Magic link submit — red color variant */
+.portal-login .pl-submit {
+  background: var(--color-adobe-red);
+  color: #fff;
+  border: 2px solid var(--color-adobe-red);
+
+  &:hover:not(:disabled) {
+    background: var(--color-adobe-red-hover);
+    border-color: var(--color-adobe-red-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Success message */
+.portal-login .pl-success {
+  font-size: var(--body-font-size-s);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Inline error */
+.portal-login .pl-error {
+  font-size: var(--body-font-size-s);
+  color: var(--color-red-600);
+  margin: 0;
+}
+
+/* Mobile "or" divider — shown between stacked cards on mobile */
+.portal-login .pl-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-m) var(--spacing-xl);
+  color: var(--color-text-muted);
+  font-size: var(--body-font-size-s);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+}
+
+@media (width >= 1000px) {
+  .portal-login .pl-divider {
+    display: none;
+  }
+
+  .portal-login .pl-input {
+    border-radius: 8px;
+  }
+}

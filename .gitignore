@@ -10,3 +10,6 @@ helix-importer-ui
 .wrangler
 .claude
 .worktrees
+.playwright-mcp
+
+workers/cloudflare/cug-adobe-oauth-worker/.env

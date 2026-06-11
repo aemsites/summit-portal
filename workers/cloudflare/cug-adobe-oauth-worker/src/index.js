@@ -8,14 +8,16 @@
  *   /auth/logout       — Destroys session and logs out of Adobe IMS
  *   /auth/portal       — Redirects authenticated user based on group mapping
  *   /auth/me           — Returns current user info as JSON (email, name, groups)
+ *   /auth/magiclink    — POST email, check CUG mapping, send signed magic link
  *   RUM / media        — Passed through to origin without auth
  *   Everything else    — Proxied to origin, then CUG headers are checked
  */
 
 import { redirectToLogin, handleCallback } from './oauth.js';
-import { createSession, getSession, sessionCookie, clearSessionCookie } from './session.js';
+import { createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect } from './portal.js';
+import { handleMagicLinkRequest } from './magiclink.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -89,14 +91,14 @@ const handleRequest = async (request, env) => {
   const url = new URL(request.url);
 
   // Strip non-standard ports
-  if (url.port) {
-    const redirectTo = new URL(request.url);
-    redirectTo.port = '';
-    return new Response('Moved permanently to ' + redirectTo.href, {
-      status: 301,
-      headers: { location: redirectTo.href },
-    });
-  }
+  // if (url.port) {
+  //   const redirectTo = new URL(request.url);
+  //   redirectTo.port = '';
+  //   return new Response('Moved permanently to ' + redirectTo.href, {
+  //     status: 301,
+  //     headers: { location: redirectTo.href },
+  //   });
+  // }
 
   if (url.pathname.startsWith('/drafts/')) {
     return new Response('Not Found', { status: 404 });
@@ -109,6 +111,11 @@ const handleRequest = async (request, env) => {
   }
 
   // --- Auth routes ---
+
+  // Magic link request: POST email, check CUG domain, send signed link
+  if (url.pathname === '/auth/magiclink') {
+    return handleMagicLinkRequest(request, env);
+  }
 
   // OAuth callback: exchange authorization code for tokens, create session
   if (url.pathname === '/auth/callback') {
@@ -171,6 +178,54 @@ const handleRequest = async (request, env) => {
   // RUM and media requests bypass authentication
   if (isRUMRequest(url) || isMediaRequest(url)) {
     return proxyToOrigin(request, env, url);
+  }
+
+  // Magic link: ?token= creates or replaces the session without an IMS round-trip
+  const magicToken = url.searchParams.get('token');
+  if (magicToken) {
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] token present on ${url.pathname}`);
+    const claims = await verifyMagicLink(magicToken, env);
+    if (!claims) {
+      // eslint-disable-next-line no-console
+      console.warn(`[magiclink] token verification failed for path=${url.pathname}`);
+      const loginUrl = new URL(url.href);
+      loginUrl.searchParams.delete('token');
+      const safeHref = loginUrl.href
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      return new Response(
+        `<!DOCTYPE html><html lang="en"><body><p>This link has expired or is invalid. <a href="${safeHref}">Click here to log in.</a></p></body></html>`,
+        { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+      );
+    }
+
+    const email = claims.email.toLowerCase();
+    const domain = email.split('@')[1];
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] token valid email=***@${domain} iat=${claims.iat}`);
+
+    if (!domain) {
+      // eslint-disable-next-line no-console
+      console.error('[magiclink] token missing domain in email claim');
+      return new Response('Invalid token', { status: 400 });
+    }
+    const newToken = await createSession(env, { email, name: claims.name || email, groups: [domain] });
+
+    const cleanUrl = new URL(url.href);
+    cleanUrl.searchParams.delete('token');
+    // eslint-disable-next-line no-console
+    console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: cleanUrl.href,
+        'Set-Cookie': sessionCookie(newToken),
+      },
+    });
   }
 
   // All other requests: fetch from origin, then enforce CUG access control
