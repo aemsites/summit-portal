@@ -35,7 +35,8 @@ describe('portal-login', () => {
     });
 
     it('adds pl-col and pl-col-magic to second column', () => {
-      const col = el.querySelector('.pl-row').children[1];
+      const col = el.querySelector('.pl-row .pl-col-magic');
+      expect(col).to.exist;
       expect(col.classList.contains('pl-col')).to.be.true;
       expect(col.classList.contains('pl-col-magic')).to.be.true;
     });
@@ -175,6 +176,27 @@ describe('portal-login', () => {
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       await new Promise((r) => setTimeout(r, 0));
       expect(form.querySelector('.pl-error').hidden).to.be.false;
+    });
+  });
+
+  describe('mobile divider', () => {
+    let el;
+    before(() => {
+      el = makeBlock();
+      init(el);
+    });
+
+    it('injects a .pl-divider between the two cards', () => {
+      const row = el.querySelector('.pl-row');
+      const divider = row.querySelector('.pl-divider');
+      expect(divider).to.exist;
+      expect(divider.previousElementSibling.classList.contains('pl-col-adobe')).to.be.true;
+      expect(divider.nextElementSibling.classList.contains('pl-col-magic')).to.be.true;
+    });
+
+    it('divider contains the text "or"', () => {
+      const divider = el.querySelector('.pl-divider');
+      expect(divider.textContent.trim()).to.equal('or');
     });
   });
 });

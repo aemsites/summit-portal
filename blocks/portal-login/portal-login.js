@@ -78,6 +78,16 @@ function attachSubmitHandler(form) {
   });
 }
 
+function injectDivider(row) {
+  const divider = document.createElement('div');
+  divider.className = 'pl-divider';
+  const span = document.createElement('span');
+  span.textContent = 'or';
+  divider.append(span);
+  const [colAdobe] = [...row.children];
+  colAdobe.after(divider);
+}
+
 export default function init(el) {
   const [row] = [...el.children];
   row.classList.add('pl-row');
@@ -94,4 +104,6 @@ export default function init(el) {
   const form = createMagicForm();
   colMagic.append(form);
   attachSubmitHandler(form);
+
+  injectDivider(row);
 }
