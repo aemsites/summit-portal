@@ -77,4 +77,44 @@ describe('portal-login', () => {
       expect(link.classList.contains('btn-primary')).to.be.true;
     });
   });
+
+  describe('magic link form', () => {
+    let el;
+    before(() => {
+      el = makeBlock();
+      init(el);
+    });
+
+    it('injects a form with class pl-magic-form into col-magic', () => {
+      const form = el.querySelector('.pl-col-magic .pl-magic-form');
+      expect(form).to.exist;
+      expect(form.tagName).to.equal('FORM');
+    });
+
+    it('form contains an email input with id pl-email', () => {
+      const input = el.querySelector('.pl-magic-form #pl-email');
+      expect(input).to.exist;
+      expect(input.type).to.equal('email');
+      expect(input.required).to.be.true;
+    });
+
+    it('form contains a label associated with pl-email', () => {
+      const label = el.querySelector('.pl-magic-form .pl-label');
+      expect(label).to.exist;
+      expect(label.htmlFor).to.equal('pl-email');
+    });
+
+    it('form contains a submit button with class pl-submit', () => {
+      const btn = el.querySelector('.pl-magic-form .pl-submit');
+      expect(btn).to.exist;
+      expect(btn.type).to.equal('submit');
+    });
+
+    it('form contains a hidden error element with role alert', () => {
+      const err = el.querySelector('.pl-magic-form .pl-error');
+      expect(err).to.exist;
+      expect(err.hidden).to.be.true;
+      expect(err.getAttribute('role')).to.equal('alert');
+    });
+  });
 });
