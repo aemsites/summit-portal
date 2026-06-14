@@ -1,0 +1,49 @@
+.traffic-lights .tfl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.traffic-lights .tfl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border-left: 3px solid var(--tfl-accent);
+  background: var(--tfl-bg);
+}
+
+.traffic-lights .tfl-good {
+  --tfl-accent: light-dark(#10b981, #34d399);
+  --tfl-bg: light-dark(#ecfdf5, #1c2a24);
+  --tfl-badge: light-dark(#047857, #34d399);
+}
+
+.traffic-lights .tfl-warning {
+  --tfl-accent: light-dark(#f59e0b, #fbbf24);
+  --tfl-bg: light-dark(#fffbeb, #2a2519);
+  --tfl-badge: light-dark(#b45309, #fbbf24);
+}
+
+.traffic-lights .tfl-poor {
+  --tfl-accent: var(--rpt-red, light-dark(#e60000, #f33));
+  --tfl-bg: var(--rpt-red-bg-subtle, light-dark(#fef2f2, #2a1e1e));
+  --tfl-badge: var(--rpt-red, light-dark(#e60000, #f87171));
+}
+
+.traffic-lights .tfl-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rpt-text, light-dark(#0f0d15, #f5f5f5));
+}
+
+.traffic-lights .tfl-badge {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tfl-badge);
+  background: light-dark(#fff, rgb(255 255 255 / 8%));
+}

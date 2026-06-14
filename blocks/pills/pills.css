@@ -1,0 +1,15 @@
+.pills .pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pills .pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: var(--rpt-surface-alt, light-dark(#f7f7f9, #2a2a2a));
+  color: var(--rpt-text-secondary, light-dark(#4b5563, #d1d5db));
+  border: 1px solid var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
+}

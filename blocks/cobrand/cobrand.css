@@ -1,0 +1,37 @@
+.cobrand {
+  padding: 4px 0 8px;
+}
+
+.cobrand .cb-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cobrand .cb-center {
+  justify-content: center;
+}
+
+.cobrand .cb-adobe {
+  height: 22px;
+  width: auto;
+}
+
+.cobrand .cb-semrush {
+  height: 26px;
+  width: auto;
+}
+
+.cobrand .cb-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
+}
+
+/* The Semrush mark is dark artwork — invert only it for dark mode so it stays
+   legible. The Adobe wordmark is brand red and stays as-is. */
+@media (prefers-color-scheme: dark) {
+  .cobrand .cb-semrush {
+    filter: invert(1) brightness(2);
+  }
+}

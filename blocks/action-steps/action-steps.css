@@ -1,0 +1,93 @@
+.action-steps .ast-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (width >= 900px) {
+  .action-steps .ast-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.action-steps .ast-item {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--rpt-surface, light-dark(#fff, #1f1f1f));
+  border: 1px solid var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
+  border-top: 3px solid var(--ast-accent);
+  box-shadow: var(--rpt-card-shadow, 0 4px 20px rgb(0 0 0 / 4%));
+}
+
+.action-steps .ast-positive { --ast-accent: light-dark(#10b981, #34d399); }
+.action-steps .ast-warning { --ast-accent: light-dark(#f59e0b, #fbbf24); }
+.action-steps .ast-negative { --ast-accent: var(--rpt-red, light-dark(#e60000, #f33)); }
+.action-steps .ast-neutral { --ast-accent: var(--rpt-red, light-dark(#e60000, #f33)); }
+
+.action-steps .ast-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-steps .ast-num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ast-accent) 14%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ast-accent);
+}
+
+.action-steps .ast-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--rpt-text, light-dark(#0f0d15, #f5f5f5));
+  margin: 0;
+}
+
+.action-steps .ast-bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.action-steps .ast-bullets li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rpt-text-secondary, light-dark(#4b5563, #d1d5db));
+}
+
+.action-steps .ast-bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ast-accent);
+}
+
+.action-steps .ast-product {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rpt-text-muted, light-dark(#6b7280, #9ca3af));
+  padding-top: 14px;
+  border-top: 1px solid var(--rpt-border-subtle, light-dark(#f3f3f5, #2f2f2f));
+}
