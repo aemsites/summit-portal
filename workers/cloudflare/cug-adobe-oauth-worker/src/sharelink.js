@@ -147,8 +147,13 @@ export async function handleShareLinkRequest(request, env) {
   // Choose the template from the matched entry's org (Semrush vs Adobe).
   const matchedEntry = pageEntries.find((e) => (e.group || '').trim().toLowerCase() === recipientDomain) || pageEntries[0];
   const org = (matchedEntry.org || '').trim();
-  const templateName = templateForOrg('sharelink', org);
-  log(`sending share link to domain=${recipientDomain} template=${templateName}`);
+  // INTERIM: the dedicated `expdev_actnow_sharelink` APO template isn't
+  // provisioned in Postoffice yet (sends 404 → 502). Reuse the live
+  // `expdev_actnow_magiclink` template, which takes the same `magic_link` data
+  // key. Switch back to templateForOrg('sharelink', org) once the email team
+  // creates the sharelink template. See PR notes.
+  const templateName = templateForOrg('magiclink', org);
+  log(`sending share link to domain=${recipientDomain} template=${templateName} (interim: magiclink template)`);
 
   try {
     await sendShareLinkConfirm(email, shareLinkUrl, env, templateName);

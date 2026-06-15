@@ -168,7 +168,9 @@ describe('sharelink', () => {
     const [calledEmail, calledUrl, , calledTemplate] = sendShareLinkConfirm.mock.calls[0];
     expect(calledEmail).toBe('tim@apple.com');
     expect(calledUrl).toBe('https://mysite.com/members/apple?token=mock-share-token');
-    expect(calledTemplate).toBe('expdev_actnow_sharelink');
+    // INTERIM: reusing the live magiclink template until the sharelink template
+    // is provisioned in Postoffice.
+    expect(calledTemplate).toBe('expdev_actnow_magiclink');
     expect(sendMagicLinkInternalNotify).toHaveBeenCalledOnce();
   });
 
@@ -231,7 +233,8 @@ describe('sharelink', () => {
     const req = await staffRequest(env, { email: 'c@sem-cust.com', path: '/members/sem' });
     await handleShareLinkRequest(req, env);
     const [, , , calledTemplate] = sendShareLinkConfirm.mock.calls[0];
-    expect(calledTemplate).toBe('expdev_actnow_sharelink_semrush');
+    // INTERIM: magiclink template family until the sharelink template exists.
+    expect(calledTemplate).toBe('expdev_actnow_magiclink_semrush');
   });
 
   it('returns 502 when the CUG mapping fetch fails', async () => {
