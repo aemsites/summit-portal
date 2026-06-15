@@ -8,7 +8,7 @@
 
 /* ---- The lockup ---- */
 .cobrand {
-  padding: 18px 0 6px;
+  padding: 8px 0 6px;
 }
 
 /* Centred co-brand lockup — reads as one intentional partner mark. */
@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 20px;
 }
 
 .cobrand .cb-center {
@@ -26,20 +26,20 @@
 /* Both marks share the same cap height and a common optical baseline so the
    two differently-sized artworks sit level with each other. */
 .cobrand .cb-adobe {
-  height: 24px;
+  height: 30px;
   width: auto;
   display: block;
 }
 
 .cobrand .cb-semrush {
-  height: 24px;
+  height: 30px;
   width: auto;
   display: block;
 }
 
 .cobrand .cb-divider {
   width: 1px;
-  height: 20px;
+  height: 24px;
   background: light-dark(rgb(29 29 29 / 22%), rgb(234 229 223 / 28%));
 }
 
@@ -87,6 +87,13 @@ main:has(.cobrand) {
 
 body:has(.cobrand):has(.report-hero.insight) main {
   background: light-dark(#eae5df, #1c1c1c);
+}
+
+/* The portal reserves 64px of body top padding for its fixed site header/nav,
+   which this standalone report page doesn't show — it just leaves a big empty
+   gap above the co-brand lockup. Trim it on Cannes pages. */
+body:has(.cobrand) {
+  padding-top: 16px;
 }
 
 /* The shared report-scores block stamps a hardcoded verdict word ("Poor" for
