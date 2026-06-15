@@ -104,14 +104,18 @@
   .brand-chip .bc-semrush { filter: invert(1); }
 }
 
-/* Yield to the feedback widget whenever it is on screen, at ANY width: the
-   widget can expand to ~280px and on mobile spans the full bottom band, so the
-   chip hides while it's present and returns (via the feedback module's
-   MutationObserver clearing body.brand-chip-yield) once it's dismissed. */
-body.brand-chip-yield .brand-chip {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(8px);
+/* Yield to the feedback widget ONLY where the two can actually collide: up to
+   ~900px the left chip (~310px) and the right feedback card (expands to ~280px,
+   full-width below 600px) can meet at the bottom edge, so the chip hides while
+   it's present and returns (via the feedback module's MutationObserver clearing
+   body.brand-chip-yield) once dismissed. On wider desktop they sit in opposite
+   corners with room to spare, so the chip always stays visible there. */
+@media (width <= 900px) {
+  body.brand-chip-yield .brand-chip {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+  }
 }
 
 /* Mobile: the feedback widget becomes a full-width bottom band; make the chip a
