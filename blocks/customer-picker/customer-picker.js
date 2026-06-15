@@ -95,12 +95,25 @@ function buildDialog() {
   return { backdrop, close, content };
 }
 
-/** Turn a company.Folder value into a same-origin path (strip origin + trailing slash). */
+/** Turn a company.Folder value into a same-origin path (strip origin + trailing slash).
+ *  Used to build the da.live edit URL, which appends its own `/index`. */
 function folderToPath(folder) {
   try {
     return new URL(folder).pathname.replace(/\/$/, '');
   } catch {
     return folder.replace(/\/$/, '');
+  }
+}
+
+/** Same-origin path for a shareable deep link — strips the origin but PRESERVES
+ *  the page path exactly (incl. any trailing slash), so a folder/index page
+ *  (e.g. `/accounts/.../1800flowers-com/`) resolves to its index. This mirrors
+ *  the "Open" CTA, which links to `company.Folder` verbatim. */
+function folderToDeepLink(folder) {
+  try {
+    return new URL(folder).pathname;
+  } catch {
+    return folder;
   }
 }
 
@@ -112,7 +125,9 @@ function folderToPath(folder) {
 function buildShareSection(company, domains) {
   if (!company.Folder) return null;
 
-  const path = folderToPath(company.Folder);
+  // Preserve the trailing slash so the link lands on the folder's index page,
+  // matching the "Open" CTA (which uses company.Folder verbatim).
+  const path = folderToDeepLink(company.Folder);
   const allowed = (domains || []).map((d) => d.trim().toLowerCase()).filter(Boolean);
 
   const section = document.createElement('div');
