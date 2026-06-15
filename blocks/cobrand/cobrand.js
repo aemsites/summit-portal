@@ -1,7 +1,8 @@
 /**
  * Adobe × Semrush co-brand lockup. No authored content needed — renders the
- * two logos with a divider. Variant `footer` centers it. The Semrush mark is a
- * dark PNG; CSS inverts it in dark mode.
+ * two logos with a divider. Variant `footer` centers it. The Adobe mark is a
+ * vector SVG (crisp at any size); the Semrush mark is a high-res dark PNG that
+ * CSS inverts in dark mode.
  */
 export default function decorate(block) {
   const isFooter = block.classList.contains('footer');
@@ -11,7 +12,7 @@ export default function decorate(block) {
 
   const adobe = document.createElement('img');
   adobe.className = 'cb-adobe';
-  adobe.src = '/img/cannes/adobe-logo.png';
+  adobe.src = '/img/cannes/adobe-logo.svg';
   adobe.alt = 'Adobe';
 
   const divider = document.createElement('span');
