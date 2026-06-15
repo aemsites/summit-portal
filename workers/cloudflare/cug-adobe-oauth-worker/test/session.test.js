@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken
+  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
+  createShareLinkToken, verifyShareLink,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
@@ -222,6 +223,51 @@ describe('session (JWT)', () => {
       expect(payload.iat).toBeGreaterThanOrEqual(before);
       expect(payload.iat).toBeLessThanOrEqual(after);
       expect(payload.exp).toBeUndefined();
+    });
+  });
+
+  describe('createShareLinkToken / verifyShareLink', () => {
+    it('embeds purpose=sharelink, email and a 7-day exp', async () => {
+      const before = Math.floor(Date.now() / 1000);
+      const token = await createShareLinkToken('alice@adobe.com', env);
+
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      expect(payload.purpose).toBe('sharelink');
+      expect(payload.email).toBe('alice@adobe.com');
+      expect(payload.iat).toBeGreaterThanOrEqual(before);
+      expect(payload.exp).toBe(payload.iat + 7 * 24 * 60 * 60);
+    });
+
+    it('round-trips through verifyShareLink', async () => {
+      const token = await createShareLinkToken('alice@adobe.com', env);
+      const result = await verifyShareLink(token, env);
+      expect(result).not.toBeNull();
+      expect(result.email).toBe('alice@adobe.com');
+      expect(result.purpose).toBe('sharelink');
+    });
+
+    it('rejects an expired share link', async () => {
+      const past = Math.floor(Date.now() / 1000) - 10;
+      const token = await signedJwt({
+        purpose: 'sharelink', email: 'alice@adobe.com', iat: past - 100, exp: past,
+      }, env.JWT_SECRET);
+      expect(await verifyShareLink(token, env)).toBeNull();
+    });
+
+    it('rejects a magic link token (wrong purpose)', async () => {
+      const token = await createMagicLinkToken('alice@adobe.com', env);
+      expect(await verifyShareLink(token, env)).toBeNull();
+    });
+
+    it('verifyMagicLink rejects a share link token (wrong purpose)', async () => {
+      const token = await createShareLinkToken('alice@adobe.com', env);
+      expect(await verifyMagicLink(token, env)).toBeNull();
+    });
+
+    it('rejects a tampered signature', async () => {
+      const token = await createShareLinkToken('alice@adobe.com', env);
+      const tampered = `${token.slice(0, -3)}xxx`;
+      expect(await verifyShareLink(tampered, env)).toBeNull();
     });
   });
 });

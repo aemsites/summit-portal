@@ -19,7 +19,7 @@ const logError = (...args) => console.error('[magiclink]', ...args);
  *   - parses as a relative URL
  * Returns the cleaned path+search (no fragment) or null when invalid.
  */
-function safeRedirectPath(raw) {
+export function safeRedirectPath(raw) {
   if (typeof raw !== 'string') return null;
   if (!raw.startsWith('/') || raw.startsWith('//')) return null;
   if (UNSAFE_PATH_RE.test(raw)) return null;
@@ -33,12 +33,12 @@ function safeRedirectPath(raw) {
 }
 
 /** Append `token=<jwt>` to a path, preserving any existing query string. */
-function appendTokenParam(path, token) {
+export function appendTokenParam(path, token) {
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}token=${token}`;
 }
 
-async function fetchCugMapping(env) {
+export async function fetchCugMapping(env) {
   const url = `https://${env.ORIGIN_HOSTNAME}${MAPPING_PATH}`;
   const headers = {};
   if (env.ORIGIN_AUTHENTICATION) headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
