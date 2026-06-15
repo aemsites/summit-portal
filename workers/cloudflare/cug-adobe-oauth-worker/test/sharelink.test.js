@@ -121,40 +121,28 @@ describe('sharelink', () => {
     expect(sendShareLinkConfirm).not.toHaveBeenCalled();
   });
 
-  it('returns 403 forbidden when recipient domain is not allowed for the page', async () => {
+  it('sends to ANY recipient email and bakes the page group into the link', async () => {
+    // Recipient is an outside domain not in the page CUG — staff can still send;
+    // the token grants the page group so the link opens directly.
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
     const req = await staffRequest(env, { email: 'stranger@gmail.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
-    expect(resp.status).toBe(403);
-    const json = await resp.json();
-    expect(json.result).toBe('forbidden');
-    expect(json.allowedDomains).toEqual(['apple.com']);
-    expect(sendShareLinkConfirm).not.toHaveBeenCalled();
-  });
-
-  it('allows an internal (staff) recipient not in the page CUG, granting the page groups', async () => {
-    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const req = await staffRequest(env, { email: 'josec@adobe.com', path: '/members/apple' });
-    const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
     expect(await resp.json()).toEqual({ result: 'sent' });
-    // The minted token must carry the page's group so the staff session can open it.
+    expect(createShareLinkToken).toHaveBeenCalledWith('stranger@gmail.com', env, ['apple.com']);
+    expect(sendShareLinkConfirm).toHaveBeenCalledOnce();
+  });
+
+  it('grants the page group regardless of recipient (internal or customer)', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const internal = await staffRequest(env, { email: 'josec@adobe.com', path: '/members/apple' });
+    expect((await handleShareLinkRequest(internal, env)).status).toBe(200);
     expect(createShareLinkToken).toHaveBeenCalledWith('josec@adobe.com', env, ['apple.com']);
-  });
 
-  it('does NOT grant page groups to a customer recipient already in the CUG', async () => {
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const req = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
-    await handleShareLinkRequest(req, env);
-    expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, []);
-  });
-
-  it('allows a semrush staff recipient too', async () => {
-    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const req = await staffRequest(env, { email: 'rep@semrush.com', path: '/members/apple' });
-    const resp = await handleShareLinkRequest(req, env);
-    expect(resp.status).toBe(200);
-    expect(createShareLinkToken).toHaveBeenCalledWith('rep@semrush.com', env, ['apple.com']);
+    const customer = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
+    expect((await handleShareLinkRequest(customer, env)).status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, ['apple.com']);
   });
 
   it('returns { result: "sent" } and emails an authorized recipient', async () => {
@@ -195,26 +183,20 @@ describe('sharelink', () => {
     expect(await resp.json()).toEqual({ result: 'sent' });
   });
 
-  it('picks the most-specific scope when nested scopes both cover the page', async () => {
-    // A broad parent scope must not widen access when a deeper scope covers
-    // the page — only the longest-matching scope's domains are allowed.
+  it('grants only the most-specific scope group when nested scopes both cover the page', async () => {
+    // A broad parent scope must not leak into the granted token — only the
+    // deepest matching scope's group is baked into the link.
     const nestedEntries = [
       { group: 'broad.com', url: '/accounts/*' },
       { group: 'apple.com', url: '/accounts/a/apple/*' },
     ];
     const deep = '/accounts/a/apple/insights/index';
 
-    // apple.com is allowed by the deeper scope → sent
     vi.stubGlobal('fetch', mockCugFetch(nestedEntries));
-    const ok = await staffRequest(env, { email: 'tim@apple.com', path: deep });
-    expect((await handleShareLinkRequest(ok, env)).status).toBe(200);
-
-    // broad.com only matches the parent scope → not allowed for this page
-    vi.stubGlobal('fetch', mockCugFetch(nestedEntries));
-    const denied = await staffRequest(env, { email: 'x@broad.com', path: deep });
-    const resp = await handleShareLinkRequest(denied, env);
-    expect(resp.status).toBe(403);
-    expect((await resp.json()).result).toBe('forbidden');
+    const req = await staffRequest(env, { email: 'someone@anywhere.com', path: deep });
+    expect((await handleShareLinkRequest(req, env)).status).toBe(200);
+    // grant is the deeper scope (apple.com), not the broad parent (broad.com)
+    expect(createShareLinkToken).toHaveBeenCalledWith('someone@anywhere.com', env, ['apple.com']);
   });
 
   it('authorizes against any of several allowed domains for the same page', async () => {

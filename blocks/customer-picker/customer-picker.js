@@ -118,31 +118,30 @@ function folderToDeepLink(folder) {
 }
 
 /**
- * Build the "Share this page with a customer" form. Staff types the customer's
- * email and the worker emails them an authenticated deep link to this page.
+ * Build the "Share this page" form. Staff enter any email and the worker sends
+ * that address a 7-day magic link that opens this page directly — no login or
+ * separate magic-link request needed. Page access is still enforced by the
+ * page's own CUG for anyone who navigates there without the link.
  * Returns the section element, or null when there's nothing shareable.
  */
-function buildShareSection(company, domains) {
+function buildShareSection(company) {
   if (!company.Folder) return null;
 
   // Preserve the trailing slash so the link lands on the folder's index page,
   // matching the "Open" CTA (which uses company.Folder verbatim).
   const path = folderToDeepLink(company.Folder);
-  const allowed = (domains || []).map((d) => d.trim().toLowerCase()).filter(Boolean);
 
   const section = document.createElement('div');
   section.className = 'cp-dialog-section cp-share';
 
   const heading = document.createElement('h4');
-  heading.textContent = 'Share this page with a customer';
+  heading.textContent = 'Share this page';
   section.append(heading);
 
-  if (allowed.length) {
-    const hint = document.createElement('p');
-    hint.className = 'cp-share-hint';
-    hint.textContent = `Allowed email domains: ${allowed.join(', ')}`;
-    section.append(hint);
-  }
+  const hint = document.createElement('p');
+  hint.className = 'cp-share-hint';
+  hint.textContent = 'Sends a one-click link to any email that opens this page directly — no login needed. The link works for 7 days.';
+  section.append(hint);
 
   const form = document.createElement('form');
   form.className = 'cp-share-form';
@@ -150,7 +149,7 @@ function buildShareSection(company, domains) {
   const input = document.createElement('input');
   input.type = 'email';
   input.className = 'cp-share-input';
-  input.placeholder = 'customer@email.com';
+  input.placeholder = 'name@email.com';
   input.setAttribute('inputmode', 'email');
   input.setAttribute('autocomplete', 'off');
   input.required = true;
@@ -181,10 +180,6 @@ function buildShareSection(company, domains) {
     const email = input.value.trim().toLowerCase();
     if (!email) return;
 
-    // The worker is the authority on which domains may access the page
-    // (its Gate 3 returns 403 `forbidden` with the allowed list), so we don't
-    // re-check the domain here — that would just duplicate the rule and could
-    // drift from the live CUG mapping.
     button.disabled = true;
     input.disabled = true;
     setStatus('Sending…', 'pending');
@@ -198,12 +193,8 @@ function buildShareSection(company, domains) {
       const data = await resp.json().catch(() => ({}));
 
       if (resp.ok && data.result === 'sent') {
-        setStatus(`Sent to ${email} ✓`, 'success');
+        setStatus(`Sent a 7-day link to ${email} ✓`, 'success');
         input.value = '';
-      } else if (resp.status === 403 && data.result === 'forbidden') {
-        const list = (data.allowedDomains || allowed).join(', ');
-        setStatus(`That email can't access this page. Allowed: ${list}`, 'error');
-        input.disabled = false;
       } else if (resp.status === 401) {
         setStatus('Your session expired — please reload and sign in again.', 'error');
         input.disabled = false;
@@ -292,7 +283,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
   // Share form — only for customer-facing pages (insights / portal), never the
   // internal accounts directory.
   if (mode !== 'accounts') {
-    const shareSection = buildShareSection(company, domains);
+    const shareSection = buildShareSection(company);
     if (shareSection) content.append(shareSection);
   }
 }
