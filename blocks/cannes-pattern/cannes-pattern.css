@@ -64,6 +64,18 @@ main:has(.cannes-pattern) .report-scores .rsc-card.rsc-good .rsc-verdict::after 
   font-size: 0.75rem;
 }
 
+/* Small muted "Data source: …" credit line under each data section — honors
+   the decision to label data provenance throughout (Semrush for AI/organic,
+   Chrome UX for performance). Aligned to the section's left edge. */
+main:has(.cannes-pattern) .cannes-source {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: light-dark(#8a8276, #9ca3af);
+  text-transform: none;
+}
+
 /* Product links inside "How to act" callouts — Adobe red, not the default blue,
    so they read as on-brand product CTAs. Underline only on hover. */
 main:has(.cannes-pattern) .report-callout .rcl-bar a {

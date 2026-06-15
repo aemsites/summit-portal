@@ -573,7 +573,24 @@ function renderMetricStrip(chartData) {
   if (!items.length) return null;
   const wrap = document.createElement('div');
   wrap.className = 'rc-metric-strip';
-  items.forEach((d) => {
+
+  // Optional column-titles header: a leading row authored as
+  // `columns | <label title> | <value title> | <note title>`. Rendered as a
+  // muted header row so the strip's three columns are self-explanatory.
+  let dataItems = items;
+  if (items[0]?.label.trim().toLowerCase() === 'columns') {
+    const h = items[0].raw || [];
+    const header = document.createElement('div');
+    header.className = 'rc-metric-strip-row rc-ms-header';
+    header.innerHTML = `
+      <div class="rc-ms-label">${h[1] || ''}</div>
+      <div class="rc-ms-value">${h[2] || ''}</div>
+      ${h[3] ? `<div class="rc-ms-note">${h[3]}</div>` : ''}`;
+    wrap.append(header);
+    dataItems = items.slice(1);
+  }
+
+  dataItems.forEach((d) => {
     const row = document.createElement('div');
     row.className = 'rc-metric-strip-row';
     row.dataset.anim = 'rc-anim-rec';

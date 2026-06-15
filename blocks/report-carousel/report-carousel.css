@@ -731,6 +731,25 @@
   color: light-dark(#9ca3af, #6b7280);
 }
 
+/* Optional column-titles header row (authored via a leading `columns | …` row).
+   Muted, uppercase, so the three columns are self-explanatory. */
+.report-carousel .rc-metric-strip-row.rc-ms-header {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: light-dark(#f7f7f9, #232323);
+  border-bottom: 1px solid light-dark(#e5e7eb, #444);
+}
+
+.report-carousel .rc-ms-header .rc-ms-label,
+.report-carousel .rc-ms-header .rc-ms-value,
+.report-carousel .rc-ms-header .rc-ms-note {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: light-dark(#6b7280, #9ca3af);
+}
+
 /* Recommendation list */
 .report-carousel .rc-rec-list {
   width: 100%;
