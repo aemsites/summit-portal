@@ -222,6 +222,17 @@ export default async function mount() {
 
   render(block, slug);
   document.body.append(block);
+  document.body.classList.add('brand-chip-yield');
+
+  // When the feedback block is removed (dismissed/submitted/auto), stop yielding
+  // so the chip returns. dismissAnd() already calls block.remove().
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(block)) {
+      document.body.classList.remove('brand-chip-yield');
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true });
 
   requestAnimationFrame(() => block.classList.add('is-visible'));
 }
