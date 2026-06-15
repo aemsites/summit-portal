@@ -43,11 +43,13 @@
   background: light-dark(rgb(29 29 29 / 22%), rgb(234 229 223 / 28%));
 }
 
-/* The Semrush mark is dark artwork — invert only it for dark mode so it stays
-   legible. The Adobe wordmark is brand red and stays as-is. */
+/* The Semrush mark is dark artwork — invert it for dark mode so it stays
+   legible. A plain invert keeps the artwork crisp; the old `brightness(2)`
+   over-drove it and washed out detail. The Adobe wordmark is brand red and
+   stays as-is. */
 @media (prefers-color-scheme: dark) {
   .cobrand .cb-semrush {
-    filter: invert(1) brightness(2);
+    filter: invert(1);
   }
 }
 
@@ -89,12 +91,11 @@ body:has(.cobrand):has(.report-hero.insight) main {
   background: light-dark(#eae5df, #1c1c1c);
 }
 
-/* The portal reserves 64px of body top padding for its fixed site header/nav,
-   which this standalone report page doesn't show — it just leaves a big empty
-   gap above the co-brand lockup. Trim it on Cannes pages. */
-body:has(.cobrand) {
-  padding-top: 16px;
-}
+/* NOTE: do NOT trim the body's top padding here — in production the portal
+   shows a fixed `body > header` (64px) and that padding is the clearance that
+   keeps the nav from overlapping the co-brand lockup. (The local preview
+   harness has no header, so there it reads as empty space, but production
+   needs it.) The cobrand's own top padding is kept small instead. */
 
 /* The shared report-scores block stamps a hardcoded verdict word ("Poor" for
    scores < 50). Cannes copy must stay non-catastrophic (Slack: "room to
