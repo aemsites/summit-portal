@@ -2,7 +2,7 @@ import { createMagicLinkToken } from './session.js';
 import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFound } from './notification.js';
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Reject characters that could break out of the URL or smuggle CRLF.
 // eslint-disable-next-line no-control-regex
 const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
@@ -11,6 +11,24 @@ const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
 const log = (...args) => console.log('[magiclink]', ...args);
 // eslint-disable-next-line no-console
 const logError = (...args) => console.error('[magiclink]', ...args);
+
+/** JSON response helper shared by the magic-link and share-link handlers. */
+export function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Pick the APO email template for a given link kind + CUG org. The naming
+ * convention (`expdev_actnow_<kind>` with a `_semrush` suffix for Semrush
+ * customers) lives here so the magic-link and share-link handlers stay in sync.
+ */
+export function templateForOrg(kind, org) {
+  const suffix = (org || '').trim().toLowerCase() === 'semrush' ? '_semrush' : '';
+  return `expdev_actnow_${kind}${suffix}`;
+}
 
 /**
  * Validate a caller-supplied redirect path. Must be a same-origin path:
@@ -71,17 +89,11 @@ export async function handleMagicLinkRequest(request, env) {
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     redirectRaw = typeof body.redirect === 'string' ? body.redirect : undefined;
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
   if (!EMAIL_RE.test(email)) {
-    return new Response(JSON.stringify({ error: 'Invalid email address' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Invalid email address' }, 400);
   }
 
   // Optional deep-link target: where the user should land after clicking the
@@ -102,10 +114,7 @@ export async function handleMagicLinkRequest(request, env) {
 
     if (!match.url || !match.url.startsWith('/') || match.url.startsWith('//')) {
       logError(`invalid CUG url value: ${match.url}`);
-      return new Response(JSON.stringify({ error: 'Invalid CUG mapping entry' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Invalid CUG mapping entry' }, 500);
     }
 
     let token;
@@ -114,10 +123,7 @@ export async function handleMagicLinkRequest(request, env) {
       log('magic link token created');
     } catch (err) {
       logError(`createMagicLinkToken failed: ${err.message}`);
-      return new Response(JSON.stringify({ error: 'Failed to create magic link token' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Failed to create magic link token' }, 500);
     }
 
     // Prefer the caller-supplied deep link (e.g. the page that triggered the
@@ -125,8 +131,7 @@ export async function handleMagicLinkRequest(request, env) {
     const targetPath = redirectPath || match.url;
     const magicLinkUrl = `${new URL(request.url).origin}${appendTokenParam(targetPath, token)}`;
     log(`magic link target=${targetPath}${redirectPath ? ' (from redirect)' : ' (from CUG mapping)'}`);
-    const org = (match.org || '').trim().toLowerCase();
-    const templateName = org === 'semrush' ? 'expdev_actnow_magiclink_semrush' : 'expdev_actnow_magiclink';
+    const templateName = templateForOrg('magiclink', match.org);
     log(`sending magic link to domain=${domain} template=${templateName}`);
 
     try {
@@ -134,10 +139,7 @@ export async function handleMagicLinkRequest(request, env) {
       log('magic link email dispatched successfully');
     } catch (err) {
       logError(`sendMagicLinkConfirm failed: ${err.message}`);
-      return new Response(JSON.stringify({ error: 'Failed to send magic link email' }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Failed to send magic link email' }, 502);
     }
 
     const notifyOrg = (match.org || '').trim() || 'Adobe';
@@ -149,9 +151,7 @@ export async function handleMagicLinkRequest(request, env) {
       logError(`sendMagicLinkInternalNotify failed: ${err.message}`);
     }
 
-    return new Response(JSON.stringify({ result: 'sent' }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ result: 'sent' });
   }
 
   log(`no CUG match for domain=${domain}${mappingError ? ` (mapping error: ${mappingError})` : ''}`);
@@ -161,16 +161,10 @@ export async function handleMagicLinkRequest(request, env) {
     log('not-found notification dispatched');
   } catch (err) {
     logError(`sendMagicLinkNotFound failed: ${err.message}`);
-    return new Response(JSON.stringify({ error: 'Failed to send notification email' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Failed to send notification email' }, 502);
   }
 
-  const body = mappingError
+  return jsonResponse(mappingError
     ? { result: 'not_found', reason: mappingError }
-    : { result: 'not_found' };
-  return new Response(JSON.stringify(body), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+    : { result: 'not_found' });
 }

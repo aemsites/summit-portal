@@ -1,21 +1,15 @@
 import { getSession, createShareLinkToken } from './session.js';
-import { safeRedirectPath, appendTokenParam, fetchCugMapping } from './magiclink.js';
+import {
+  safeRedirectPath, appendTokenParam, fetchCugMapping, EMAIL_RE, jsonResponse, templateForOrg,
+} from './magiclink.js';
 import { sendShareLinkConfirm, sendMagicLinkInternalNotify } from './notification.js';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_STAFF_DOMAINS = 'adobe.com,semrush.com';
 
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[sharelink]', ...args);
 // eslint-disable-next-line no-console
 const logError = (...args) => console.error('[sharelink]', ...args);
-
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
 
 /** Parse the comma-separated STAFF_DOMAINS env var into a lowercase set. */
 function staffDomains(env) {
@@ -122,8 +116,8 @@ export async function handleShareLinkRequest(request, env) {
 
   // Choose the template from the matched entry's org (Semrush vs Adobe).
   const matchedEntry = pageEntries.find((e) => (e.group || '').trim().toLowerCase() === recipientDomain) || pageEntries[0];
-  const org = (matchedEntry.org || '').trim().toLowerCase();
-  const templateName = org === 'semrush' ? 'expdev_actnow_sharelink_semrush' : 'expdev_actnow_sharelink';
+  const org = (matchedEntry.org || '').trim();
+  const templateName = templateForOrg('sharelink', org);
   log(`sending share link to domain=${recipientDomain} template=${templateName}`);
 
   try {
@@ -135,7 +129,7 @@ export async function handleShareLinkRequest(request, env) {
   }
 
   // Internal notify is best-effort — never fail the request on it.
-  const notifyOrg = (matchedEntry.org || '').trim() || 'Adobe';
+  const notifyOrg = org || 'Adobe';
   try {
     await sendMagicLinkInternalNotify(email, recipientDomain, notifyOrg, env);
     log('internal notification dispatched');

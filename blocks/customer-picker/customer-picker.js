@@ -158,7 +158,7 @@ function buildShareSection(company, domains) {
   function setStatus(message, kind) {
     status.textContent = message;
     status.dataset.kind = kind;
-    status.hidden = !message;
+    status.hidden = false;
   }
 
   form.addEventListener('submit', async (e) => {
@@ -166,12 +166,10 @@ function buildShareSection(company, domains) {
     const email = input.value.trim().toLowerCase();
     if (!email) return;
 
-    const domain = email.split('@')[1];
-    if (allowed.length && !allowed.includes(domain)) {
-      setStatus(`${domain || 'That domain'} can't access this page. Allowed: ${allowed.join(', ')}`, 'error');
-      return;
-    }
-
+    // The worker is the authority on which domains may access the page
+    // (its Gate 3 returns 403 `forbidden` with the allowed list), so we don't
+    // re-check the domain here — that would just duplicate the rule and could
+    // drift from the live CUG mapping.
     button.disabled = true;
     input.disabled = true;
     setStatus('Sending…', 'pending');
@@ -212,6 +210,11 @@ function buildShareSection(company, domains) {
 function renderDialog(content, company, websiteMap, domainMap, mode) {
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
+  // The key into websiteMap/domainMap differs for insight reports (keyed by the
+  // customer name) vs. accounts/portal (keyed by company). Compute it once.
+  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+  const domains = domainMap.get(lookupKey) || [];
+
   if (mode === 'accounts') {
     if (company.AM) {
       html += `<div class="cp-dialog-section">
@@ -222,22 +225,14 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       </div>`;
     }
     if (company.Folder) {
-      let folderPath;
-      try {
-        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
-      } catch {
-        folderPath = company.Folder.replace(/\/$/, '');
-      }
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderPath}/index`;
+      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
         <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open account page &rarr;</a>
         <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
       </div>`;
     }
   } else {
-    const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
     const websites = websiteMap.get(lookupKey) || [];
-    const domains = domainMap.get(lookupKey) || [];
 
     if (websites.length) {
       html += `<div class="cp-dialog-section">
@@ -268,14 +263,8 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
     }
 
     if (company.Folder) {
-      let folderPath;
-      try {
-        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
-      } catch {
-        folderPath = company.Folder.replace(/\/$/, '');
-      }
       const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderPath}/index`;
+      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
         <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
         <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
@@ -288,8 +277,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
   // Share form — only for customer-facing pages (insights / portal), never the
   // internal accounts directory.
   if (mode !== 'accounts') {
-    const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
-    const shareSection = buildShareSection(company, domainMap.get(lookupKey));
+    const shareSection = buildShareSection(company, domains);
     if (shareSection) content.append(shareSection);
   }
 }
