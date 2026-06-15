@@ -158,3 +158,179 @@ main:has(.cannes-pattern) .report-scores .rsc-card.rsc-good .rsc-verdict::after 
     filter: hue-rotate(360deg);
   }
 }
+
+/* ============================================================= */
+
+/* CANNES PAGE LAYOUT — single shared column.
+   Every section's content edge must line up with the hero's. The summit
+   report blocks each ship their own container width (report-hero's
+   `.section:has(.report-hero) > div` is max-width 1200 + 24px gutter;
+   report-scores/carousel wrappers are max-width 1200; .report-ai-visibility's
+   `.rav-stats` carry 60px side padding; etc.), so left/right edges diverge.
+
+   Fix: the SECTION owns the one gutter (set in the harness:
+   max-width 1120, padding 0 24px, border-box, margin auto). Here we collapse
+   every per-block container to that box so all blocks fill it edge-to-edge,
+   centred, at every width. Card chrome (inner padding on .rav-panels etc.)
+   is untouched — only the outer alignment box is normalised. */
+
+/* Neutralise report-hero's section overrides (it sets `margin: 0` + its own
+   padding, which left-aligns the cover) so the cover centres and shares the
+   harness gutter like every other section — the single source of truth. */
+main:has(.cannes-pattern) > .section:has(.report-hero.insight) {
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* report-hero.css zeroes horizontal padding on every data section
+   (`.section:has(.report-stats, .report-cards, .report-scores, .report-chart,
+   .report-bar, .report-callout) { padding: 32px 0 }`) which makes those
+   sections sit flush to their box edge while the cover keeps the 24px gutter —
+   the core misalignment. Restore the single shared gutter on ALL sections and
+   trim the heavy 32px vertical padding to a compact rhythm. */
+main:has(.cannes-pattern) > .section {
+  padding: 8px 24px;
+}
+
+/* Collapse the block-content wrapper in every section to the section box. */
+main:has(.cannes-pattern) > .section > .block-content,
+main:has(.cannes-pattern) .section:has(.report-hero) > div {
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* All top-level block containers fill the column edge-to-edge, no extra max-width
+   or side padding of their own, no auto-centring inside a wider box. */
+main:has(.cannes-pattern) .report-ai-visibility,
+main:has(.cannes-pattern) .report-ai-visibility .rav-container,
+main:has(.cannes-pattern) .report-carousel,
+main:has(.cannes-pattern) .block-content:has(.report-scores),
+main:has(.cannes-pattern) .report-scores-wrapper {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* The performance-insights shell wraps report-scores in `.rav-panels-outer`,
+   which ships 20px side padding — that insets the scores card past the shared
+   column edge. Zero it ONLY in the shell that hosts report-scores so the AI
+   block's own panel padding elsewhere is untouched. */
+main:has(.cannes-pattern) .rav-empty-shell .rav-panels-outer {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The AI block's stats strip ships 60px side padding that pushes its inner edge
+   in past the card edge; pull it back to the card's own rhythm. */
+main:has(.cannes-pattern) .report-ai-visibility .rav-stats {
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+/* ── AI stats → match the nicer .report-stats .rs-card chrome ────────────────
+   The standalone stats strip (direct child of .rav-container) renders as a flat
+   strip with hairline dividers — visually weaker than the Search-performance
+   .rs-card grid the user prefers. Re-chrome those cells as individual cards:
+   white surface, rounded border, soft shadow, accent rule, uppercase label —
+   without touching the .rav-stats-story-row variant the block uses elsewhere. */
+main:has(.cannes-pattern) .report-ai-visibility .rav-container > .rav-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  padding: 24px 28px;
+  border-bottom: none;
+}
+
+main:has(.cannes-pattern) .report-ai-visibility .rav-container > .rav-stats > .rav-stat-card {
+  position: relative;
+  gap: 4px;
+  padding: 20px 24px;
+  overflow: hidden;
+  background: var(--rpt-surface);
+  border: 1px solid var(--rpt-border);
+  border-right: 1px solid var(--rpt-border);
+  border-radius: 12px;
+  box-shadow: var(--rpt-card-shadow);
+}
+
+main:has(.cannes-pattern)
+  .report-ai-visibility
+  .rav-container
+  > .rav-stats
+  > .rav-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--rpt-red);
+}
+
+main:has(.cannes-pattern)
+  .report-ai-visibility
+  .rav-container
+  > .rav-stats
+  > .rav-stat-card
+  .rav-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rpt-text-muted);
+}
+
+/* ── Vertical rhythm — compact exec briefing, less scroll to the data ───────── */
+
+/* Shrink the signature pattern band so it doesn't eat the fold. */
+main:has(.cannes-pattern) .cannes-pattern.cp-band {
+  --cp-size: 30px;
+}
+
+@media (width >= 1000px) {
+  main:has(.cannes-pattern) .cannes-pattern.cp-band {
+    --cp-size: 34px;
+  }
+}
+
+/* Tighten the hero: smaller internal padding + screenshot panel. */
+main:has(.cannes-pattern) .report-hero.insight .rh-insight-text {
+  padding: 32px 36px;
+}
+
+/* The AI deep-dive panels ship a roomy 64px inner pad — trim it so the section
+   carries less height without crowding the charts. */
+main:has(.cannes-pattern) .report-ai-visibility .rav-panels {
+  padding: 36px 40px;
+}
+
+main:has(.cannes-pattern) .report-ai-visibility .rav-gap-insight-flex {
+  padding: 32px 40px;
+}
+
+/* The blocks each add their own top margin (24px) that compounds with the
+   section gap. Zero them — the section gap is the single spacing system. */
+main:has(.cannes-pattern) .report-ai-visibility,
+main:has(.cannes-pattern) .report-carousel,
+main:has(.cannes-pattern) .report-scores-wrapper,
+main:has(.cannes-pattern) .block-content:has(.report-scores) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Cover callouts: deliberate, even rhythm. The section gap already spaces them;
+   give the pair a touch more breathing room from the stats strip above. */
+main:has(.cannes-pattern) .section.cover .report-callout {
+  margin: 0;
+}
+
+main:has(.cannes-pattern) .section.cover .report-callout .rcl-bar {
+  padding: 14px 18px;
+}
+
+/* ── Cobrand lockup — clean, centred, premium spacing ───────────────────────── */
+main:has(.cannes-pattern) .cobrand {
+  padding: 18px 0 6px;
+}

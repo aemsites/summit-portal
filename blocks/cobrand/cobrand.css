@@ -2,30 +2,36 @@
   padding: 4px 0 8px;
 }
 
+/* Centred co-brand lockup — reads as one intentional partner mark. */
 .cobrand .cb-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 18px;
 }
 
 .cobrand .cb-center {
   justify-content: center;
 }
 
+/* Both marks share the same cap height and a common optical baseline so the
+   two differently-sized artworks sit level with each other. */
 .cobrand .cb-adobe {
-  height: 22px;
+  height: 24px;
   width: auto;
+  display: block;
 }
 
 .cobrand .cb-semrush {
-  height: 26px;
+  height: 24px;
   width: auto;
+  display: block;
 }
 
 .cobrand .cb-divider {
   width: 1px;
-  height: 22px;
-  background: var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
+  height: 20px;
+  background: light-dark(rgb(29 29 29 / 22%), rgb(234 229 223 / 28%));
 }
 
 /* The Semrush mark is dark artwork — invert only it for dark mode so it stays
