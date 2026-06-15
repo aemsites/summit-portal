@@ -45,6 +45,25 @@ body:has(.cannes-pattern):has(.report-hero.insight) main {
   background: light-dark(#eae5df, #1c1c1c);
 }
 
+/* The shared report-scores block stamps a hardcoded verdict word ("Poor" for
+   scores < 50). Cannes copy must stay non-catastrophic (Slack: "room to
+   improve", never "failing"/"poor"), so on Cannes pages we replace the verdict
+   text with a measured label. The ring colour still signals severity. */
+main:has(.cannes-pattern) .report-scores .rsc-verdict {
+  font-size: 0;
+}
+
+main:has(.cannes-pattern) .report-scores .rsc-card.rsc-poor .rsc-verdict::after,
+main:has(.cannes-pattern) .report-scores .rsc-card.rsc-warning .rsc-verdict::after {
+  content: 'Needs work';
+  font-size: 0.75rem;
+}
+
+main:has(.cannes-pattern) .report-scores .rsc-card.rsc-good .rsc-verdict::after {
+  content: 'Strong';
+  font-size: 0.75rem;
+}
+
 .cannes-pattern {
   --cp-ink: var(--cannes-pat-ink, #1d1d1d);
   --cp-paper: var(--cannes-pat-paper, #eae5df);
