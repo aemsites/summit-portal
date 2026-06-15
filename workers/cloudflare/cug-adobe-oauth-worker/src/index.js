@@ -214,7 +214,11 @@ const handleRequest = async (request, env) => {
       console.error('[magiclink] token missing domain in email claim');
       return new Response('Invalid token', { status: 400 });
     }
-    const newToken = await createSession(env, { email, name: claims.name || email, groups: [domain] });
+    // A staff-shared link may carry extra CUG groups so an internal recipient
+    // can open a page their own domain isn't in. Always include the recipient's
+    // own domain too. De-duplicate.
+    const groups = [...new Set([domain, ...(Array.isArray(claims.groups) ? claims.groups : [])])];
+    const newToken = await createSession(env, { email, name: claims.name || email, groups });
 
     const cleanUrl = new URL(url.href);
     cleanUrl.searchParams.delete('token');

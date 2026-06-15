@@ -111,10 +111,18 @@ export async function verifyMagicLink(token, env) {
  * Create a signed JWT for a staff-shared link. Unlike the self-service magic
  * link (30-min iat freshness), share links carry an explicit `exp` and are
  * valid for 7 days so a customer can open the link after the booth hand-off.
+ *
+ * `grantGroups` (optional) are CUG groups baked into the link so the recipient's
+ * session can open the page even when their own email domain isn't in the page's
+ * CUG — used when staff share a page with another internal (Adobe/Semrush) email
+ * so they can review it. The session still also includes the recipient's own
+ * domain group. Only the authenticated staff share endpoint sets this.
  */
-export async function createShareLinkToken(email, env) {
+export async function createShareLinkToken(email, env, grantGroups = []) {
   const now = Math.floor(Date.now() / 1000);
-  return signJwt({ purpose: 'sharelink', email, iat: now, exp: now + SHARE_LINK_TTL }, env.JWT_SECRET);
+  const payload = { purpose: 'sharelink', email, iat: now, exp: now + SHARE_LINK_TTL };
+  if (Array.isArray(grantGroups) && grantGroups.length) payload.groups = grantGroups;
+  return signJwt(payload, env.JWT_SECRET);
 }
 
 /**

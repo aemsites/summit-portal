@@ -263,6 +263,28 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
     });
 
+    it('grants the share token groups (plus the recipient domain) to the session', async () => {
+      const { getSession } = await import('../src/session.js');
+      const now = Math.floor(Date.now() / 1000);
+      // Staff recipient: token carries the page's group so they can open it.
+      const token = await signedJwt({
+        purpose: 'sharelink', email: 'josec@adobe.com', iat: now, exp: now + 7 * 24 * 60 * 60, groups: ['apple.com'],
+      }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/members/apple/?token=${token}`),
+        env,
+      );
+
+      const newToken = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(session.groups).toContain('apple.com'); // page group → can open the page
+      expect(session.groups).toContain('adobe.com'); // own domain retained
+    });
+
     it('redirects to /expired for an expired share link token', async () => {
       const past = Math.floor(Date.now() / 1000) - 10;
       const token = await signedJwt({
