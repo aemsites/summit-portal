@@ -53,7 +53,10 @@ A split layout with a heading, description, and download CTA on the left, and an
 Summit “LLM visibility” / “Performance insights” experience: stat cards, platform coverage pills, side-by-side comparison panels with charts (horizontal bars, platform bars, score tables, big figures). Horizontal bars support count vs percent display (authoring flags `|percent` / `|count`, or inferred share-style totals), and can show platform favicons when labels match known brands. Gap, key insight, and CTA rows render below the panels; the CTA copies from the authored block cells. An empty shell section next to the block hosts the nested **report-scores** page-performance cards (no extra grid padding in that shell).
 
 ### report-scores
-Page performance cards (URL, score meter, metrics) used inside the AI visibility performance shell and elsewhere. Card grid and meters are scoped under `.report-scores`.
+Page performance cards (URL, score meter, metrics) used inside the AI visibility performance shell and elsewhere. Card grid and meters are scoped under `.report-scores`. The grid is `repeat(2, 1fr)` on desktop for multi-page reports; when a report has a single card (e.g. Cannes' one mobile-experience card) the Cannes scope collapses it to one column so it fills the shared column instead of sitting at half-width.
+
+### report-callout
+Icon + text insight bar (`.neutral` and `.cta` variants). The decorator unwraps a sole wrapping `<p>` from the authored cell before placing the text inside `.rcl-text` — nesting a `<p>` inside `<p class="rcl-text">` is invalid HTML and the browser would split it, leaving `.rcl-text` empty (with `flex-grow:1`) and the real text in a stray sibling, breaking the bar layout.
 
 ### header
 Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage.
