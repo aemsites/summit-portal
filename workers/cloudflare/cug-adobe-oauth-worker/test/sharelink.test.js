@@ -155,6 +155,41 @@ describe('sharelink', () => {
     expect(await resp.json()).toEqual({ result: 'sent' });
   });
 
+  it('matches a deep page path under a wildcard CUG scope', async () => {
+    // The mapping authors a scope prefix; the dashboard shares a specific
+    // report page deeper under it. The scope must still cover the page.
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'apple.com', url: '/accounts/a/apple/*' }]));
+    const req = await staffRequest(env, {
+      email: 'tim@apple.com',
+      path: '/accounts/a/apple/insights/www_apple_com/index',
+    });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'sent' });
+  });
+
+  it('picks the most-specific scope when nested scopes both cover the page', async () => {
+    // A broad parent scope must not widen access when a deeper scope covers
+    // the page — only the longest-matching scope's domains are allowed.
+    const nestedEntries = [
+      { group: 'broad.com', url: '/accounts/*' },
+      { group: 'apple.com', url: '/accounts/a/apple/*' },
+    ];
+    const deep = '/accounts/a/apple/insights/index';
+
+    // apple.com is allowed by the deeper scope → sent
+    vi.stubGlobal('fetch', mockCugFetch(nestedEntries));
+    const ok = await staffRequest(env, { email: 'tim@apple.com', path: deep });
+    expect((await handleShareLinkRequest(ok, env)).status).toBe(200);
+
+    // broad.com only matches the parent scope → not allowed for this page
+    vi.stubGlobal('fetch', mockCugFetch(nestedEntries));
+    const denied = await staffRequest(env, { email: 'x@broad.com', path: deep });
+    const resp = await handleShareLinkRequest(denied, env);
+    expect(resp.status).toBe(403);
+    expect((await resp.json()).result).toBe('forbidden');
+  });
+
   it('authorizes against any of several allowed domains for the same page', async () => {
     vi.stubGlobal('fetch', mockCugFetch([
       { group: 'apple.com', url: '/members/apple' },
