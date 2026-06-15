@@ -73,8 +73,15 @@ main:has(.cobrand) {
      brand sits inside Adobe's own system. Use for Semrush-sourced data. */
   --semrush-purple: #8e14b7;
 
-  /* Warm surface tokens so the report reads on cream, not stark white. */
+  /* Warm surface tokens so the report reads on cream, not stark white. Cards
+     sit a half-tone lighter than the cream ground so they read as paper lifted
+     off the canvas (not white-on-near-white, which washes the page flat). */
   --rpt-surface-alt: light-dark(#f3efe8, #232323);
+  --rpt-surface: light-dark(#fdfcfa, #232323);
+  --rpt-surface-2: light-dark(#f6f2ec, #1f1f1f);
+  --rpt-border: light-dark(rgb(29 29 29 / 9%), rgb(255 255 255 / 10%));
+  --rpt-card-shadow: 0 1px 2px light-dark(rgb(60 40 20 / 5%), rgb(0 0 0 / 22%)),
+    0 8px 24px light-dark(rgb(60 40 20 / 5%), rgb(0 0 0 / 28%));
 }
 
 /* Warm cream page surface — the signature event canvas. report-hero.css paints
@@ -393,5 +400,142 @@ main:has(.cobrand) .report-callout.cta .rcl-text {
 
   main:has(.cobrand) .report-callout .rcl-text {
     font-size: 13.5px;
+  }
+}
+
+/* =============================================================
+   CANNES DESIGN-SYSTEM POLISH — 2026-06-15
+   Brings the reused summit blocks up to the Adobe Cannes Lions 2026
+   Expression Guidelines: Display-Black headlines with tight 95% leading,
+   the warm cream canvas (cards lifted OFF white), the sanctioned spectrum
+   gradient reserved for the one Brand Amplifier CTA, and a set of layout +
+   safety fixes (no "poor" verdict, no mobile hero collision). All scoped to
+   `main:has(.cobrand)` so summit pages are untouched.
+   ============================================================= */
+
+/* ── #4  Headline typography — the Cannes signature ──────────────────────────
+   The deck's headlines are Adobe Clean Display Black at ~95% leading (tight),
+   sentence case with a trailing period. The portal can only load Montserrat /
+   adobe-clean, but we can still carry the *traits*: max weight + tight leading
+   + slight optical negative tracking. Applies to hero, carousel slides, and
+   the AI-block panel titles. Trailing periods are authored in the content. */
+main:has(.cobrand) .report-hero.insight .rh-insight-text h1,
+main:has(.cobrand) .report-carousel .rc-title,
+main:has(.cobrand) .report-ai-visibility .rav-panel-title {
+  font-weight: 900;
+  line-height: 0.97;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* The hero headline is the loudest type on the page — give it the most
+   Display-Black presence and the tightest leading. */
+main:has(.cobrand) .report-hero.insight .rh-insight-text h1 {
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 0.95;
+}
+
+/* Section-head titles ("Search performance", "Your briefing") + the AI block's
+   own auto-title and the performance shell title share one weight/leading. */
+main:has(.cobrand) .report-ai-section-head .rai-section-head-title,
+main:has(.cobrand) .report-ai-visibility .rav-section-head h2,
+main:has(.cobrand) .report-ai-visibility .rav-title {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* ── #3  Mobile hero — stop the URL pill / "Measured" date colliding ─────────
+   The shared badge is `display:flex; flex-wrap:nowrap`, so at 390px the URL
+   and the (3-line-wrapping) date are jammed together. Let it wrap and drop the
+   vertical divider to a top hairline when stacked, so the date sits cleanly
+   below the URL instead of overlapping it. */
+@media (width < 600px) {
+  main:has(.cobrand) .report-hero.insight .rh-insight-badge {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  main:has(.cobrand) .report-hero.insight .rh-insight-badge-date {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    flex-basis: 100%;
+  }
+}
+
+/* ── #5  Warm cream canvas — lift cards OFF white ────────────────────────────
+   The signature event surface is cream #EAE5DF, with content cards a half-tone
+   lighter so they read as paper lifted off the canvas (not white-on-near-white,
+   which currently washes the whole page flat). The shared card tokens the
+   summit blocks consume are warmed in the main theme block above
+   (--rpt-surface / --rpt-surface-2 / --rpt-border / --rpt-card-shadow). */
+
+/* The big card surfaces (AI panels, carousel slide, score card) explicitly sit
+   on the warm-white paper tone so their edges read against the cream ground. */
+main:has(.cobrand) .report-ai-visibility .rav-panels,
+main:has(.cobrand) .report-carousel .rc-slide,
+main:has(.cobrand) .report-scores .rsc-card {
+  background: light-dark(#fdfcfa, #1a1a1a);
+}
+
+/* ── #6  Spectrum gradient on the ONE Brand Amplifier CTA ────────────────────
+   The guidelines reserve the full-spectrum "bar of light" for the single most
+   important moment. That's the closing Brand Amplifier CTA — not the cover
+   teaser. Mark the closing CTA with a thin spectrum top-rule + a richer glow so
+   it reads as the page's crescendo. The cover-teaser .cta stays the quieter
+   dark bar (its ::before is the red radial set earlier). */
+main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar {
+  border-top: 3px solid transparent;
+  border-image: linear-gradient(90deg, #01a2f2 0%, #344cd4 14%, #8e14b7 29%, #fe009d 43%, #eb1000 57%, #ff9d01 71%, #eeff01 86%, #00c738 100%) 1;
+  border-radius: 0;
+}
+
+/* Re-round the corners the border-image squared off, via an inset glow layer. */
+main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar::before {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgb(235 16 0 / 30%) 0%, transparent 58%),
+    radial-gradient(ellipse at 100% 120%, rgb(142 20 183 / 24%) 0%, transparent 55%);
+}
+
+/* The closing-CTA contact link gets the spectrum treatment as a pill — the
+   "gradient arrow = highest importance" wayfinding cue from the deck. */
+main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar a {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 9px 18px;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eb1000 0%, #fe009d 60%, #8e14b7 100%);
+  text-decoration: none;
+}
+
+main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar a:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+}
+
+/* ── #2  No "poor" verdict — drop the count-pill tally on Cannes ─────────────
+   report-scores renders summary count pills ("0 good · 0 needs work · 1 poor").
+   Cannes always has exactly one score card, so the tally is both meaningless
+   AND leaks the forbidden word "poor". Hide it; the ring + relabeled verdict
+   already carry the (measured) status. */
+main:has(.cobrand) .report-scores .rsc-summary-pills,
+main:has(.cobrand) .report-ai-visibility .rav-section-head .rsc-summary-pills {
+  display: none;
+}
+
+/* ── #10  AI "Key findings" — no dead left column ────────────────────────────
+   The findings/opportunities panel renders as a lone `.rav-panel` inside a
+   2-col `.rav-panels` grid, so on desktop it pins to a half-width track with an
+   empty left half. Let the single-child panel span the full card width. */
+@media (width >= 1000px) {
+  main:has(.cobrand) .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  main:has(.cobrand) .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
+    max-width: 100%;
   }
 }
