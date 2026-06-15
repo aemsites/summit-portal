@@ -279,22 +279,102 @@ main:has(.cobrand) .report-ai-visibility .rav-gap-insight-flex {
   padding: 32px 40px;
 }
 
-/* The blocks each add their own top margin (24px) that compounds with the
-   section gap. Zero them — the section gap is the single spacing system. */
-main:has(.cobrand) .report-ai-visibility,
-main:has(.cobrand) .report-carousel,
-main:has(.cobrand) .report-scores-wrapper,
-main:has(.cobrand) .block-content:has(.report-scores) {
-  margin-top: 0;
-  margin-bottom: 0;
+/* Spacing between blocks. EDS wraps every block in a section into ONE
+   `.block-content`, so the section's flex `gap` only spaces that single
+   wrapper — the blocks INSIDE it are margin-less siblings (the callouts were
+   touching). Put the rhythm on the inner siblings: each block gets top margin
+   except the first. This is the single spacing system. */
+main:has(.cobrand) .block-content > * + * {
+  margin-top: 20px;
 }
 
-/* Cover callouts: deliberate, even rhythm. The section gap already spaces them;
-   give the pair a touch more breathing room from the stats strip above. */
-main:has(.cobrand) .section.cover .report-callout {
-  margin: 0;
+/* Tighter rhythm around section-head titles (they lead their section). */
+main:has(.cobrand) .block-content > .report-ai-section-head + * {
+  margin-top: 12px;
 }
 
-main:has(.cobrand) .section.cover .report-callout .rcl-bar {
-  padding: 14px 18px;
+/* ── Callouts — modern, clean card treatment (Cannes scope only) ─────────────
+   The shared block ships a heavy full-height left-border bar; restyle the
+   Cannes instances as a soft, rounded insight card with a tinted icon chip. */
+main:has(.cobrand) .report-callout .rcl-bar {
+  gap: 14px;
+  align-items: flex-start;
+  background: light-dark(#fff, #232323);
+  border: 1px solid light-dark(rgb(29 29 29 / 8%), rgb(255 255 255 / 10%));
+  border-left: 3px solid var(--rpt-red);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px light-dark(rgb(29 29 29 / 4%), rgb(0 0 0 / 20%));
+}
+
+/* Icon sits in a soft tinted chip so the row reads as a deliberate card. */
+main:has(.cobrand) .report-callout .rcl-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  border-radius: 9px;
+  background: var(--rpt-red-bg, light-dark(rgb(235 16 0 / 8%), rgb(235 16 0 / 16%)));
+}
+
+main:has(.cobrand) .report-callout .rcl-text {
+  font-size: 14px;
+  line-height: 1.55;
+  align-self: center;
+}
+
+/* Neutral variant: quieter, no red rule — for utility/source-style notes. */
+main:has(.cobrand) .report-callout.neutral .rcl-bar {
+  background: light-dark(#f6f3ee, #1f1f1f);
+  border-left-color: light-dark(rgb(29 29 29 / 12%), rgb(255 255 255 / 14%));
+}
+
+main:has(.cobrand) .report-callout.neutral .rcl-icon {
+  background: light-dark(rgb(29 29 29 / 5%), rgb(255 255 255 / 8%));
+}
+
+/* CTA variant: warm Cannes dark + red glow (replaces the off-brand indigo
+   #1a1a2e the shared block ships). The Brand Amplifier moment. */
+main:has(.cobrand) .report-callout.cta .rcl-bar {
+  background: #1d1d1d;
+  border: none;
+  border-radius: 16px;
+  padding: 26px 28px;
+}
+
+main:has(.cobrand) .report-callout.cta .rcl-bar::before {
+  background: radial-gradient(ellipse at 0% 0%, rgb(235 16 0 / 26%) 0%, transparent 62%);
+}
+
+main:has(.cobrand) .report-callout.cta .rcl-icon {
+  background: rgb(235 16 0 / 22%);
+  color: #ff7a6b;
+}
+
+main:has(.cobrand) .report-callout.cta .rcl-text {
+  color: rgb(255 255 255 / 82%);
+  font-size: 15px;
+}
+
+/* Mobile: comfortable padding, icon chip stays inline but a touch smaller. */
+@media (width < 1000px) {
+  main:has(.cobrand) .report-callout .rcl-bar {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  main:has(.cobrand) .report-callout.cta .rcl-bar {
+    padding: 22px 18px;
+  }
+
+  main:has(.cobrand) .report-callout .rcl-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
+
+  main:has(.cobrand) .report-callout .rcl-text {
+    font-size: 13.5px;
+  }
 }
