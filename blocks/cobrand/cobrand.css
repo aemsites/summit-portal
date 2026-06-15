@@ -209,6 +209,16 @@ main:has(.cobrand) .rav-empty-shell .rav-panels-outer {
   padding-right: 0;
 }
 
+/* report-scores ships a `repeat(2, 1fr)` grid built for multi-page reports.
+   Cannes always has exactly ONE score card (mobile experience), so on desktop
+   the lone card sat at half-width (528px) against an empty right half. Collapse
+   the grid to a single column so the card fills the shared column edge-to-edge
+   like every other block. (Below 1000px the block's own media query already
+   does this.) */
+main:has(.cobrand) .report-scores .rsc-grid {
+  grid-template-columns: 1fr;
+}
+
 /* The AI block's stats strip ships 60px side padding that pushes its inner edge
    in past the card edge; pull it back to the card's own rhythm. */
 main:has(.cobrand) .report-ai-visibility .rav-stats {

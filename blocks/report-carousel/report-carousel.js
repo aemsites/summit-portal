@@ -556,9 +556,16 @@ function renderHorizontalBars(chartData) {
 
 function renderBigFigure(chartData) {
   const { items } = chartData;
-  const val = items[0]?.label || '';
-  const unit = items[1]?.label || '';
-  const ctx = items[2]?.label || '';
+  // Two authoring forms are supported:
+  //  - documented contract (one pipe-delimited row): `value | unit | label`
+  //    → a single item whose parsed `raw` holds the three parts.
+  //  - legacy form: three separate <p> → three items (value / unit / ctx).
+  // Prefer the pipe parts when present so the documented single-row form
+  // doesn't silently drop the unit and context line.
+  const parts = items[0]?.raw || [];
+  const val = (parts[0] ?? items[0]?.label) || '';
+  const unit = (parts[1] ?? items[1]?.label) || '';
+  const ctx = (parts[2] ?? items[2]?.label) || '';
   const wrap = document.createElement('div');
   wrap.className = 'rc-bigfigure';
   wrap.innerHTML = `
