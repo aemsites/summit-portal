@@ -117,6 +117,82 @@ function folderToDeepLink(folder) {
   }
 }
 
+/** Absolute URL for a report, used as the QR payload + the share deep link. */
+function reportUrl(company) {
+  const path = folderToDeepLink(company.Folder);
+  try {
+    // company.Folder is usually already absolute; fall back to current origin.
+    return new URL(company.Folder).href;
+  } catch {
+    return `${window.location.origin}${path}`;
+  }
+}
+
+/**
+ * Build the "Show QR code" affordance for a report. Collapsed by default — the
+ * QR is only generated (and the vendored encoder lazy-loaded) when staff click
+ * the button, so a customer can scan the report straight onto their phone
+ * without anyone typing an email. Generation is fully client-side: no CDN and
+ * no third-party QR image service, so it works on flaky villa wi-fi and never
+ * leaks the customer's report URL to an external host.
+ * Returns the section element, or null when there's nothing to link to.
+ */
+function buildQrSection(company) {
+  if (!company.Folder) return null;
+  const url = reportUrl(company);
+
+  const section = document.createElement('div');
+  section.className = 'cp-dialog-section cp-qr';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'cp-dialog-cta cp-dialog-cta--secondary cp-qr-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.textContent = 'Show QR code';
+
+  const panel = document.createElement('div');
+  panel.className = 'cp-qr-panel';
+  panel.hidden = true;
+
+  let rendered = false;
+  async function render() {
+    if (rendered) return;
+    rendered = true;
+    panel.innerHTML = '<p class="cp-qr-loading">Generating…</p>';
+    try {
+      // eslint-disable-next-line import/extensions
+      const { default: qrcode } = await import('../../deps/qrcode/qrcode.mjs');
+      const qr = qrcode(0, 'M'); // auto version, error-correction level M
+      qr.addData(url);
+      qr.make();
+      const svg = qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+      panel.innerHTML = `
+        <div class="cp-qr-frame">${svg}</div>
+        <p class="cp-qr-caption">Scan to open the report</p>
+        <p class="cp-qr-url">${url}</p>`;
+    } catch {
+      panel.innerHTML = '<p class="cp-qr-error">Couldn’t generate the QR code.</p>';
+    }
+  }
+
+  toggle.addEventListener('click', async () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    if (open) {
+      panel.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = 'Show QR code';
+    } else {
+      await render();
+      panel.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.textContent = 'Hide QR code';
+    }
+  });
+
+  section.append(toggle, panel);
+  return section;
+}
+
 /**
  * Build the "Share this page with a customer" form. Staff types the customer's
  * email and the worker emails them an authenticated deep link to this page.
@@ -289,9 +365,12 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
 
   content.innerHTML = html;
 
-  // Share form — only for customer-facing pages (insights / portal), never the
-  // internal accounts directory.
+  // Share affordances — only for customer-facing pages (insights / portal),
+  // never the internal accounts directory. QR first (fastest in-room hand-off),
+  // then the email share form.
   if (mode !== 'accounts') {
+    const qrSection = buildQrSection(company);
+    if (qrSection) content.append(qrSection);
     const shareSection = buildShareSection(company, domains);
     if (shareSection) content.append(shareSection);
   }

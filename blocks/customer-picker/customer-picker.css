@@ -418,3 +418,62 @@
     justify-content: center;
   }
 }
+
+/* Show-QR-code affordance */
+.cp-qr {
+  padding-top: var(--spacing-l);
+  border-top: 1px solid var(--color-border);
+}
+
+.cp-qr-toggle {
+  cursor: pointer;
+}
+
+.cp-qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--spacing-m);
+  padding: var(--spacing-l);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.cp-qr-frame {
+  width: 220px;
+  height: 220px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.cp-qr-frame svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cp-qr-caption {
+  margin: 6px 0 0;
+  font-size: var(--body-font-size-s);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cp-qr-url {
+  margin: 0;
+  font-size: var(--body-font-size-xs);
+  color: var(--color-text-muted);
+  word-break: break-all;
+  text-align: center;
+}
+
+.cp-qr-loading,
+.cp-qr-error {
+  margin: 0;
+  font-size: var(--body-font-size-s);
+  color: var(--color-text-muted);
+}
