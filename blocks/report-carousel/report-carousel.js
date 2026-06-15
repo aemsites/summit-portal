@@ -701,6 +701,10 @@ function buildSlideEl(slide) {
   if (slide.chartData) {
     const visual = document.createElement('div');
     visual.className = 'rc-slide-visual';
+    // Expose the chart kind so CSS can treat text-content visuals
+    // (recommendationlist, metricstrip) differently from SVG charts — e.g. the
+    // mobile height cap is for charts only; text lists must grow, not clip.
+    visual.dataset.chartType = slide.chartData.type;
     const chart = renderChart(slide.chartData);
     if (chart) visual.append(chart);
     if (slide.chartData.callout) {
