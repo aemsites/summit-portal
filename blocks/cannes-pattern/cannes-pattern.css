@@ -64,6 +64,24 @@ main:has(.cannes-pattern) .report-scores .rsc-card.rsc-good .rsc-verdict::after 
   font-size: 0.75rem;
 }
 
+/* Product links inside "How to act" callouts — Adobe red, not the default blue,
+   so they read as on-brand product CTAs. Underline only on hover. */
+main:has(.cannes-pattern) .report-callout .rcl-bar a {
+  color: var(--rpt-red);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+main:has(.cannes-pattern) .report-callout .rcl-bar a:hover {
+  text-decoration: underline;
+}
+
+/* On the dark Brand Amplifier CTA bar, links must read on dark — use a warm
+   light tint, not red-on-near-black. */
+main:has(.cannes-pattern) .report-callout.cta .rcl-bar a {
+  color: #ffd9d2;
+}
+
 .cannes-pattern {
   --cp-ink: var(--cannes-pat-ink, #1d1d1d);
   --cp-paper: var(--cannes-pat-paper, #eae5df);
