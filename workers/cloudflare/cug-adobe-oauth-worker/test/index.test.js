@@ -247,6 +247,37 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
     });
 
+    it('creates a session for a valid 7-day share link token', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({
+        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 7 * 24 * 60 * 60,
+      }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/members/apple/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/members/apple/');
+      expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
+    });
+
+    it('redirects to /expired for an expired share link token', async () => {
+      const past = Math.floor(Date.now() / 1000) - 10;
+      const token = await signedJwt({
+        purpose: 'sharelink', email: 'tim@apple.com', iat: past - 100, exp: past,
+      }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/members/apple/?token=${token}`),
+        env,
+      );
+
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+    });
+
     it('redirects to /expired when iat is older than 30 minutes', async () => {
       const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);

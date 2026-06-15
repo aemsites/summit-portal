@@ -95,8 +95,125 @@ function buildDialog() {
   return { backdrop, close, content };
 }
 
+/** Turn a company.Folder value into a same-origin path (strip origin + trailing slash). */
+function folderToPath(folder) {
+  try {
+    return new URL(folder).pathname.replace(/\/$/, '');
+  } catch {
+    return folder.replace(/\/$/, '');
+  }
+}
+
+/**
+ * Build the "Share this page with a customer" form. Staff types the customer's
+ * email and the worker emails them an authenticated deep link to this page.
+ * Returns the section element, or null when there's nothing shareable.
+ */
+function buildShareSection(company, domains) {
+  if (!company.Folder) return null;
+
+  const path = folderToPath(company.Folder);
+  const allowed = (domains || []).map((d) => d.trim().toLowerCase()).filter(Boolean);
+
+  const section = document.createElement('div');
+  section.className = 'cp-dialog-section cp-share';
+
+  const heading = document.createElement('h4');
+  heading.textContent = 'Share this page with a customer';
+  section.append(heading);
+
+  if (allowed.length) {
+    const hint = document.createElement('p');
+    hint.className = 'cp-share-hint';
+    hint.textContent = `Allowed email domains: ${allowed.join(', ')}`;
+    section.append(hint);
+  }
+
+  const form = document.createElement('form');
+  form.className = 'cp-share-form';
+
+  const input = document.createElement('input');
+  input.type = 'email';
+  input.className = 'cp-share-input';
+  input.placeholder = 'customer@email.com';
+  input.setAttribute('inputmode', 'email');
+  input.setAttribute('autocomplete', 'off');
+  input.required = true;
+
+  const button = document.createElement('button');
+  button.type = 'submit';
+  button.className = 'cp-dialog-cta cp-share-send';
+  button.textContent = 'Send link';
+
+  form.append(input, button);
+  section.append(form);
+
+  const status = document.createElement('p');
+  status.className = 'cp-share-status';
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.hidden = true;
+  section.append(status);
+
+  function setStatus(message, kind) {
+    status.textContent = message;
+    status.dataset.kind = kind;
+    status.hidden = false;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = input.value.trim().toLowerCase();
+    if (!email) return;
+
+    // The worker is the authority on which domains may access the page
+    // (its Gate 3 returns 403 `forbidden` with the allowed list), so we don't
+    // re-check the domain here — that would just duplicate the rule and could
+    // drift from the live CUG mapping.
+    button.disabled = true;
+    input.disabled = true;
+    setStatus('Sending…', 'pending');
+
+    try {
+      const resp = await fetch('/auth/sharelink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, path }),
+      });
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.ok && data.result === 'sent') {
+        setStatus(`Sent to ${email} ✓`, 'success');
+        input.value = '';
+      } else if (resp.status === 403 && data.result === 'forbidden') {
+        const list = (data.allowedDomains || allowed).join(', ');
+        setStatus(`That email can't access this page. Allowed: ${list}`, 'error');
+        input.disabled = false;
+      } else if (resp.status === 401) {
+        setStatus('Your session expired — please reload and sign in again.', 'error');
+        input.disabled = false;
+      } else {
+        setStatus(data.error || 'Could not send the link. Please try again.', 'error');
+        input.disabled = false;
+      }
+    } catch {
+      setStatus('Network error — please try again.', 'error');
+      input.disabled = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  return section;
+}
+
 function renderDialog(content, company, websiteMap, domainMap, mode) {
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
+
+  // The key into websiteMap/domainMap differs for insight reports (keyed by the
+  // customer name) vs. accounts/portal (keyed by company). Compute it once.
+  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+  const domains = domainMap.get(lookupKey) || [];
 
   if (mode === 'accounts') {
     if (company.AM) {
@@ -108,22 +225,14 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       </div>`;
     }
     if (company.Folder) {
-      let folderPath;
-      try {
-        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
-      } catch {
-        folderPath = company.Folder.replace(/\/$/, '');
-      }
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderPath}/index`;
+      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
         <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open account page &rarr;</a>
         <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
       </div>`;
     }
   } else {
-    const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
     const websites = websiteMap.get(lookupKey) || [];
-    const domains = domainMap.get(lookupKey) || [];
 
     if (websites.length) {
       html += `<div class="cp-dialog-section">
@@ -154,14 +263,8 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
     }
 
     if (company.Folder) {
-      let folderPath;
-      try {
-        folderPath = new URL(company.Folder).pathname.replace(/\/$/, '');
-      } catch {
-        folderPath = company.Folder.replace(/\/$/, '');
-      }
       const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderPath}/index`;
+      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
         <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
         <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
@@ -170,6 +273,13 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
   }
 
   content.innerHTML = html;
+
+  // Share form — only for customer-facing pages (insights / portal), never the
+  // internal accounts directory.
+  if (mode !== 'accounts') {
+    const shareSection = buildShareSection(company, domains);
+    if (shareSection) content.append(shareSection);
+  }
 }
 
 function buildCard(company, onOpen) {

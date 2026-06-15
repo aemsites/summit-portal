@@ -112,6 +112,15 @@ export async function sendMagicLinkConfirm(email, magicLinkUrl, env, templateNam
   });
 }
 
+export async function sendShareLinkConfirm(email, shareLinkUrl, env, templateName = 'expdev_actnow_sharelink') {
+  await sendApoEmail({
+    templateName,
+    toEmails: [email],
+    data: { magic_link: shareLinkUrl, email },
+    env,
+  });
+}
+
 export async function sendMagicLinkInternalNotify(email, domain, org, env) {
   await sendApoEmail({
     templateName: 'expdev_actnow_magiclink_notify',

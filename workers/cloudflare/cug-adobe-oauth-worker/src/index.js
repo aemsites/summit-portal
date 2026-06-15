@@ -14,10 +14,13 @@
  */
 
 import { redirectToLogin, handleCallback } from './oauth.js';
-import { createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink } from './session.js';
+import {
+  createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
+} from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
+import { handleShareLinkRequest } from './sharelink.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -117,6 +120,12 @@ const handleRequest = async (request, env) => {
     return handleMagicLinkRequest(request, env);
   }
 
+  // Share link request: authenticated staff POST {email, path} to send a
+  // longer-lived deep link for a specific page to a customer.
+  if (url.pathname === '/auth/sharelink') {
+    return handleShareLinkRequest(request, env);
+  }
+
   // OAuth callback: exchange authorization code for tokens, create session
   if (url.pathname === '/auth/callback') {
     const result = await handleCallback(request, env);
@@ -185,7 +194,10 @@ const handleRequest = async (request, env) => {
   if (magicToken) {
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token present on ${url.pathname}`);
-    const claims = await verifyMagicLink(magicToken, env);
+    // Accept both the 30-min self-service magic link and the 7-day staff share
+    // link — either one mints a fresh 1-hour session for the deep link.
+    const claims = (await verifyMagicLink(magicToken, env))
+      || (await verifyShareLink(magicToken, env));
     if (!claims) {
       // eslint-disable-next-line no-console
       console.warn(`[magiclink] token verification failed for path=${url.pathname}`);

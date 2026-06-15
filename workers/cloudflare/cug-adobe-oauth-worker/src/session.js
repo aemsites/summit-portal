@@ -9,6 +9,7 @@
 const SESSION_TTL = 3600; // 1 hour
 const COOKIE_NAME = 'auth_token';
 const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
+const SHARE_LINK_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -103,5 +104,26 @@ export async function verifyMagicLink(token, env) {
   const now = Math.floor(Date.now() / 1000);
   if (!payload.iat || payload.iat > now || now - payload.iat > MAGIC_LINK_MAX_AGE) return null;
 
+  return payload;
+}
+
+/**
+ * Create a signed JWT for a staff-shared link. Unlike the self-service magic
+ * link (30-min iat freshness), share links carry an explicit `exp` and are
+ * valid for 7 days so a customer can open the link after the booth hand-off.
+ */
+export async function createShareLinkToken(email, env) {
+  const now = Math.floor(Date.now() / 1000);
+  return signJwt({ purpose: 'sharelink', email, iat: now, exp: now + SHARE_LINK_TTL }, env.JWT_SECRET);
+}
+
+/**
+ * Verify a share link JWT produced by createShareLinkToken.
+ * Freshness is enforced by the standard `exp` check inside verifyJwt.
+ * Returns the payload when valid; null otherwise.
+ */
+export async function verifyShareLink(token, env) {
+  const payload = await verifyJwt(token, env.JWT_SECRET);
+  if (!payload || !payload.email || payload.purpose !== 'sharelink') return null;
   return payload;
 }
