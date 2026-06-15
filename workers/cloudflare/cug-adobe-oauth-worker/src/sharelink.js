@@ -117,16 +117,26 @@ export async function handleShareLinkRequest(request, env) {
     .filter(Boolean);
 
   // --- Gate 3: recipient must be authorized for THIS page ---
-  if (!allowedDomains.includes(recipientDomain)) {
+  // A customer recipient must be in the page's CUG. An internal recipient
+  // (Adobe/Semrush staff) is always allowed so staff can review or test a page;
+  // their link carries the page's group(s) so the session can open it even
+  // though their own domain isn't in the CUG.
+  const recipientIsStaff = staffDomains(env).has(recipientDomain);
+  if (!allowedDomains.includes(recipientDomain) && !recipientIsStaff) {
     log(`rejected: recipient domain=${recipientDomain} not in page CUG ${JSON.stringify(allowedDomains)}`);
     return jsonResponse({ result: 'forbidden', allowedDomains }, 403);
   }
 
+  // Grant the page's groups only when the recipient isn't already covered by
+  // the page CUG (i.e. an internal reviewer). Customer recipients get a session
+  // scoped to their own domain, exactly as before.
+  const grantGroups = allowedDomains.includes(recipientDomain) ? [] : allowedDomains;
+
   // --- Mint a long-lived (7-day) signed share token ---
   let token;
   try {
-    token = await createShareLinkToken(email, env);
-    log('share link token created');
+    token = await createShareLinkToken(email, env, grantGroups);
+    log(`share link token created${grantGroups.length ? ` (staff grant: ${grantGroups.join(',')})` : ''}`);
   } catch (err) {
     logError(`createShareLinkToken failed: ${err.message}`);
     return jsonResponse({ error: 'Failed to create share link token' }, 500);

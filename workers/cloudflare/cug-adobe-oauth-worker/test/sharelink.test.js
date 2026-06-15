@@ -19,7 +19,7 @@ vi.mock('../src/session.js', async () => {
 
 import { handleShareLinkRequest } from '../src/sharelink.js';
 import { sendShareLinkConfirm, sendMagicLinkInternalNotify } from '../src/notification.js';
-import { createSession } from '../src/session.js';
+import { createSession, createShareLinkToken } from '../src/session.js';
 import { createMockEnv } from './helpers.js';
 
 function mockCugFetch(entries) {
@@ -130,6 +130,31 @@ describe('sharelink', () => {
     expect(json.result).toBe('forbidden');
     expect(json.allowedDomains).toEqual(['apple.com']);
     expect(sendShareLinkConfirm).not.toHaveBeenCalled();
+  });
+
+  it('allows an internal (staff) recipient not in the page CUG, granting the page groups', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { email: 'josec@adobe.com', path: '/members/apple' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'sent' });
+    // The minted token must carry the page's group so the staff session can open it.
+    expect(createShareLinkToken).toHaveBeenCalledWith('josec@adobe.com', env, ['apple.com']);
+  });
+
+  it('does NOT grant page groups to a customer recipient already in the CUG', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
+    await handleShareLinkRequest(req, env);
+    expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, []);
+  });
+
+  it('allows a semrush staff recipient too', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { email: 'rep@semrush.com', path: '/members/apple' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('rep@semrush.com', env, ['apple.com']);
   });
 
   it('returns { result: "sent" } and emails an authorized recipient', async () => {
