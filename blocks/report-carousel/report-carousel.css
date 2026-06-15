@@ -120,7 +120,6 @@
   display: grid;
   min-height: 450px;
   touch-action: pan-y;
-  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -134,7 +133,11 @@
   grid-template-rows: auto;
   gap: 0 64px;
   align-items: center;
-  height: 450px;
+
+  /* min-height, not height: a fixed height clipped tall slides (e.g. the
+     3-item recommendationlist needs ~570px and spilled out the bottom).
+     Short slides keep the 450px floor; tall ones grow to fit their content. */
+  min-height: 450px;
   margin-left: 20px;
   margin-right: 20px;
   border: 1px solid light-dark(rgb(233 233 233), rgb(50 50 50));
@@ -845,7 +848,7 @@
   .report-carousel .rc-slide {
     grid-template-columns: 1fr;
     gap: 20px;
-    height: 580px;
+    min-height: 580px;
     margin-left: 0;
     margin-right: 0;
     padding: 32px;
@@ -853,12 +856,19 @@
 
   .report-carousel .rc-slide-visual {
     order: 1;
-    max-height: 300px;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
     width: 100%;
+  }
+
+  /* The 300px cap is for SVG charts (it pairs with the svg max-height below) so
+     a chart doesn't dominate the mobile slide. Text-content visuals
+     (recommendationlist, metricstrip) must grow to fit, never clip — so the cap
+     applies only to chart types, not those. */
+  .report-carousel .rc-slide-visual:not([data-chart-type="recommendationlist"], [data-chart-type="metricstrip"]) {
+    max-height: 300px;
+    overflow: hidden;
   }
 
   .report-carousel .rc-slide-visual svg {
