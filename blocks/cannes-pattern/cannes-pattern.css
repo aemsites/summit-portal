@@ -1,0 +1,228 @@
+/* Cannes Lions 2026 module pattern — pure CSS/SVG geometric tiles.
+   The event's signature device: bold black+paper modules, one spectrum accent.
+   No image assets. Mobile-first; decorative only. */
+
+/* ============================================================= */
+
+/* Cannes event THEME scope. Rides along with the pattern block (which only
+   appears on cannes pages), so the whole report inherits the Cannes palette
+   with zero extra wiring — and summit's defaults stay untouched. Values are
+   from the Adobe Cannes Lions 2026 Expression Guidelines. */
+main:has(.cannes-pattern) {
+  /* Adobe red (Cannes spec — brighter than summit's #e60000) */
+  --rpt-red: #eb1000;
+  --rpt-red-dark: light-dark(#eb1000, #ff5c4d);
+  --rpt-red-bg: light-dark(rgb(235 16 0 / 8%), rgb(235 16 0 / 15%));
+  --rpt-red-bg-subtle: light-dark(rgb(235 16 0 / 5%), rgb(235 16 0 / 10%));
+
+  /* Cannes module-pattern inks */
+  --cannes-ink: light-dark(#262626, #eae5df);
+  --cannes-paper: light-dark(#eae5df, #262626);
+
+  /* Semrush, sourced from the Cannes spectrum's Purple stop — so the partner
+     brand sits inside Adobe's own system. Use for Semrush-sourced data. */
+  --semrush-purple: #8e14b7;
+
+  /* Full-spectrum stops (exact Cannes hexes) for the rare gradient accent. */
+  --cannes-spectrum: linear-gradient(90deg,
+    #01a2f2 0%, #344cd4 14%, #8e14b7 29%, #fe009d 43%,
+    #eb1000 57%, #ff9d01 71%, #eeff01 86%, #00c738 100%);
+}
+
+/* Warm-beige accent surface for opt-in bands (NOT the whole page — keep it
+   light + airy per the hybrid direction). Apply `.cannes-warm` on a section. */
+main:has(.cannes-pattern) .cannes-warm {
+  background: light-dark(#eae5df, #1c1c1c);
+  border-radius: 16px;
+}
+
+.cannes-pattern {
+  --cp-ink: var(--cannes-ink, #262626);
+  --cp-paper: var(--cannes-paper, #eae5df); /* warm beige — the event neutral */
+  --cp-size: 30px;
+
+  width: 100%;
+  overflow: hidden;
+}
+
+.cannes-pattern .cp-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--cp-size);
+  grid-template-rows: var(--cp-size);
+  justify-content: center;
+
+  /* Tiles butt edge to edge — no gutter (the "quilt"). */
+  gap: 0;
+}
+
+.cannes-pattern .cp-tile {
+  width: var(--cp-size);
+  height: var(--cp-size);
+  background: var(--cp-paper);
+  position: relative;
+  overflow: hidden;
+}
+
+.cannes-pattern .cp-tile[data-invert='true'] {
+  background: var(--cp-ink);
+}
+
+.cannes-pattern .cp-tile[data-rot='90'] { transform: rotate(90deg); }
+.cannes-pattern .cp-tile[data-rot='180'] { transform: rotate(180deg); }
+.cannes-pattern .cp-tile[data-rot='270'] { transform: rotate(270deg); }
+
+/* ---- Band vs divider sizing ---- */
+.cannes-pattern.cp-band { --cp-size: 30px; }
+
+.cannes-pattern.cp-divider {
+  --cp-size: 16px;
+
+  opacity: 0.9;
+}
+
+@media (width >= 1000px) {
+  .cannes-pattern.cp-band { --cp-size: 44px; }
+  .cannes-pattern.cp-divider { --cp-size: 20px; }
+}
+
+/* ---- Module shapes (foreground painted with ::before in ink-on-paper) ---- */
+.cannes-pattern .cp-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cp-ink);
+}
+
+.cannes-pattern .cp-tile[data-invert='true']::before {
+  background: var(--cp-paper);
+}
+
+/* Quarter-circle arc filling one corner */
+.cannes-pattern .cp-shape-arc::before {
+  border-radius: 100% 0 0;
+}
+
+/* Half-circle bowl on the bottom edge */
+.cannes-pattern .cp-shape-bowl::before {
+  border-radius: 0 0 100% 100%;
+}
+
+/* Solid centered dot */
+.cannes-pattern .cp-shape-dot::before {
+  border-radius: 50%;
+  inset: 18%;
+}
+
+/* Concentric target rings */
+.cannes-pattern .cp-shape-target::before {
+  background: repeating-radial-gradient(circle at 50% 50%,
+    var(--cp-ink) 0, var(--cp-ink) 14%, var(--cp-paper) 14%, var(--cp-paper) 28%);
+}
+
+.cannes-pattern .cp-shape-target[data-invert='true']::before {
+  background: repeating-radial-gradient(circle at 50% 50%,
+    var(--cp-paper) 0, var(--cp-paper) 14%, var(--cp-ink) 14%, var(--cp-ink) 28%);
+}
+
+/* Nested square-ish rings (offset radial) */
+.cannes-pattern .cp-shape-rings::before {
+  background: repeating-radial-gradient(circle at 0% 100%,
+    var(--cp-ink) 0, var(--cp-ink) 22%, var(--cp-paper) 22%, var(--cp-paper) 44%);
+}
+
+/* Diagonal stripes */
+.cannes-pattern .cp-shape-stripes::before {
+  background: repeating-linear-gradient(45deg,
+    var(--cp-ink) 0, var(--cp-ink) 22%, var(--cp-paper) 22%, var(--cp-paper) 44%);
+}
+
+/* 2x2 checkerboard */
+.cannes-pattern .cp-shape-checker::before {
+  background:
+    conic-gradient(var(--cp-ink) 90deg, var(--cp-paper) 0 180deg,
+      var(--cp-ink) 0 270deg, var(--cp-paper) 0);
+}
+
+/* Sunburst wedges radiating from center */
+.cannes-pattern .cp-shape-sunburst::before {
+  background:
+    conic-gradient(from 0deg,
+      var(--cp-ink) 0 30deg, var(--cp-paper) 0 60deg,
+      var(--cp-ink) 0 90deg, var(--cp-paper) 0 120deg,
+      var(--cp-ink) 0 150deg, var(--cp-paper) 0 180deg,
+      var(--cp-ink) 0 210deg, var(--cp-paper) 0 240deg,
+      var(--cp-ink) 0 270deg, var(--cp-paper) 0 300deg,
+      var(--cp-ink) 0 330deg, var(--cp-paper) 0);
+}
+
+/* Right triangle (half-cell) */
+.cannes-pattern .cp-shape-tri::before {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+/* ---- The single full-spectrum gradient accent tile ----
+   Angular (conic) gradient per the guideline for round modules. Exact stop
+   order from the Cannes spectrum: light-blue → dark-blue → purple → magenta →
+   red → orange → yellow → green. */
+.cannes-pattern .cp-shape-spectrum::before {
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    #01a2f2, #344cd4, #8e14b7, #fe009d,
+    #eb1000, #ff9d01, #eeff01, #00c738, #01a2f2);
+}
+
+/* ---- Motion: "Adobe Core" cascade — gated on reduced-motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .cannes-pattern.cp-anim .cp-tile {
+    opacity: 0;
+    transform: scale(0.92);
+    animation: cp-in 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--cp-delay, 0ms);
+  }
+
+  /* Preserve rotation while animating in */
+  .cannes-pattern.cp-anim .cp-tile[data-rot='90'] { animation-name: cp-in-90; }
+  .cannes-pattern.cp-anim .cp-tile[data-rot='180'] { animation-name: cp-in-180; }
+  .cannes-pattern.cp-anim .cp-tile[data-rot='270'] { animation-name: cp-in-270; }
+
+  /* The spectrum accent gets a slow continuous hue drift — the one bit of
+     ongoing motion, kept tiny and reduced-motion-safe. */
+  .cannes-pattern.cp-anim .cp-shape-spectrum::before {
+    animation: cp-hue 8s linear infinite;
+  }
+}
+
+@keyframes cp-in {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cp-in-90 {
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(90deg);
+  }
+}
+
+@keyframes cp-in-180 {
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+@keyframes cp-in-270 {
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(270deg);
+  }
+}
+
+@keyframes cp-hue {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
