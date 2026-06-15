@@ -99,25 +99,28 @@
   }
 }
 
-/* Semrush mark is a dark PNG — invert it in dark mode (same trick cobrand uses). */
+/* Semrush mark is a dark PNG — invert it in dark mode (same as cobrand). */
 @media (prefers-color-scheme: dark) {
-  .brand-chip .bc-semrush { filter: invert(1) brightness(1.6); }
+  .brand-chip .bc-semrush { filter: invert(1); }
 }
 
-/* Mobile: the feedback widget becomes a full-width bottom band. Lift the chip
-   above it, and hide the chip while the feedback card is on screen/expanded so
-   they never stack. body.brand-chip-yield is toggled by the feedback module. */
+/* Yield to the feedback widget whenever it is on screen, at ANY width: the
+   widget can expand to ~280px and on mobile spans the full bottom band, so the
+   chip hides while it's present and returns (via the feedback module's
+   MutationObserver clearing body.brand-chip-yield) once it's dismissed. */
+body.brand-chip-yield .brand-chip {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* Mobile: the feedback widget becomes a full-width bottom band; make the chip a
+   centered, edge-to-edge pill above the safe area when it is showing alone. */
 @media (width < 600px) {
   .brand-chip {
     left: var(--spacing-m);
     right: var(--spacing-m);
     bottom: calc(var(--spacing-m) + env(safe-area-inset-bottom, 0px));
     justify-content: center;
-  }
-
-  body.brand-chip-yield .brand-chip {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(8px);
   }
 }
