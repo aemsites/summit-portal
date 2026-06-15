@@ -15,30 +15,35 @@ describe('cannes-pattern', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders a tile grid (band variant by default)', () => {
+  it('renders an SVG tile grid (band variant by default)', () => {
     const block = makeBlock();
     decorate(block);
     const grid = block.querySelector('.cp-grid');
     expect(grid, 'grid present').to.exist;
     expect(block.classList.contains('cp-band'), 'band class').to.be.true;
-    expect(grid.querySelectorAll('.cp-tile').length).to.equal(24);
+    const tiles = grid.querySelectorAll('.cp-tile');
+    expect(tiles.length).to.equal(48);
+    // each tile is a self-contained inline SVG (no raster assets)
+    expect(tiles[0].querySelector('svg'), 'tile renders an svg').to.exist;
+    expect(block.querySelector('img'), 'no raster images').to.not.exist;
   });
 
-  it('renders exactly one full-spectrum accent tile', () => {
+  it('anchors exactly one full-spectrum accent tile at the top-left', () => {
     const block = makeBlock();
     decorate(block);
-    const accents = block.querySelectorAll('.cp-shape-spectrum');
+    const accents = block.querySelectorAll('.cp-tile[data-accent="true"]');
     expect(accents.length).to.equal(1);
-    expect(accents[0].dataset.accent).to.equal('true');
+    // it must be the first tile (top-left of the band) and carry a gradient
+    expect(block.querySelector('.cp-tile')).to.equal(accents[0]);
+    expect(accents[0].querySelector('linearGradient'), 'spectrum gradient').to.exist;
   });
 
   it('honors the divider variant with its own tile count', () => {
     const block = makeBlock('divider');
     decorate(block);
     expect(block.classList.contains('cp-divider')).to.be.true;
-    expect(block.querySelectorAll('.cp-tile').length).to.equal(32);
-    // still exactly one accent
-    expect(block.querySelectorAll('.cp-shape-spectrum').length).to.equal(1);
+    expect(block.querySelectorAll('.cp-tile').length).to.equal(40);
+    expect(block.querySelectorAll('.cp-tile[data-accent="true"]').length).to.equal(1);
   });
 
   it('is decorative — marked aria-hidden and carries no authored copy', () => {
@@ -53,8 +58,11 @@ describe('cannes-pattern', () => {
     const b = makeBlock();
     decorate(a);
     decorate(b);
-    const classesOf = (el) => [...el.querySelectorAll('.cp-tile')]
-      .map((t) => t.className);
-    expect(classesOf(a)).to.deep.equal(classesOf(b));
+    // Gradient element ids are intentionally unique per block (so multiple
+    // bands on one page don't collide) — normalize them before comparing the
+    // otherwise-deterministic shape structure.
+    const svgOf = (el) => [...el.querySelectorAll('.cp-tile')]
+      .map((t) => t.innerHTML.replace(/cpg\d+/g, 'cpg'));
+    expect(svgOf(a)).to.deep.equal(svgOf(b));
   });
 });
