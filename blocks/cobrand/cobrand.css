@@ -1,5 +1,15 @@
+/* Adobe × Semrush co-brand lockup + the Cannes event THEME scope.
+
+   The cobrand block is present on every Cannes page (header + footer) and on no
+   summit page, so it is the page-wide hook for the Cannes look: the theme,
+   palette, and single-column layout rules below are scoped to
+   `:has(.cobrand)`. (This used to ride on the `.cannes-pattern` band; that
+   decorative band was removed from the top of the page, so the scope moved
+   here — a block whose stylesheet always loads on Cannes pages.) */
+
+/* ---- The lockup ---- */
 .cobrand {
-  padding: 4px 0 8px;
+  padding: 18px 0 6px;
 }
 
 /* Centred co-brand lockup — reads as one intentional partner mark. */
@@ -40,4 +50,251 @@
   .cobrand .cb-semrush {
     filter: invert(1) brightness(2);
   }
+}
+
+/* ============================================================= */
+
+/* CANNES EVENT THEME SCOPE. Values from the Adobe Cannes Lions 2026 Expression
+   Guidelines. Scoped to `:has(.cobrand)` so the whole report inherits the
+   Cannes palette with zero extra wiring — summit's defaults stay untouched. */
+main:has(.cobrand) {
+  /* Adobe red (Cannes spec — brighter than summit's #e60000) */
+  --rpt-red: #eb1000;
+  --rpt-red-dark: light-dark(#eb1000, #ff5c4d);
+  --rpt-red-bg: light-dark(rgb(235 16 0 / 8%), rgb(235 16 0 / 15%));
+  --rpt-red-bg-subtle: light-dark(rgb(235 16 0 / 5%), rgb(235 16 0 / 10%));
+
+  /* Warm event neutrals — the cream "paper" canvas + near-black ink. */
+  --cannes-cream: #eae5df;
+  --cannes-ink: #1d1d1d;
+
+  /* Semrush, sourced from the Cannes spectrum's Purple stop — so the partner
+     brand sits inside Adobe's own system. Use for Semrush-sourced data. */
+  --semrush-purple: #8e14b7;
+
+  /* Warm surface tokens so the report reads on cream, not stark white. */
+  --rpt-surface-alt: light-dark(#f3efe8, #232323);
+}
+
+/* Warm cream page surface — the signature event canvas. report-hero.css paints
+   the report body #f3f3f3 via `body:has(.report-hero.insight)`; that block loads
+   after this one, so we match the same hook (raising specificity with an extra
+   :has) to win and override it to cream. Dark mode keeps a charcoal surface. */
+body:has(.cobrand):has(.report-hero.insight),
+body:has(.cobrand),
+main:has(.cobrand) {
+  background: light-dark(#eae5df, #1c1c1c);
+}
+
+body:has(.cobrand):has(.report-hero.insight) main {
+  background: light-dark(#eae5df, #1c1c1c);
+}
+
+/* The shared report-scores block stamps a hardcoded verdict word ("Poor" for
+   scores < 50). Cannes copy must stay non-catastrophic (Slack: "room to
+   improve", never "failing"/"poor"), so on Cannes pages we replace the verdict
+   text with a measured label. The ring colour still signals severity. */
+main:has(.cobrand) .report-scores .rsc-verdict {
+  font-size: 0;
+}
+
+main:has(.cobrand) .report-scores .rsc-card.rsc-poor .rsc-verdict::after,
+main:has(.cobrand) .report-scores .rsc-card.rsc-warning .rsc-verdict::after {
+  content: 'Needs work';
+  font-size: 0.75rem;
+}
+
+main:has(.cobrand) .report-scores .rsc-card.rsc-good .rsc-verdict::after {
+  content: 'Strong';
+  font-size: 0.75rem;
+}
+
+/* Small muted "Data source: …" credit line under each data section — honors
+   the decision to label data provenance throughout (Semrush for AI/organic,
+   Chrome UX for performance). Aligned to the section's left edge. */
+main:has(.cobrand) .cannes-source {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: light-dark(#8a8276, #9ca3af);
+  text-transform: none;
+}
+
+/* Product links inside "How to act" callouts — Adobe red, not the default blue,
+   so they read as on-brand product CTAs. Underline only on hover. */
+main:has(.cobrand) .report-callout .rcl-bar a {
+  color: var(--rpt-red);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+main:has(.cobrand) .report-callout .rcl-bar a:hover {
+  text-decoration: underline;
+}
+
+/* On the dark Brand Amplifier CTA bar, links must read on dark — use a warm
+   light tint, not red-on-near-black. */
+main:has(.cobrand) .report-callout.cta .rcl-bar a {
+  color: #ffd9d2;
+}
+
+/* ============================================================= */
+
+/* CANNES PAGE LAYOUT — single shared column.
+   Every section's content edge must line up with the hero's. The summit
+   report blocks each ship their own container width (report-hero's
+   `.section:has(.report-hero) > div` is max-width 1200 + 24px gutter;
+   report-scores/carousel wrappers are max-width 1200; .report-ai-visibility's
+   `.rav-stats` carry 60px side padding; etc.), so left/right edges diverge.
+
+   Fix: the SECTION owns the one gutter (set in the harness:
+   max-width 1120, padding 0 24px, border-box, margin auto). Here we collapse
+   every per-block container to that box so all blocks fill it edge-to-edge,
+   centred, at every width. Card chrome (inner padding on .rav-panels etc.)
+   is untouched — only the outer alignment box is normalised. */
+
+/* Neutralise report-hero's section overrides (it sets `margin: 0` + its own
+   padding, which left-aligns the cover) so the cover centres and shares the
+   harness gutter like every other section — the single source of truth. */
+main:has(.cobrand) > .section:has(.report-hero.insight) {
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* report-hero.css zeroes horizontal padding on every data section
+   (`.section:has(.report-stats, .report-cards, .report-scores, .report-chart,
+   .report-bar, .report-callout) { padding: 32px 0 }`) which makes those
+   sections sit flush to their box edge while the cover keeps the 24px gutter —
+   the core misalignment. Restore the single shared gutter on ALL sections and
+   trim the heavy 32px vertical padding to a compact rhythm. */
+main:has(.cobrand) > .section {
+  padding: 8px 24px;
+}
+
+/* Collapse the block-content wrapper in every section to the section box. */
+main:has(.cobrand) > .section > .block-content,
+main:has(.cobrand) .section:has(.report-hero) > div {
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* All top-level block containers fill the column edge-to-edge, no extra max-width
+   or side padding of their own, no auto-centring inside a wider box. */
+main:has(.cobrand) .report-ai-visibility,
+main:has(.cobrand) .report-ai-visibility .rav-container,
+main:has(.cobrand) .report-carousel,
+main:has(.cobrand) .block-content:has(.report-scores),
+main:has(.cobrand) .report-scores-wrapper {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* The performance-insights shell wraps report-scores in `.rav-panels-outer`,
+   which ships 20px side padding — that insets the scores card past the shared
+   column edge. Zero it ONLY in the shell that hosts report-scores so the AI
+   block's own panel padding elsewhere is untouched. */
+main:has(.cobrand) .rav-empty-shell .rav-panels-outer {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The AI block's stats strip ships 60px side padding that pushes its inner edge
+   in past the card edge; pull it back to the card's own rhythm. */
+main:has(.cobrand) .report-ai-visibility .rav-stats {
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+/* ── AI stats → match the nicer .report-stats .rs-card chrome ────────────────
+   The standalone stats strip (direct child of .rav-container) renders as a flat
+   strip with hairline dividers — visually weaker than the Search-performance
+   .rs-card grid the user prefers. Re-chrome those cells as individual cards:
+   white surface, rounded border, soft shadow, accent rule, uppercase label —
+   without touching the .rav-stats-story-row variant the block uses elsewhere. */
+main:has(.cobrand) .report-ai-visibility .rav-container > .rav-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  padding: 24px 28px;
+  border-bottom: none;
+}
+
+main:has(.cobrand) .report-ai-visibility .rav-container > .rav-stats > .rav-stat-card {
+  position: relative;
+  gap: 4px;
+  padding: 20px 24px;
+  overflow: hidden;
+  background: var(--rpt-surface);
+  border: 1px solid var(--rpt-border);
+  border-right: 1px solid var(--rpt-border);
+  border-radius: 12px;
+  box-shadow: var(--rpt-card-shadow);
+}
+
+main:has(.cobrand)
+  .report-ai-visibility
+  .rav-container
+  > .rav-stats
+  > .rav-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--rpt-red);
+}
+
+main:has(.cobrand)
+  .report-ai-visibility
+  .rav-container
+  > .rav-stats
+  > .rav-stat-card
+  .rav-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rpt-text-muted);
+}
+
+/* ── Vertical rhythm — compact exec briefing, less scroll to the data ───────── */
+
+/* Tighten the hero: smaller internal padding + screenshot panel. */
+main:has(.cobrand) .report-hero.insight .rh-insight-text {
+  padding: 32px 36px;
+}
+
+/* The AI deep-dive panels ship a roomy 64px inner pad — trim it so the section
+   carries less height without crowding the charts. */
+main:has(.cobrand) .report-ai-visibility .rav-panels {
+  padding: 36px 40px;
+}
+
+main:has(.cobrand) .report-ai-visibility .rav-gap-insight-flex {
+  padding: 32px 40px;
+}
+
+/* The blocks each add their own top margin (24px) that compounds with the
+   section gap. Zero them — the section gap is the single spacing system. */
+main:has(.cobrand) .report-ai-visibility,
+main:has(.cobrand) .report-carousel,
+main:has(.cobrand) .report-scores-wrapper,
+main:has(.cobrand) .block-content:has(.report-scores) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Cover callouts: deliberate, even rhythm. The section gap already spaces them;
+   give the pair a touch more breathing room from the stats strip above. */
+main:has(.cobrand) .section.cover .report-callout {
+  margin: 0;
+}
+
+main:has(.cobrand) .section.cover .report-callout .rcl-bar {
+  padding: 14px 18px;
 }
