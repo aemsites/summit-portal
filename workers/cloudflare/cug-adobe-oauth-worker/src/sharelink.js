@@ -116,27 +116,19 @@ export async function handleShareLinkRequest(request, env) {
     .map((e) => (e.group || '').trim().toLowerCase())
     .filter(Boolean);
 
-  // --- Gate 3: recipient must be authorized for THIS page ---
-  // A customer recipient must be in the page's CUG. An internal recipient
-  // (Adobe/Semrush staff) is always allowed so staff can review or test a page;
-  // their link carries the page's group(s) so the session can open it even
-  // though their own domain isn't in the CUG.
-  const recipientIsStaff = staffDomains(env).has(recipientDomain);
-  if (!allowedDomains.includes(recipientDomain) && !recipientIsStaff) {
-    log(`rejected: recipient domain=${recipientDomain} not in page CUG ${JSON.stringify(allowedDomains)}`);
-    return jsonResponse({ result: 'forbidden', allowedDomains }, 403);
-  }
-
-  // Grant the page's groups only when the recipient isn't already covered by
-  // the page CUG (i.e. an internal reviewer). Customer recipients get a session
-  // scoped to their own domain, exactly as before.
-  const grantGroups = allowedDomains.includes(recipientDomain) ? [] : allowedDomains;
+  // No recipient-domain filter here. A staff member (gated above) may send the
+  // link to ANY email — the link bakes in the page's CUG group(s) so it opens
+  // directly for whoever receives it. Access control still applies to anyone
+  // who navigates to the page WITHOUT this token: the page's own CUG (enforced
+  // in cug.js on every request) gates them exactly as before. This endpoint is
+  // a staff-issued "skip the login" link, not a relaxation of page access.
+  const grantGroups = allowedDomains;
 
   // --- Mint a long-lived (7-day) signed share token ---
   let token;
   try {
     token = await createShareLinkToken(email, env, grantGroups);
-    log(`share link token created${grantGroups.length ? ` (staff grant: ${grantGroups.join(',')})` : ''}`);
+    log(`share link token created (grants: ${grantGroups.join(',') || '(none)'})`);
   } catch (err) {
     logError(`createShareLinkToken failed: ${err.message}`);
     return jsonResponse({ error: 'Failed to create share link token' }, 500);
@@ -144,8 +136,10 @@ export async function handleShareLinkRequest(request, env) {
 
   const shareLinkUrl = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
 
-  // Choose the template from the matched entry's org (Semrush vs Adobe).
-  const matchedEntry = pageEntries.find((e) => (e.group || '').trim().toLowerCase() === recipientDomain) || pageEntries[0];
+  // Choose the email template from the PAGE's org (Semrush vs Adobe). The
+  // recipient may be any domain, so org comes from the page entry, not the
+  // recipient. Prefer an entry that names an org; fall back to the first.
+  const matchedEntry = pageEntries.find((e) => (e.org || '').trim()) || pageEntries[0];
   const org = (matchedEntry.org || '').trim();
   // INTERIM: the dedicated `expdev_actnow_sharelink` APO template isn't
   // provisioned in Postoffice yet (sends 404 → 502). Reuse the live
