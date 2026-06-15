@@ -3,9 +3,8 @@
    The cobrand block is present on every Cannes page (header + footer) and on no
    summit page, so it is the page-wide hook for the Cannes look: the theme,
    palette, and single-column layout rules below are scoped to
-   `:has(.cobrand)`. (This used to ride on the `.cannes-pattern` band; that
-   decorative band was removed from the top of the page, so the scope moved
-   here — a block whose stylesheet always loads on Cannes pages.) */
+   `:has(.cobrand)` — cobrand is the one block guaranteed present on every
+   Cannes page, so its stylesheet always loads and the scope always applies. */
 
 /* ---- The lockup ---- */
 .cobrand {
