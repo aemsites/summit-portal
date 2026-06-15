@@ -24,6 +24,20 @@ function normalisePath(value) {
 }
 
 /**
+ * Does a CUG mapping entry cover the target page? Mapping `url` values are CUG
+ * scope prefixes (often authored with a trailing wildcard, e.g.
+ * `/accounts/a/apple/*`), while the shared page is a deeper path
+ * (`/accounts/a/apple/insights/.../index`). An entry covers the page when the
+ * page path equals the scope or sits under it — matching how AEM CUG wildcard
+ * scopes actually gate pages (prefix, not exact equality).
+ */
+function scopeCoversPath(scope, targetPath) {
+  const base = normalisePath(scope);
+  if (!base || !targetPath) return false;
+  return targetPath === base || targetPath.startsWith(`${base}/`);
+}
+
+/**
  * Handle a staff "share this page" request.
  *
  * POST /auth/sharelink  { email, path }
@@ -84,13 +98,19 @@ export async function handleShareLinkRequest(request, env) {
     return jsonResponse({ error: 'Failed to load page access mapping' }, 502);
   }
 
-  // A page may have several mapping entries (one per allowed domain), all sharing
-  // the same `url`. Collect every entry whose url matches the requested path.
-  const pageEntries = entries.filter((e) => normalisePath(e.url) === targetPath);
-  if (pageEntries.length === 0) {
-    log(`no CUG entry for path=${targetPath}`);
+  // A page may have several mapping entries (one per allowed domain) sharing the
+  // same scope. Find every entry whose scope COVERS the page, then keep only the
+  // most-specific (longest) scope so a broad parent scope can't widen access.
+  const covering = entries.filter((e) => scopeCoversPath(e.url, targetPath));
+  if (covering.length === 0) {
+    log(`no CUG entry covers path=${targetPath}`);
     return jsonResponse({ error: 'Page not found or not access-controlled' }, 404);
   }
+  const longestScope = covering.reduce(
+    (max, e) => Math.max(max, normalisePath(e.url).length),
+    0,
+  );
+  const pageEntries = covering.filter((e) => normalisePath(e.url).length === longestScope);
 
   const allowedDomains = pageEntries
     .map((e) => (e.group || '').trim().toLowerCase())
