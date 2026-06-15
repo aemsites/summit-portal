@@ -1,4 +1,5 @@
 /* Report Callout — Insight / Highlight Bar */
+
 /* Matches original .insight-bar and .cta-bar patterns */
 .report-callout {
   padding: 0;
@@ -26,9 +27,52 @@
   margin: 0;
   line-height: 1.5;
   flex: 1;
+  text-align: left;
 }
 
 .report-callout .rcl-text strong {
   color: var(--rpt-text);
   font-weight: 600;
+}
+
+/* Tone variants (opt-in via class; default red bar is unchanged for summit).
+   .neutral — quiet utility note (data-source line, section intro).
+   .cta — dark Adobe treatment for a closing call-to-action. */
+.report-callout.neutral .rcl-bar {
+  background: var(--rpt-surface-alt, light-dark(#f7f7f9, #2a2a2a));
+  border-left-color: var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
+}
+
+.report-callout.cta .rcl-bar {
+  background: #1a1a2e;
+  border-left: none;
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.report-callout.cta .rcl-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 0% 0%, rgb(230 0 0 / 22%) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.report-callout.cta .rcl-icon {
+  font-size: 24px;
+  position: relative;
+  color: #ff5c5c;
+}
+
+.report-callout.cta .rcl-text {
+  position: relative;
+  color: rgb(255 255 255 / 80%);
+  font-size: 15px;
+}
+
+.report-callout.cta .rcl-text strong {
+  color: #fff;
+  font-weight: 700;
 }

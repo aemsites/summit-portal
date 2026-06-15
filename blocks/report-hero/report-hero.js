@@ -84,7 +84,12 @@ function buildInsightHero(block, rows) {
 
           const dateSuffix = document.createElement('span');
           dateSuffix.className = 'rh-insight-badge-date';
-          dateSuffix.innerHTML = '<span class="rh-insight-badge-date-label">Measured</span> Apr 10, 2026';
+          // Date is overridable via data-date on the block (e.g. Cannes "May 2026");
+          // defaults to the summit "Measured Apr 10, 2026" suffix.
+          const customDate = block.dataset.date;
+          dateSuffix.innerHTML = customDate
+            ? `<span class="rh-insight-badge-date-label">Measured</span> ${customDate}`
+            : '<span class="rh-insight-badge-date-label">Measured</span> Apr 10, 2026';
 
           anchor.append(globeIcon, urlEl, extIcon, dateSuffix);
           anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);
@@ -103,7 +108,10 @@ function buildInsightHero(block, rows) {
         textCol.append(child);
         const lede = document.createElement('p');
         lede.className = 'rh-insight-lede';
-        lede.innerHTML = 'Where your brand wins today in <strong>site experience</strong>, <strong>search</strong>, and <strong>AI discovery</strong>. And where the next move is.';
+        // Lede is overridable via data-lede on the block (e.g. the Cannes briefing
+        // line); defaults to the summit "site experience / search / AI discovery" copy.
+        lede.innerHTML = block.dataset.lede
+          || 'Where your brand wins today in <strong>site experience</strong>, <strong>search</strong>, and <strong>AI discovery</strong>. And where the next move is.';
         textCol.append(lede);
         return;
       }

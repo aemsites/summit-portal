@@ -319,7 +319,9 @@ export default async function decorate(block) {
   sectionHead.className = 'rav-section-head';
   const sectionTitle = document.createElement('h2');
   sectionTitle.className = 'rav-section-title';
-  sectionTitle.textContent = 'LLM visibility';
+  // Title overridable via data-title on the block (e.g. Cannes "AI Visibility");
+  // defaults to "LLM visibility".
+  sectionTitle.textContent = block.dataset.title || 'LLM visibility';
   sectionHead.append(sectionTitle);
 
   const container = document.createElement('div');
@@ -466,6 +468,11 @@ export default async function decorate(block) {
     }
     if (strip) {
       attachReportScoresToPerformanceShell(strip, performanceShell);
+    } else {
+      // No report-scores to host — don't leave an empty "Performance insights"
+      // stub (happens when report-ai-visibility is reused standalone, e.g. the
+      // Cannes Market/Categories sections). Remove the shell entirely.
+      performanceShell.remove();
     }
   }
 
