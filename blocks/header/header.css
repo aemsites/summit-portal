@@ -636,3 +636,11 @@ body > header {
     }
   }
 }
+
+.user-info .user-session-expired {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--rpt-red, #e60000);
+  max-width: 220px;
+}

@@ -113,6 +113,23 @@ function decorateNavToggle(btn) {
 
 const SCHEME_SUN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" focusable="false"><circle cx="12" cy="12" r="3.5"/><path d="M12 1v2.5M12 20.5V23M4.22 4.22l1.77 1.77M18.01 18.01l1.77 1.77M1 12h2.5M20.5 12H23M4.22 19.78l1.77-1.77M18.01 5.99l1.77-1.77"/></svg>';
 
+/** True if the non-HttpOnly signed-in marker cookie is present. */
+function hasSignedInMarker() {
+  return /(?:^|;\s*)signed_in=1(?:;|$)/.test(document.cookie);
+}
+
+/**
+ * Build a sign-in href that returns the user to the current page after auth.
+ * Only same-origin paths are forwarded (matches portal-login's redirect guard).
+ */
+function signInHref() {
+  const path = `${window.location.pathname}${window.location.search}`;
+  if (window.location.pathname === '/login' || !path.startsWith('/') || path.startsWith('//')) {
+    return '/login';
+  }
+  return `/login?redirect=${encodeURIComponent(path)}`;
+}
+
 async function decorateAction(header, pattern) {
   const link = header.querySelector(`[href*="${pattern}"]`);
   if (!link) return;
@@ -237,10 +254,21 @@ async function decorateUserInfo(section) {
 
   if (!user?.authenticated) {
     const signIn = document.createElement('a');
-    signIn.href = '/login';
+    signIn.href = signInHref();
     signIn.className = 'user-sign-in';
     signIn.textContent = 'Sign in';
     wrapper.append(signIn);
+
+    // Distinguish "never signed in" from "session lapsed": the non-HttpOnly
+    // marker outlives the session, so its presence here means the session
+    // expired rather than the user being anonymous.
+    if (hasSignedInMarker()) {
+      const notice = document.createElement('p');
+      notice.className = 'user-session-expired';
+      notice.setAttribute('role', 'status');
+      notice.textContent = 'Your session expired. Sign in again to continue.';
+      wrapper.append(notice);
+    }
   } else {
     const btn = document.createElement('button');
     btn.className = 'user-email';
