@@ -154,6 +154,35 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Location')).toContain(env.OAUTH_AUTHORIZE_URL);
     });
 
+    it('preserves the ?redirect= deep link as the post-login destination', async () => {
+      const deep = '/accounts/b/bank-of-america/insights/bankofamerica-com/cannes-2026/';
+      const request = new Request(
+        `https://mysite.com/auth/portal?redirect=${encodeURIComponent(deep)}`,
+      );
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(302);
+      const loc = new URL(resp.headers.get('Location'));
+      const state = loc.searchParams.get('state');
+      // The stored originalUrl must be the deep link, NOT /auth/portal — otherwise
+      // the OAuth callback lands the user on the group-mapped dashboard.
+      const stored = await env.SESSIONS.get(`pkce:${state}`, 'json');
+      expect(stored.originalUrl).toBe(`https://mysite.com${deep}`);
+    });
+
+    it('ignores an unsafe ?redirect= and falls back to the portal URL', async () => {
+      const request = new Request(
+        'https://mysite.com/auth/portal?redirect=https%3A%2F%2Fevil.example.com%2Fphish',
+      );
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(302);
+      const state = new URL(resp.headers.get('Location')).searchParams.get('state');
+      const stored = await env.SESSIONS.get(`pkce:${state}`, 'json');
+      const unsafe = 'https://mysite.com/auth/portal?redirect=https%3A%2F%2Fevil.example.com%2Fphish';
+      expect(stored.originalUrl).toBe(unsafe);
+    });
+
     it('fetches mapping and redirects to matched page when session exists', async () => {
       const mapping = JSON.stringify({
         data: [{ group: 'adobe.com', url: '/members/adobe-portal' }],

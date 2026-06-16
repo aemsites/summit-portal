@@ -18,7 +18,7 @@ import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
-import { handlePortalRedirect } from './portal.js';
+import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 
@@ -157,7 +157,14 @@ const handleRequest = async (request, env) => {
   if (url.pathname === '/auth/portal') {
     const session = await getSession(request, env);
     if (!session) {
-      return redirectToLogin(request.url, env);
+      // Preserve the deep link the user was sent to (e.g. a specific insights
+      // page) through the OAuth round-trip. cug.js / portal-login.js forward it
+      // as ?redirect=; carry that — NOT the /auth/portal URL itself — as the
+      // post-login destination, so the callback lands the user on their page
+      // instead of falling through to the group-mapped dashboard.
+      const deepLink = safeRedirectPath(url.searchParams.get('redirect'));
+      const originalUrl = deepLink ? new URL(deepLink, url).href : request.url;
+      return redirectToLogin(originalUrl, env);
     }
     return handlePortalRedirect(session, request, env);
   }

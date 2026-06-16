@@ -19,7 +19,7 @@ const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
  * Validate a caller-supplied redirect path. Must be a same-origin path
  * (starts with '/' but not '//'). Returns the cleaned path+search or null.
  */
-function safeRedirectPath(raw) {
+export function safeRedirectPath(raw) {
   if (typeof raw !== 'string') return null;
   if (!raw.startsWith('/') || raw.startsWith('//')) return null;
   if (UNSAFE_PATH_RE.test(raw)) return null;
