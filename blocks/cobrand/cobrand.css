@@ -35,6 +35,10 @@
   height: 30px;
   width: auto;
   display: block;
+
+  /* The Semrush PNG is black-on-opaque-white; multiply drops the white box
+     against the light cream surface so only the wordmark shows. */
+  mix-blend-mode: multiply;
 }
 
 .cobrand .cb-divider {
@@ -50,6 +54,7 @@
 @media (prefers-color-scheme: dark) {
   .cobrand .cb-semrush {
     filter: invert(1);
+    mix-blend-mode: screen;
   }
 }
 

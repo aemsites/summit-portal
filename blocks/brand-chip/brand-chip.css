@@ -53,6 +53,10 @@
   height: 13px;
   width: auto;
   display: block;
+
+  /* The Semrush PNG is black-on-opaque-white. multiply drops the white box
+     against the light frosted pill so only the wordmark shows. */
+  mix-blend-mode: multiply;
 }
 
 .brand-chip .bc-divider {
@@ -99,9 +103,13 @@
   }
 }
 
-/* Semrush mark is a dark PNG — invert it in dark mode (same as cobrand). */
+/* Dark mode: invert the mark to white-on-black, then screen-blend so the black
+   box drops out against the dark pill (multiply would do the opposite). */
 @media (prefers-color-scheme: dark) {
-  .brand-chip .bc-semrush { filter: invert(1); }
+  .brand-chip .bc-semrush {
+    filter: invert(1);
+    mix-blend-mode: screen;
+  }
 }
 
 /* Yield to the feedback widget ONLY where the two can actually collide: up to
