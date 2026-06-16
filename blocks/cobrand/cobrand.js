@@ -12,7 +12,7 @@ export default function decorate(block) {
 
   const adobe = document.createElement('img');
   adobe.className = 'cb-adobe';
-  adobe.src = '/img/cannes/adobe-logo.svg';
+  adobe.src = '/img/icons/adobe-logo.svg';
   adobe.alt = 'Adobe';
 
   const divider = document.createElement('span');
@@ -21,7 +21,7 @@ export default function decorate(block) {
 
   const semrush = document.createElement('img');
   semrush.className = 'cb-semrush';
-  semrush.src = '/img/cannes/semrush-logo.png';
+  semrush.src = '/img/icons/semrush-logo.png';
   semrush.alt = 'Semrush — An Adobe Company';
 
   row.append(adobe, divider, semrush);
