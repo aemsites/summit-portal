@@ -89,6 +89,19 @@ export function clearSessionCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
+/**
+ * Non-HttpOnly companion cookie: a boolean hint that the user was signed in, so
+ * client JS can tell "anonymous" from "session lapsed". Carries NO identity or
+ * authorization — every access decision still uses the signed auth_token.
+ */
+export function signedInMarkerCookie() {
+  return `${MARKER_NAME}=1; Path=/; Secure; SameSite=Lax; Max-Age=${MARKER_MAX_AGE}`;
+}
+
+export function clearSignedInMarkerCookie() {
+  return `${MARKER_NAME}=; Path=/; Secure; SameSite=Lax; Max-Age=0`;
+}
+
 /** Create a signed JWT for use as a magic link. Valid for 30 minutes. */
 export async function createMagicLinkToken(email, env) {
   const now = Math.floor(Date.now() / 1000);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
-  createShareLinkToken, verifyShareLink,
+  createShareLinkToken, verifyShareLink, signedInMarkerCookie, clearSignedInMarkerCookie,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
@@ -122,6 +122,25 @@ describe('session (JWT)', () => {
       const cookie = clearSessionCookie();
       expect(cookie).toContain('Max-Age=0');
       expect(cookie).toContain('auth_token=;');
+    });
+  });
+
+  describe('signedInMarkerCookie', () => {
+    it('is readable by JS (not HttpOnly) and outlives the session by a day', () => {
+      const cookie = signedInMarkerCookie();
+      expect(cookie).toContain('signed_in=1');
+      expect(cookie).toContain('Path=/');
+      expect(cookie).toContain('Secure');
+      expect(cookie).toContain('SameSite=Lax');
+      expect(cookie).not.toContain('HttpOnly');
+      expect(cookie).toContain(`Max-Age=${14400 + 86400}`);
+    });
+
+    it('clearSignedInMarkerCookie expires the marker', () => {
+      const cookie = clearSignedInMarkerCookie();
+      expect(cookie).toContain('signed_in=');
+      expect(cookie).toContain('Max-Age=0');
+      expect(cookie).not.toContain('HttpOnly');
     });
   });
 
