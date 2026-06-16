@@ -32,7 +32,7 @@ describe('session (JWT)', () => {
       expect(payload.name).toBe('Alice');
       expect(payload.groups).toEqual(['adobe.com']);
       expect(payload.iat).toBeGreaterThan(0);
-      expect(payload.exp).toBe(payload.iat + 3600);
+      expect(payload.exp).toBe(payload.iat + 14400);
     });
   });
 
@@ -72,8 +72,8 @@ describe('session (JWT)', () => {
 
     it('returns null when token is expired', async () => {
       vi.spyOn(Date, 'now')
-        .mockReturnValueOnce(1000 * 1000)   // createSession: iat = 1000
-        .mockReturnValueOnce(9999 * 1000);  // getSession: way past exp
+        .mockReturnValueOnce(1000 * 1000)    // createSession: iat = 1000 (exp = 1000 + SESSION_TTL)
+        .mockReturnValueOnce(999999 * 1000); // getSession: way past exp
 
       const userInfo = { email: 'alice@adobe.com', name: 'Alice', groups: ['adobe.com'] };
       const token = await createSession(env, userInfo);
@@ -115,7 +115,7 @@ describe('session (JWT)', () => {
   describe('cookie helpers', () => {
     it('sessionCookie sets HttpOnly, Secure, SameSite=Lax with Max-Age', () => {
       const cookie = sessionCookie('jwt-token-here');
-      expect(cookie).toBe('auth_token=jwt-token-here; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600');
+      expect(cookie).toBe('auth_token=jwt-token-here; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=14400');
     });
 
     it('clearSessionCookie expires the cookie', () => {

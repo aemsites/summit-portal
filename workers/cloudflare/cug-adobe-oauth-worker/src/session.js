@@ -6,10 +6,14 @@
  * The SESSIONS KV namespace is still used for PKCE state during OAuth.
  */
 
-const SESSION_TTL = 3600; // 1 hour
+const SESSION_TTL = 14400; // 4 hours
 const COOKIE_NAME = 'auth_token';
 const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
 const SHARE_LINK_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const MARKER_NAME = 'signed_in';
+// Marker outlives the session by a day so a timed-out session still shows the
+// "session expired" notice when the user returns to a long-open tab.
+const MARKER_MAX_AGE = SESSION_TTL + 86400;
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
