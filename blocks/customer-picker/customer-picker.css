@@ -454,3 +454,40 @@
     justify-content: center;
   }
 }
+
+.cp-recent {
+  margin-bottom: 24px;
+}
+
+.cp-recent-heading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.cp-recent-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cp-recent-cards .cp-card {
+  width: auto;
+  min-width: 200px;
+  flex: 0 1 auto;
+}
+
+@media (width < 1000px) {
+  .cp-recent-cards {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cp-recent-cards .cp-card {
+    flex: 0 0 70%;
+  }
+}

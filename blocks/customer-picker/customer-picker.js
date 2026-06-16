@@ -1,5 +1,36 @@
 const LETTERS = '0-9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z'.split(' ');
 
+const RECENT_MAX = 8;
+const recentKey = (mode) => `cp-recent-${mode}`;
+
+/** Read the recent-entry list for a mode. Returns [] on any storage failure. */
+function readRecent(mode) {
+  try {
+    const raw = localStorage.getItem(recentKey(mode));
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Record an opened company for a mode: dedupe by folder, newest first, cap at
+ * RECENT_MAX. Entries without a Folder are skipped (nothing to re-open).
+ * Storage failures are swallowed — recents are a convenience, never required.
+ */
+function pushRecent(mode, company) {
+  if (!company || !company.Folder) return;
+  try {
+    const entry = { company: company.Company, folder: company.Folder, ts: Date.now() };
+    const next = [entry, ...readRecent(mode).filter((e) => e.folder !== entry.folder)]
+      .slice(0, RECENT_MAX);
+    localStorage.setItem(recentKey(mode), JSON.stringify(next));
+  } catch {
+    // ignore: storage unavailable/full
+  }
+}
+
 function getLetterGroup(name) {
   const first = name.trim().charAt(0).toUpperCase();
   return /\d/.test(first) ? '0-9' : first;
@@ -410,6 +441,36 @@ function buildCard(company, onOpen) {
   return card;
 }
 
+/**
+ * Build the "Recently viewed" band for a mode, or return null when there are no
+ * resolvable recents. Stored entries are matched back to the live company list
+ * by folder so the dialog opens with full, current data; stale entries (folder
+ * no longer present) are dropped.
+ */
+function buildRecentBand(mode, companies, onOpen) {
+  const byFolder = new Map(companies.map((c) => [c.Folder, c]));
+  const resolved = readRecent(mode)
+    .map((e) => byFolder.get(e.folder))
+    .filter(Boolean);
+  if (!resolved.length) return null;
+
+  const band = document.createElement('div');
+  band.className = 'cp-recent';
+
+  const heading = document.createElement('h2');
+  heading.className = 'cp-recent-heading';
+  heading.textContent = 'Recently viewed';
+  band.append(heading);
+
+  const cards = document.createElement('div');
+  cards.className = 'cp-recent-cards';
+  for (const company of resolved) {
+    cards.append(buildCard(company, onOpen));
+  }
+  band.append(cards);
+  return band;
+}
+
 function buildGrid(companies, onOpen) {
   const grouped = new Map();
   for (const c of companies) {
@@ -560,6 +621,7 @@ export default async function init(el) {
     renderDialog(dialogContent, company, websiteMap, domainMap, currentMode);
     backdrop.hidden = false;
     close.focus();
+    pushRecent(currentMode, company);
   }
 
   close.addEventListener('click', closeDialog);
@@ -585,7 +647,9 @@ export default async function init(el) {
     const { grid, groups } = buildGrid(companies, openDialog);
     const letterNav = buildLetterNav(groups);
 
-    navContainer.replaceChildren(letterNav);
+    const recentBand = buildRecentBand(mode, companies, openDialog);
+    if (recentBand) navContainer.replaceChildren(recentBand, letterNav);
+    else navContainer.replaceChildren(letterNav);
     gridContainer.replaceChildren(grid);
   }
 
