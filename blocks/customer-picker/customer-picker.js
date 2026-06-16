@@ -171,30 +171,20 @@ function folderToDeepLink(folder) {
 }
 
 /**
- * Build the "Share this page" form. Staff enter any email and the worker sends
- * that address a 7-day magic link that opens this page directly — no login or
- * separate magic-link request needed. Page access is still enforced by the
- * page's own CUG for anyone who navigates there without the link.
- * Returns the section element, or null when there's nothing shareable.
+ * Build a share-by-email form that sends a 7-day magic link to a SPECIFIC page
+ * `path`. Staff enter any email and the worker sends that address a one-click
+ * link opening exactly that page — no login or separate magic-link request.
+ * Page access is still enforced by the page's own CUG for anyone who navigates
+ * there without the link. Returns the <form> wrapper element.
  */
-function buildShareSection(company) {
-  if (!company.Folder) return null;
-
-  // Preserve the trailing slash so the link lands on the folder's index page,
-  // matching the "Open" CTA (which uses company.Folder verbatim).
-  const path = folderToDeepLink(company.Folder);
-
-  const section = document.createElement('div');
-  section.className = 'cp-dialog-section cp-share';
-
-  const heading = document.createElement('h4');
-  heading.textContent = 'Share this page';
-  section.append(heading);
+function buildShareForm(path) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cp-share-form-wrap';
 
   const hint = document.createElement('p');
   hint.className = 'cp-share-hint';
   hint.textContent = 'Sends a one-click link to any email that opens this page directly — no login needed. The link works for 7 days.';
-  section.append(hint);
+  wrap.append(hint);
 
   const form = document.createElement('form');
   form.className = 'cp-share-form';
@@ -213,14 +203,14 @@ function buildShareSection(company) {
   button.textContent = 'Send link';
 
   form.append(input, button);
-  section.append(form);
+  wrap.append(form);
 
   const status = document.createElement('p');
   status.className = 'cp-share-status';
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   status.hidden = true;
-  section.append(status);
+  wrap.append(status);
 
   function setStatus(message, kind) {
     status.textContent = message;
@@ -263,6 +253,29 @@ function buildShareSection(company) {
     }
   });
 
+  return wrap;
+}
+
+/**
+ * Single "Share this page" section bound to one page `path`. Used by
+ * accounts/portal modes (one page per card). Insight reports share per format
+ * instead (see the format rows in renderDialog).
+ */
+function buildShareSection(company) {
+  if (!company.Folder) return null;
+
+  // Preserve the trailing slash so the link lands on the folder's index page,
+  // matching the "Open" CTA (which uses company.Folder verbatim).
+  const path = folderToDeepLink(company.Folder);
+
+  const section = document.createElement('div');
+  section.className = 'cp-dialog-section cp-share';
+
+  const heading = document.createElement('h4');
+  heading.textContent = 'Share this page';
+  section.append(heading);
+
+  section.append(buildShareForm(path));
   return section;
 }
 
@@ -323,15 +336,21 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
 
     if (mode === 'insights' && company.formats && company.formats.length) {
       // One website can have several landing-page formats (Cannes, Summit, …).
-      // Let the user choose which to open instead of collapsing to one link.
+      // Each format opens/edits/shares INDEPENDENTLY — sharing must target a
+      // specific landing page, not the whole website folder. The Share button
+      // toggles a per-format email form (wired up after innerHTML below).
       html += `<div class="cp-dialog-section">
         <h4>Available reports</h4>
         <div class="cp-format-list">
-          ${company.formats.map((f) => {
+          ${company.formats.map((f, i) => {
             const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(f.folder)}/index`;
-            return `<div class="cp-format-row">
-              <a class="cp-dialog-cta" href="${f.folder}" target="_blank" rel="noopener">${f.label} &rarr;</a>
-              <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit</a>
+            return `<div class="cp-format" data-format-index="${i}">
+              <div class="cp-format-row">
+                <a class="cp-dialog-cta" href="${f.folder}" target="_blank" rel="noopener">${f.label} &rarr;</a>
+                <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit</a>
+                <button type="button" class="cp-dialog-cta cp-dialog-cta--secondary cp-format-share-toggle" aria-expanded="false">Share</button>
+              </div>
+              <div class="cp-format-share" hidden></div>
             </div>`;
           }).join('')}
         </div>
@@ -348,9 +367,25 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
 
   content.innerHTML = html;
 
-  // Share form — only for customer-facing pages (insights / portal), never the
-  // internal accounts directory.
-  if (mode !== 'accounts') {
+  // Insight reports: share PER FORMAT. Each "Share" button toggles a share form
+  // bound to that format's specific page (lazily built on first open).
+  if (mode === 'insights' && company.formats && company.formats.length) {
+    content.querySelectorAll('.cp-format').forEach((row) => {
+      const fmt = company.formats[Number(row.dataset.formatIndex)];
+      const toggle = row.querySelector('.cp-format-share-toggle');
+      const slot = row.querySelector('.cp-format-share');
+      if (!fmt || !toggle || !slot) return;
+      toggle.addEventListener('click', () => {
+        if (!slot.firstChild) slot.append(buildShareForm(folderToDeepLink(fmt.folder)));
+        const open = slot.hidden;
+        slot.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) slot.querySelector('.cp-share-input')?.focus();
+      });
+    });
+  } else if (mode !== 'accounts') {
+    // Single shared page (portal mode): one share form for the page.
+    // The internal accounts directory is never shareable.
     const shareSection = buildShareSection(company);
     if (shareSection) content.append(shareSection);
   }
