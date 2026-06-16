@@ -1,7 +1,7 @@
 /* Report AI Visibility — unified card (tokens align with report-cards / report-stats / report-hero) */
 .report-ai-visibility {
   padding: 0;
-  margin-top: 24px;
+  margin-top: 0;
   margin-bottom: 24px;
 
   --rav-negative: light-dark(var(--color-red-500), var(--color-red-300));
@@ -15,7 +15,7 @@
   flex-wrap: wrap;
   gap: 12px 16px;
   box-sizing: border-box;
-  min-height: 74px;
+  min-height: 66px;
   padding: 12px 20px;
   margin-bottom: 0;
   background: transparent;
@@ -45,7 +45,7 @@
   flex-direction: column;
 }
 
-/* ── Stats strip ──────────────────────────────────────────────────────────── */
+/* ── Stats strip (AI visibility) ───────────────────────────────────────────── */
 .report-ai-visibility .rav-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -98,7 +98,7 @@
 
 .report-ai-visibility .rav-stat-sublabel {
   font-size: 14px;
-  color: var(--rpt-text, var(--color-text));
+  color: var(--rpt-text-body, var(--rpt-text, var(--color-text)));
   line-height: 1.4;
   margin-top: 4px;
 }
@@ -222,8 +222,11 @@
 
 /* ── Two-panel layout (outer inset + single slide shell like report-carousel .rc-slide) ── */
 .report-ai-visibility .rav-panels-outer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   box-sizing: border-box;
-  padding: 20px;
+  padding: var(--rpt-widget-inset, 20px);
   border-bottom: none;
   border-image: none;
 }
@@ -244,15 +247,16 @@
 }
 
 @media (width >= 1000px) {
-  /* Single panel: same width as one 1fr track (64px column gap), centered in the shell */
+  /* Single panel (e.g. Key findings): full-width column, not a centered half-track */
   .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) {
-    grid-template-columns: 1fr;
-    justify-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
     width: 100%;
-    max-width: calc(50% - 32px);
+    max-width: 100%;
     min-width: 0;
   }
 }
@@ -261,6 +265,7 @@
 .report-ai-visibility .rav-panels .rav-panel {
   display: flex;
   flex-direction: column;
+  width: 100%;
   border: none;
   border-radius: 0;
   box-shadow: none;
@@ -622,6 +627,87 @@
   margin: 20px 0 0;
 }
 
+/* Section-authored callout + data-source line relocated into panels outer (Cannes). */
+.report-ai-visibility .rav-panels-outer > .report-callout,
+.report-ai-visibility .rav-panels-outer > .default-content {
+  width: 100%;
+  margin: 8px 0 0;
+}
+
+.report-ai-visibility .rav-panels-outer > .default-content {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-ai-visibility .rav-panels-outer > .report-callout {
+  margin-top: 20px;
+}
+
+.report-ai-visibility .rav-panels-outer > .default-content .cannes-source {
+  margin: 0;
+}
+
+/* Relocated section-footer callouts: drop the leading icon and breathe more. */
+.rav-panels-outer > .report-callout .rcl-icon {
+  display: none;
+}
+
+.rav-panels-outer > .report-callout .rcl-bar {
+  padding: 28px 32px;
+}
+
+/* Search performance — stats grid + relocated footer share one inset shell */
+.report-stats > .rav-panels-outer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: var(--rpt-widget-inset, 20px);
+}
+
+.report-stats > .rav-panels-outer > .report-callout,
+.report-stats > .rav-panels-outer > .default-content {
+  width: 100%;
+  margin: 8px 0 0;
+}
+
+.report-stats > .rav-panels-outer > .default-content {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-stats > .rav-panels-outer > .report-callout {
+  margin-top: 0;
+}
+
+.report-stats > .rav-panels-outer > .default-content .cannes-source {
+  margin: 0;
+}
+
+/* Performance insights — scores and relocated footers stay edge-to-edge */
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .report-callout,
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .default-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 8px 0 0;
+  padding-inline: 0;
+  box-sizing: border-box;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .report-callout {
+  margin-top: 20px;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-panels-outer > .default-content .cannes-source {
+  margin: 0;
+}
+
 /* When the flex sits at container level (after a stats+story row) it needs its own side padding. */
 .report-ai-visibility .rav-container > .rav-gap-insight-flex {
   width: auto;
@@ -662,7 +748,7 @@
 .report-ai-visibility .rav-gap-content {
   font-size: 16px;
   line-height: 1.55;
-  color: var(--rpt-text, var(--color-text));
+  color: var(--rpt-text-body);
 }
 
 .report-ai-visibility .rav-gap-content strong {
@@ -766,7 +852,7 @@
 .report-ai-visibility .rav-insight-content {
   font-size: 16px;
   line-height: 1.55;
-  color: var(--rpt-text, var(--color-text));
+  color: var(--rpt-text-body);
 }
 
 .report-ai-visibility .rav-insight-content strong {
@@ -954,7 +1040,7 @@
   }
 
   .report-ai-visibility .rav-panels-outer {
-    padding: 12px;
+    padding: calc(var(--rpt-widget-inset, 20px) * 0.6);
   }
 
   .report-ai-visibility .rav-panels {
@@ -1069,7 +1155,7 @@
     overflow: hidden;
     font-size: 14.5px;
     line-height: 1.5;
-    color: var(--rpt-text-secondary, var(--color-text-secondary));
+    color: var(--rpt-text-body);
   }
 
   /* Hide inline paragraphs' intrinsic bottom margins that break line-clamp */

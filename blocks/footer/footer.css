@@ -9,7 +9,7 @@ footer {
 
   .footer-content {
     max-width: var(--grid-container-width);
-    margin: 12px auto;
+    margin: 24px auto;
     font-size: 14px;
   }
 
@@ -35,27 +35,29 @@ footer {
   footer {
     margin: 0;
 
-    .section-legal {
+    .footer-content {
       display: flex;
-      justify-content: end;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
       gap: var(--spacing-xl);
-      margin-bottom: 2px;
+    }
+
+    .section-copyright {
+      order: 1;
+    }
+
+    .section-legal {
+      order: 2;
 
       ul {
         display: flex;
-        justify-content: end;
         gap: var(--spacing-xl);
       }
 
       li {
         margin: 0;
       }
-    }
-
-    .section-copyright {
-      display: flex;
-      justify-content: end;
-      gap: var(--spacing-xl);
     }
   }
 }

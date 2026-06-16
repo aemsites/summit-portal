@@ -1,0 +1,28 @@
+/* Cannes branding stripe — viewport-wide clipping band placed as the last child
+   of <main>, sitting flush against the site footer. The SVG is applied as a
+   CSS mask so a single asset themes via background-color: the shapes paint
+   #dedede on light / #262626 on dark. ::before holds the masked shape at
+   intrinsic size; the wrapper handles full-bleed + horizontal centering and
+   clips the sides when the viewport is narrower than the asset. */
+main > .cannes-stripe {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  width: 100vw;
+  margin-block: 0;
+  margin-inline: calc(50% - 50vw);
+}
+
+main > .cannes-stripe::before {
+  content: '';
+  display: block;
+  flex-shrink: 0;
+  width: 1920px;
+  height: 109px;
+  background-color: light-dark(#dedede, #262626);
+  mask: url('/img/cannes/cannes-stripe.svg') center / 1920px 109px no-repeat;
+}
+
+body:has(.report-hero.insight) main:has(> .cannes-stripe) {
+  padding-bottom: 0;
+}

@@ -147,6 +147,26 @@ main:has(.cobrand) .cannes-source {
   text-transform: none;
 }
 
+/* Semrush icon + data-source line — SVG is a sibling before the <p>. */
+main:has(.cobrand) .default-content:has(> .cannes-source-logo) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+main:has(.cobrand) .default-content:has(> .cannes-source-logo) .cannes-source {
+  margin: 0;
+  line-height: 28px;
+}
+
+main:has(.cobrand) .cannes-source-logo {
+  display: block;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  color: light-dark(#8a8276, #9ca3af);
+}
+
 /* Product links inside "How to act" callouts — Adobe red, not the default blue,
    so they read as on-brand product CTAs. Underline only on hover. */
 main:has(.cobrand) .report-callout .rcl-bar a {
@@ -166,6 +186,11 @@ main:has(.cobrand) .report-callout.cta .rcl-bar a {
 }
 
 /* ============================================================= */
+
+/* Single inset token for widget shells + relocated "How to act" / data-source footers. */
+main:has(.cobrand) {
+  --rpt-widget-inset: 20px;
+}
 
 /* CANNES PAGE LAYOUT — single shared column.
    Every section's content edge must line up with the hero's. The summit
@@ -219,13 +244,10 @@ main:has(.cobrand) .report-scores-wrapper {
   padding: 0;
 }
 
-/* The performance-insights shell wraps report-scores in `.rav-panels-outer`,
-   which ships 20px side padding — that insets the scores card past the shared
-   column edge. Zero it ONLY in the shell that hosts report-scores so the AI
-   block's own panel padding elsewhere is untouched. */
+/* The performance-insights shell wraps report-scores in `.rav-panels-outer`.
+   Scores cards stay edge-to-edge; relocated footers carry their own inset. */
 main:has(.cobrand) .rav-empty-shell .rav-panels-outer {
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0;
 }
 
 /* report-scores ships a `repeat(2, 1fr)` grid built for multi-page reports.
@@ -238,64 +260,11 @@ main:has(.cobrand) .report-scores .rsc-grid {
   grid-template-columns: 1fr;
 }
 
-/* The AI block's stats strip ships 60px side padding that pushes its inner edge
+/* The AI / Search stats strips ship 60px side padding that pushes the inner edge
    in past the card edge; pull it back to the card's own rhythm. */
-main:has(.cobrand) .report-ai-visibility .rav-stats {
+main:has(.cobrand) :is(.report-ai-visibility, .report-stats) .rav-stats {
   padding-left: 28px;
   padding-right: 28px;
-}
-
-/* ── AI stats → match the nicer .report-stats .rs-card chrome ────────────────
-   The standalone stats strip (direct child of .rav-container) renders as a flat
-   strip with hairline dividers — visually weaker than the Search-performance
-   .rs-card grid the user prefers. Re-chrome those cells as individual cards:
-   white surface, rounded border, soft shadow, accent rule, uppercase label —
-   without touching the .rav-stats-story-row variant the block uses elsewhere. */
-main:has(.cobrand) .report-ai-visibility .rav-container > .rav-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
-  padding: 24px 28px;
-  border-bottom: none;
-}
-
-main:has(.cobrand) .report-ai-visibility .rav-container > .rav-stats > .rav-stat-card {
-  position: relative;
-  gap: 4px;
-  padding: 20px 24px;
-  overflow: hidden;
-  background: var(--rpt-surface);
-  border: 1px solid var(--rpt-border);
-  border-right: 1px solid var(--rpt-border);
-  border-radius: 12px;
-  box-shadow: var(--rpt-card-shadow);
-}
-
-main:has(.cobrand)
-  .report-ai-visibility
-  .rav-container
-  > .rav-stats
-  > .rav-stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 4px;
-  background: var(--rpt-red);
-}
-
-main:has(.cobrand)
-  .report-ai-visibility
-  .rav-container
-  > .rav-stats
-  > .rav-stat-card
-  .rav-stat-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--rpt-text-muted);
 }
 
 /* ── Vertical rhythm — compact exec briefing, less scroll to the data ───────── */
@@ -327,6 +296,40 @@ main:has(.cobrand) .block-content > * + * {
 /* Tighter rhythm around section-head titles (they lead their section). */
 main:has(.cobrand) .block-content > .report-ai-section-head + * {
   margin-top: 12px;
+}
+
+/* Relocated section footers — share the widget inset on blocks without a padded shell. */
+main:has(.cobrand) .report-stats > .rpt-widget-footer,
+main:has(.cobrand) .report-carousel > .rpt-widget-footer,
+main:has(.cobrand) .report-scores > .rpt-widget-footer,
+main:has(.cobrand) .report-chart > .rpt-widget-footer,
+main:has(.cobrand) .report-bar > .rpt-widget-footer,
+main:has(.cobrand) .report-cards > .rpt-widget-footer,
+main:has(.cobrand) .report-download > .rpt-widget-footer {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 20px;
+  padding: 0 var(--rpt-widget-inset) var(--rpt-widget-inset);
+}
+
+main:has(.cobrand) .rpt-widget-footer > .report-callout,
+main:has(.cobrand) .rpt-widget-footer > .default-content {
+  width: 100%;
+  margin: 0;
+}
+
+/* Hero KPI strip insight — transparent bar; other widget footers keep card inset */
+main:has(.cobrand) .report-stats.dark > .rpt-widget-footer {
+  margin-top: 0;
+  padding: 0;
+}
+
+main:has(.cobrand) .report-stats.dark > .rpt-widget-footer .rcl-bar {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 28px 32px;
 }
 
 /* ── Callouts — modern, clean card treatment (Cannes scope only) ─────────────
@@ -393,6 +396,27 @@ main:has(.cobrand) .report-callout.cta .rcl-text {
   font-size: 15px;
 }
 
+/* BV CTA banner — Figma 4620:329386; colors follow page theme via light-dark + logo swap */
+main:has(.cobrand) .report-callout.cta .rcl-bar--bv-hero,
+main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
+  gap: 40px;
+  padding: 40px;
+  background: light-dark(#fff, #262626);
+  border: none;
+  border-radius: 24px;
+}
+
+main:has(.cobrand) .report-callout.cta .rcl-bar--bv-hero::before,
+main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing::before {
+  display: none;
+}
+
+main:has(.cobrand) .report-callout.cta .rcl-bar--bv-hero .rcl-text,
+main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text {
+  color: light-dark(#292929, #fff);
+  font-size: 16px;
+}
+
 /* Mobile: comfortable padding, icon chip stays inline but a touch smaller. */
 @media (width < 1000px) {
   main:has(.cobrand) .report-callout .rcl-bar {
@@ -402,6 +426,12 @@ main:has(.cobrand) .report-callout.cta .rcl-text {
 
   main:has(.cobrand) .report-callout.cta .rcl-bar {
     padding: 22px 18px;
+  }
+
+  main:has(.cobrand) .report-callout.cta .rcl-bar--bv-hero,
+  main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
+    padding: 24px 20px;
+    border-radius: 0;
   }
 
   main:has(.cobrand) .report-callout .rcl-icon {
@@ -490,41 +520,18 @@ main:has(.cobrand) .report-scores .rsc-card {
   background: light-dark(#fdfcfa, #1a1a1a);
 }
 
-/* ── #6  Spectrum gradient on the ONE Brand Amplifier CTA ────────────────────
-   The guidelines reserve the full-spectrum "bar of light" for the single most
-   important moment. That's the closing Brand Amplifier CTA — not the cover
-   teaser. Mark the closing CTA with a thin spectrum top-rule + a richer glow so
-   it reads as the page's crescendo. The cover-teaser .cta stays the quieter
-   dark bar (its ::before is the red radial set earlier). */
-main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar {
-  border-top: 3px solid transparent;
-  border-image: linear-gradient(90deg, #01a2f2 0%, #344cd4 14%, #8e14b7 29%, #fe009d 43%, #eb1000 57%, #ff9d01 71%, #eeff01 86%, #00c738 100%) 1;
-  border-radius: 0;
-}
-
-/* Re-round the corners the border-image squared off, via an inset glow layer. */
-main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar::before {
-  background:
-    radial-gradient(ellipse at 0% 0%, rgb(235 16 0 / 30%) 0%, transparent 58%),
-    radial-gradient(ellipse at 100% 120%, rgb(142 20 183 / 24%) 0%, transparent 55%);
-}
-
-/* The closing-CTA contact link gets the spectrum treatment as a pill — the
-   "gradient arrow = highest importance" wayfinding cue from the deck. */
-main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar a {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 9px 18px;
-  color: #fff;
+/* ── #6  Closing BV CTA — unwrapped in main after Performance insights ───────
+   The bar is hoisted to `main > .rcl-bar--bv-hero.rcl-closing-briefing`. */
+main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a {
+  color: inherit;
   font-weight: 700;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #eb1000 0%, #fe009d 60%, #8e14b7 100%);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-main:has(.cobrand) > .section:last-of-type .report-callout.cta .rcl-bar a:hover {
+main:has(.cobrand) > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a:hover {
   filter: brightness(1.08);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 /* ── #2  No "poor" verdict — drop the count-pill tally on Cannes ─────────────
@@ -537,17 +544,4 @@ main:has(.cobrand) .report-ai-visibility .rav-section-head .rsc-summary-pills {
   display: none;
 }
 
-/* ── #10  AI "Key findings" — no dead left column ────────────────────────────
-   The findings/opportunities panel renders as a lone `.rav-panel` inside a
-   2-col `.rav-panels` grid, so on desktop it pins to a half-width track with an
-   empty left half. Let the single-child panel span the full card width. */
-@media (width >= 1000px) {
-  main:has(.cobrand) .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
-  }
-
-  main:has(.cobrand) .report-ai-visibility .rav-panels:has(> .rav-panel:only-child) > .rav-panel {
-    max-width: 100%;
-  }
-}
+/* ── #10  AI "Key findings" — full-width single panel (handled in report-ai-visibility.css) */

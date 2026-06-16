@@ -1,3 +1,8 @@
 .metadata {
   display: none;
 }
+
+/* Page-data configuration — never visible on the page */
+.section:has(> .block-content > .metadata) {
+  display: none !important;
+}

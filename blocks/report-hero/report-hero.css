@@ -174,21 +174,17 @@
 /* ============================================= */
 
 /* Hero wrapper — remove default section padding/margin */
-.report-hero-wrapper {
+.report-hero-wrapper,
+.block-content:has(.report-hero) {
   max-width: 1200px !important;
   padding: 0 !important;
   margin: 0 auto !important;
 }
 
-/* Page background adapts to color scheme on insight pages */
-.section:has(.report-hero.insight) {
-  background: light-dark(rgb(243 243 243 / 100%), #161616);
-  padding: 24px 24px 0;
-}
-
+/* Page background — gray canvas; each section is a white card */
 body:has(.report-hero.insight),
 body:has(.report-hero.insight) main {
-  background-color: light-dark(rgb(243 243 243 / 100%), #161616);
+  background-color: light-dark(#f3f3f3, #161616);
 }
 
 @media (width < 600px) {
@@ -291,7 +287,6 @@ body:has(.report-hero.insight) main {
   gap: 10px;
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid rgb(255 255 255 / 18%);
 }
 
 .report-hero.insight .rh-insight-text .rh-insight-meta .rh-insight-badge {
@@ -397,15 +392,16 @@ body:has(.report-hero.insight) main {
 
   .report-hero.insight .rh-insight-image {
     display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 32px 64px 0 0;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 64px 0 0;
     overflow: hidden;
   }
 
   .report-hero.insight .rh-insight-image picture {
     display: block;
-    border-radius: 8px 8px 0 0;
+    border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
     width: 400px;
@@ -602,14 +598,95 @@ body:has(.report-hero.insight) main {
 
 /* ============================================= */
 
-/* ---- Constrain all sections on report pages to the same 1120px as report blocks ---- */
-@media (width >= 1200px) {
-  body:has(.report-hero.insight) {
-    --grid-container-width: 1120px;
+/* ---- Insight report page layout: centered cards, 40px gaps, white sections ---- */
+body:has(.report-hero.insight) main {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
+  padding: 40px 24px;
+  box-sizing: border-box;
+  background-color: transparent;
+}
+
+body:has(.report-hero.insight) main > .section {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 0;
+  background: light-dark(#fff, #2a2a2a);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+body:has(.report-hero.insight) main > .section > .block-content,
+body:has(.report-hero.insight) main > .section > .default-content {
+  max-width: none !important;
+  width: 100%;
+  margin-inline: 0 !important;
+}
+
+body:has(.report-hero.insight) .block-content:has(.report-hero),
+body:has(.report-hero.insight) .block-content:has(.report-carousel),
+body:has(.report-hero.insight) .block-content:has(.report-stats),
+body:has(.report-hero.insight) .block-content:has(.report-ai-visibility),
+body:has(.report-hero.insight) .block-content:has(.report-download) {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+@media (width >= 1000px) {
+  body:has(.report-hero.insight) main > .section {
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  body:has(.report-hero.insight) main > .section:has(.report-hero) .report-hero.insight {
+    border-radius: 16px 16px 0 0;
   }
 }
 
-/* ---- Report aliases to global tokens + report-specific tokens ---- */
+@media (width < 1000px) {
+  body:has(.report-hero.insight) main {
+    gap: 24px;
+    padding: 24px 0;
+  }
+
+  body:has(.report-hero.insight) main > .section {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Hero card — cover + stats flush, callouts inset below */
+body:has(.report-hero.insight) main > .section:has(.report-hero) > .block-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 24px;
+}
+
+body:has(.report-hero.insight) main > .section:has(.report-hero) .block-content > .report-callout {
+  margin: 20px 24px 0;
+}
+
+/* Brand Visibility CTA — pre-briefing section shell */
+body:has(.report-hero.insight) main > .section.rcl-pre-briefing > .block-content {
+  padding: 0;
+}
+
+body:has(.report-hero.insight) .report-stats.dark {
+  border-radius: 0;
+}
+
+@media (width >= 1000px) {
+  body:has(.report-hero.insight) .report-stats.dark:last-child {
+    border-radius: 0 0 16px 16px;
+  }
+}
+
+/* Report aliases to global tokens + report-specific tokens ---- */
 :root {
   --rpt-surface: var(--color-surface);
   --rpt-surface-raised: var(--color-surface-raised);
@@ -618,6 +695,7 @@ body:has(.report-hero.insight) main {
   --rpt-border: var(--color-border);
   --rpt-border-subtle: var(--color-border-subtle);
   --rpt-text: var(--color-text);
+  --rpt-text-body: var(--color-text-body);
   --rpt-text-secondary: var(--color-text-secondary);
   --rpt-text-muted: var(--color-text-muted);
   --rpt-text-faint: var(--color-text-faint);
@@ -662,7 +740,7 @@ body:has(.report-hero.insight) main {
   font-weight: 600;
 }
 
-/* Section spacing — all report blocks in one section */
+/* Section spacing — hero section only (cards + gap handled above on insight pages) */
 .section:has(.report-hero) {
   padding: 0;
   margin: 0;
@@ -676,23 +754,53 @@ body:has(.report-hero.insight) main {
 
 @media (width >= 1000px) {
   .section:has(.report-hero) > div {
-    padding: 0 24px;
+    padding: 0;
   }
 }
 
-.section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) {
-  padding: 32px 0;
+/* Non-insight report pages: keep legacy section padding */
+body:not(:has(.report-hero.insight)) .section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout) {
+  padding: 0 0 32px;
 }
 
-.section:has(.report-carousel) {
+body:not(:has(.report-hero.insight)) .section:has(.report-carousel) {
   padding: 0;
 }
 
-/* Same chrome as report carousel / LLM / performance insights — fills section behind block margins */
-.section:has(.report-carousel),
-.section:has(.llm-app),
-.section:has(.report-ai-visibility) {
-  background-color: var(--rpt-insight-section-bg);
+/* Insight pages: no per-section padding or tinted section backgrounds */
+body:has(.report-hero.insight) .section:has(.report-stats, .report-cards, .report-scores, .report-chart, .report-bar, .report-callout, .report-carousel) {
+  padding: 0;
+}
+
+body:has(.report-hero.insight) .section:has(.report-carousel),
+body:has(.report-hero.insight) .section:has(.llm-app),
+body:has(.report-hero.insight) .section:has(.report-ai-visibility) {
+  background-color: light-dark(#fff, #2a2a2a);
+}
+
+/* Blocks fill their white section card — no duplicate outer chrome */
+body:has(.report-hero.insight) .report-carousel,
+body:has(.report-hero.insight) .report-ai-visibility {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+body:has(.report-hero.insight) .report-ai-visibility .rav-container {
+  background: transparent;
+  border-radius: 0;
+}
+
+body:has(.report-hero.insight) main > .section > .block-content > :first-child {
+  margin-top: 0;
+}
+
+/* Last section (brand visibility CTA) — inset the banner in the white card */
+body:has(.report-hero.insight) main > .section:last-of-type > .block-content {
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 /* Responsive */
@@ -860,6 +968,6 @@ body:has(.report-hero.insight) main {
   }
 
   .section:has(.report-hero) + .section {
-    padding-top: 20px;
+    padding-top: 0;
   }
 }

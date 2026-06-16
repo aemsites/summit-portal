@@ -8,6 +8,7 @@ import {
   renderCta,
   renderInsight,
 } from './rav-core.js';
+import { scheduleRelocateSectionFooter } from './relocate-section-footer.js';
 
 /**
  * Move every Visibility gap + Key insight row to sit directly above the first CTA
@@ -64,6 +65,7 @@ function buildEmptyVisibilityShell(sectionTitleText) {
 
   const panelsOuter = document.createElement('div');
   panelsOuter.className = 'rav-panels-outer';
+  panelsOuter.dataset.widgetFooterHost = '';
 
   container.append(sectionHead, panelsOuter);
   shell.append(container);
@@ -344,6 +346,7 @@ export default async function decorate(block) {
     } else if (PANEL_ROW_TYPES.has(type)) {
       const panelsOuter = document.createElement('div');
       panelsOuter.className = 'rav-panels-outer';
+      panelsOuter.dataset.widgetFooterHost = '';
       const panelWrap = document.createElement('div');
       panelWrap.className = 'rav-panels';
       // Group pairs share one panels shell so paired rows sit side-by-side
@@ -486,4 +489,6 @@ export default async function decorate(block) {
   }, { threshold: 0.15 });
   observer.observe(block);
   observer.observe(performanceShell);
+
+  scheduleRelocateSectionFooter(block);
 }
