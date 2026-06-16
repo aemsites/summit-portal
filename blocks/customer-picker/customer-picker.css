@@ -308,6 +308,25 @@
   border: 2px solid var(--color-brand);
 }
 
+/* Per-format report chooser (insight reports with multiple landing formats) */
+.cp-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.cp-format-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.cp-format-row .cp-dialog-cta:first-child {
+  flex: 1 1 auto;
+  justify-content: space-between;
+}
+
 /* Share this page form */
 .cp-share {
   padding-top: var(--spacing-l);

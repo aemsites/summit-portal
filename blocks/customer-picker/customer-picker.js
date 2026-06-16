@@ -5,6 +5,59 @@ function getLetterGroup(name) {
   return /\d/.test(first) ? '0-9' : first;
 }
 
+/** Human label for an insights landing-page format id, derived from the folder's
+ *  last path segment (e.g. 'cannes-2026' -> 'Cannes Lions 2026'). */
+function formatLabel(format) {
+  const known = {
+    'cannes-2026': 'Cannes Lions 2026',
+    'summit-2026': 'Adobe Summit 2026',
+  };
+  if (known[format]) return known[format];
+  return format
+    .split('-')
+    .map((p) => (/^\d+$/.test(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .join(' ');
+}
+
+/**
+ * Collapse insight-report rows so each WEBSITE is one card, not one card per
+ * landing-page format. DIH publishes a row per website×format
+ * (…/insights/<website>/<format>/), which otherwise renders the same website
+ * multiple times. Group by the folder up to the website (drop the trailing
+ * format segment); each group keeps its formats so the dialog can list them.
+ */
+function groupInsightsByWebsite(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    const folder = (row.Folder || '').replace(/\/+$/, '');
+    const lastSlash = folder.lastIndexOf('/');
+    const format = lastSlash >= 0 ? folder.slice(lastSlash + 1) : '';
+    const siteFolder = lastSlash >= 0 ? `${folder.slice(0, lastSlash)}/` : `${folder}/`;
+    // key by the per-website folder so the same website under different accounts
+    // (e.g. an orphaned vs. correct account) stays distinct.
+    const key = siteFolder;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        Company: row.Report || row.Customers || siteFolder,
+        Report: row.Report,
+        Customers: row.Customers,
+        Folder: siteFolder,
+        Created: row.Created,
+        formats: [],
+      });
+    }
+    const g = groups.get(key);
+    if (format && !g.formats.some((f) => f.format === format)) {
+      g.formats.push({ format, label: formatLabel(format), folder: `${folder}/` });
+    }
+  }
+  // stable, readable order within each card's format list
+  for (const g of groups.values()) {
+    g.formats.sort((a, b) => a.label.localeCompare(b.label));
+  }
+  return [...groups.values()];
+}
+
 function buildModeToggle(onChange) {
   const wrapper = document.createElement('div');
   wrapper.className = 'cp-mode-toggle';
@@ -268,7 +321,22 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       </div>`;
     }
 
-    if (company.Folder) {
+    if (mode === 'insights' && company.formats && company.formats.length) {
+      // One website can have several landing-page formats (Cannes, Summit, …).
+      // Let the user choose which to open instead of collapsing to one link.
+      html += `<div class="cp-dialog-section">
+        <h4>Available reports</h4>
+        <div class="cp-format-list">
+          ${company.formats.map((f) => {
+            const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(f.folder)}/index`;
+            return `<div class="cp-format-row">
+              <a class="cp-dialog-cta" href="${f.folder}" target="_blank" rel="noopener">${f.label} &rarr;</a>
+              <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit</a>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    } else if (company.Folder) {
       const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
       const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
@@ -422,8 +490,10 @@ export default async function init(el) {
   if (!portalResp.ok) return;
 
   const portalCompanies = (await portalResp.json()).data || [];
+  // Insight reports: one row per website×format in the sheet → collapse to one
+  // card per website, each carrying its available landing-page formats.
   const insightsCompanies = insightsResp.ok
-    ? (await insightsResp.json()).data.map((r) => ({ ...r, Company: r.Report }))
+    ? groupInsightsByWebsite((await insightsResp.json()).data || [])
     : [];
   const accountsCompanies = accountsResp.ok
     ? (await accountsResp.json()).data.map((r) => ({ ...r, Company: r.Account }))
@@ -468,7 +538,11 @@ export default async function init(el) {
   function renderMode(mode) {
     currentMode = mode;
     closeDialog();
-    const companiesMap = { insights: insightsCompanies, accounts: accountsCompanies, portal: portalCompanies };
+    const companiesMap = {
+      insights: insightsCompanies,
+      accounts: accountsCompanies,
+      portal: portalCompanies,
+    };
     const companies = companiesMap[mode] || [];
     searchInput.value = '';
     searchInput.placeholder = SEARCH_PLACEHOLDERS[mode] || 'Search…';
