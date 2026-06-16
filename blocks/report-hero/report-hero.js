@@ -35,6 +35,24 @@ function buildInsightHero(block, rows) {
   bgImg.className = 'rh-insight-bg-svg';
   block.prepend(bgImg);
 
+  // Measurement date. EDS strips data-* attributes (so block.dataset.date is
+  // unreliable on a published page), so the authored date rides in as CONTENT:
+  // a <p> like "Measured: June 2026". Pull it out (and remove the <p> so it
+  // doesn't render as stray body text), then fall back to the data-date attr
+  // (authoring/preview). If neither is present, no date badge is rendered —
+  // better than a hardcoded wrong date.
+  let measuredDate = '';
+  if (textCell) {
+    const dateP = [...textCell.children].find(
+      (c) => c.tagName === 'P' && !c.querySelector('a') && /^\s*measured\b/i.test(c.textContent),
+    );
+    if (dateP) {
+      measuredDate = dateP.textContent.replace(/^\s*measured\b[\s:·–-]*/i, '').trim();
+      dateP.remove();
+    }
+  }
+  measuredDate = measuredDate || block.dataset.date || '';
+
   // Process text cell: brand badge (generic globe + link; drop authored favicon/picture)
   const scopeParas = [];
   if (textCell) {
@@ -82,16 +100,17 @@ function buildInsightHero(block, rows) {
           extIcon.setAttribute('aria-hidden', 'true');
           extIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 20 20" fill="none"><path d="M11.25 3.75h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.25 3.75 9.375 10.625" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 11.25v4.375A1.875 1.875 0 0 1 13.125 17.5h-8.75A1.875 1.875 0 0 1 2.5 15.625v-8.75A1.875 1.875 0 0 1 4.375 5H8.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-          const dateSuffix = document.createElement('span');
-          dateSuffix.className = 'rh-insight-badge-date';
-          // Date is overridable via data-date on the block (e.g. Cannes "May 2026");
-          // defaults to the summit "Measured Apr 10, 2026" suffix.
-          const customDate = block.dataset.date;
-          dateSuffix.innerHTML = customDate
-            ? `<span class="rh-insight-badge-date-label">Measured</span> ${customDate}`
-            : '<span class="rh-insight-badge-date-label">Measured</span> Apr 10, 2026';
-
-          anchor.append(globeIcon, urlEl, extIcon, dateSuffix);
+          // Measurement date: from the authored "Measured: <date>" content line
+          // (see measuredDate above), with data-date fallback for authoring.
+          // Render the badge only when we actually have a date — no hardcoded
+          // fallback, so a report without a date shows no (wrong) date.
+          anchor.append(globeIcon, urlEl, extIcon);
+          if (measuredDate) {
+            const dateSuffix = document.createElement('span');
+            dateSuffix.className = 'rh-insight-badge-date';
+            dateSuffix.innerHTML = `<span class="rh-insight-badge-date-label">Measured</span> ${measuredDate}`;
+            anchor.append(dateSuffix);
+          }
           anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);
 
           const meta = document.createElement('div');
