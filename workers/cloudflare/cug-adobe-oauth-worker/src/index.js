@@ -16,6 +16,7 @@
 import { redirectToLogin, handleCallback } from './oauth.js';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
+  signedInMarkerCookie, clearSignedInMarkerCookie,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect, safeRedirectPath } from './portal.js';
@@ -132,25 +133,19 @@ const handleRequest = async (request, env) => {
     if (result instanceof Response) return result;
 
     const token = await createSession(env, result.userInfo);
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: result.originalUrl,
-        'Set-Cookie': sessionCookie(token),
-      },
-    });
+    const headers = new Headers({ Location: result.originalUrl });
+    headers.append('Set-Cookie', sessionCookie(token));
+    headers.append('Set-Cookie', signedInMarkerCookie());
+    return new Response(null, { status: 302, headers });
   }
 
   // Logout: clear session cookie and redirect to IMS logout
   if (url.pathname === '/auth/logout') {
     const imsLogoutUrl = `${env.OAUTH_LOGOUT_URL}?client_id=${env.OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(url.origin + '/')}`;
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: imsLogoutUrl,
-        'Set-Cookie': clearSessionCookie(),
-      },
-    });
+    const headers = new Headers({ Location: imsLogoutUrl });
+    headers.append('Set-Cookie', clearSessionCookie());
+    headers.append('Set-Cookie', clearSignedInMarkerCookie());
+    return new Response(null, { status: 302, headers });
   }
 
   // Portal redirect: authenticate then redirect based on group mapping
@@ -232,13 +227,10 @@ const handleRequest = async (request, env) => {
     // eslint-disable-next-line no-console
     console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: cleanUrl.href,
-        'Set-Cookie': sessionCookie(newToken),
-      },
-    });
+    const headers = new Headers({ Location: cleanUrl.href });
+    headers.append('Set-Cookie', sessionCookie(newToken));
+    headers.append('Set-Cookie', signedInMarkerCookie());
+    return new Response(null, { status: 302, headers });
   }
 
   // All other requests: fetch from origin, then enforce CUG access control

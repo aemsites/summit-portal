@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
-  createShareLinkToken, verifyShareLink,
+  createShareLinkToken, verifyShareLink, signedInMarkerCookie, clearSignedInMarkerCookie,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
@@ -32,7 +32,7 @@ describe('session (JWT)', () => {
       expect(payload.name).toBe('Alice');
       expect(payload.groups).toEqual(['adobe.com']);
       expect(payload.iat).toBeGreaterThan(0);
-      expect(payload.exp).toBe(payload.iat + 3600);
+      expect(payload.exp).toBe(payload.iat + 14400);
     });
   });
 
@@ -72,8 +72,8 @@ describe('session (JWT)', () => {
 
     it('returns null when token is expired', async () => {
       vi.spyOn(Date, 'now')
-        .mockReturnValueOnce(1000 * 1000)   // createSession: iat = 1000
-        .mockReturnValueOnce(9999 * 1000);  // getSession: way past exp
+        .mockReturnValueOnce(1000 * 1000)    // createSession: iat = 1000 (exp = 1000 + SESSION_TTL)
+        .mockReturnValueOnce(999999 * 1000); // getSession: way past exp
 
       const userInfo = { email: 'alice@adobe.com', name: 'Alice', groups: ['adobe.com'] };
       const token = await createSession(env, userInfo);
@@ -115,13 +115,32 @@ describe('session (JWT)', () => {
   describe('cookie helpers', () => {
     it('sessionCookie sets HttpOnly, Secure, SameSite=Lax with Max-Age', () => {
       const cookie = sessionCookie('jwt-token-here');
-      expect(cookie).toBe('auth_token=jwt-token-here; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600');
+      expect(cookie).toBe('auth_token=jwt-token-here; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=14400');
     });
 
     it('clearSessionCookie expires the cookie', () => {
       const cookie = clearSessionCookie();
       expect(cookie).toContain('Max-Age=0');
       expect(cookie).toContain('auth_token=;');
+    });
+  });
+
+  describe('signedInMarkerCookie', () => {
+    it('is readable by JS (not HttpOnly) and outlives the session by a day', () => {
+      const cookie = signedInMarkerCookie();
+      expect(cookie).toContain('signed_in=1');
+      expect(cookie).toContain('Path=/');
+      expect(cookie).toContain('Secure');
+      expect(cookie).toContain('SameSite=Lax');
+      expect(cookie).not.toContain('HttpOnly');
+      expect(cookie).toContain(`Max-Age=${14400 + 86400}`);
+    });
+
+    it('clearSignedInMarkerCookie expires the marker', () => {
+      const cookie = clearSignedInMarkerCookie();
+      expect(cookie).toContain('signed_in=');
+      expect(cookie).toContain('Max-Age=0');
+      expect(cookie).not.toContain('HttpOnly');
     });
   });
 

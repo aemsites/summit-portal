@@ -81,6 +81,28 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
     });
+
+    it('also sets the non-HttpOnly signed-in marker cookie', async () => {
+      const state = 'cb-state-marker';
+      await env.SESSIONS.put(`pkce:${state}`, JSON.stringify({
+        verifier: 'v', originalUrl: 'https://mysite.com/members',
+      }));
+
+      const idToken = fakeJwt({ email: 'alice@adobe.com', name: 'Alice' });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ id_token: idToken }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ));
+
+      const request = new Request(`https://mysite.com/auth/callback?code=abc&state=${state}`);
+      const resp = await worker.fetch(request, env);
+
+      const cookies = resp.headers.getSetCookie();
+      expect(cookies.some((c) => c.startsWith('auth_token='))).toBe(true);
+      expect(cookies.some((c) => c.startsWith('signed_in=1'))).toBe(true);
+    });
   });
 
   describe('auth logout', () => {
@@ -93,6 +115,15 @@ describe('index (request routing)', () => {
       expect(location).toContain('ims.example.com/ims/logout/v1');
       expect(location).toContain('client_id=test-client-id');
       expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=0');
+    });
+
+    it('also clears the signed-in marker cookie', async () => {
+      const request = new Request('https://mysite.com/auth/logout');
+      const resp = await worker.fetch(request, env);
+
+      const cookies = resp.headers.getSetCookie();
+      expect(cookies.some((c) => c.startsWith('auth_token=') && c.includes('Max-Age=0'))).toBe(true);
+      expect(cookies.some((c) => c.startsWith('signed_in=') && c.includes('Max-Age=0'))).toBe(true);
     });
   });
 
@@ -274,6 +305,20 @@ describe('index (request routing)', () => {
       expect(resp.status).toBe(302);
       expect(resp.headers.get('Location')).toBe('https://mysite.com/customers/test/');
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
+    });
+
+    it('also sets the signed-in marker when minting a session from a token', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      const cookies = resp.headers.getSetCookie();
+      expect(cookies.some((c) => c.startsWith('auth_token='))).toBe(true);
+      expect(cookies.some((c) => c.startsWith('signed_in=1'))).toBe(true);
     });
 
     it('creates a session for a valid 7-day share link token', async () => {
