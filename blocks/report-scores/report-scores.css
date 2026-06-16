@@ -197,6 +197,43 @@
   color: var(--rsc-poor);
 }
 
+/* ── Field mode (CrUX real-user): verdict leads, Lighthouse demoted ──────────
+   The Fast/Average/Slow verdict is the headline (no 0–100 ring); the Lighthouse
+   lab score sits beneath as a small supporting diagnostic. */
+.report-scores .rsc-card.rsc-field .rsc-hero {
+  justify-content: center;
+  gap: 6px;
+}
+
+.report-scores .rsc-card.rsc-field .rsc-verdict-lead {
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  padding: 7px 16px;
+}
+
+.report-scores .rsc-card.rsc-field .rsc-lab-note {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rsc-text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Field-mode explainer: prose, not bullet grids ─────────────────────────── */
+.report-scores .rsc-howto-prose .rsc-howto-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.report-scores .rsc-howto-para {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--rsc-text-muted);
+}
+
 /* Body */
 .report-scores .rsc-body {
   min-width: 0;

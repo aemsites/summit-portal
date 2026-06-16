@@ -19,6 +19,19 @@ const VERDICT_LABEL = {
   poor: 'Poor',
 };
 
+/* Field mode (CrUX real-user data): the page is classified Fast / Average / Slow
+   from real-user Core Web Vitals — matching the Digital Opportunity Report — and
+   the Lighthouse lab score is demoted to a supporting diagnostic. The verdict is
+   derived from the three field metrics on Google's own thresholds: Slow if any
+   metric falls in the slow range, Average if any needs improvement, Fast only
+   when all three pass. (The grade keys stay good/warning/poor so the existing
+   colour system applies; only the displayed labels differ.) */
+const FIELD_VERDICT_LABEL = {
+  good: 'Fast',
+  warning: 'Average',
+  poor: 'Slow',
+};
+
 function formatPageUrl(href) {
   try {
     const u = new URL(href);
@@ -105,6 +118,19 @@ function metricStatus(label, val) {
   return 'good';
 }
 
+/* Roll the three field metrics into one Fast/Average/Slow grade (worst wins),
+   so the verdict reflects real-user Core Web Vitals rather than a lab score. */
+function fieldVerdictGrade(lcp, inp, cls) {
+  const grades = [
+    metricStatus('LCP', lcp),
+    metricStatus('INP', inp),
+    metricStatus('CLS', cls),
+  ];
+  if (grades.includes('poor')) return 'poor';
+  if (grades.includes('warning')) return 'warning';
+  return 'good';
+}
+
 const METRIC_DEFS = [
   {
     key: 'LCP',
@@ -135,14 +161,15 @@ const SCORE_BANDS = [
   { range: '0–49', label: 'Poor', grade: 'poor' },
 ];
 
-function buildSummaryPills(counts) {
+function buildSummaryPills(counts, fieldMode = false) {
   const wrap = document.createElement('div');
   wrap.className = 'rsc-summary-pills';
   SCORE_BANDS.forEach(({ label, grade }) => {
     const n = counts[grade] || 0;
     const pill = document.createElement('span');
     pill.className = `rsc-summary-pill rsc-${grade}`;
-    pill.innerHTML = `<span class="rsc-summary-dot" aria-hidden="true"></span>${n} ${label.toLowerCase()}`;
+    const pillLabel = fieldMode ? FIELD_VERDICT_LABEL[grade] : label;
+    pill.innerHTML = `<span class="rsc-summary-dot" aria-hidden="true"></span>${n} ${pillLabel.toLowerCase()}`;
     wrap.append(pill);
   });
   return wrap;
@@ -176,6 +203,37 @@ function buildVerifyIcon() {
   svg.setAttribute('aria-hidden', 'true');
   svg.innerHTML = '<path d="M11.25 3.75h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.25 3.75 9.375 10.625" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 11.25v4.375A1.875 1.875 0 0 1 13.125 17.5h-8.75A1.875 1.875 0 0 1 2.5 15.625v-8.75A1.875 1.875 0 0 1 4.375 5H8.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
   return svg;
+}
+
+/* Field-mode explainer — prose, no bullet grids. Consistent with the data
+   actually shown (CrUX real-user p75) and with the Digital Opportunity Report:
+   real users decide Fast/Average/Slow; the Lighthouse lab score only supports
+   it by pointing at what to fix. */
+function buildHowToField() {
+  const details = document.createElement('details');
+  details.className = 'rsc-howto rsc-howto-prose';
+
+  const summary = document.createElement('summary');
+  summary.textContent = 'How we measure performance';
+  details.append(summary);
+
+  const content = document.createElement('div');
+  content.className = 'rsc-howto-content';
+
+  const paras = [
+    'This rating reflects how your pages actually perform for real visitors. We use Google’s Chrome UX Report — the same Core Web Vitals data Google uses for search ranking — measured at the 75th percentile of real user sessions over a rolling 28-day window.',
+    'Three signals make up the rating: how quickly the main content loads, how fast the page responds when someone taps or clicks, and how stable the layout stays as it loads. A page is rated Fast when all three are within Google’s recommended thresholds, Average when one or more need improvement, and Slow when one or more fall well outside them.',
+    'The Lighthouse score shown alongside is a synthetic lab diagnostic — a single standardized test run that helps pinpoint exactly what to fix. The Fast / Average / Slow rating, drawn from real users, is the signal that reflects the experience your visitors actually have.',
+  ];
+  paras.forEach((text) => {
+    const p = document.createElement('p');
+    p.className = 'rsc-howto-para';
+    p.textContent = text;
+    content.append(p);
+  });
+
+  details.append(content);
+  return details;
 }
 
 function buildHowTo() {
@@ -241,20 +299,33 @@ function buildHowTo() {
 
 function buildCard(data) {
   const {
-    pageName, pageUrl, score, scoreNum, gradeKey, lcp, fid, cls, summary, rec,
+    pageName, pageUrl, score, scoreNum, gradeKey, lcp, fid, cls, summary, rec, fieldMode,
   } = data;
 
   const card = document.createElement('article');
-  card.className = `rsc-card rsc-${gradeKey}`;
+  card.className = `rsc-card rsc-${gradeKey}${fieldMode ? ' rsc-field' : ''}`;
 
-  // Hero: ring + verdict pill
+  // Hero: in field mode the Fast/Average/Slow verdict leads and the Lighthouse
+  // ring is demoted to a small supporting line beneath it; in lab mode the
+  // 0–100 ring leads with its Good/Needs work/Poor verdict below.
   const hero = document.createElement('div');
   hero.className = 'rsc-hero';
-  hero.append(createScoreMeterWrap(score, scoreNum, gradeKey));
-  const verdict = document.createElement('span');
-  verdict.className = 'rsc-verdict';
-  verdict.textContent = VERDICT_LABEL[gradeKey];
-  hero.append(verdict);
+  if (fieldMode) {
+    const verdict = document.createElement('span');
+    verdict.className = 'rsc-verdict rsc-verdict-lead';
+    verdict.textContent = FIELD_VERDICT_LABEL[gradeKey];
+    hero.append(verdict);
+    const labLine = document.createElement('span');
+    labLine.className = 'rsc-lab-note';
+    labLine.textContent = `Lighthouse ${score}/100`;
+    hero.append(labLine);
+  } else {
+    hero.append(createScoreMeterWrap(score, scoreNum, gradeKey));
+    const verdict = document.createElement('span');
+    verdict.className = 'rsc-verdict';
+    verdict.textContent = VERDICT_LABEL[gradeKey];
+    hero.append(verdict);
+  }
 
   // Body
   const body = document.createElement('div');
@@ -370,6 +441,11 @@ async function ensureStandalonePerformanceShell(scoresEl) {
 }
 
 export default async function init(el) {
+  // Field mode (data-metrics="field"): rate pages Fast/Average/Slow from CrUX
+  // real-user Core Web Vitals and demote the Lighthouse score to a diagnostic.
+  // Default (lab mode): the Lighthouse 0–100 score leads with Good/Needs work/Poor.
+  const fieldMode = el.dataset.metrics === 'field';
+
   const rows = [...el.querySelectorAll(':scope > div')];
   const grid = document.createElement('div');
   grid.className = 'rsc-grid';
@@ -386,18 +462,19 @@ export default async function init(el) {
     const summary = cells[6]?.textContent.trim() || '';
     const rec = cells[7]?.textContent.trim() || '';
 
-    const gradeKey = gradeClass(score);
+    // Lab mode grades the 0–100 score; field mode grades the real-user metrics.
+    const gradeKey = fieldMode ? fieldVerdictGrade(lcp, fid, cls) : gradeClass(score);
     const scoreNum = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
     counts[gradeKey] = (counts[gradeKey] || 0) + 1;
 
     grid.append(buildCard({
-      pageName, pageUrl, score, scoreNum, gradeKey, lcp, fid, cls, summary, rec,
+      pageName, pageUrl, score, scoreNum, gradeKey, lcp, fid, cls, summary, rec, fieldMode,
     }));
   });
 
   el.textContent = '';
-  const summaryPills = buildSummaryPills(counts);
-  el.append(summaryPills, grid, buildHowTo());
+  const summaryPills = buildSummaryPills(counts, fieldMode);
+  el.append(summaryPills, grid, fieldMode ? buildHowToField() : buildHowTo());
 
   await ensureStandalonePerformanceShell(el);
 

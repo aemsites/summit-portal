@@ -104,21 +104,28 @@ body:has(.cobrand):has(.report-hero.insight) main {
    harness has no header, so there it reads as empty space, but production
    needs it.) The cobrand's own top padding is kept small instead. */
 
-/* The shared report-scores block stamps a hardcoded verdict word ("Poor" for
-   scores < 50). Cannes copy must stay non-catastrophic (Slack: "room to
-   improve", never "failing"/"poor"), so on Cannes pages we replace the verdict
-   text with a measured label. The ring colour still signals severity. */
-main:has(.cobrand) .report-scores .rsc-verdict {
+/* The shared report-scores block, in LAB mode, stamps a hardcoded verdict word
+   ("Poor" for scores < 50). Cannes copy must stay non-catastrophic (Slack:
+   "room to improve", never "failing"/"poor"), so on lab-mode Cannes cards we
+   replace the verdict text with a measured label. The ring colour still signals
+   severity.
+
+   FIELD mode (`data-metrics="field"`, used by the Cannes performance section)
+   supplies its own Fast / Average / Slow verdict from real-user Core Web Vitals
+   — already measured and matching the Digital Opportunity Report — so these
+   relabels must NOT apply there (they would double-stamp the pill). Every
+   selector below is therefore qualified with `:not(.rsc-field)`. */
+main:has(.cobrand) .report-scores .rsc-card:not(.rsc-field) .rsc-verdict {
   font-size: 0;
 }
 
-main:has(.cobrand) .report-scores .rsc-card.rsc-poor .rsc-verdict::after,
-main:has(.cobrand) .report-scores .rsc-card.rsc-warning .rsc-verdict::after {
+main:has(.cobrand) .report-scores .rsc-card.rsc-poor:not(.rsc-field) .rsc-verdict::after,
+main:has(.cobrand) .report-scores .rsc-card.rsc-warning:not(.rsc-field) .rsc-verdict::after {
   content: 'Needs work';
   font-size: 0.75rem;
 }
 
-main:has(.cobrand) .report-scores .rsc-card.rsc-good .rsc-verdict::after {
+main:has(.cobrand) .report-scores .rsc-card.rsc-good:not(.rsc-field) .rsc-verdict::after {
   content: 'Strong';
   font-size: 0.75rem;
 }
