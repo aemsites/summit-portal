@@ -10,14 +10,24 @@ async function loadSidekick() {
 }
 
 (function loadLazy() {
+  import('../blocks/metadata/metadata.js').then(({ hidePageDataSections }) => {
+    hidePageDataSections();
+  });
+
   import('./utils/lazyhash.js');
   import('./utils/favicon.js');
-  import('./utils/footer.js').then(({ default: footer }) => footer());
+
+  const relocateFooters = () => import('../blocks/report-ai-visibility/relocate-section-footer.js')
+    .then(({ relocateAllSectionFooters }) => relocateAllSectionFooters());
+
+  import('./utils/footer.js').then(({ default: footer }) => footer().then(relocateFooters));
 
   if (document.querySelector('.report-hero.insight')) {
     import('./utils/insights-feedback.js').then(({ default: mount }) => mount());
     import('./utils/insights-tracking.js').then(({ default: mount }) => mount());
     import('./utils/brand-chip.js').then(({ default: mount }) => mount());
+    import('./utils/cannes-stripe.js').then(({ default: mount }) => mount());
+    relocateFooters();
   }
 
   loadSidekick();

@@ -57,7 +57,7 @@
 
 .report-cards .rc-desc {
   font-size: 14px;
-  color: var(--rpt-text-muted);
+  color: var(--rpt-text-body);
   margin: 0;
   line-height: 1.5;
   flex: 1;

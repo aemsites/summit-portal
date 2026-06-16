@@ -1,14 +1,15 @@
 /* Report Carousel — Persona tab switcher + slide carousel */
-.report-carousel-wrapper {
+.report-carousel-wrapper,
+.block-content:has(.report-carousel) {
   max-width: 1200px !important;
   padding: 0 !important;
-  margin: 24px auto 0 !important;
+  margin: 0 auto !important;
 }
 
 .report-carousel {
   background: var(--rpt-insight-section-bg);
   max-width: none;
-  margin: 24px 0 0;
+  margin: 0;
   width: 100%;
   border-radius: 0;
 
@@ -210,12 +211,13 @@
 .report-carousel .rc-desc {
   font-size: 18px;
   line-height: 1.5;
-  color: light-dark(#292929, #ccc);
+  color: var(--rpt-text-body);
   margin-bottom: 12px;
 }
 
 .report-carousel .rc-desc p {
   margin: 0 0 8px;
+  color: inherit;
 }
 
 .report-carousel .rc-desc p:last-child {
@@ -793,7 +795,7 @@
 
 .report-carousel .rc-rec-detail {
   font-size: 16px;
-  color: light-dark(#212121, #9ca3af);
+  color: var(--rpt-text-body);
   line-height: 1.5;
 }
 

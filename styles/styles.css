@@ -189,6 +189,7 @@
     0 8px 32px 0 rgb(15 23 42 / 4%);
 
   /* semantic text */
+  --color-text-body: light-dark(#292929, #ccc);
   --color-text-secondary: light-dark(#4b5563, #b0b8c4);
   --color-text-muted: light-dark(#6b7280, #8b95a5);
   --color-text-faint: light-dark(#9ca3af, #6b7580);
@@ -342,9 +343,19 @@ a {
 .section {
   display: block;
 
-  > .default-content {
+  &:has(> .block-content > .metadata) {
+    display: none !important;
+  }
+
+  > .default-content,
+  > .block-content {
     max-width: var(--grid-container-width);
-    margin: 0 auto;
+    margin-inline: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  > .default-content {
 
     h2,
     h3 {
@@ -419,9 +430,31 @@ svg {
 
 /* @media (width >= 900px) {} */
 
-@media (width >= 1200px) {
+@media (width >= 1000px) {
   :root {
     --grid-container-width: 1200px;
+  }
+
+  /* Mirror body > header: padded shell + centered 1200px column */
+  main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding-inline: 24px;
+    box-sizing: border-box;
+  }
+
+  main > .section {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+  }
+
+  main > .section > .block-content,
+  main > .section > .default-content {
+    max-width: none;
+    margin-inline: 0;
+    width: 100%;
   }
 }
 

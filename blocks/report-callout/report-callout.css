@@ -10,7 +10,7 @@
   align-items: center;
   gap: 14px;
   background: var(--rpt-red-bg-subtle);
-  border-left: 4px solid var(--rpt-red);
+  border-left: none;
   border-radius: 12px;
   padding: 16px 20px;
 }
@@ -23,7 +23,7 @@
 
 .report-callout .rcl-text {
   font-size: 14px;
-  color: var(--rpt-text-secondary);
+  color: var(--rpt-text-body);
   margin: 0;
   line-height: 1.5;
   flex: 1;
@@ -40,7 +40,6 @@
    .cta — dark Adobe treatment for a closing call-to-action. */
 .report-callout.neutral .rcl-bar {
   background: var(--rpt-surface-alt, light-dark(#f7f7f9, #2a2a2a));
-  border-left-color: var(--rpt-border, light-dark(#eeedf2, #3a3a3a));
 }
 
 .report-callout.cta .rcl-bar {
@@ -75,4 +74,124 @@
 .report-callout.cta .rcl-text strong {
   color: #fff;
   font-weight: 700;
+}
+
+/* BV CTA banner — Figma frame 4620:329386 (light + dark theme variants) */
+.report-callout.cta:has(.rcl-bar--bv-hero) {
+  width: 100%;
+}
+
+.report-callout.cta .rcl-bar--bv-hero,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 40px;
+  background: light-dark(#fff, #262626);
+  border: none;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.report-callout.cta .rcl-bar--bv-hero::before,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing::before {
+  display: none;
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-brand,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-brand {
+  flex-shrink: 0;
+  width: min(234px, 34%);
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-brand .rcl-logo,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-brand .rcl-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Single Adobe + Semrush lockup, themed in-place (Figma 4620:329372 / 4620:329379).
+   Adobe "A" stays red; divider + Semrush wordmark flip with the theme.
+   Alpha is baked into the color so a single light-dark() handles both. */
+.report-callout.cta .rcl-bar--bv-hero .rcl-logo-divider,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-logo-divider {
+  stroke: light-dark(rgb(41 41 41 / 20%), rgb(255 255 255 / 40%));
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-logo-wordmark,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-logo-wordmark {
+  fill: light-dark(#292929, rgb(255 255 255 / 80%));
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-text,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: light-dark(#292929, #fff);
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-text strong,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-mark,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-mark img,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (width < 1000px) {
+  .report-callout.cta .rcl-bar--bv-hero,
+  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px 20px;
+    border-radius: 0;
+  }
+
+  .report-callout.cta .rcl-bar--bv-hero .rcl-brand,
+  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-brand {
+    width: min(220px, 100%);
+  }
+
+  .report-callout.cta .rcl-bar--bv-hero .rcl-text,
+  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text {
+    font-size: 15px;
+  }
+
+  .report-callout.cta .rcl-bar--bv-hero .rcl-mark,
+  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark {
+    display: none;
+  }
+}
+
+@media (width >= 1000px) {
+  .section.rcl-pre-briefing > .block-content {
+    box-sizing: border-box;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+  }
 }

@@ -1,3 +1,11 @@
+import { getConfig, loadStyle } from '../../scripts/ak.js';
+import { scheduleRelocateSectionFooter } from '../report-ai-visibility/relocate-section-footer.js';
+import { toStatLabelSentenceCase } from '../report-ai-visibility/rav-core.js';
+
+function isInsightReportPage() {
+  return Boolean(document.querySelector('.report-hero.insight, .cobrand'));
+}
+
 function parseValue(text) {
   const t = text.trim();
   const m = t.match(/^([\d.]+)(M|K|%)?$/);
@@ -470,11 +478,76 @@ function buildDarkStats(el, rows) {
   animateDarkStats(strip);
 }
 
-export default function init(el) {
+/**
+ * Insight report: stats strip matches `.rav-stats`; footer callout/source sit in
+ * a sibling `.rav-panels-outer` (same shell as report-ai-visibility).
+ * @param {Element[]} rows
+ * @returns {HTMLDivElement}
+ */
+function buildInsightStatsStrip(rows) {
+  const grid = document.createElement('div');
+  grid.className = 'rav-stats';
+
+  rows.forEach((row) => {
+    const cells = [...row.children];
+    const value = cells[0]?.textContent.trim() || '';
+    const label = cells[1]?.textContent.trim() || '';
+    const severity = cells[2]?.textContent.trim().toLowerCase() || '';
+    const desc = cells[3]?.textContent.trim() || '';
+
+    const card = document.createElement('div');
+    card.className = 'rav-stat-card';
+    if (severity) card.classList.add(`rs-${severity}`);
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rav-stat-label';
+    labelEl.textContent = toStatLabelSentenceCase(label);
+
+    const valueEl = document.createElement('div');
+    valueEl.className = 'rav-stat-value';
+    valueEl.textContent = value;
+
+    card.append(labelEl, valueEl);
+    if (desc) {
+      const sub = document.createElement('div');
+      sub.className = 'rav-stat-sublabel';
+      sub.textContent = desc;
+      card.append(sub);
+    }
+    grid.append(card);
+  });
+
+  return grid;
+}
+
+/**
+ * Cannes Search performance: add `.rav-panels-outer` for relocated section footer.
+ * @param {Element} el
+ */
+function ensureCannesStatsPanelsOuter(el) {
+  if (!isInsightReportPage()) return;
+  if (el.querySelector(':scope > .rav-panels-outer')) return;
+
+  const outer = document.createElement('div');
+  outer.className = 'rav-panels-outer';
+  outer.dataset.widgetFooterHost = '';
+  el.append(outer);
+}
+
+export default async function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
 
   if (el.classList.contains('dark')) {
     buildDarkStats(el, rows);
+    return;
+  }
+
+  if (isInsightReportPage()) {
+    await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
+    el.textContent = '';
+    el.append(buildInsightStatsStrip(rows));
+    ensureCannesStatsPanelsOuter(el);
+    scheduleRelocateSectionFooter(el);
     return;
   }
 
@@ -506,4 +579,5 @@ export default function init(el) {
 
   el.textContent = '';
   el.append(grid);
+  scheduleRelocateSectionFooter(el);
 }

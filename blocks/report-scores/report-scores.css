@@ -3,7 +3,7 @@
 .block-content:has(.report-scores) {
   max-width: 1200px !important;
   padding: 0 !important;
-  margin: 24px auto 0 !important;
+  margin: 0 auto !important;
 }
 
 .report-scores {
@@ -36,6 +36,17 @@
 
 .report-scores .rsc-summary-pills {
   margin: 0 0 16px;
+}
+
+/* Hoisted into .rav-section-head ("Performance insights"): push the count pills
+   to the right of the section title and drop the status dots — just the text
+   labels read across the row. */
+.report-ai-visibility.rav-empty-shell .rav-section-head .rsc-summary-pills {
+  margin-left: auto;
+}
+
+.report-ai-visibility.rav-empty-shell .rav-section-head .rsc-summary-dot {
+  display: none;
 }
 
 .report-scores .rsc-summary-pill,

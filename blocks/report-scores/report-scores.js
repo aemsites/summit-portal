@@ -3,6 +3,7 @@ import {
   attachReportScoresToPerformanceShell,
   createPerformanceInsightsShell,
 } from '../report-ai-visibility/report-ai-visibility.js';
+import { scheduleRelocateSectionFooter } from '../report-ai-visibility/relocate-section-footer.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -483,4 +484,6 @@ export default async function init(el) {
   if (sectionHead && summaryPills.parentElement === el) {
     sectionHead.append(summaryPills);
   }
+
+  scheduleRelocateSectionFooter(el);
 }

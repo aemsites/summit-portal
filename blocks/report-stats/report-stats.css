@@ -9,6 +9,115 @@
   padding: 0;
 }
 
+/* Insight report — Search performance stats strip (2×2 grid) */
+.report-stats:has(> .rav-stats) {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-stats .rav-stats {
+  --rs-stats-pad-x: 60px;
+  --rs-stats-pad-y: 24px;
+  --rs-stats-gutter: 32px;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  border-bottom: 2px solid light-dark(rgb(243 243 243 / 100%), #444);
+}
+
+/* Full-width / full-height dividers (edge to edge, not per-cell) */
+.report-stats .rav-stats::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--rpt-border);
+  pointer-events: none;
+}
+
+.report-stats .rav-stats::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: var(--rpt-border);
+  pointer-events: none;
+}
+
+.report-stats .rav-stats:not(:has(.rav-stat-card:nth-child(2)))::before {
+  display: none;
+}
+
+.report-stats .rav-stats:not(:has(.rav-stat-card:nth-child(3)))::after {
+  display: none;
+}
+
+.report-stats .rav-stat-card {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding:
+    var(--rs-stats-pad-y)
+    var(--rs-stats-gutter)
+    var(--rs-stats-pad-y)
+    var(--rs-stats-gutter);
+}
+
+.report-stats .rav-stat-card:nth-child(odd) {
+  padding-left: var(--rs-stats-pad-x);
+}
+
+.report-stats .rav-stat-card:nth-child(even) {
+  padding-right: var(--rs-stats-pad-x);
+}
+
+.report-stats .rav-stat-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--rpt-text, var(--color-text));
+  margin-bottom: 4px;
+}
+
+.report-stats .rav-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--rpt-text-heading, var(--color-text-heading));
+  line-height: 1;
+}
+
+.report-stats .rav-stat-sublabel {
+  font-size: 14px;
+  color: var(--rpt-text-body, var(--rpt-text, var(--color-text)));
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.report-stats .rav-stat-card.rs-poor .rav-stat-value { color: var(--rs-poor); }
+.report-stats .rav-stat-card.rs-good .rav-stat-value { color: var(--rs-good); }
+.report-stats .rav-stat-card.rs-warning .rav-stat-value { color: var(--rs-warning); }
+
 .report-stats .rs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -84,13 +193,14 @@
 
 .report-stats .rs-desc {
   font-size: 13px;
-  color: var(--rpt-text-faint);
+  color: var(--rpt-text-body);
   margin: 4px 0 0;
   line-height: 1.4;
 }
 
 /* Dark variant — flush below report-hero */
-.report-stats-wrapper {
+.report-stats-wrapper,
+.block-content:has(.report-stats) {
   max-width: 1200px !important;
   padding: 0 !important;
   margin: 0 auto !important;
@@ -103,6 +213,40 @@
   width: 100%;
   border-radius: 0;
   overflow: hidden;
+  /* Experiment: hero KPI strip always uses light-theme colors regardless of page theme */
+  color-scheme: light;
+}
+
+/* Relocated hero insight callout — only the dark KPI footer bar, not other callouts */
+.report-stats.dark > .rpt-widget-footer {
+  padding: 0;
+  margin-top: 0;
+}
+
+.report-stats.dark > .rpt-widget-footer .rcl-bar {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 28px 32px;
+}
+
+.report-stats.dark > .rpt-widget-footer .rcl-text {
+  color: #2a2a2a;
+}
+
+body.dark-scheme .report-stats.dark > .rpt-widget-footer .rcl-text {
+  color: #ccc;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not(.light-scheme) .report-stats.dark > .rpt-widget-footer .rcl-text {
+    color: #ccc;
+  }
+}
+
+.report-stats.dark > .rpt-widget-footer .rcl-text strong {
+  color: inherit;
 }
 
 @media (width >= 1000px) {
@@ -112,7 +256,7 @@
 }
 
 .report-stats.dark .rs-dark-strip {
-  background: light-dark(#000, #f5f5f5);
+  background: #000;
   display: flex;
   padding: 0 64px;
   gap: 40px;
@@ -133,7 +277,7 @@
 .report-stats.dark .rs-dark-label {
   font-size: 14px;
   font-weight: 500;
-  color: light-dark(#fff, #111);
+  color: #fff;
   margin-bottom: -8px;
 }
 
@@ -147,7 +291,7 @@
 .report-stats.dark .rs-dark-value {
   font-size: 36px;
   font-weight: 800;
-  color: light-dark(#fff, #111);
+  color: #fff;
   line-height: 1.2;
   letter-spacing: -0.5px;
 }
@@ -165,19 +309,19 @@
 }
 
 .report-stats.dark .rs-gauge-track {
-  stroke: light-dark(rgb(255 255 255 / 22%), rgb(0 0 0 / 15%));
+  stroke: rgb(255 255 255 / 22%);
 }
 
 .report-stats.dark .rs-gauge-inner {
-  stroke: light-dark(rgb(255 255 255 / 12%), rgb(0 0 0 / 10%));
+  stroke: rgb(255 255 255 / 12%);
 }
 
 .report-stats.dark .rs-gauge-needle {
-  stroke: light-dark(rgb(255 255 255 / 95%), rgb(0 0 0 / 80%));
+  stroke: rgb(255 255 255 / 95%);
 }
 
 .report-stats.dark .rs-gauge-pivot {
-  fill: light-dark(rgb(255 255 255 / 95%), rgb(0 0 0 / 80%));
+  fill: rgb(255 255 255 / 95%);
 }
 
 .report-stats.dark .rs-dark-badge {
@@ -227,13 +371,14 @@
 
 .report-stats.dark .rs-dark-desc {
   font-size: 14px;
-  color: light-dark(#fff, #333);
+  color: #fff;
   line-height: 1.4;
   margin-top: 2px;
 }
 
 @media (width < 1000px) {
-  .report-stats-wrapper {
+  .report-stats-wrapper,
+  .block-content:has(.report-stats) {
     padding: 0 !important;
   }
 
@@ -242,7 +387,7 @@
     grid-template-columns: 1fr 1fr;
     padding: 0;
     gap: 1px;
-    background: light-dark(rgb(255 255 255 / 8%), rgb(0 0 0 / 8%));
+    background: rgb(255 255 255 / 8%);
   }
 
   .report-stats.dark .rs-dark-card {
@@ -257,7 +402,7 @@
     transition: background 160ms ease;
     align-items: center;
     text-align: center;
-    background: light-dark(#000, #f5f5f5);
+    background: #000;
   }
 
   .report-stats.dark .rs-dark-label {
@@ -265,7 +410,7 @@
     font-weight: 600;
     letter-spacing: 0.9px;
     text-transform: uppercase;
-    color: light-dark(rgb(255 255 255 / 62%), rgb(0 0 0 / 55%));
+    color: rgb(255 255 255 / 62%);
     margin-bottom: 6px;
     text-align: center;
   }
@@ -287,7 +432,7 @@
 
   .report-stats.dark .rs-dark-value-denom {
     font-size: 14px;
-    color: light-dark(rgb(255 255 255 / 45%), rgb(0 0 0 / 40%));
+    color: rgb(255 255 255 / 45%);
   }
 
   .report-stats.dark .rs-speedometer {
@@ -301,7 +446,7 @@
     background: transparent !important;
     padding: 0;
     border-radius: 0;
-    color: light-dark(rgb(255 255 255 / 92%), rgb(0 0 0 / 82%));
+    color: rgb(255 255 255 / 92%);
     font-size: 11.5px;
     font-weight: 600;
     gap: 6px;
@@ -319,7 +464,7 @@
     height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: light-dark(rgb(255 255 255 / 45%), rgb(0 0 0 / 35%));
+    background: rgb(255 255 255 / 45%);
   }
 
   .report-stats.dark .rs-dark-badge[data-status='negative']::before,
@@ -349,7 +494,7 @@
     width: 12px;
     height: 12px;
     opacity: 0.42;
-    background: light-dark(#fff, #111);
+    background: #fff;
     mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 6 15 12 9 18'/></svg>") center / contain no-repeat;
     pointer-events: none;
   }
@@ -357,12 +502,12 @@
   .report-stats.dark .rs-dark-card:hover,
   .report-stats.dark .rs-dark-card:active,
   .report-stats.dark .rs-dark-card:focus-visible {
-    background: light-dark(#111, #ececec);
+    background: #111;
     outline: none;
   }
 
   .report-stats.dark .rs-dark-card:focus-visible {
-    outline: 2px solid light-dark(rgb(255 255 255 / 40%), rgb(0 0 0 / 30%));
+    outline: 2px solid rgb(255 255 255 / 40%);
     outline-offset: -2px;
   }
 }
@@ -492,8 +637,8 @@
     bottom: 0;
     padding: 14px 22px 28px;
     border-radius: 18px 18px 0 0;
-    background: light-dark(#1a1a1a, #fff);
-    color: light-dark(#fff, #111);
+    background: #1a1a1a;
+    color: #fff;
     box-shadow: 0 -12px 40px rgb(0 0 0 / 40%);
     transform: translateY(100%);
     transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -511,7 +656,7 @@
     height: 4px;
     margin: 0 auto 14px;
     border-radius: 999px;
-    background: light-dark(rgb(255 255 255 / 22%), rgb(0 0 0 / 18%));
+    background: rgb(255 255 255 / 22%);
   }
 
   .rs-sheet-close {
@@ -533,7 +678,7 @@
 
   .rs-sheet-close:hover,
   .rs-sheet-close:focus-visible {
-    background: light-dark(rgb(255 255 255 / 10%), rgb(0 0 0 / 6%));
+    background: rgb(255 255 255 / 10%);
     outline: none;
   }
 
@@ -542,7 +687,7 @@
     font-weight: 600;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    color: light-dark(rgb(255 255 255 / 72%), rgb(0 0 0 / 62%));
+    color: rgb(255 255 255 / 72%);
     margin-bottom: 8px;
   }
 
@@ -584,13 +729,13 @@
 
   .rs-sheet-badge-slot .rs-dark-badge[data-status='neutral'] svg,
   .rs-sheet-badge-slot .rs-dark-badge[data-status='nodata'] svg {
-    color: light-dark(rgb(255 255 255 / 55%), rgb(0 0 0 / 45%));
+    color: rgb(255 255 255 / 55%);
   }
 
   .rs-sheet-desc {
     font-size: 15px;
     line-height: 1.55;
-    color: light-dark(rgb(255 255 255 / 82%), rgb(0 0 0 / 72%));
+    color: rgb(255 255 255 / 82%);
     margin: 0;
   }
 }
@@ -604,7 +749,44 @@
   font-size: 22px;
 }
 
+@media (width < 900px) {
+  .report-stats .rav-stats {
+    --rs-stats-pad-x: 24px;
+    --rs-stats-gutter: 20px;
+  }
+}
+
 @media (width < 768px) {
+  .report-stats .rav-stats {
+    --rs-stats-pad-x: 16px;
+    --rs-stats-pad-y: 16px;
+    --rs-stats-gutter: 12px;
+  }
+
+  .report-stats .rav-stat-card {
+    gap: 2px;
+  }
+
+  .report-stats .rav-stat-label {
+    font-size: 11px;
+    margin-bottom: 4px;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+    color: var(--rpt-text-muted);
+  }
+
+  .report-stats .rav-stat-value {
+    font-size: 26px;
+    letter-spacing: -0.5px;
+  }
+
+  .report-stats .rav-stat-sublabel {
+    font-size: 11px;
+    line-height: 1.3;
+    margin-top: 4px;
+    color: var(--rpt-text-muted);
+  }
+
   .report-stats .rs-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;

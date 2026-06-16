@@ -1,3 +1,21 @@
+const PAGE_DATA_MARKERS = ['has-ai-visibility', 'customer', 'ai-data-source'];
+
+/** Hide/remove authored page-data configuration sections (temporary). */
+export function hidePageDataSections(root = document) {
+  root.querySelectorAll('main > .section').forEach((section) => {
+    if (section.querySelector(':scope > .block-content > .metadata')) {
+      section.remove();
+      return;
+    }
+
+    const text = section.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+    const matches = PAGE_DATA_MARKERS.filter((marker) => text.includes(marker)).length;
+    if (matches >= PAGE_DATA_MARKERS.length) {
+      section.remove();
+    }
+  });
+}
+
 export default function init(el) {
   const rows = el.querySelectorAll(':scope > div');
   rows.forEach((row) => {
@@ -28,5 +46,5 @@ export default function init(el) {
 
   const section = el.closest('.section');
   el.remove();
-  if (section && !section.children.length) section.remove();
+  if (section) section.remove();
 }
