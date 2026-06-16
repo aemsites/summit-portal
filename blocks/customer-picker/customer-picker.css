@@ -312,6 +312,13 @@
 .cp-format-list {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+/* One format = its action row + a collapsible per-page share form. */
+.cp-format {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-s);
 }
 
@@ -325,6 +332,16 @@
 .cp-format-row .cp-dialog-cta:first-child {
   flex: 1 1 auto;
   justify-content: space-between;
+}
+
+/* Per-format share form revealed by the row's Share button. */
+.cp-format-share[hidden] {
+  display: none;
+}
+
+.cp-format-share {
+  padding-left: var(--spacing-s);
+  border-left: 2px solid var(--color-border);
 }
 
 /* Share this page form */
