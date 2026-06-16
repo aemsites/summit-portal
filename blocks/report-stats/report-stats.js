@@ -535,10 +535,24 @@ function ensureCannesStatsPanelsOuter(el) {
 }
 
 export default async function init(el) {
-  const rows = [...el.querySelectorAll(':scope > div')];
+  // Only the AUTHORED stat rows. Blocks in a section load in parallel, so a
+  // sibling report-callout's footer may already have been relocated INTO this
+  // block (see relocate-section-footer.js) before we run — never treat that as
+  // a stat row, or the at-a-glance callout renders as a stray KPI card on first
+  // load (it self-corrects on refresh once the relocate runs after build).
+  const rows = [...el.querySelectorAll(':scope > div')].filter(
+    (row) => !row.classList.contains('report-callout')
+      && !row.classList.contains('rpt-widget-footer')
+      && !row.classList.contains('rav-panels-outer'),
+  );
 
   if (el.classList.contains('dark')) {
     buildDarkStats(el, rows);
+    // Re-run footer relocation AFTER the strip is built. buildDarkStats clears
+    // el (textContent = ''), which would wipe a callout relocated in before us;
+    // scheduling here guarantees the at-a-glance banner lands under the strip
+    // regardless of block-load order.
+    scheduleRelocateSectionFooter(el);
     return;
   }
 
