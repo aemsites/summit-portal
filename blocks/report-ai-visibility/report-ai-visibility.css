@@ -48,7 +48,7 @@
 /* ── Stats strip (AI visibility) ───────────────────────────────────────────── */
 .report-ai-visibility .rav-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
@@ -921,10 +921,10 @@
   }
 }
 
-/* Compact 3-up stats across all mobile widths — stacking looked sparse */
+/* Compact 2-up stats across all mobile widths — stacking looked sparse */
 @media (width < 768px) {
   .report-ai-visibility .rav-stats {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     padding-inline: 4px;
     gap: 0;
   }
