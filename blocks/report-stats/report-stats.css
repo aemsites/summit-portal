@@ -386,8 +386,8 @@ body.dark-scheme .report-stats.dark > .rpt-widget-footer .rcl-text {
     display: grid;
     grid-template-columns: 1fr 1fr;
     padding: 0;
-    gap: 1px;
-    background: rgb(255 255 255 / 8%);
+    gap: 0;
+    background: #000;
   }
 
   .report-stats.dark .rs-dark-card {
@@ -515,12 +515,12 @@ body.dark-scheme .report-stats.dark > .rpt-widget-footer .rcl-text {
 /* Scroll affordance: a one-shot chevron hint below the KPI grid on mobile
    so first-time viewers know more content sits below the fold. */
 @media (width < 1000px) {
-  .report-stats.dark {
+  .report-stats.dark:not(:has(.rpt-widget-footer)) {
     position: relative;
     padding-bottom: 36px;
   }
 
-  .report-stats.dark::after {
+  .report-stats.dark:not(:has(.rpt-widget-footer))::after {
     content: '';
     position: absolute;
     left: 50%;

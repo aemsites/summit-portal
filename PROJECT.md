@@ -93,6 +93,14 @@ Global tokens defined in `styles/styles.css` with `light-dark()` for automatic d
 - **Desktop (>=1000px)**: Centered blocks, max-width 1200px, 24px side padding, 16px rounded corners
 - **Mobile (<1000px)**: Edge-to-edge, no side padding, no rounded corners
 
+### Insight pages — mobile polish
+- Section spacing on insight pages collapses to `gap: 8px` with `padding: 0 0 8px` on `main` so the hero is flush against the header (no top gap) while subsequent sections sit 8px apart.
+- Hero website badge (`.rh-insight-badge`) keeps the desktop white-pill styling on mobile (no dark-transparent override).
+- Dark KPI strip (`.report-stats.dark .rs-dark-strip`) is a single solid-black surface on mobile — no 1px dividers between the 4 cells.
+- Dark KPI strip's scroll-hint chevron + 36px bottom padding only apply when there is no `.rpt-widget-footer` callout below the grid (`:not(:has(.rpt-widget-footer))`) so the at-a-glance callout doesn't have empty space below it.
+- Widget title bars unify across blocks: `.rai-section-head-strip` matches `.rav-section-head` at `(width < 768px)` — `min-height: 56px`, `padding: 10px 16px`, `font-size: 16px / 600`. "Your briefing" / "Search performance" read as peers of "LLM visibility" / "Performance insights".
+- `.report-ai-visibility .rav-stats` uses `repeat(2, 1fr)` at every width (was 3-up base + 3-up `<768px`). LLM visibility's two stats sit at 50/50; tablet rule already used 2 columns.
+
 ## Remaining Work
 
 ### Polish

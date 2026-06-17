@@ -37,3 +37,16 @@ body:has(.report-hero.insight) .report-ai-section-head .rai-section-head-title {
   font-size: 20px;
   font-weight: 600;
 }
+
+/* Mobile: match .rav-section-head sizing so all widget title bars (LLM visibility,
+   Performance insights, Your briefing, Search performance) share font size + height. */
+@media (width < 768px) {
+  body:has(.report-hero.insight) .report-ai-section-head .rai-section-head-strip {
+    min-height: 56px;
+    padding: 10px 16px;
+  }
+
+  body:has(.report-hero.insight) .report-ai-section-head .rai-section-head-title {
+    font-size: 16px;
+  }
+}
