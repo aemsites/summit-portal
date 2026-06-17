@@ -140,20 +140,6 @@ main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text strong {
   color: inherit;
 }
 
-.report-callout.cta .rcl-bar--bv-hero .rcl-mark,
-main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-}
-
-.report-callout.cta .rcl-bar--bv-hero .rcl-mark img,
-main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark img {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 @media (width < 1000px) {
   .report-callout.cta .rcl-bar--bv-hero,
   main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {
@@ -172,11 +158,6 @@ main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark img {
   .report-callout.cta .rcl-bar--bv-hero .rcl-text,
   main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text {
     font-size: 15px;
-  }
-
-  .report-callout.cta .rcl-bar--bv-hero .rcl-mark,
-  main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-mark {
-    display: none;
   }
 }
 
