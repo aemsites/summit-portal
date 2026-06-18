@@ -55,6 +55,7 @@ const EVENT_FORMATS = {
  */
 const EVENT_MODES = [
   { id: 'cannes', label: 'Cannes 2026 Portal', column: 'Cannes 2026' },
+  { id: 'sydney', label: 'Sydney Summit 2026', column: 'Sydney Summit 2026' },
 ];
 
 const EVENT_MODE_IDS = new Set(EVENT_MODES.map((e) => e.id));

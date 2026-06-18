@@ -148,4 +148,31 @@ describe('customer-picker › buildEventCompanies', () => {
     );
     expect(cards.map((c) => c.Company)).to.deep.equal(['Acme', 'Zeta']);
   });
+
+  it('reads an arbitrary event column, so the same row can belong to several events', () => {
+    const rows = [
+      {
+        Report: 'qantas.com',
+        Customers: 'Qantas',
+        Folder: '/accounts/q/qantas/insights/qantas-com/portal-landing/',
+        'Cannes 2026': '',
+        'Sydney Summit 2026': 'Qantas; Qantas Loyalty',
+      },
+      {
+        Report: 'ey.com',
+        Customers: 'EY',
+        Folder: '/accounts/e/ey/insights/ey-com/portal-landing/',
+        'Cannes 2026': 'EY; EY Studio+',
+        'Sydney Summit 2026': 'EY',
+      },
+    ];
+    const cannes = buildEventCompanies(rows, 'Cannes 2026');
+    const sydney = buildEventCompanies(rows, 'Sydney Summit 2026');
+    // EY is in both events; Qantas only in Sydney.
+    expect(cannes.map((c) => c.Company)).to.deep.equal(['EY', 'EY Studio+']);
+    expect(sydney.map((c) => c.Company)).to.deep.equal(['EY', 'Qantas', 'Qantas Loyalty']);
+    // EY's card links to the same page in both tabs.
+    expect(cannes.find((c) => c.Company === 'EY').Folder)
+      .to.equal(sydney.find((c) => c.Company === 'EY').Folder);
+  });
 });
