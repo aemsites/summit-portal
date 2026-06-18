@@ -45,6 +45,28 @@ const EVENT_FORMATS = {
 };
 
 /**
+ * Event portal tabs. Each event is one extra mode in the picker, backed by one
+ * column in `insights-list.json`: a row whose `<column>` cell is non-empty is in
+ * that event, and the cell value is the card label (the event-specific company
+ * name, which can differ per event). Add an event = add one row here + populate
+ * the matching column in DA. Unlike the Insight Reports tab (one card per website
+ * globally), event tabs build ONE CARD PER FLAGGED ROW so the same company can
+ * appear in several events and two companies sharing a page each keep their card.
+ */
+const EVENT_MODES = [
+  { id: 'cannes', label: 'Cannes 2026 Portal', column: 'Cannes 2026' },
+];
+
+const EVENT_MODE_IDS = new Set(EVENT_MODES.map((e) => e.id));
+
+/** Website-report modes (Insight Reports + every event tab) share one dialog
+ *  layout — websites, per-format reports, per-page share — distinct from the
+ *  accounts/portal directory layout. */
+function isReportMode(mode) {
+  return mode === 'insights' || EVENT_MODE_IDS.has(mode);
+}
+
+/**
  * Split an insight-report folder into its website slug and optional variant.
  * DIH folders are `…/insights/<website>/[variant]/` where <variant> is empty
  * (the bare report), `portal-landing`, or an event id (`cannes-2026`, …). The
@@ -139,6 +161,31 @@ export function groupInsightsByWebsite(rows) {
   });
 }
 
+/**
+ * Build the cards for one event tab from the raw insight rows. Each row whose
+ * `column` cell is non-empty is in the event; the cell holds one or more event
+ * company names (multiple `;`-separated when several companies share one page,
+ * e.g. "EY; EY Studio+"), and EACH name becomes its own card linking to that
+ * row's page. This intentionally does NOT collapse by website: the same company
+ * may sit in several events, and co-located companies each keep a distinct card.
+ * Cards are sorted by label so the A–Z grid groups them correctly.
+ */
+export function buildEventCompanies(rows, column) {
+  const cards = [];
+  for (const row of rows) {
+    const cell = String(row[column] || '').trim();
+    const names = cell ? cell.split(';').map((n) => n.trim()).filter(Boolean) : [];
+    const base = {
+      Report: row.Report,
+      Customers: row.Customers,
+      Folder: `${(row.Folder || '').replace(/\/+$/, '')}/`,
+      formats: [],
+    };
+    for (const name of names) cards.push({ ...base, Company: name });
+  }
+  return cards.sort((a, b) => a.Company.localeCompare(b.Company));
+}
+
 function buildModeToggle(onChange) {
   const wrapper = document.createElement('div');
   wrapper.className = 'cp-mode-toggle';
@@ -147,6 +194,7 @@ function buildModeToggle(onChange) {
     { id: 'accounts', label: 'Accounts' },
     { id: 'insights', label: 'Insight Reports' },
     { id: 'portal', label: 'Summit 26 Portal' },
+    ...EVENT_MODES.map((e) => ({ id: e.id, label: e.label })),
   ]) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -363,9 +411,11 @@ function buildShareSection(company) {
 function renderDialog(content, company, websiteMap, domainMap, mode) {
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
 
-  // The key into websiteMap/domainMap differs for insight reports (keyed by the
+  const isReport = isReportMode(mode);
+
+  // The key into websiteMap/domainMap differs for report modes (keyed by the
   // customer name) vs. accounts/portal (keyed by company). Compute it once.
-  const lookupKey = mode === 'insights' ? (company.Customers || company.Company) : company.Company;
+  const lookupKey = isReport ? (company.Customers || company.Company) : company.Company;
   const domains = domainMap.get(lookupKey) || [];
 
   if (mode === 'accounts') {
@@ -399,7 +449,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       </div>`;
     }
 
-    if (mode === 'insights' && company.Customers) {
+    if (isReport && company.Customers) {
       html += `<div class="cp-dialog-section">
         <h4>Customer</h4>
         <ul class="cp-dialog-list">
@@ -415,7 +465,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
       </div>`;
     }
 
-    if (mode === 'insights' && company.formats && company.formats.length) {
+    if (isReport && company.formats && company.formats.length) {
       // One website can have several landing-page formats (Cannes, Summit, …).
       // Each format opens/edits/shares INDEPENDENTLY — sharing must target a
       // specific landing page, not the whole website folder. The Share button
@@ -437,7 +487,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
         </div>
       </div>`;
     } else if (company.Folder) {
-      const ctaLabel = mode === 'insights' ? 'Open insight report' : 'Open customer portal page';
+      const ctaLabel = isReport ? 'Open insight report' : 'Open customer portal page';
       const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
       html += `<div class="cp-dialog-actions">
         <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
@@ -450,7 +500,7 @@ function renderDialog(content, company, websiteMap, domainMap, mode) {
 
   // Insight reports: share PER FORMAT. Each "Share" button toggles a share form
   // bound to that format's specific page (lazily built on first open).
-  if (mode === 'insights' && company.formats && company.formats.length) {
+  if (isReport && company.formats && company.formats.length) {
     content.querySelectorAll('.cp-format').forEach((row) => {
       const fmt = company.formats[Number(row.dataset.formatIndex)];
       const toggle = row.querySelector('.cp-format-share-toggle');
@@ -614,6 +664,7 @@ const SEARCH_PLACEHOLDERS = {
   insights: 'Search insight reports…',
   accounts: 'Search accounts…',
   portal: 'Search customers…',
+  ...Object.fromEntries(EVENT_MODES.map((e) => [e.id, `Search ${e.label}…`])),
 };
 
 export default async function init(el) {
@@ -636,11 +687,15 @@ export default async function init(el) {
   if (!portalResp.ok) return;
 
   const portalCompanies = (await portalResp.json()).data || [];
-  // Insight reports: one row per website×format in the sheet → collapse to one
+  const insightRows = insightsResp.ok ? ((await insightsResp.json()).data || []) : [];
+  // Insight reports: one row per website×variant in the sheet → collapse to one
   // card per website, each carrying its available landing-page formats.
-  const insightsCompanies = insightsResp.ok
-    ? groupInsightsByWebsite((await insightsResp.json()).data || [])
-    : [];
+  const insightsCompanies = groupInsightsByWebsite(insightRows);
+  // Event portal tabs build directly from the flagged rows (one card per row),
+  // independent of the website grouping above — see EVENT_MODES / buildEventCompanies.
+  const eventCompanies = Object.fromEntries(
+    EVENT_MODES.map((e) => [e.id, buildEventCompanies(insightRows, e.column)]),
+  );
   const accountsCompanies = accountsResp.ok
     ? (await accountsResp.json()).data.map((r) => ({ ...r, Company: r.Account }))
     : [];
@@ -689,6 +744,7 @@ export default async function init(el) {
       insights: insightsCompanies,
       accounts: accountsCompanies,
       portal: portalCompanies,
+      ...eventCompanies,
     };
     const companies = companiesMap[mode] || [];
     searchInput.value = '';

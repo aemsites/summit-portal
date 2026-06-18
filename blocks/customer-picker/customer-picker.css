@@ -8,11 +8,13 @@
 /* Mode Toggle */
 .cp-mode-toggle {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   background: var(--color-surface-alt);
   border-radius: 12px;
   width: fit-content;
+  max-width: 100%;
   margin-bottom: var(--spacing-l);
 }
 
