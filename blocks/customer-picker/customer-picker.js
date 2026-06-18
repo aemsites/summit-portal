@@ -36,57 +36,98 @@ function getLetterGroup(name) {
   return /\d/.test(first) ? '0-9' : first;
 }
 
-/** Human label for an insights landing-page format id, derived from the folder's
- *  last path segment (e.g. 'cannes-2026' -> 'Cannes Lions 2026'). */
-function formatLabel(format) {
-  const known = {
-    'cannes-2026': 'Cannes Lions 2026',
-    'summit-2026': 'Adobe Summit 2026',
-  };
-  if (known[format]) return known[format];
-  return format
-    .split('-')
-    .map((p) => (/^\d+$/.test(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
-    .join(' ');
+// Known event landing-page variants. A website folder can hold several of these
+// in parallel (e.g. a Cannes and a Summit report), so they render as separate
+// selectable reports inside one website card.
+const EVENT_FORMATS = {
+  'cannes-2026': 'Cannes Lions 2026',
+  'summit-2026': 'Adobe Summit 2026',
+};
+
+/**
+ * Split an insight-report folder into its website folder and optional variant.
+ * DIH folders are `…/insights/<website>/[variant]/` where <variant> is empty
+ * (the bare report), `portal-landing`, or an event id (`cannes-2026`, …). The
+ * website segment is the anchor — everything deeper is a variant of the SAME
+ * website, not a different website.
+ */
+export function parseInsightFolder(folder) {
+  const f = (folder || '').replace(/\/+$/, '');
+  const marker = '/insights/';
+  const idx = f.indexOf(marker);
+  if (idx < 0) return { websiteFolder: `${f}/`, variant: '' };
+  const head = f.slice(0, idx + marker.length);
+  const [website = '', variant = ''] = f.slice(idx + marker.length).split('/').filter(Boolean);
+  return { websiteFolder: `${head}${website}/`, variant };
 }
 
 /**
- * Collapse insight-report rows so each WEBSITE is one card, not one card per
- * landing-page format. DIH publishes a row per website×format
- * (…/insights/<website>/<format>/), which otherwise renders the same website
- * multiple times. Group by the folder up to the website (drop the trailing
- * format segment); each group keeps its formats so the dialog can list them.
+ * Collapse insight-report rows so each WEBSITE is one card. DIH publishes a row
+ * per website variant (…/insights/<website>/, …/portal-landing/, …/cannes-2026/);
+ * left ungrouped the same website renders 2-3 times.
+ *
+ * Selection rules per website:
+ *   - If a `portal-landing` variant exists, it WINS — the card links straight to
+ *     it and no other variant is offered. Portal landing is the canonical page
+ *     we always want people to land on, so it suppresses the bare/event reports.
+ *   - Otherwise, if event variants exist (Cannes/Summit), the card lists each as
+ *     a selectable report (plus the bare report, if any).
+ *   - Otherwise the card links to the single bare report.
  */
-function groupInsightsByWebsite(rows) {
+export function groupInsightsByWebsite(rows) {
   const groups = new Map();
   for (const row of rows) {
-    const folder = (row.Folder || '').replace(/\/+$/, '');
-    const lastSlash = folder.lastIndexOf('/');
-    const format = lastSlash >= 0 ? folder.slice(lastSlash + 1) : '';
-    const siteFolder = lastSlash >= 0 ? `${folder.slice(0, lastSlash)}/` : `${folder}/`;
+    const { websiteFolder, variant } = parseInsightFolder(row.Folder);
     // key by the per-website folder so the same website under different accounts
     // (e.g. an orphaned vs. correct account) stays distinct.
-    const key = siteFolder;
-    if (!groups.has(key)) {
-      groups.set(key, {
-        Company: row.Report || row.Customers || siteFolder,
+    if (!groups.has(websiteFolder)) {
+      groups.set(websiteFolder, {
         Report: row.Report,
         Customers: row.Customers,
-        Folder: siteFolder,
+        Folder: websiteFolder,
         Created: row.Created,
-        formats: [],
+        variants: new Map(),
       });
     }
-    const g = groups.get(key);
-    if (format && !g.formats.some((f) => f.format === format)) {
-      g.formats.push({ format, label: formatLabel(format), folder: `${folder}/` });
+    const g = groups.get(websiteFolder);
+    if (!g.variants.has(variant)) g.variants.set(variant, `${websiteFolder}${variant ? `${variant}/` : ''}`);
+    if (!g.Report && row.Report) g.Report = row.Report;
+    if (!g.Customers && row.Customers) g.Customers = row.Customers;
+  }
+
+  return [...groups.values()].map((g) => {
+    const { variants } = g;
+    let folder;
+    let formats = [];
+
+    if (variants.has('portal-landing')) {
+      // Portal landing is canonical — suppress every other variant.
+      folder = variants.get('portal-landing');
+    } else {
+      const events = [...variants.keys()].filter((v) => EVENT_FORMATS[v]);
+      if (events.length) {
+        formats = events
+          .map((v) => ({ format: v, label: EVENT_FORMATS[v], folder: variants.get(v) }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        // Offer the bare report alongside the event-specific ones, if present.
+        if (variants.has('')) {
+          formats.unshift({ format: '', label: 'Insight report', folder: variants.get('') });
+        }
+        folder = formats[0].folder;
+      } else {
+        folder = variants.get('') || [...variants.values()][0];
+      }
     }
-  }
-  // stable, readable order within each card's format list
-  for (const g of groups.values()) {
-    g.formats.sort((a, b) => a.label.localeCompare(b.label));
-  }
-  return [...groups.values()];
+
+    return {
+      Company: g.Report || g.Customers || g.Folder,
+      Report: g.Report,
+      Customers: g.Customers,
+      Folder: folder,
+      Created: g.Created,
+      formats,
+    };
+  });
 }
 
 function buildModeToggle(onChange) {
