@@ -205,3 +205,30 @@
     }
   }
 }
+
+/* Welcome landing-page hero only — scoped via its unique H1 id */
+.hero:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
+  --default-min-height: 400px;
+
+  .hero-heading {
+    margin-block-end: 16px;
+  }
+}
+
+@media (width >= 1000px) {
+  .hero:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
+    border-radius: 24px;
+
+    .hero-foreground {
+      padding-inline-start: 56px;
+      grid-template-columns: 55% 40%;
+    }
+  }
+}
+
+/* Mobile: welcome hero runs edge-to-edge; inner text aligns with default-content via the standard 83.4% grid */
+@media (width < 1000px) {
+  .block-content:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
+    max-width: none;
+  }
+}
