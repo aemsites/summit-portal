@@ -45,86 +45,95 @@ const EVENT_FORMATS = {
 };
 
 /**
- * Split an insight-report folder into its website folder and optional variant.
+ * Split an insight-report folder into its website slug and optional variant.
  * DIH folders are `…/insights/<website>/[variant]/` where <variant> is empty
  * (the bare report), `portal-landing`, or an event id (`cannes-2026`, …). The
- * website segment is the anchor — everything deeper is a variant of the SAME
- * website, not a different website.
+ * website slug (e.g. `ey-com`) is the anchor; everything deeper is a variant of
+ * the SAME website. The full folder is returned so a card can link to it.
  */
 export function parseInsightFolder(folder) {
   const f = (folder || '').replace(/\/+$/, '');
   const marker = '/insights/';
   const idx = f.indexOf(marker);
-  if (idx < 0) return { websiteFolder: `${f}/`, variant: '' };
-  const head = f.slice(0, idx + marker.length);
+  if (idx < 0) return { website: '', variant: '', folder: `${f}/` };
   const [website = '', variant = ''] = f.slice(idx + marker.length).split('/').filter(Boolean);
-  return { websiteFolder: `${head}${website}/`, variant };
+  return { website, variant, folder: `${f}/` };
 }
 
 /**
- * Collapse insight-report rows so each WEBSITE is one card. DIH publishes a row
- * per website variant (…/insights/<website>/, …/portal-landing/, …/cannes-2026/);
- * left ungrouped the same website renders 2-3 times.
+ * Parse a DIH `Created` value (`D.MM.YYYY`) into a sortable integer so we can
+ * pick the most recent variant. Missing/unparseable dates sort oldest (0).
+ */
+function createdSortKey(created) {
+  const m = (created || '').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!m) return 0;
+  const [, d, mo, y] = m;
+  return Number(y) * 10000 + Number(mo) * 100 + Number(d);
+}
+
+/**
+ * Collapse insight-report rows so each WEBSITE appears EXACTLY ONCE — keyed by
+ * the website slug GLOBALLY, across every account folder. DIH publishes a row
+ * per account×website×variant, so the same site (e.g. `ey.com` under `ey`,
+ * `ey-studio`, `ernst-young`) otherwise renders several times.
  *
- * Selection rules per website:
- *   - If a `portal-landing` variant exists, it WINS — the card links straight to
- *     it and no other variant is offered. Portal landing is the canonical page
- *     we always want people to land on, so it suppresses the bare/event reports.
- *   - Otherwise, if event variants exist (Cannes/Summit), the card lists each as
- *     a selectable report (plus the bare report, if any).
- *   - Otherwise the card links to the single bare report.
+ * Selection rules per website (a visitor from any subsidiary lands on the same
+ * page):
+ *   - If any `portal-landing` variant exists, it WINS — the card links to the
+ *     MOST RECENT portal-landing (by `Created`) and offers no other variant.
+ *   - Otherwise, if event variants exist (Cannes/Summit), the card lists each
+ *     (most-recent per format) as a selectable report, plus the bare report.
+ *   - Otherwise the card links to the most recent bare/other report.
  */
 export function groupInsightsByWebsite(rows) {
   const groups = new Map();
   for (const row of rows) {
-    const { websiteFolder, variant } = parseInsightFolder(row.Folder);
-    // key by the per-website folder so the same website under different accounts
-    // (e.g. an orphaned vs. correct account) stays distinct.
-    if (!groups.has(websiteFolder)) {
-      groups.set(websiteFolder, {
-        Report: row.Report,
-        Customers: row.Customers,
-        Folder: websiteFolder,
-        Created: row.Created,
-        variants: new Map(),
-      });
+    const { website, variant, folder } = parseInsightFolder(row.Folder);
+    const key = website || folder; // global key across accounts
+    if (!groups.has(key)) {
+      groups.set(key, { Report: row.Report, Customers: row.Customers, variants: [] });
     }
-    const g = groups.get(websiteFolder);
-    if (!g.variants.has(variant)) g.variants.set(variant, `${websiteFolder}${variant ? `${variant}/` : ''}`);
+    const g = groups.get(key);
+    g.variants.push({ variant, folder, created: createdSortKey(row.Created) });
     if (!g.Report && row.Report) g.Report = row.Report;
     if (!g.Customers && row.Customers) g.Customers = row.Customers;
   }
 
+  const mostRecent = (list) => [...list].sort((a, b) => b.created - a.created)[0];
+
   return [...groups.values()].map((g) => {
-    const { variants } = g;
+    const portalLandings = g.variants.filter((v) => v.variant === 'portal-landing');
     let folder;
     let formats = [];
 
-    if (variants.has('portal-landing')) {
-      // Portal landing is canonical — suppress every other variant.
-      folder = variants.get('portal-landing');
+    if (portalLandings.length) {
+      // Portal landing is canonical — most recent wins, suppress everything else.
+      folder = mostRecent(portalLandings).folder;
     } else {
-      const events = [...variants.keys()].filter((v) => EVENT_FORMATS[v]);
+      const events = g.variants.filter((v) => EVENT_FORMATS[v.variant]);
       if (events.length) {
-        formats = events
-          .map((v) => ({ format: v, label: EVENT_FORMATS[v], folder: variants.get(v) }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-        // Offer the bare report alongside the event-specific ones, if present.
-        if (variants.has('')) {
-          formats.unshift({ format: '', label: 'Insight report', folder: variants.get('') });
+        // One report per event format (most recent of each), bare report first.
+        const byFormat = new Map();
+        for (const v of events) {
+          const cur = byFormat.get(v.variant);
+          if (!cur || v.created > cur.created) byFormat.set(v.variant, v);
         }
+        formats = [...byFormat.entries()]
+          .map(([format, v]) => ({ format, label: EVENT_FORMATS[format], folder: v.folder }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        const bare = mostRecent(g.variants.filter((v) => v.variant === ''));
+        if (bare) formats.unshift({ format: '', label: 'Insight report', folder: bare.folder });
         folder = formats[0].folder;
       } else {
-        folder = variants.get('') || [...variants.values()][0];
+        folder = mostRecent(g.variants).folder;
       }
     }
 
     return {
-      Company: g.Report || g.Customers || g.Folder,
+      Company: g.Report || g.Customers || folder,
       Report: g.Report,
       Customers: g.Customers,
       Folder: folder,
-      Created: g.Created,
       formats,
     };
   });
