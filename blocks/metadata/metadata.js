@@ -44,7 +44,16 @@ export default function init(el) {
     document.head.append(meta);
   });
 
+  // Drop the metadata block itself, then clean up its wrapper/section ONLY when
+  // metadata was the sole content. Single-section reports author every block
+  // (report-hero, report-stats, …) plus metadata in one shared section — removing
+  // that section unconditionally would wipe the whole report (the 18th Digitech
+  // regression). So remove the section only once nothing else remains in it.
   const section = el.closest('.section');
+  const blockContent = el.closest('.block-content');
   el.remove();
-  if (section) section.remove();
+  if (blockContent && !blockContent.querySelector('div[class]') && !blockContent.textContent.trim()) {
+    blockContent.remove();
+  }
+  if (section && !section.children.length) section.remove();
 }
