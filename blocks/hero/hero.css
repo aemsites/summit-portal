@@ -1,7 +1,7 @@
 .hero {
   --gradient-start: rgb(var(--color-dark-base) / 80%);
   --gradient-end: rgb(var(--color-dark-base) / 20%);
-  --default-min-height: 360px;
+  --default-min-height: 400px;
   --min-height: var(--default-min-height);
 
   position: relative;
@@ -100,6 +100,7 @@
 
     .hero-heading {
       margin: 0;
+      margin-block-end: 16px;
     }
   }
 
@@ -206,17 +207,12 @@
   }
 }
 
-/* Welcome landing-page hero only — scoped via its unique H1 id */
-.hero:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
-  --default-min-height: 400px;
-
-  .hero-heading {
-    margin-block-end: 16px;
-  }
-}
-
+/* Portal landing hero polish (welcome page + per-account portals). Report heroes
+   use the separate .report-hero block, so these rules never touch them. Previously
+   this was keyed to the welcome page's exact H1 id, which left every per-account
+   portal hero (e.g. "18th Digitech Portal") unstyled. */
 @media (width >= 1000px) {
-  .hero:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
+  .hero {
     border-radius: 24px;
 
     .hero-foreground {
@@ -226,9 +222,9 @@
   }
 }
 
-/* Mobile: welcome hero runs edge-to-edge; inner text aligns with default-content via the standard 83.4% grid */
+/* Mobile: hero runs edge-to-edge; inner text aligns with default-content via the standard 83.4% grid */
 @media (width < 1000px) {
-  .block-content:has(.hero-heading[id="welcome-to-theadobe-digital-opportunities-portal"]) {
+  .block-content:has(.hero) {
     max-width: none;
   }
 }
