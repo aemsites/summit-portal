@@ -1,21 +1,13 @@
-import { getSession, createShareLinkToken } from './session.js';
+import { getSession, createShareLinkToken, staffDomains } from './session.js';
 import {
   safeRedirectPath, appendTokenParam, fetchCugMapping, EMAIL_RE, jsonResponse, templateForOrg,
 } from './magiclink.js';
 import { sendShareLinkConfirm, sendMagicLinkInternalNotify } from './notification.js';
 
-const DEFAULT_STAFF_DOMAINS = 'adobe.com,semrush.com';
-
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[sharelink]', ...args);
 // eslint-disable-next-line no-console
 const logError = (...args) => console.error('[sharelink]', ...args);
-
-/** Parse the comma-separated STAFF_DOMAINS env var into a lowercase set. */
-function staffDomains(env) {
-  const raw = (env.STAFF_DOMAINS || DEFAULT_STAFF_DOMAINS);
-  return new Set(raw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean));
-}
 
 /** Normalise a CUG mapping `url` to a comparable path (strip trailing '*' and '/'). */
 function normalisePath(value) {

@@ -2,8 +2,83 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
   createShareLinkToken, verifyShareLink, signedInMarkerCookie, clearSignedInMarkerCookie,
+  EVENT_SESSION_TTL, staffDomains, isStaffEmail, sessionTtlForEmail,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
+
+function payloadOf(token) {
+  return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+}
+
+describe('staff-domain helpers', () => {
+  it('treats adobe.com and semrush.com as staff by default', () => {
+    const env = createMockEnv();
+    expect(isStaffEmail('a@adobe.com', env)).toBe(true);
+    expect(isStaffEmail('b@semrush.com', env)).toBe(true);
+    expect(isStaffEmail('c@apple.com', env)).toBe(false);
+  });
+
+  it('sessionTtlForEmail returns 4 days for staff, default for others', () => {
+    const env = createMockEnv();
+    expect(sessionTtlForEmail('a@adobe.com', env)).toBe(EVENT_SESSION_TTL);
+    expect(sessionTtlForEmail('c@apple.com', env)).toBe(14400);
+  });
+
+  it('staffDomains honours STAFF_DOMAINS override', () => {
+    const env = createMockEnv({ STAFF_DOMAINS: 'foo.com' });
+    expect(staffDomains(env).has('foo.com')).toBe(true);
+    expect(isStaffEmail('a@adobe.com', env)).toBe(false);
+  });
+});
+
+describe('createSession ttl + gen_epoch', () => {
+  it('honours an explicit ttl in the JWT exp', async () => {
+    const env = createMockEnv();
+    const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'] }, EVENT_SESSION_TTL);
+    const payload = payloadOf(token);
+    expect(payload.exp - payload.iat).toBe(EVENT_SESSION_TTL);
+    expect(payload.gen_epoch).toBeUndefined();
+  });
+
+  it('writes gen_epoch when present on userInfo', async () => {
+    const env = createMockEnv();
+    const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], gen_epoch: '1' }, EVENT_SESSION_TTL);
+    expect(payloadOf(token).gen_epoch).toBe('1');
+  });
+});
+
+describe('sessionCookie maxAge', () => {
+  it('uses the provided maxAge', () => {
+    expect(sessionCookie('tok', EVENT_SESSION_TTL)).toContain(`Max-Age=${EVENT_SESSION_TTL}`);
+  });
+  it('defaults to the 4h session TTL', () => {
+    expect(sessionCookie('tok')).toContain('Max-Age=14400');
+  });
+});
+
+describe('getSession gen_epoch kill switch', () => {
+  function cookieReq(token) {
+    return new Request('https://mysite.com/x', { headers: { Cookie: `auth_token=${token}` } });
+  }
+  it('accepts a token whose gen_epoch matches env', async () => {
+    const env = createMockEnv({ EVENT_CRED_EPOCH: '2' });
+    const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], gen_epoch: '2' }, EVENT_SESSION_TTL);
+    const session = await getSession(cookieReq(token), env);
+    expect(session?.email).toBe('a@adobe.com');
+  });
+  it('rejects a token whose gen_epoch no longer matches env', async () => {
+    const env = createMockEnv({ EVENT_CRED_EPOCH: '2' });
+    const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], gen_epoch: '1' }, EVENT_SESSION_TTL);
+    const session = await getSession(cookieReq(token), env);
+    expect(session).toBeNull();
+  });
+  it('leaves tokens without gen_epoch untouched', async () => {
+    const env = createMockEnv({ EVENT_CRED_EPOCH: '2' });
+    const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'] }, EVENT_SESSION_TTL);
+    const session = await getSession(cookieReq(token), env);
+    expect(session?.email).toBe('a@adobe.com');
+  });
+});
 
 describe('session (JWT)', () => {
   let env;
