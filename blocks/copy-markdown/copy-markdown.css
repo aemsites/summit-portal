@@ -1,0 +1,48 @@
+.copy-markdown {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.copy-markdown .cm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 24px;
+  background: var(--rpt-red, var(--color-adobe-red, #e60000));
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.copy-markdown .cm-btn::before {
+  content: "\1F4CB"; /* clipboard */
+  font-size: 1em;
+}
+
+.copy-markdown .cm-btn:hover {
+  transform: translateY(-1px);
+}
+
+.copy-markdown .cm-btn:active {
+  transform: translateY(0);
+}
+
+.copy-markdown .cm-btn.cm-copied {
+  background: #2d8a34;
+}
+
+.copy-markdown .cm-btn.cm-copied::before {
+  content: "\2713"; /* check */
+}
+
+@media (width < 1000px) {
+  .copy-markdown .cm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
