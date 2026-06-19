@@ -128,6 +128,10 @@ function createStaffForm() {
   userInput.id = 'pl-staff-user';
   userInput.name = 'username';
   userInput.autocomplete = 'username';
+  // Stop iOS from auto-capitalizing / autocorrecting the typed username.
+  userInput.autocapitalize = 'none';
+  userInput.setAttribute('autocorrect', 'off');
+  userInput.spellcheck = false;
   userInput.required = true;
 
   const passLabel = document.createElement('label');
