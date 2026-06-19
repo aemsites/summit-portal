@@ -80,6 +80,19 @@ describe('copy-markdown › domToMarkdown', () => {
     expect(md).to.not.contain('Copy for AI');
   });
 
+  it('skips the docs table-of-contents nav', () => {
+    const md = domToMarkdown(fixture(
+      '<div class="docs-layout">'
+      + '<aside class="docs-aside"><nav class="docs-toc"><p>On this page</p>'
+      + '<ul><li><a href="#a">Section A</a></li></ul></nav></aside>'
+      + '<div class="docs-content"><h2>Section A</h2><p>Body.</p></div>'
+      + '</div>',
+    ));
+    expect(md).to.contain('## Section A');
+    expect(md).to.contain('Body.');
+    expect(md).to.not.contain('On this page');
+  });
+
   it('returns empty string for a null root', () => {
     expect(domToMarkdown(null)).to.equal('');
   });

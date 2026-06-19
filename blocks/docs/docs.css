@@ -4,267 +4,488 @@
    =========================================================================== */
 
 .docs-page {
-  --docs-measure: 940px;
-  --docs-gap: 28px;
+  --docs-measure: 720px;
+  --docs-prose: 68ch;
+  --docs-aside: 232px;
+  --docs-gap: 56px;
   --docs-section-gap: 64px;
-  --docs-radius: 16px;
+  --docs-radius: 10px;
   --docs-accent: var(--rpt-red, #e60000);
-  --docs-ink: light-dark(#16181d, #f3f4f6);
-  --docs-body: light-dark(#3d424c, #c5cad3);
-  --docs-muted: light-dark(#6b7280, #9aa3b2);
-  --docs-surface: light-dark(#fff, #1d1f24);
+  --docs-ink: light-dark(#1d1d1f, #f4f5f7);
+  --docs-body: light-dark(#33373e, #d7dbe2);
+  --docs-muted: light-dark(#6b6f76, #9aa3b2);
+  --docs-surface: light-dark(#fff, #1c1e22);
   --docs-surface-2: light-dark(#f7f8fa, #232228);
-  --docs-line: light-dark(rgb(16 18 29 / 9%), rgb(255 255 255 / 12%));
-  --docs-line-soft: light-dark(rgb(16 18 29 / 6%), rgb(255 255 255 / 8%));
+  --docs-line: light-dark(#e7e8ea, #2a2c31);
+  --docs-line-soft: light-dark(#eef0f2, #232529);
+  --docs-copy-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='11' height='11' rx='2'/%3E%3Cpath d='M5 15V5a2 2 0 0 1 2-2h10'/%3E%3C/svg%3E");
+  --docs-check-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
 }
 
-/* --- page shell: one centered reading column ------------------------------ */
 .docs-page main {
-  background: light-dark(#fbfbfc, #161619);
+  background: light-dark(#fff, #161619);
   color: var(--docs-body);
   font-size: 16px;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 
-.docs-page main > .section {
-  max-width: var(--docs-measure);
+/* --- two-column layout: sticky TOC + reading column ----------------------- */
+.docs-page .docs-layout {
+  display: grid;
+  grid-template-columns: var(--docs-aside) minmax(0, 1fr);
+  gap: var(--docs-gap);
+  width: 100%;
+  max-width: calc(var(--docs-aside) + var(--docs-gap) + var(--docs-measure));
   margin-inline: auto;
+  align-items: start;
+  padding-top: 40px;
+}
+
+.docs-page .docs-content {
+  min-width: 0;
+}
+
+.docs-page .docs-content > .section {
+  max-width: none;
+  margin-inline: 0;
   padding-block: 0;
 }
 
-.docs-page main > .section > .default-content,
-.docs-page main > .section > .block-content {
+.docs-page .docs-content > .section > .default-content,
+.docs-page .docs-content > .section > .block-content {
   max-width: none;
+  margin-inline: 0;
 }
 
-/* Even vertical rhythm between every top-level section. */
-.docs-page main > .section + .section {
+.docs-page .docs-content > .section + .section {
   margin-top: var(--docs-section-gap);
+}
+
+/* --- sticky table of contents --------------------------------------------- */
+.docs-page .docs-aside {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.docs-page .docs-toc-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--docs-muted);
+}
+
+.docs-page .docs-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--docs-line);
+}
+
+.docs-page .docs-toc-list li {
+  margin: 0;
+}
+
+.docs-page .docs-toc-list a {
+  display: block;
+  padding: 6px 0 6px 16px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  color: var(--docs-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.docs-page .docs-toc-list a:hover {
+  color: var(--docs-ink);
+}
+
+.docs-page .docs-toc-list a.is-active {
+  color: var(--docs-accent);
+  border-left-color: var(--docs-accent);
+  font-weight: 600;
 }
 
 /* --- typography ----------------------------------------------------------- */
 .docs-page main p {
   color: var(--docs-body);
-  max-width: 70ch;
+  max-width: var(--docs-prose);
 }
 
-/* Kill the global centered + red default-content headings — docs read better
-   left-aligned with a calm ink color. */
-.docs-page main .section > .default-content h2,
-.docs-page main .section > .default-content h3 {
+.docs-page .docs-content .section > .default-content h2,
+.docs-page .docs-content .section > .default-content h3 {
   text-align: left;
   color: var(--docs-ink);
 }
 
-.docs-page main h2 {
-  font-size: 26px;
+.docs-page .docs-content h2 {
+  font-size: 27px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: var(--docs-ink);
-  margin: 0 0 8px;
+  margin: 0 0 18px;
   padding-top: 28px;
   border-top: 1px solid var(--docs-line);
+  scroll-margin-top: 24px;
 }
 
-.docs-page main h3 {
-  font-size: 18px;
-  font-weight: 700;
+.docs-page .docs-content h3 {
+  font-size: 16px;
+  font-weight: 600;
   color: var(--docs-ink);
   margin: 28px 0 6px;
 }
 
-.docs-page main h2 + p {
+.docs-page .docs-content h2 + p {
   margin-top: 0;
   font-size: 16px;
   color: var(--docs-muted);
+  max-width: var(--docs-prose);
 }
 
-/* --- hero (first section: H1 + lede + date + copy button) ----------------- */
-.docs-page main > .section:first-of-type {
-  background: var(--docs-surface);
-  border: 1px solid var(--docs-line);
-  border-radius: var(--docs-radius);
-  padding: 40px 40px 32px;
-  margin-top: 32px;
-  box-shadow: 0 1px 2px light-dark(rgb(16 18 29 / 4%), transparent);
+/* --- hero: flat docs header (no card), eyebrow + hairline ------------------ */
+.docs-page .docs-content > .section:first-of-type {
+  border-bottom: 1px solid var(--docs-line);
+  padding-bottom: 32px;
 }
 
-.docs-page main > .section:first-of-type h1 {
-  font-size: 38px;
+.docs-page .docs-eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--docs-accent);
+}
+
+.docs-page .docs-content > .section:first-of-type h1 {
+  font-size: 36px;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--docs-ink);
   margin: 0 0 16px;
 }
 
-.docs-page main > .section:first-of-type p {
-  font-size: 18px;
+.docs-page .docs-content > .section:first-of-type p {
+  font-size: 17px;
   line-height: 1.6;
   color: var(--docs-body);
-  max-width: 64ch;
+  max-width: 62ch;
   margin: 0 0 12px;
 }
 
-/* "Last updated …" meta line */
-.docs-page main > .section:first-of-type p em {
+.docs-page .docs-content > .section:first-of-type p em {
   display: inline-block;
   font-style: normal;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--docs-muted);
   margin-top: 4px;
 }
 
-/* --- copy-for-ai button --------------------------------------------------- */
+/* --- copy-for-ai button: restrained outline utility ----------------------- */
 .docs-page .copy-markdown {
   justify-content: flex-start;
-  margin: 24px 0 0;
+  margin: 22px 0 0;
 }
 
-/* The closing copy block sits in its own short section. */
-.docs-page main > .section:last-of-type {
+.docs-page .copy-markdown .cm-btn {
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--docs-accent);
+  border: 1px solid light-dark(rgb(230 0 0 / 35%), rgb(255 92 77 / 45%));
+  box-shadow: none;
+}
+
+/* Swap the base emoji clipboard for a monoline SVG copy glyph (red, masked so
+   it inherits the button's currentColor). */
+.docs-page .copy-markdown .cm-btn::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  background: currentcolor;
+  mask: var(--docs-copy-icon) center / contain no-repeat;
+}
+
+.docs-page .copy-markdown .cm-btn:hover {
+  background: var(--rpt-red-bg, rgb(230 0 0 / 7%));
+  transform: none;
+}
+
+.docs-page .copy-markdown .cm-btn.cm-copied {
+  background: light-dark(#eaf6ec, rgb(45 138 52 / 18%));
+  border-color: #2d8a34;
+  color: #2d8a34;
+}
+
+.docs-page .copy-markdown .cm-btn.cm-copied::before {
+  mask: var(--docs-check-icon) center / contain no-repeat;
+}
+
+/* closing copy block */
+.docs-page .docs-content > .section:last-of-type {
   text-align: center;
-  background: var(--docs-surface-2);
-  border: 1px solid var(--docs-line);
-  border-radius: var(--docs-radius);
-  padding: 32px;
+  border-top: 1px solid var(--docs-line);
+  padding-top: 32px;
+  margin-top: var(--docs-section-gap);
 }
 
-.docs-page main > .section:last-of-type p {
+.docs-page .docs-content > .section:last-of-type p {
   max-width: none;
   margin: 0 auto 4px;
   color: var(--docs-muted);
 }
 
-.docs-page main > .section:last-of-type .copy-markdown {
+.docs-page .docs-content > .section:last-of-type .copy-markdown {
   justify-content: center;
   margin-top: 16px;
 }
 
-.docs-page .copy-markdown .cm-btn {
-  box-shadow: 0 2px 8px light-dark(rgb(230 0 0 / 25%), rgb(230 0 0 / 35%));
+/* --- monoline icons (replace emoji) --------------------------------------- */
+.docs-page .docs-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
-/* --- cards (report-cards: features / default / steps) --------------------- */
+/* --- cards (report-cards: features / default) ----------------------------- */
 .docs-page .report-cards .rc-grid {
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 20px;
+  grid-auto-rows: 1fr;
+  gap: 14px;
+  margin-top: 22px;
 }
 
 .docs-page .report-cards .rc-card {
   background: var(--docs-surface);
   border: 1px solid var(--docs-line);
-  border-radius: 14px;
-  padding: 22px;
+  border-radius: var(--docs-radius);
+  padding: 20px;
   box-shadow: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .docs-page .report-cards .rc-card:hover {
   transform: translateY(-2px);
-  border-color: light-dark(rgb(230 0 0 / 25%), rgb(255 92 77 / 35%));
-  box-shadow: 0 8px 24px light-dark(rgb(16 18 29 / 8%), rgb(0 0 0 / 35%));
+  border-color: light-dark(rgb(230 0 0 / 28%), rgb(255 92 77 / 40%));
+  box-shadow: 0 6px 20px light-dark(rgb(16 18 29 / 7%), rgb(0 0 0 / 35%));
 }
 
 .docs-page .report-cards .rc-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  font-size: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  font-size: 0;
 }
 
 .docs-page .report-cards .rc-title {
-  font-size: 16px;
+  font-size: 15.5px;
   color: var(--docs-ink);
 }
 
 .docs-page .report-cards .rc-desc {
-  font-size: 14.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--docs-body);
 }
 
+/* badges: ALWAYS is neutral, CONDITIONAL stays red (the exception) */
 .docs-page .report-cards .rc-tag {
   align-self: flex-start;
   margin-top: auto;
-  background: var(--rpt-red-bg, rgb(230 0 0 / 8%));
-  color: var(--docs-accent);
-  font-size: 11px;
+  background: var(--docs-surface-2);
+  color: var(--docs-muted);
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--docs-line);
 }
 
-/* Numbered workflow steps read as a vertical list, not a grid of boxes. */
+.docs-page .report-cards .rc-tag.rc-tag-conditional {
+  background: var(--rpt-red-bg, rgb(230 0 0 / 8%));
+  color: var(--docs-accent);
+  border-color: light-dark(rgb(230 0 0 / 25%), rgb(255 92 77 / 35%));
+}
+
+/* --- connected vertical stepper (generation workflow) --------------------- */
 .docs-page .report-cards.steps .rc-grid {
   grid-template-columns: 1fr;
-  gap: 12px;
+  grid-auto-rows: auto;
+  gap: 0;
+  margin-top: 22px;
 }
 
 .docs-page .report-cards.steps .rc-card {
+  position: relative;
   flex-direction: row;
   align-items: flex-start;
   gap: 16px;
-  padding: 18px 22px;
+  padding: 0 0 24px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.docs-page .report-cards.steps .rc-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.docs-page .report-cards.steps .rc-card:last-child {
+  padding-bottom: 0;
+}
+
+/* connecting line behind the number badges */
+.docs-page .report-cards.steps .rc-card:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: var(--docs-line);
 }
 
 .docs-page .report-cards.steps .rc-step-num {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   background: var(--docs-accent);
   color: #fff;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   border-radius: 50%;
 }
 
 .docs-page .report-cards.steps .rc-title {
   margin-bottom: 2px;
+  padding-top: 4px;
+}
+
+/* --- source cards (provenance: h3 + extract / frame / caveat) -------------- */
+.docs-page .docs-source {
+  background: var(--docs-surface);
+  border: 1px solid var(--docs-line);
+  border-left: 3px solid var(--docs-accent);
+  border-radius: var(--docs-radius);
+  padding: 4px 22px 10px;
+  margin-top: 16px;
+}
+
+.docs-page .docs-source-head h3 {
+  margin: 16px 0 6px;
+  font-size: 16px;
+  color: var(--docs-ink);
+}
+
+.docs-page .docs-source-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.docs-page .docs-source-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--docs-line-soft);
+  align-items: start;
+}
+
+.docs-page .docs-source-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--docs-muted);
+  padding-top: 3px;
+}
+
+.docs-page .docs-source-row-extract .docs-source-label {
+  color: var(--docs-accent);
+}
+
+.docs-page .docs-source-text {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--docs-body);
+  max-width: none;
+}
+
+/* caveat row reads as a quiet warning */
+.docs-page .docs-source-row-caveat {
+  background: light-dark(#fbf6ef, rgb(240 184 90 / 8%));
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0 6px;
+  border-top: none;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.docs-page .docs-source-row-caveat .docs-source-label {
+  color: light-dark(#9a6a00, #f0b85a);
 }
 
 /* --- tables --------------------------------------------------------------- */
 .docs-page .table {
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .docs-page .table table {
-  font-size: 14.5px;
+  font-size: 14px;
   border: 1px solid var(--docs-line);
-  border-radius: 14px;
+  border-radius: var(--docs-radius);
+  table-layout: fixed;
 }
 
 .docs-page .table th {
   background: var(--docs-surface-2);
   color: var(--docs-muted);
-  font-size: 11.5px;
+  font-size: 11px;
   letter-spacing: 0.06em;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--docs-line);
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--docs-line);
   white-space: normal;
+  vertical-align: bottom;
+}
+
+/* objection / metric tables: give the first column less room than prose cols */
+.docs-page .table th:first-child {
+  width: 22%;
 }
 
 .docs-page .table td {
-  padding: 16px 18px;
+  padding: 14px 16px;
   color: var(--docs-body);
   vertical-align: top;
-  line-height: 1.55;
+  line-height: 1.5;
   border-bottom: 1px solid var(--docs-line-soft);
 }
 
-.docs-page .table tr:nth-child(even) td {
-  background: light-dark(rgb(16 18 29 / 1.5%), rgb(255 255 255 / 2%));
+.docs-page .table tr:last-child td {
+  border-bottom: none;
 }
 
 .docs-page .table tr:hover td {
-  background: var(--rpt-red-bg-subtle, rgb(230 0 0 / 4%));
+  background: var(--rpt-red-bg-subtle, rgb(230 0 0 / 3.5%));
 }
 
 .docs-page .table td:first-child {
@@ -281,14 +502,14 @@
   background: var(--docs-surface);
   border: 1px solid var(--docs-line);
   border-left: 3px solid var(--docs-accent);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: var(--docs-radius);
+  padding: 15px 18px;
   align-items: flex-start;
   gap: 14px;
 }
 
 .docs-page .report-callout .rcl-icon {
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.4;
 }
 
@@ -302,43 +523,73 @@
   color: var(--docs-ink);
 }
 
-/* First callout after an H2 intro gets a little breathing room. */
 .docs-page .report-callout + .report-callout {
   margin-top: 10px;
 }
 
-/* --- mobile --------------------------------------------------------------- */
+/* --- tablet / mobile ------------------------------------------------------ */
 @media (width < 1000px) {
-  .docs-page main > .section,
-  .docs-page main > .section:first-of-type,
-  .docs-page main > .section:last-of-type {
-    border-radius: 0;
-    border-inline: none;
+  .docs-page .docs-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-top: 0;
   }
 
-  .docs-page main > .section:first-of-type {
-    padding: 28px 20px 24px;
-    margin-top: 0;
+  /* TOC drops below the hero (order) and collapses into a disclosure */
+  .docs-page .docs-aside {
+    position: static;
+    order: 2;
+    padding-inline: 20px;
   }
 
-  .docs-page main > .section:first-of-type h1 {
-    font-size: 30px;
+  .docs-page .docs-content {
+    order: 1;
+  }
+
+  .docs-page .docs-toc {
+    background: var(--docs-surface);
+    border: 1px solid var(--docs-line);
+    border-radius: 12px;
+    padding: 6px 14px;
+  }
+
+  .docs-page .docs-toc-title {
+    margin: 10px 0;
+  }
+
+  .docs-page .docs-toc-list {
+    border-left: none;
+    padding-bottom: 6px;
+  }
+
+  .docs-page .docs-toc-list a {
+    padding: 8px 0 8px 12px;
+    margin-left: 0;
+    font-size: 13px;
+  }
+
+  .docs-page .docs-content > .section:first-of-type h1 {
+    font-size: 28px;
   }
 
   .docs-page .report-cards .rc-grid {
     grid-template-columns: 1fr;
   }
 
-  .docs-page main h2 {
+  .docs-page .docs-content h2 {
     font-size: 23px;
   }
 
-  /* Global design strips main padding < 1000px (edge-to-edge). Cards and the
-     hero/closing cards manage their own inset, but bare reading content
-     (section headings + intro paragraphs + provenance text) would otherwise
-     touch the screen edge — give it a comfortable gutter. */
-  .docs-page main > .section > .default-content {
+  /* edge content gets a gutter (global design strips main padding < 1000px) */
+  .docs-page .docs-content > .section > .default-content {
     padding-inline: 20px;
     box-sizing: border-box;
+  }
+
+  /* source-card rows stack on narrow screens */
+  .docs-page .docs-source-row,
+  .docs-page .docs-source-row-caveat {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
