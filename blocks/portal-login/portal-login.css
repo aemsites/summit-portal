@@ -186,6 +186,12 @@
   }
 }
 
+/* Staff-only mode (/login?staff): the card is the whole page, so drop the
+   top margin that separated it from the (now absent) customer row. */
+.portal-login.pl-staff-only .pl-staff {
+  margin-top: 0;
+}
+
 .portal-login .pl-staff-header {
   display: flex;
   align-items: center;
