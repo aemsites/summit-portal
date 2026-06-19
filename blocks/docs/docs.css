@@ -1,0 +1,344 @@
+/* ===========================================================================
+   Docs theme — scoped entirely under `.docs-page` (added by blocks/docs/docs.js)
+   so none of these rules leak onto any other page.
+   =========================================================================== */
+
+.docs-page {
+  --docs-measure: 940px;
+  --docs-gap: 28px;
+  --docs-section-gap: 64px;
+  --docs-radius: 16px;
+  --docs-accent: var(--rpt-red, #e60000);
+  --docs-ink: light-dark(#16181d, #f3f4f6);
+  --docs-body: light-dark(#3d424c, #c5cad3);
+  --docs-muted: light-dark(#6b7280, #9aa3b2);
+  --docs-surface: light-dark(#fff, #1d1f24);
+  --docs-surface-2: light-dark(#f7f8fa, #232228);
+  --docs-line: light-dark(rgb(16 18 29 / 9%), rgb(255 255 255 / 12%));
+  --docs-line-soft: light-dark(rgb(16 18 29 / 6%), rgb(255 255 255 / 8%));
+}
+
+/* --- page shell: one centered reading column ------------------------------ */
+.docs-page main {
+  background: light-dark(#fbfbfc, #161619);
+  color: var(--docs-body);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.docs-page main > .section {
+  max-width: var(--docs-measure);
+  margin-inline: auto;
+  padding-block: 0;
+}
+
+.docs-page main > .section > .default-content,
+.docs-page main > .section > .block-content {
+  max-width: none;
+}
+
+/* Even vertical rhythm between every top-level section. */
+.docs-page main > .section + .section {
+  margin-top: var(--docs-section-gap);
+}
+
+/* --- typography ----------------------------------------------------------- */
+.docs-page main p {
+  color: var(--docs-body);
+  max-width: 70ch;
+}
+
+/* Kill the global centered + red default-content headings — docs read better
+   left-aligned with a calm ink color. */
+.docs-page main .section > .default-content h2,
+.docs-page main .section > .default-content h3 {
+  text-align: left;
+  color: var(--docs-ink);
+}
+
+.docs-page main h2 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--docs-ink);
+  margin: 0 0 8px;
+  padding-top: 28px;
+  border-top: 1px solid var(--docs-line);
+}
+
+.docs-page main h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--docs-ink);
+  margin: 28px 0 6px;
+}
+
+.docs-page main h2 + p {
+  margin-top: 0;
+  font-size: 16px;
+  color: var(--docs-muted);
+}
+
+/* --- hero (first section: H1 + lede + date + copy button) ----------------- */
+.docs-page main > .section:first-of-type {
+  background: var(--docs-surface);
+  border: 1px solid var(--docs-line);
+  border-radius: var(--docs-radius);
+  padding: 40px 40px 32px;
+  margin-top: 32px;
+  box-shadow: 0 1px 2px light-dark(rgb(16 18 29 / 4%), transparent);
+}
+
+.docs-page main > .section:first-of-type h1 {
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--docs-ink);
+  margin: 0 0 16px;
+}
+
+.docs-page main > .section:first-of-type p {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--docs-body);
+  max-width: 64ch;
+  margin: 0 0 12px;
+}
+
+/* "Last updated …" meta line */
+.docs-page main > .section:first-of-type p em {
+  display: inline-block;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--docs-muted);
+  margin-top: 4px;
+}
+
+/* --- copy-for-ai button --------------------------------------------------- */
+.docs-page .copy-markdown {
+  justify-content: flex-start;
+  margin: 24px 0 0;
+}
+
+/* The closing copy block sits in its own short section. */
+.docs-page main > .section:last-of-type {
+  text-align: center;
+  background: var(--docs-surface-2);
+  border: 1px solid var(--docs-line);
+  border-radius: var(--docs-radius);
+  padding: 32px;
+}
+
+.docs-page main > .section:last-of-type p {
+  max-width: none;
+  margin: 0 auto 4px;
+  color: var(--docs-muted);
+}
+
+.docs-page main > .section:last-of-type .copy-markdown {
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.docs-page .copy-markdown .cm-btn {
+  box-shadow: 0 2px 8px light-dark(rgb(230 0 0 / 25%), rgb(230 0 0 / 35%));
+}
+
+/* --- cards (report-cards: features / default / steps) --------------------- */
+.docs-page .report-cards .rc-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.docs-page .report-cards .rc-card {
+  background: var(--docs-surface);
+  border: 1px solid var(--docs-line);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.docs-page .report-cards .rc-card:hover {
+  transform: translateY(-2px);
+  border-color: light-dark(rgb(230 0 0 / 25%), rgb(255 92 77 / 35%));
+  box-shadow: 0 8px 24px light-dark(rgb(16 18 29 / 8%), rgb(0 0 0 / 35%));
+}
+
+.docs-page .report-cards .rc-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+.docs-page .report-cards .rc-title {
+  font-size: 16px;
+  color: var(--docs-ink);
+}
+
+.docs-page .report-cards .rc-desc {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--docs-body);
+}
+
+.docs-page .report-cards .rc-tag {
+  align-self: flex-start;
+  margin-top: auto;
+  background: var(--rpt-red-bg, rgb(230 0 0 / 8%));
+  color: var(--docs-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Numbered workflow steps read as a vertical list, not a grid of boxes. */
+.docs-page .report-cards.steps .rc-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.docs-page .report-cards.steps .rc-card {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.docs-page .report-cards.steps .rc-step-num {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: var(--docs-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 50%;
+}
+
+.docs-page .report-cards.steps .rc-title {
+  margin-bottom: 2px;
+}
+
+/* --- tables --------------------------------------------------------------- */
+.docs-page .table {
+  margin-top: 20px;
+}
+
+.docs-page .table table {
+  font-size: 14.5px;
+  border: 1px solid var(--docs-line);
+  border-radius: 14px;
+}
+
+.docs-page .table th {
+  background: var(--docs-surface-2);
+  color: var(--docs-muted);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--docs-line);
+  white-space: normal;
+}
+
+.docs-page .table td {
+  padding: 16px 18px;
+  color: var(--docs-body);
+  vertical-align: top;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--docs-line-soft);
+}
+
+.docs-page .table tr:nth-child(even) td {
+  background: light-dark(rgb(16 18 29 / 1.5%), rgb(255 255 255 / 2%));
+}
+
+.docs-page .table tr:hover td {
+  background: var(--rpt-red-bg-subtle, rgb(230 0 0 / 4%));
+}
+
+.docs-page .table td:first-child {
+  color: var(--docs-ink);
+  font-weight: 600;
+}
+
+/* --- callouts (critical caveats) ------------------------------------------ */
+.docs-page .report-callout {
+  margin-top: 12px;
+}
+
+.docs-page .report-callout .rcl-bar {
+  background: var(--docs-surface);
+  border: 1px solid var(--docs-line);
+  border-left: 3px solid var(--docs-accent);
+  border-radius: 10px;
+  padding: 16px 18px;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.docs-page .report-callout .rcl-icon {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.docs-page .report-callout .rcl-text {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--docs-body);
+}
+
+.docs-page .report-callout .rcl-text strong {
+  color: var(--docs-ink);
+}
+
+/* First callout after an H2 intro gets a little breathing room. */
+.docs-page .report-callout + .report-callout {
+  margin-top: 10px;
+}
+
+/* --- mobile --------------------------------------------------------------- */
+@media (width < 1000px) {
+  .docs-page main > .section,
+  .docs-page main > .section:first-of-type,
+  .docs-page main > .section:last-of-type {
+    border-radius: 0;
+    border-inline: none;
+  }
+
+  .docs-page main > .section:first-of-type {
+    padding: 28px 20px 24px;
+    margin-top: 0;
+  }
+
+  .docs-page main > .section:first-of-type h1 {
+    font-size: 30px;
+  }
+
+  .docs-page .report-cards .rc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-page main h2 {
+    font-size: 23px;
+  }
+
+  /* Global design strips main padding < 1000px (edge-to-edge). Cards and the
+     hero/closing cards manage their own inset, but bare reading content
+     (section headings + intro paragraphs + provenance text) would otherwise
+     touch the screen edge — give it a comfortable gutter. */
+  .docs-page main > .section > .default-content {
+    padding-inline: 20px;
+    box-sizing: border-box;
+  }
+}
