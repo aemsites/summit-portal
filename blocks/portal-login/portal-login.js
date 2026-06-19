@@ -1,4 +1,5 @@
 const MAGIC_LINK_ENDPOINT = 'https://act.aem.now/auth/magiclink';
+const STAFF_LOGIN_ENDPOINT = '/auth/staff-login';
 
 /**
  * Read the `?redirect=` query param from the current URL and return it only
@@ -105,6 +106,86 @@ function injectDivider(row) {
   colAdobe.after(divider);
 }
 
+function createStaffForm() {
+  const details = document.createElement('details');
+  details.className = 'pl-staff';
+
+  const summary = document.createElement('summary');
+  summary.className = 'pl-staff-summary';
+  summary.textContent = 'Event staff access';
+  details.append(summary);
+
+  const form = document.createElement('form');
+  form.className = 'pl-staff-form';
+
+  const userLabel = document.createElement('label');
+  userLabel.className = 'pl-label';
+  userLabel.htmlFor = 'pl-staff-user';
+  userLabel.textContent = 'Username';
+  const userInput = document.createElement('input');
+  userInput.className = 'pl-input';
+  userInput.type = 'text';
+  userInput.id = 'pl-staff-user';
+  userInput.name = 'username';
+  userInput.autocomplete = 'username';
+  userInput.required = true;
+
+  const passLabel = document.createElement('label');
+  passLabel.className = 'pl-label';
+  passLabel.htmlFor = 'pl-staff-pass';
+  passLabel.textContent = 'Password';
+  const passInput = document.createElement('input');
+  passInput.className = 'pl-input';
+  passInput.type = 'password';
+  passInput.id = 'pl-staff-pass';
+  passInput.name = 'password';
+  passInput.autocomplete = 'current-password';
+  passInput.required = true;
+
+  const btn = document.createElement('button');
+  btn.className = 'pl-submit';
+  btn.type = 'submit';
+  btn.textContent = 'Sign in';
+
+  const error = document.createElement('p');
+  error.className = 'pl-error';
+  error.setAttribute('role', 'alert');
+  error.hidden = true;
+  error.textContent = 'Incorrect username or password.';
+
+  form.append(userLabel, userInput, passLabel, passInput, btn, error);
+  details.append(form);
+  return { details, form };
+}
+
+function attachStaffHandler(form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = form.querySelector('#pl-staff-user').value.trim();
+    const password = form.querySelector('#pl-staff-pass').value;
+    const btn = form.querySelector('.pl-submit');
+    const errorEl = form.querySelector('.pl-error');
+
+    errorEl.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const resp = await fetch(STAFF_LOGIN_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      window.location.assign(getRedirectPath() || '/adobe/dashboard');
+    } catch {
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+      errorEl.hidden = false;
+    }
+  });
+}
+
 export default function init(el) {
   const [row] = [...el.children];
   row.classList.add('pl-row');
@@ -123,4 +204,8 @@ export default function init(el) {
   attachSubmitHandler(form);
 
   injectDivider(row);
+
+  const { details, form: staffForm } = createStaffForm();
+  el.append(details);
+  attachStaffHandler(staffForm);
 }
