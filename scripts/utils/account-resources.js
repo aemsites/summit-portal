@@ -62,14 +62,22 @@ function describe(kind, authoredText) {
   return { title: authoredText || 'Open', desc: '' };
 }
 
-/** Is this section the authored "Sitemap" block (lead <p>Sitemap</p> + a <ul>)? */
+/**
+ * Locate the authored "Sitemap" content: a <p> whose text is "Sitemap" with a
+ * sibling <ul> of links. Returns `{ container, lead, list }`, where `container`
+ * is their shared parent. Robust to ak.js wrapping (the section's default
+ * content lands inside a `.default-content` div) and to the raw `.plain.html`
+ * shape used in tests — we don't assume a fixed depth, we match on content.
+ */
 function findSitemap(main) {
-  const blocks = [...main.querySelectorAll(':scope > div')];
-  return blocks.find((div) => {
-    const lead = div.querySelector(':scope > p');
-    const list = div.querySelector(':scope > ul');
-    return lead && list && lead.textContent.trim().toLowerCase() === 'sitemap';
-  }) || null;
+  const leads = [...main.querySelectorAll('p')]
+    .filter((p) => p.textContent.trim().toLowerCase() === 'sitemap');
+  for (const lead of leads) {
+    const list = lead.parentElement
+      && [...lead.parentElement.children].find((el) => el.tagName === 'UL');
+    if (list) return { container: lead.parentElement, lead, list };
+  }
+  return null;
 }
 
 function buildCard({ href, kind }, authoredText) {
@@ -108,10 +116,9 @@ export default function mount() {
   const main = document.querySelector('main');
   if (!main || main.querySelector('.account-resources')) return;
 
-  const section = findSitemap(main);
-  if (!section) return;
-  const list = section.querySelector(':scope > ul');
-  const lead = section.querySelector(':scope > p');
+  const found = findSitemap(main);
+  if (!found) return;
+  const { container, lead, list } = found;
 
   // Collect authored links with their classification.
   const items = [...list.querySelectorAll('a[href]')].map((a) => ({
@@ -141,8 +148,8 @@ export default function mount() {
   visible.forEach((item) => grid.append(buildCard(item, item.text)));
   wrap.append(grid);
 
-  // Replace the raw sitemap section content in place.
+  // Replace the raw sitemap content in place, inside its original container.
   lead.remove();
   list.remove();
-  section.append(wrap);
+  container.append(wrap);
 }
