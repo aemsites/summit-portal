@@ -167,29 +167,53 @@
   }
 }
 
-/* Event staff access — de-emphasized credential login for on-site iPads */
+/* Event staff sign-in — hidden card, mounts only on /login?staff (event iPads) */
 .portal-login .pl-staff {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-m);
-  border-top: 1px solid var(--color-border);
-  max-width: 360px;
-  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  max-width: 400px;
+  margin: var(--spacing-xl) auto 0;
+  padding: var(--spacing-l) var(--spacing-xl);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--rpt-card-shadow);
 }
 
-.portal-login .pl-staff-summary {
-  cursor: pointer;
-  font-size: var(--body-font-size-s);
+@media (width >= 1000px) {
+  .portal-login .pl-staff {
+    border-radius: 16px;
+  }
+}
+
+.portal-login .pl-staff-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.portal-login .pl-staff-lock {
+  width: 20px;
+  height: 20px;
+  flex: none;
   color: var(--color-text-muted);
-  list-style: none;
 }
 
-.portal-login .pl-staff-summary::-webkit-details-marker {
-  display: none;
+.portal-login .pl-staff-title {
+  margin: 0;
+  font-size: var(--heading-font-size-xs);
+  font-weight: 600;
+}
+
+.portal-login .pl-staff-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--body-font-size-s);
 }
 
 .portal-login .pl-staff-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-s);
-  margin-top: var(--spacing-m);
+  margin-top: var(--spacing-s);
 }

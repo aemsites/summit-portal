@@ -106,14 +106,37 @@ function injectDivider(row) {
   colAdobe.after(divider);
 }
 
-function createStaffForm() {
-  const details = document.createElement('details');
-  details.className = 'pl-staff';
+/**
+ * The staff credential login is hidden by default. It renders only when the
+ * login URL opts in via `?staff` (or `#staff`) — event iPads are bookmarked to
+ * that URL, while customers signing in on their own devices never see it.
+ */
+function staffRequested() {
+  const { search, hash } = window.location;
+  return new URLSearchParams(search).has('staff') || hash.replace('#', '') === 'staff';
+}
 
-  const summary = document.createElement('summary');
-  summary.className = 'pl-staff-summary';
-  summary.textContent = 'Event staff access';
-  details.append(summary);
+const LOCK_ICON = '<svg class="pl-staff-lock" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+  + '<path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm3 8H9V7a3 3 0 0 1 6 0v3Zm-3 4a1.5 1.5 0 0 1 .75 2.8V19a.75.75 0 0 1-1.5 0v-2.2A1.5 1.5 0 0 1 12 14Z"/>'
+  + '</svg>';
+
+function createStaffForm() {
+  const section = document.createElement('section');
+  section.className = 'pl-staff';
+
+  const header = document.createElement('div');
+  header.className = 'pl-staff-header';
+  header.innerHTML = LOCK_ICON;
+  const title = document.createElement('h3');
+  title.className = 'pl-staff-title';
+  title.textContent = 'Event staff sign-in';
+  header.append(title);
+
+  const hint = document.createElement('p');
+  hint.className = 'pl-staff-hint';
+  hint.textContent = 'For on-site event devices. Use the shared staff credentials.';
+
+  section.append(header, hint);
 
   const form = document.createElement('form');
   form.className = 'pl-staff-form';
@@ -128,6 +151,10 @@ function createStaffForm() {
   userInput.id = 'pl-staff-user';
   userInput.name = 'username';
   userInput.autocomplete = 'username';
+  // Stop iOS from auto-capitalizing / autocorrecting the typed username.
+  userInput.setAttribute('autocapitalize', 'none');
+  userInput.setAttribute('autocorrect', 'off');
+  userInput.setAttribute('spellcheck', 'false');
   userInput.required = true;
 
   const passLabel = document.createElement('label');
@@ -154,8 +181,8 @@ function createStaffForm() {
   error.textContent = 'Incorrect username or password.';
 
   form.append(userLabel, userInput, passLabel, passInput, btn, error);
-  details.append(form);
-  return { details, form };
+  section.append(form);
+  return { section, form };
 }
 
 function attachStaffHandler(form) {
@@ -205,7 +232,10 @@ export default function init(el) {
 
   injectDivider(row);
 
-  const { details, form: staffForm } = createStaffForm();
-  el.append(details);
-  attachStaffHandler(staffForm);
+  // Hidden by default — only mounts on event devices opening /login?staff.
+  if (staffRequested()) {
+    const { section, form: staffForm } = createStaffForm();
+    el.append(section);
+    attachStaffHandler(staffForm);
+  }
 }
