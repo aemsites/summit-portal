@@ -1,4 +1,4 @@
-const SKIP_SELECTOR = '.copy-markdown, header, footer, script, style';
+const SKIP_SELECTOR = '.copy-markdown, .docs-toc, nav, header, footer, script, style';
 
 /** Collapse whitespace in inline text. */
 function text(node) {
