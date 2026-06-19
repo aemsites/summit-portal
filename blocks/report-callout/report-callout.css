@@ -140,6 +140,29 @@ main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text strong {
   color: inherit;
 }
 
+/* Links inside the BV banners — the "Adobe Brand Visibility" product link and
+   the trailing "Let's talk →" CTA both read as Adobe-red links in both themes. */
+.report-callout.cta .rcl-bar--bv-hero .rcl-text a,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a {
+  color: var(--rpt-red-dark, var(--color-adobe-red-dark, #e60000));
+  text-decoration: none;
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-text a:hover,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a:hover {
+  text-decoration: underline;
+}
+
+.report-callout.cta .rcl-bar--bv-hero .rcl-text a strong,
+main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a strong {
+  color: inherit;
+}
+
+/* Appended hero CTA — keep the arrow on the same line as its label. */
+.report-callout.cta .rcl-bar--bv-hero .rcl-text .rcl-cta {
+  white-space: nowrap;
+}
+
 @media (width < 1000px) {
   .report-callout.cta .rcl-bar--bv-hero,
   main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing {

@@ -1,3 +1,4 @@
+import { getMetadata } from '../../scripts/ak.js';
 import { scheduleRelocateSectionFooter } from '../report-ai-visibility/relocate-section-footer.js';
 
 // Single Adobe + Semrush lockup. The Adobe "A" stays red; the divider and the
@@ -15,6 +16,34 @@ function isBvCtaBanner(el) {
     && Boolean(document.querySelector('.report-hero.insight, .cobrand'));
 }
 
+/** Adobe Brand Visibility product page — the hyperlink for the product name. */
+const BV_PRODUCT_URL = 'https://business.adobe.com/products/brand-visibility.html';
+
+/**
+ * Where the "Let's talk" CTA points, keyed by which company owns the report.
+ * The report's owner is authored as the `bv-cta-source` page metadata field
+ * (a `<meta name="bv-cta-source">` tag, written by the `metadata` block) — e.g.
+ * `adobe` or `semrush`. To change where a banner's CTA goes, edit the URL here
+ * (or, per page, set the metadata value); no other code needs to change.
+ *
+ * `DEFAULT` is used when the page declares no source — today every report still
+ * routes to the Semrush Cannes mailbox, so that stays the fallback.
+ */
+const BV_CTA_TARGETS = {
+  semrush: 'mailto:CannesVilla@Semrush.com?subject=Digital%20Opportunity%20Report',
+  adobe: 'mailto:CannesVilla@Semrush.com?subject=Digital%20Opportunity%20Report',
+};
+const BV_CTA_DEFAULT_SOURCE = 'semrush';
+
+/**
+ * Resolve the "Let's talk" CTA href from the report's owner metadata.
+ * @returns {string}
+ */
+function getBvCtaHref() {
+  const source = (getMetadata('bv-cta-source') || '').trim().toLowerCase();
+  return BV_CTA_TARGETS[source] || BV_CTA_TARGETS[BV_CTA_DEFAULT_SOURCE];
+}
+
 /**
  * Bold the title phrase before the em dash when authors omit <strong>.
  * @param {string} html
@@ -25,6 +54,25 @@ function formatBvHeroText(html) {
   const sep = html.search(/\s[—–-]\s/u);
   if (sep === -1) return html;
   return `<strong>${html.slice(0, sep).trim()}</strong>${html.slice(sep)}`;
+}
+
+/**
+ * Hyperlink the "Adobe Brand Visibility" product name to its Adobe page.
+ * Wraps an existing <strong> when present; otherwise links the bare phrase.
+ * No-op if the phrase is already linked.
+ * @param {string} html
+ * @returns {string}
+ */
+function linkifyBrandVisibility(html) {
+  if (!html || /brand-visibility\.html/i.test(html)) return html || '';
+  const strongRe = /<strong>\s*Adobe Brand Visibility\s*<\/strong>/i;
+  if (strongRe.test(html)) {
+    return html.replace(strongRe, (m) => `<a href="${BV_PRODUCT_URL}">${m}</a>`);
+  }
+  return html.replace(
+    /Adobe Brand Visibility/i,
+    (m) => `<a href="${BV_PRODUCT_URL}"><strong>${m}</strong></a>`,
+  );
 }
 
 /**
@@ -42,7 +90,16 @@ function buildBvHeroBar(text) {
 
   const copy = document.createElement('p');
   copy.className = 'rcl-text';
-  copy.innerHTML = formatBvHeroText(text);
+
+  // The closing banner authors its own "Let's talk" CTA; the hero/pre-briefing
+  // banner has none. Decide from the *authored* copy (before we linkify the
+  // product name) so the hero banner still gets a CTA appended.
+  const hasAuthoredCta = /<a\b/i.test(text);
+  let html = linkifyBrandVisibility(formatBvHeroText(text));
+  if (!hasAuthoredCta) {
+    html += ` <a class="rcl-cta" href="${getBvCtaHref()}"><strong>Let's talk →</strong></a>`;
+  }
+  copy.innerHTML = html;
 
   bar.append(brand, copy);
   return bar;
