@@ -11,10 +11,13 @@ OAUTH_REDIRECT_URI = "https://aem-cug-cloudfare-jck1.com/auth/callback"
 OAUTH_SCOPE = "openid,AdobeID,email,profile"
 OAUTH_CLIENT_ID = "aem-sites-cug"
 ENVIRONMENT = "stage"
+# Bump to revoke all generic event staff-login sessions at once (kill switch).
+EVENT_CRED_EPOCH = "1"
 
 # Secrets (set via: wrangler secret put <NAME>)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
+# EVENT_STAFF_CREDENTIALS = "..."  (newline/comma list of username:sha256hex(password) for on-site iPad logins)
 # APO_CLIENT_ID = "..."
 # APO_CLIENT_SECRET = "..."
 # APO_SCOPE = "..."
@@ -43,10 +46,13 @@ OAUTH_REDIRECT_URI = "https://act.aem.now/auth/callback"
 OAUTH_SCOPE = "openid,AdobeID,email,profile"
 OAUTH_CLIENT_ID = "aem-sites-cug"
 ENVIRONMENT = "prod"
+# Bump to revoke all generic event staff-login sessions at once (kill switch).
+EVENT_CRED_EPOCH = "1"
 
 # Secrets (set via: wrangler secret put <NAME> --env summit)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
+# EVENT_STAFF_CREDENTIALS = "..."  (newline/comma list of username:sha256hex(password) for on-site iPad logins)
 # ORIGIN_AUTHENTICATION = "..."  (site token for the protected origin)
 # APO_CLIENT_ID = "..."
 # APO_CLIENT_SECRET = "..."

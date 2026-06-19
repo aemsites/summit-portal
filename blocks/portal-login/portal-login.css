@@ -166,3 +166,30 @@
     border-radius: 8px;
   }
 }
+
+/* Event staff access — de-emphasized credential login for on-site iPads */
+.portal-login .pl-staff {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--color-border);
+  max-width: 360px;
+  margin-inline: auto;
+}
+
+.portal-login .pl-staff-summary {
+  cursor: pointer;
+  font-size: var(--body-font-size-s);
+  color: var(--color-text-muted);
+  list-style: none;
+}
+
+.portal-login .pl-staff-summary::-webkit-details-marker {
+  display: none;
+}
+
+.portal-login .pl-staff-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-m);
+}

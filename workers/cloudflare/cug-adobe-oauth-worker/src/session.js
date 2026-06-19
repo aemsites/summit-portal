@@ -7,6 +7,8 @@
  */
 
 const SESSION_TTL = 14400; // 4 hours
+const EVENT_SESSION_TTL = 345600; // 4 days — staff/event sessions
+const STAFF_DOMAINS_DEFAULT = 'adobe.com,semrush.com';
 const COOKIE_NAME = 'auth_token';
 const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
 const SHARE_LINK_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -59,16 +61,39 @@ async function verifyJwt(token, secret) {
   return payload;
 }
 
+/** The set of internal staff email domains (lowercased). */
+export function staffDomains(env) {
+  const raw = (env && env.STAFF_DOMAINS) || STAFF_DOMAINS_DEFAULT;
+  return new Set(raw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean));
+}
+
+/** True when an email's domain is an internal staff domain. */
+export function isStaffEmail(email, env) {
+  const domain = (String(email || '').split('@')[1] || '').toLowerCase();
+  return staffDomains(env).has(domain);
+}
+
+/** Staff logins get the 4-day event TTL; everyone else the short default. */
+export function sessionTtlForEmail(email, env) {
+  return isStaffEmail(email, env) ? EVENT_SESSION_TTL : SESSION_TTL;
+}
+
+export { EVENT_SESSION_TTL };
+
 /** Create a signed JWT containing the user info. Returns the token string. */
-export async function createSession(env, userInfo) {
+export async function createSession(env, userInfo, ttl = SESSION_TTL) {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     email: userInfo.email,
     name: userInfo.name,
     groups: userInfo.groups,
     iat: now,
-    exp: now + SESSION_TTL,
+    exp: now + ttl,
   };
+  // Generic-credential sessions carry a kill-switch epoch; real-staff sessions do not.
+  if (userInfo.gen_epoch !== undefined && userInfo.gen_epoch !== null) {
+    payload.gen_epoch = String(userInfo.gen_epoch);
+  }
   return signJwt(payload, env.JWT_SECRET);
 }
 
@@ -78,11 +103,22 @@ export async function getSession(request, env) {
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^\\s;]+)`));
   if (!match) return null;
 
-  return verifyJwt(match[1], env.JWT_SECRET);
+  const payload = await verifyJwt(match[1], env.JWT_SECRET);
+  if (!payload) return null;
+
+  // Kill switch: a generic-credential token is only valid while its baked-in
+  // epoch matches the current env value. Bumping EVENT_CRED_EPOCH revokes all
+  // generic sessions at once. Real-staff tokens carry no gen_epoch.
+  if (payload.gen_epoch !== undefined) {
+    const current = String((env && env.EVENT_CRED_EPOCH) ?? '');
+    if (String(payload.gen_epoch) !== current) return null;
+  }
+
+  return payload;
 }
 
-export function sessionCookie(token) {
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL}`;
+export function sessionCookie(token, maxAge = SESSION_TTL) {
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 export function clearSessionCookie() {
