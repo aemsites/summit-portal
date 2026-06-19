@@ -109,6 +109,19 @@ const handleRequest = async (request, env) => {
     return new Response('Not Found', { status: 404 });
   }
 
+  // Account folder pages (e.g. /accounts/s/sky/) are only served by the origin
+  // at their trailing-slash path; the bare path 404s. Hand-typed or bookmarked
+  // URLs that drop the slash would hit the 404 page, so redirect extension-less
+  // /accounts/** paths to the slash form. Query string (incl. ?token=) is
+  // preserved. 308 keeps the method and signals a permanent canonical path.
+  if (url.pathname.startsWith('/accounts/')
+    && !url.pathname.endsWith('/')
+    && getExtension(url.pathname) === '') {
+    const redirectTo = new URL(request.url);
+    redirectTo.pathname = `${url.pathname}/`;
+    return Response.redirect(redirectTo.href, 308);
+  }
+
   if (isRUMRequest(url)) {
     if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
       return new Response('Method Not Allowed', { status: 405 });

@@ -22,6 +22,10 @@ async function loadSidekick() {
 
   import('./utils/footer.js').then(({ default: footer }) => footer().then(relocateFooters));
 
+  if (window.location.pathname.startsWith('/accounts/')) {
+    import('./utils/account-resources.js').then(({ default: mount }) => mount());
+  }
+
   if (document.querySelector('.report-hero.insight')) {
     import('./utils/insights-feedback.js').then(({ default: mount }) => mount());
     import('./utils/insights-tracking.js').then(({ default: mount }) => mount());
