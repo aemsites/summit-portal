@@ -71,11 +71,11 @@ not "how to read your own report".
 | Intro value props | `report-cards` | `features` (icon + title + desc) |
 | Data Sources | `report-cards` | default card grid |
 | Generation workflow | `report-cards` | `steps` (number + title + desc) |
-| Per-source provenance | `advanced-tabs` | one tab per source; panel holds extract/frame/caveat |
+| Per-source provenance | `default-content` | h3 per source + bold-labelled extract/frame/caveat paragraphs (NOT advanced-tabs — its decorator hijacks all sibling sections in `main`, breaking a long multi-section page) |
 | Objection Handling | `table` | 4-column |
 | Metric guardrails | `table` | 4-column |
 | Critical Caveats | `report-callout` (`neutral`) | one `neutral` bar per caveat |
-| Report Page Map | `advanced-tabs` | tab per category; pages listed with pitch tracks |
+| Report Page Map | `report-cards` + `default-content` | category subheadings + a card per report page (title + "read for" + pitch track) |
 | FAQ | `report-cards` (`steps` omitted; default) | Q/A pairs — question as card title, answer as desc |
 | Copy button | **`copy-markdown`** (NEW) | see below |
 
