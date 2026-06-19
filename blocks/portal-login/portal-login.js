@@ -215,6 +215,20 @@ function attachStaffHandler(form) {
 
 export default function init(el) {
   const [row] = [...el.children];
+
+  // Event-device mode (/login?staff): show ONLY the staff form. The authored
+  // customer row (Adobe ID + email) is dropped so the iPad gets a single,
+  // focused sign-in rather than three stacked options.
+  if (staffRequested()) {
+    el.classList.add('pl-staff-only');
+    row.remove();
+    const { section, form: staffForm } = createStaffForm();
+    el.append(section);
+    attachStaffHandler(staffForm);
+    return;
+  }
+
+  // Default (customer) login: Adobe ID + email magic link, no staff form.
   row.classList.add('pl-row');
 
   const [colAdobe, colMagic] = [...row.children];
@@ -231,11 +245,4 @@ export default function init(el) {
   attachSubmitHandler(form);
 
   injectDivider(row);
-
-  // Hidden by default — only mounts on event devices opening /login?staff.
-  if (staffRequested()) {
-    const { section, form: staffForm } = createStaffForm();
-    el.append(section);
-    attachStaffHandler(staffForm);
-  }
 }
