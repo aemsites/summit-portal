@@ -145,6 +145,20 @@ describe('session (JWT)', () => {
       expect(session).toBeNull();
     });
 
+    it('returns null (does not throw) for a malformed token with non-base64url parts', async () => {
+      // Regression: a mangled magic link (e.g. `not.a.realtoken`) made atob/
+      // JSON.parse throw inside verifyJwt, surfacing as a 500 instead of a clean
+      // null → /expired redirect.
+      for (const bad of ['not.a.realtoken', 'a.b.c', '%%%.@@@.&&&', '..']) {
+        const request = new Request('https://mysite.com/', {
+          headers: { Cookie: `auth_token=${bad}` },
+        });
+        // eslint-disable-next-line no-await-in-loop
+        const session = await getSession(request, env);
+        expect(session).toBeNull();
+      }
+    });
+
     it('returns null when token is expired', async () => {
       vi.spyOn(Date, 'now')
         .mockReturnValueOnce(1000 * 1000)    // createSession: iat = 1000 (exp = 1000 + SESSION_TTL)
