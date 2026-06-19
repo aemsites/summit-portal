@@ -20,28 +20,62 @@ function isBvCtaBanner(el) {
 const BV_PRODUCT_URL = 'https://business.adobe.com/products/brand-visibility.html';
 
 /**
- * Where the "Let's talk" CTA points, keyed by which company owns the report.
- * The report's owner is authored as the `bv-cta-source` page metadata field
- * (a `<meta name="bv-cta-source">` tag, written by the `metadata` block) — e.g.
- * `adobe` or `semrush`. To change where a banner's CTA goes, edit the URL here
- * (or, per page, set the metadata value); no other code needs to change.
+ * The "Let's talk" CTA mailbox, keyed by which company owns the report. Owner
+ * comes from the `bv-cta-source` page metadata (`adobe` / `semrush`); see
+ * getBvCtaSource(). To change where a banner's CTA goes, edit a mailbox here;
+ * to change a report's owner, set its `bv-cta-source` metadata — no code change.
  *
- * `DEFAULT` is used when the page declares no source — today every report still
- * routes to the Semrush Cannes mailbox, so that stays the fallback.
+ * `DEFAULT` applies when a report declares no owner — historically every report
+ * routed to the Semrush Cannes mailbox, so that stays the fallback.
  */
-const BV_CTA_TARGETS = {
-  semrush: 'mailto:CannesVilla@Semrush.com?subject=Digital%20Opportunity%20Report',
-  adobe: 'mailto:CannesVilla@Semrush.com?subject=Digital%20Opportunity%20Report',
+const BV_CTA_EMAILS = {
+  adobe: 'eecannes@adobe.com',
+  semrush: 'CannesVilla@Semrush.com',
 };
 const BV_CTA_DEFAULT_SOURCE = 'semrush';
+/** Shared subject line on every BV "Let's talk" mailto. */
+const BV_CTA_SUBJECT = 'Digital%20Opportunity%20Report';
 
 /**
- * Resolve the "Let's talk" CTA href from the report's owner metadata.
+ * Read the report owner (`bv-cta-source`) for the current page.
+ *
+ * Prefer the authored `metadata` block's DOM cell: it is present in the served
+ * HTML from the start, so it is reliable regardless of section load order. The
+ * `metadata` block sits in the LAST section, so its `<meta name="bv-cta-source">`
+ * tag is not written until after the banners decorate — `getMetadata()` alone
+ * would miss it. Fall back to the meta tag for any non-report context.
+ * @returns {string} normalized owner (e.g. `adobe` / `semrush`) or `''`
+ */
+function getBvCtaSource() {
+  const rows = [...document.querySelectorAll('.metadata > div')];
+  const row = rows.find((div) => div.children[0]?.textContent.trim().toLowerCase() === 'bv-cta-source');
+  const fromBlock = row?.children[1]?.textContent.trim();
+  return (fromBlock || getMetadata('bv-cta-source') || '').toLowerCase();
+}
+
+/**
+ * Resolve the "Let's talk" CTA href from the report's owner.
  * @returns {string}
  */
 function getBvCtaHref() {
-  const source = (getMetadata('bv-cta-source') || '').trim().toLowerCase();
-  return BV_CTA_TARGETS[source] || BV_CTA_TARGETS[BV_CTA_DEFAULT_SOURCE];
+  const source = getBvCtaSource();
+  const email = BV_CTA_EMAILS[source] || BV_CTA_EMAILS[BV_CTA_DEFAULT_SOURCE];
+  return `mailto:${email}?subject=${BV_CTA_SUBJECT}`;
+}
+
+/**
+ * Point an already-authored "Let's talk" anchor at the owner-resolved mailbox.
+ * The closing banner authors its CTA in content (historically the Semrush
+ * mailbox); rewrite its href so Adobe-owned reports use the Adobe mailbox.
+ * Only touches BV mailto anchors, leaving any other authored link intact.
+ * @param {string} html
+ * @returns {string}
+ */
+function retargetAuthoredCta(html) {
+  if (!html) return html || '';
+  return html.replace(/href="mailto:[^"]*"/gi, (attr) => (
+    /@semrush\.com|@adobe\.com/i.test(attr) ? `href="${getBvCtaHref()}"` : attr
+  ));
 }
 
 /**
@@ -95,7 +129,7 @@ function buildBvHeroBar(text) {
   // banner has none. Decide from the *authored* copy (before we linkify the
   // product name) so the hero banner still gets a CTA appended.
   const hasAuthoredCta = /<a\b/i.test(text);
-  let html = linkifyBrandVisibility(formatBvHeroText(text));
+  let html = retargetAuthoredCta(linkifyBrandVisibility(formatBvHeroText(text)));
   if (!hasAuthoredCta) {
     html += ` <a class="rcl-cta" href="${getBvCtaHref()}"><strong>Let's talk →</strong></a>`;
   }
