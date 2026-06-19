@@ -42,6 +42,40 @@ describe('index (request routing)', () => {
     });
   });
 
+  describe('account folder trailing-slash redirect', () => {
+    it('redirects an extension-less /accounts/** path to the slash form (308)', async () => {
+      const request = new Request('https://mysite.com/accounts/s/sky');
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(308);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/accounts/s/sky/');
+    });
+
+    it('preserves the query string (e.g. ?token=) on the redirect', async () => {
+      const request = new Request('https://mysite.com/accounts/s/sky?token=abc');
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).toBe(308);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/accounts/s/sky/?token=abc');
+    });
+
+    it('does not redirect a path that already ends in a slash', async () => {
+      vi.stubGlobal('fetch', mockOriginFetch('<html>ok</html>'));
+      const request = new Request('https://mysite.com/accounts/s/sky/');
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).not.toBe(308);
+    });
+
+    it('does not redirect a path with a file extension', async () => {
+      vi.stubGlobal('fetch', mockOriginFetch('{}'));
+      const request = new Request('https://mysite.com/accounts/s/sky/index.json');
+      const resp = await worker.fetch(request, env);
+
+      expect(resp.status).not.toBe(308);
+    });
+  });
+
   describe('RUM requests', () => {
     it('proxies .rum requests without auth', async () => {
       vi.stubGlobal('fetch', mockOriginFetch('rum-data'));
