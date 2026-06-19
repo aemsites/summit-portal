@@ -395,7 +395,7 @@ describe('index (request routing)', () => {
       expect(session.groups).toContain('adobe.com'); // own domain retained
     });
 
-    it('redirects to /expired for an expired share link token', async () => {
+    it('redirects an expired share link to /login preserving the page', async () => {
       const past = Math.floor(Date.now() / 1000) - 10;
       const token = await signedJwt({
         purpose: 'sharelink', email: 'tim@apple.com', iat: past - 100, exp: past,
@@ -407,10 +407,10 @@ describe('index (request routing)', () => {
       );
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?redirect=%2Fmembers%2Fapple%2F');
     });
 
-    it('redirects to /expired when iat is older than 30 minutes', async () => {
+    it('redirects an expired magic link (iat > 30 min) to /login preserving the page', async () => {
       const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
@@ -420,10 +420,10 @@ describe('index (request routing)', () => {
       );
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?redirect=%2Fcustomers%2Ftest%2F');
     });
 
-    it('redirects to /expired when the token signature is invalid', async () => {
+    it('redirects an invalid-signature token to /login preserving the page', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, 'wrong-secret');
 
@@ -433,7 +433,7 @@ describe('index (request routing)', () => {
       );
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?redirect=%2Fcustomers%2Ftest%2F');
     });
 
     it('replaces an existing session cookie when a valid token is provided', async () => {
@@ -504,7 +504,7 @@ describe('index (request routing)', () => {
       );
 
       expect(resp.status).toBe(302);
-      expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?redirect=%2Fcustomers%2Ftest%2F');
     });
 
     it('gives a customer magic-link session the short 4h TTL', async () => {
