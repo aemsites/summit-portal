@@ -1,6 +1,4 @@
-import {
-  createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL,
-} from './session.js';
+import { createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL } from './session.js';
 import { jsonResponse } from './magiclink.js';
 
 const STAFF_GROUPS = ['adobe.com', 'semrush.com'];
@@ -20,7 +18,10 @@ export async function sha256hex(str) {
 export function timingSafeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
   let mismatch = 0;
-  for (let i = 0; i < a.length; i += 1) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i += 1) {
+    // eslint-disable-next-line no-bitwise
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
   return mismatch === 0;
 }
 

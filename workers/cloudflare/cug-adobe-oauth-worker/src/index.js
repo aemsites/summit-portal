@@ -16,12 +16,13 @@
 import { redirectToLogin, handleCallback } from './oauth.js';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
-  signedInMarkerCookie, clearSignedInMarkerCookie,
+  signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
+import { handleStaffLoginRequest } from './stafflogin.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -127,14 +128,20 @@ const handleRequest = async (request, env) => {
     return handleShareLinkRequest(request, env);
   }
 
+  // Generic staff credential login for on-site event iPads (no Okta).
+  if (url.pathname === '/auth/staff-login') {
+    return handleStaffLoginRequest(request, env);
+  }
+
   // OAuth callback: exchange authorization code for tokens, create session
   if (url.pathname === '/auth/callback') {
     const result = await handleCallback(request, env);
     if (result instanceof Response) return result;
 
-    const token = await createSession(env, result.userInfo);
+    const ttl = sessionTtlForEmail(result.userInfo.email, env);
+    const token = await createSession(env, result.userInfo, ttl);
     const headers = new Headers({ Location: result.originalUrl });
-    headers.append('Set-Cookie', sessionCookie(token));
+    headers.append('Set-Cookie', sessionCookie(token, ttl));
     headers.append('Set-Cookie', signedInMarkerCookie());
     return new Response(null, { status: 302, headers });
   }
@@ -220,7 +227,8 @@ const handleRequest = async (request, env) => {
     // can open a page their own domain isn't in. Always include the recipient's
     // own domain too. De-duplicate.
     const groups = [...new Set([domain, ...(Array.isArray(claims.groups) ? claims.groups : [])])];
-    const newToken = await createSession(env, { email, name: claims.name || email, groups });
+    const ttl = sessionTtlForEmail(email, env);
+    const newToken = await createSession(env, { email, name: claims.name || email, groups }, ttl);
 
     const cleanUrl = new URL(url.href);
     cleanUrl.searchParams.delete('token');
@@ -228,7 +236,7 @@ const handleRequest = async (request, env) => {
     console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
 
     const headers = new Headers({ Location: cleanUrl.href });
-    headers.append('Set-Cookie', sessionCookie(newToken));
+    headers.append('Set-Cookie', sessionCookie(newToken, ttl));
     headers.append('Set-Cookie', signedInMarkerCookie());
     return new Response(null, { status: 302, headers });
   }

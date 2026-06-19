@@ -80,6 +80,8 @@ describe('index (request routing)', () => {
       expect(resp.status).toBe(302);
       expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
+      // Staff-domain login (alice@adobe.com) gets the 4-day event TTL.
+      expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=345600');
     });
 
     it('also sets the non-HttpOnly signed-in marker cookie', async () => {
@@ -469,6 +471,57 @@ describe('index (request routing)', () => {
 
       expect(resp.status).toBe(302);
       expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
+    });
+
+    it('gives a customer magic-link session the short 4h TTL', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'tim@apple.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+
+      const cookies = resp.headers.getSetCookie();
+      const authCookie = cookies.find((c) => c.startsWith('auth_token='));
+      expect(authCookie).toContain('Max-Age=14400');
+    });
+  });
+
+  describe('POST /auth/staff-login', () => {
+    it('routes to the staff-login handler and mints a 4-day session', async () => {
+      const { sha256hex } = await import('../src/stafflogin.js');
+      const staffEnv = createMockEnv({
+        EVENT_STAFF_CREDENTIALS: `cannes:${await sha256hex('pw')}`,
+        EVENT_CRED_EPOCH: '1',
+      });
+      const req = new Request('https://mysite.com/auth/staff-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'cannes', password: 'pw' }),
+      });
+      const resp = await worker.fetch(req, staffEnv);
+
+      expect(resp.status).toBe(200);
+      const cookies = resp.headers.getSetCookie();
+      const authCookie = cookies.find((c) => c.startsWith('auth_token='));
+      expect(authCookie).toBeTruthy();
+      expect(authCookie).toContain('Max-Age=345600');
+    });
+
+    it('rejects bad credentials with 401', async () => {
+      const { sha256hex } = await import('../src/stafflogin.js');
+      const staffEnv = createMockEnv({
+        EVENT_STAFF_CREDENTIALS: `cannes:${await sha256hex('pw')}`,
+        EVENT_CRED_EPOCH: '1',
+      });
+      const req = new Request('https://mysite.com/auth/staff-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'cannes', password: 'wrong' }),
+      });
+      const resp = await worker.fetch(req, staffEnv);
+      expect(resp.status).toBe(401);
     });
   });
 });
