@@ -60,6 +60,33 @@ const EVENT_MODES = [
 
 const EVENT_MODE_IDS = new Set(EVENT_MODES.map((e) => e.id));
 
+/**
+ * Per-report data notices. A report's `Report Notice` cell (in insights-list)
+ * holds one of these codes when a section was omitted because the third-party
+ * data provider returned nothing for that customer's domain. The modal surfaces
+ * the matching message so a sales rep understands it's a data limitation for
+ * that domain — NOT an error in the report. Copy lives here; the sheet only
+ * carries the code, so wording can change without re-tagging reports.
+ */
+const REPORT_NOTICES = {
+  'no-ai-visibility': {
+    title: 'No AI Visibility section',
+    body: 'Our AI-visibility provider returned no data for this domain, so the AI Visibility section was left out. The rest of the report is complete.',
+  },
+  'no-keyword-data': {
+    title: 'No Keyword Opportunities section',
+    body: 'Semrush returned no keyword/ranking data for this domain, so the Keyword Opportunities section was left out. The rest of the report is complete.',
+  },
+  'no-seo-ai': {
+    title: 'Site performance only',
+    body: 'No SEO or AI-visibility data was available for this domain (often because it redirects elsewhere or blocks data collection), so the report covers site performance only.',
+  },
+  'no-report': {
+    title: 'Report not available',
+    body: "We couldn't gather enough data for this domain to generate a report.",
+  },
+};
+
 /** Website-report modes (Insight Reports + every event tab) share one dialog
  *  layout — websites, per-format reports, per-page share — distinct from the
  *  accounts/portal directory layout. */
@@ -117,6 +144,12 @@ export function groupInsightsByWebsite(rows) {
       groups.set(key, { Report: row.Report, Customers: row.Customers, variants: [] });
     }
     const g = groups.get(key);
+    // Carry a per-report data notice (e.g. a section omitted because the data
+    // provider returned nothing for this domain). The portal-landing row is the
+    // canonical one; prefer its notice but fall back to any variant that has one.
+    if (row['Report Notice'] && (!g.ReportNotice || /portal-landing/.test(row.Folder || ''))) {
+      g.ReportNotice = row['Report Notice'];
+    }
     g.variants.push({ variant, folder, created: createdSortKey(row.Created) });
     if (!g.Report && row.Report) g.Report = row.Report;
     if (!g.Customers && row.Customers) g.Customers = row.Customers;
@@ -157,6 +190,7 @@ export function groupInsightsByWebsite(rows) {
       Report: g.Report,
       Customers: g.Customers,
       Folder: folder,
+      ReportNotice: g.ReportNotice || '',
       formats,
     };
   });
@@ -180,6 +214,7 @@ export function buildEventCompanies(rows, column) {
       Report: row.Report,
       Customers: row.Customers,
       Folder: `${(row.Folder || '').replace(/\/+$/, '')}/`,
+      ReportNotice: row['Report Notice'] || '',
       formats: [],
     };
     for (const name of names) cards.push({ ...base, Company: name });
@@ -411,6 +446,20 @@ function buildShareSection(company) {
 
 function renderDialog(content, company, websiteMap, domainMap, mode) {
   let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
+
+  // Data-limitation notice (only on report modes; the value comes from the
+  // report's `Report Notice` cell). Tells the rep a section is missing because
+  // of the data available for that domain, not a generation error.
+  const notice = isReportMode(mode) ? REPORT_NOTICES[company.ReportNotice] : null;
+  if (notice) {
+    html += `<div class="cp-dialog-notice" role="note">
+      <span class="cp-dialog-notice-icon" aria-hidden="true">ℹ️</span>
+      <div class="cp-dialog-notice-text">
+        <strong>${notice.title}</strong>
+        <span>${notice.body}</span>
+      </div>
+    </div>`;
+  }
 
   const isReport = isReportMode(mode);
 
