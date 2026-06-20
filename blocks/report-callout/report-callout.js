@@ -25,14 +25,16 @@ const BV_PRODUCT_URL = 'https://business.adobe.com/products/brand-visibility.htm
  * getBvCtaSource(). To change where a banner's CTA goes, edit a mailbox here;
  * to change a report's owner, set its `bv-cta-source` metadata — no code change.
  *
- * `DEFAULT` applies when a report declares no owner — historically every report
- * routed to the Semrush Cannes mailbox, so that stays the fallback.
+ * There is NO default mailbox. A report shows the "Let's talk" CTA only when it
+ * declares a recognized owner via `bv-cta-source`. Reports with no owner (or an
+ * unrecognized one) get no email CTA at all — e.g. Sydney Summit reports, which
+ * must not route to a Cannes mailbox. This is the deliberate fallback so a
+ * misconfigured page never silently emails the wrong (or any) team.
  */
 const BV_CTA_EMAILS = {
   adobe: 'eecannes@adobe.com',
   semrush: 'CannesVilla@Semrush.com',
 };
-const BV_CTA_DEFAULT_SOURCE = 'semrush';
 /** Shared subject line on every BV "Let's talk" mailto. */
 const BV_CTA_SUBJECT = 'Digital%20Opportunity%20Report';
 
@@ -55,27 +57,38 @@ function getBvCtaSource() {
 
 /**
  * Resolve the "Let's talk" CTA href from the report's owner.
- * @returns {string}
+ * @returns {string | null} a mailto: href, or null when the report has no
+ *   recognized owner (no CTA should be shown).
  */
 function getBvCtaHref() {
-  const source = getBvCtaSource();
-  const email = BV_CTA_EMAILS[source] || BV_CTA_EMAILS[BV_CTA_DEFAULT_SOURCE];
-  return `mailto:${email}?subject=${BV_CTA_SUBJECT}`;
+  const email = BV_CTA_EMAILS[getBvCtaSource()];
+  return email ? `mailto:${email}?subject=${BV_CTA_SUBJECT}` : null;
 }
 
 /**
- * Point an already-authored "Let's talk" anchor at the owner-resolved mailbox.
+ * Reconcile an already-authored "Let's talk" anchor with the report's owner.
  * The closing banner authors its CTA in content (historically the Semrush
- * mailbox); rewrite its href so Adobe-owned reports use the Adobe mailbox.
- * Only touches BV mailto anchors, leaving any other authored link intact.
+ * mailbox):
+ *  - recognized owner  → rewrite the mailto to that owner's mailbox.
+ *  - no/unknown owner  → remove the anchor entirely (e.g. Sydney reports must
+ *    not link to a Cannes mailbox). Only the trailing BV mailto anchor is
+ *    removed; surrounding copy and any non-BV links are left intact.
  * @param {string} html
  * @returns {string}
  */
 function retargetAuthoredCta(html) {
   if (!html) return html || '';
-  return html.replace(/href="mailto:[^"]*"/gi, (attr) => (
-    /@semrush\.com|@adobe\.com/i.test(attr) ? `href="${getBvCtaHref()}"` : attr
-  ));
+  const href = getBvCtaHref();
+  if (href) {
+    return html.replace(/href="mailto:[^"]*"/gi, (attr) => (
+      /@semrush\.com|@adobe\.com/i.test(attr) ? `href="${href}"` : attr
+    ));
+  }
+  // No owner: strip the whole BV "Let's talk" anchor (a mailto to adobe/semrush).
+  return html.replace(
+    /\s*<a\b[^>]*href="mailto:[^"]*(?:@semrush\.com|@adobe\.com)[^"]*"[^>]*>.*?<\/a>/gi,
+    '',
+  );
 }
 
 /**
@@ -127,11 +140,14 @@ function buildBvHeroBar(text) {
 
   // The closing banner authors its own "Let's talk" CTA; the hero/pre-briefing
   // banner has none. Decide from the *authored* copy (before we linkify the
-  // product name) so the hero banner still gets a CTA appended.
+  // product name) so the hero banner still gets a CTA appended — but only when
+  // the report has a recognized owner (getBvCtaHref() is non-null). Owner-less
+  // reports (e.g. Sydney) get no appended CTA.
   const hasAuthoredCta = /<a\b/i.test(text);
   let html = retargetAuthoredCta(linkifyBrandVisibility(formatBvHeroText(text)));
-  if (!hasAuthoredCta) {
-    html += ` <a class="rcl-cta" href="${getBvCtaHref()}"><strong>Let's talk →</strong></a>`;
+  const ctaHref = getBvCtaHref();
+  if (!hasAuthoredCta && ctaHref) {
+    html += ` <a class="rcl-cta" href="${ctaHref}"><strong>Let's talk →</strong></a>`;
   }
   copy.innerHTML = html;
 
