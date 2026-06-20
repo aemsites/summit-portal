@@ -62,16 +62,17 @@ const EVENT_MODE_IDS = new Set(EVENT_MODES.map((e) => e.id));
 
 /**
  * Per-report data notices. A report's `Report Notice` cell (in insights-list)
- * holds one of these codes when a section was omitted because the third-party
- * data provider returned nothing for that customer's domain. The modal surfaces
- * the matching message so a sales rep understands it's a data limitation for
- * that domain — NOT an error in the report. Copy lives here; the sheet only
- * carries the code, so wording can change without re-tagging reports.
+ * holds one of these codes when a section was omitted because no data came back
+ * for that customer's domain (SEO/keyword data from Semrush, an Adobe company;
+ * AI mentions from Adobe's AI-visibility data). The modal surfaces the matching
+ * message so a sales rep understands it's a data limitation for that domain —
+ * NOT an error in the report. Copy lives here; the sheet only carries the code,
+ * so wording can change without re-tagging reports.
  */
 const REPORT_NOTICES = {
   'no-ai-visibility': {
     title: 'No AI Visibility section',
-    body: 'Our AI-visibility provider returned no data for this domain, so the AI Visibility section was left out. The rest of the report is complete.',
+    body: 'No AI-visibility data was available for this domain, so the AI Visibility section was left out. The rest of the report is complete.',
   },
   'no-keyword-data': {
     title: 'No Keyword Opportunities section',
@@ -144,9 +145,9 @@ export function groupInsightsByWebsite(rows) {
       groups.set(key, { Report: row.Report, Customers: row.Customers, variants: [] });
     }
     const g = groups.get(key);
-    // Carry a per-report data notice (e.g. a section omitted because the data
-    // provider returned nothing for this domain). The portal-landing row is the
-    // canonical one; prefer its notice but fall back to any variant that has one.
+    // Carry a per-report data notice (e.g. a section omitted because no data
+    // came back for this domain). The portal-landing row is the canonical one;
+    // prefer its notice but fall back to any variant that has one.
     if (row['Report Notice'] && (!g.ReportNotice || /portal-landing/.test(row.Folder || ''))) {
       g.ReportNotice = row['Report Notice'];
     }
