@@ -203,7 +203,7 @@ const handleRequest = async (request, env) => {
   if (magicToken) {
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token present on ${url.pathname}`);
-    // Accept both the 30-min self-service magic link and the 7-day staff share
+    // Accept both the 2-day self-service magic link and the 7-day staff share
     // link — either one mints a fresh 1-hour session for the deep link.
     const claims = (await verifyMagicLink(magicToken, env))
       || (await verifyShareLink(magicToken, env));

@@ -376,8 +376,8 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Location')).toBe('https://mysite.com/expired');
     });
 
-    it('redirects to /expired when iat is older than 30 minutes', async () => {
-      const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
+    it('redirects to /expired when iat is older than 2 days', async () => {
+      const oldIat = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60 - 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
