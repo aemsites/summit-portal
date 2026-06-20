@@ -230,8 +230,8 @@ describe('session (JWT)', () => {
       expect(result.iat).toBe(now);
     });
 
-    it('returns null when iat is older than 30 minutes', async () => {
-      const oldIat = Math.floor(Date.now() / 1000) - 30 * 60 - 60;
+    it('returns null when iat is older than 2 days', async () => {
+      const oldIat = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60 - 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: oldIat }, env.JWT_SECRET);
 
       const result = await verifyMagicLink(token, env);
@@ -265,11 +265,11 @@ describe('session (JWT)', () => {
       expect(result).toBeNull();
     });
 
-    it('accepts a token at exactly the 30-minute boundary', async () => {
+    it('accepts a token at exactly the 2-day boundary', async () => {
       const fixedNow = 2000000000;
       vi.spyOn(Date, 'now').mockReturnValue(fixedNow * 1000);
 
-      const boundary = fixedNow - 30 * 60;
+      const boundary = fixedNow - 2 * 24 * 60 * 60;
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: boundary }, env.JWT_SECRET);
       const result = await verifyMagicLink(token, env);
 

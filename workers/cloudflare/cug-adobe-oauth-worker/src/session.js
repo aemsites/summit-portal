@@ -10,7 +10,7 @@ const SESSION_TTL = 14400; // 4 hours
 const EVENT_SESSION_TTL = 345600; // 4 days — staff/event sessions
 const STAFF_DOMAINS_DEFAULT = 'adobe.com,semrush.com';
 const COOKIE_NAME = 'auth_token';
-const MAGIC_LINK_MAX_AGE = 30 * 60; // 30 minutes in seconds
+const MAGIC_LINK_MAX_AGE = 2 * 24 * 60 * 60; // 2 days in seconds
 const SHARE_LINK_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 const MARKER_NAME = 'signed_in';
 // Marker outlives the session by a day so a timed-out session still shows the
@@ -138,7 +138,7 @@ export function clearSignedInMarkerCookie() {
   return `${MARKER_NAME}=; Path=/; Secure; SameSite=Lax; Max-Age=0`;
 }
 
-/** Create a signed JWT for use as a magic link. Valid for 30 minutes. */
+/** Create a signed JWT for use as a magic link. Valid for 2 days. */
 export async function createMagicLinkToken(email, env) {
   const now = Math.floor(Date.now() / 1000);
   return signJwt({ purpose: 'magiclink', email, iat: now }, env.JWT_SECRET);
@@ -147,7 +147,7 @@ export async function createMagicLinkToken(email, env) {
 /**
  * Verify a magic link JWT produced by createMagicLinkToken.
  * Tokens carry `email` and `iat` but no `exp` — freshness is enforced
- * by the iat-age check (max 30 minutes).
+ * by the iat-age check (max 2 days).
  * Returns the payload when valid; null otherwise.
  */
 export async function verifyMagicLink(token, env) {
