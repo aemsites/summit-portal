@@ -240,6 +240,41 @@
   color: var(--color-text);
 }
 
+/* Data-limitation notice — informational (not an error). Sits below the title. */
+.cp-dialog-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 var(--spacing-l);
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: light-dark(#fff8e6, #3a3116);
+  border: 1px solid light-dark(#f0d999, #6b5a23);
+}
+
+.cp-dialog-notice-icon {
+  font-size: 16px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.cp-dialog-notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--body-font-size-s);
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.cp-dialog-notice-text strong {
+  font-weight: 700;
+}
+
+.cp-dialog-notice-text span {
+  color: var(--color-text-muted);
+}
+
 .cp-dialog-section {
   margin-bottom: var(--spacing-l);
 }

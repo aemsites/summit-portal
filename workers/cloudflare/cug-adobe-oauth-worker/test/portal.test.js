@@ -47,7 +47,7 @@ describe('portal', () => {
     expect(resp.headers.get('Location')).toBe('https://mysite.com/members/first');
   });
 
-  it('redirects to /members when no group matches', async () => {
+  it('redirects to / when no group matches', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       mappingResponse([
         { group: 'adobe.com', url: '/members/adobe-portal' },
@@ -58,10 +58,10 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
   });
 
-  it('redirects to /members when mapping fetch returns non-200', async () => {
+  it('redirects to / when mapping fetch returns non-200', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       new Response('Not Found', { status: 404 }),
     ));
@@ -70,17 +70,17 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
   });
 
-  it('redirects to /members when mapping fetch throws', async () => {
+  it('redirects to / when mapping fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('network error')));
 
     const session = { email: 'alice@adobe.com', groups: ['adobe.com'] };
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
   });
 
   it('handles whitespace in group values', async () => {
@@ -96,7 +96,7 @@ describe('portal', () => {
     expect(resp.headers.get('Location')).toBe('https://mysite.com/members/partner-portal');
   });
 
-  it('redirects to /members when data array is missing from response', async () => {
+  it('redirects to / when data array is missing from response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({ total: 0 }), {
         status: 200,
@@ -108,10 +108,10 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
   });
 
-  it('redirects to /members when session has no groups', async () => {
+  it('redirects to / when session has no groups', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       mappingResponse([
         { group: 'adobe.com', url: '/members/adobe-portal' },
@@ -122,7 +122,7 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
   });
 
   it('honors a same-origin ?redirect= path over the CUG mapping', async () => {

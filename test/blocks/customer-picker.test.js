@@ -92,6 +92,32 @@ describe('customer-picker › groupInsightsByWebsite', () => {
     ]);
     expect(cards).to.have.lengthOf(2);
   });
+
+  it('carries a Report Notice through to the card', () => {
+    const [card] = groupInsightsByWebsite([
+      {
+        Report: 'dragonsgroup.com',
+        Folder: '/accounts/d/dragons-group/insights/dragonsgroup-com/portal-landing/',
+        'Report Notice': 'no-seo-ai',
+      },
+    ]);
+    expect(card.ReportNotice).to.equal('no-seo-ai');
+  });
+
+  it('prefers the portal-landing row notice over a bare-report row', () => {
+    const [card] = groupInsightsByWebsite([
+      { Report: 'x.com', Folder: '/accounts/x/x/insights/x-com/', 'Report Notice': '' },
+      { Report: 'x.com', Folder: '/accounts/x/x/insights/x-com/portal-landing/', 'Report Notice': 'no-ai-visibility' },
+    ]);
+    expect(card.ReportNotice).to.equal('no-ai-visibility');
+  });
+
+  it('defaults ReportNotice to empty when none is set', () => {
+    const [card] = groupInsightsByWebsite([
+      { Report: 'y.com', Folder: '/accounts/y/y/insights/y-com/portal-landing/' },
+    ]);
+    expect(card.ReportNotice).to.equal('');
+  });
 });
 
 describe('customer-picker › buildEventCompanies', () => {
@@ -105,6 +131,15 @@ describe('customer-picker › buildEventCompanies', () => {
     const cards = buildEventCompanies(ROWS, 'Cannes 2026');
     expect(cards).to.have.lengthOf(2);
     expect(cards.map((c) => c.Company)).to.not.include('1-800 Flowers');
+  });
+
+  it('carries a Report Notice onto every card built from a row', () => {
+    const cards = buildEventCompanies(
+      [{ Report: 'ey.com', Customers: 'EY', Folder: '/accounts/e/ey/insights/ey-com/portal-landing/', 'Cannes 2026': 'EY; EY Studio+', 'Report Notice': 'no-keyword-data' }],
+      'Cannes 2026',
+    );
+    expect(cards).to.have.lengthOf(2);
+    expect(cards.every((c) => c.ReportNotice === 'no-keyword-data')).to.equal(true);
   });
 
   it('labels each card by the event column value, not the website/customer', () => {
