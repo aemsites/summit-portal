@@ -223,7 +223,16 @@ const handleRequest = async (request, env) => {
     if (!claims) {
       // eslint-disable-next-line no-console
       console.warn(`[magiclink] token verification failed for path=${url.pathname}`);
-      return Response.redirect(new URL('/expired', request.url).href, 302);
+      // An expired/invalid link must NOT strand the user. Treat it like "not
+      // logged in": send them to /login preserving the page the link was for
+      // (token stripped) so re-auth (Adobe ID or a fresh magic link) returns
+      // them to that page instead of falling through to the group dashboard.
+      const cleanUrl = new URL(url.href);
+      cleanUrl.searchParams.delete('token');
+      const target = safeRedirectPath(`${cleanUrl.pathname}${cleanUrl.search}`);
+      const loginUrl = new URL('/login', request.url);
+      if (target) loginUrl.searchParams.set('redirect', target);
+      return Response.redirect(loginUrl.href, 302);
     }
 
     const email = claims.email.toLowerCase();

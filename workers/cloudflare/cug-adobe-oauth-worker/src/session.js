@@ -48,17 +48,25 @@ async function verifyJwt(token, secret) {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
-  const [header, body, sig] = parts;
-  const data = new TextEncoder().encode(`${header}.${body}`);
-  const key = await getSigningKey(secret);
-  const sigBytes = base64urlDecode(sig);
-  const valid = await crypto.subtle.verify('HMAC', key, sigBytes, data);
-  if (!valid) return null;
+  // A malformed token (non-base64url parts, non-UTF8/JSON body) must fail as
+  // "invalid" — not throw. base64urlDecode/atob and JSON.parse can each throw on
+  // garbage input; without this guard the exception propagates and the worker
+  // returns 500 instead of redirecting a bad/mangled magic link to /expired.
+  try {
+    const [header, body, sig] = parts;
+    const data = new TextEncoder().encode(`${header}.${body}`);
+    const key = await getSigningKey(secret);
+    const sigBytes = base64urlDecode(sig);
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, data);
+    if (!valid) return null;
 
-  const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(body)));
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(body)));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
 
-  return payload;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 /** The set of internal staff email domains (lowercased). */

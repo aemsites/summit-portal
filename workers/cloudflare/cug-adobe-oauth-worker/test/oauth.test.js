@@ -46,12 +46,13 @@ describe('oauth', () => {
       expect(body).toContain('access_denied');
     });
 
-    it('returns 400 when code or state is missing', async () => {
+    it('redirects home when code or state is missing (e.g. post-logout)', async () => {
       const request = new Request('https://mysite.com/auth/callback?code=abc');
       const result = await handleCallback(request, env);
 
       expect(result).toBeInstanceOf(Response);
-      expect(result.status).toBe(400);
+      expect(result.status).toBe(302);
+      expect(result.headers.get('Location')).toBe('https://mysite.com/');
     });
 
     it('returns 400 when state is expired or invalid', async () => {
