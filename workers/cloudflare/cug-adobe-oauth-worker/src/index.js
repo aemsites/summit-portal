@@ -16,7 +16,7 @@
 import { redirectToLogin, handleCallback } from './oauth.js';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
-  signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail,
+  signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail, isVerifiedMethod,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { handlePortalRedirect, safeRedirectPath } from './portal.js';
@@ -152,7 +152,7 @@ const handleRequest = async (request, env) => {
     if (result instanceof Response) return result;
 
     const ttl = sessionTtlForEmail(result.userInfo.email, env);
-    const token = await createSession(env, result.userInfo, ttl);
+    const token = await createSession(env, { ...result.userInfo, method: 'oauth' }, ttl);
     const headers = new Headers({ Location: result.originalUrl });
     headers.append('Set-Cookie', sessionCookie(token, ttl));
     headers.append('Set-Cookie', signedInMarkerCookie());
@@ -198,6 +198,11 @@ const handleRequest = async (request, env) => {
       email: session.email,
       name: session.name,
       groups: session.groups,
+      // How the session was established, and whether that proves the viewer is
+      // the named user. Telemetry attaches the email only when verified === true
+      // (interactive login) — link-borne sessions could be opened by anyone.
+      method: session.method || null,
+      verified: isVerifiedMethod(session.method),
     }), {
       headers: {
         'Content-Type': 'application/json',
@@ -250,7 +255,12 @@ const handleRequest = async (request, env) => {
     // own domain too. De-duplicate.
     const groups = [...new Set([domain, ...(Array.isArray(claims.groups) ? claims.groups : [])])];
     const ttl = sessionTtlForEmail(email, env);
-    const newToken = await createSession(env, { email, name: claims.name || email, groups }, ttl);
+    // 'sharelink' purpose → staff-shared 7-day link; anything else here is the
+    // self-service magic link. Both are link-borne, so neither is a verified
+    // viewer identity — telemetry will record the method but withhold the email.
+    const method = claims.purpose === 'sharelink' ? 'sharelink' : 'magiclink';
+    const userInfo = { email, name: claims.name || email, groups, method };
+    const newToken = await createSession(env, userInfo, ttl);
 
     const cleanUrl = new URL(url.href);
     cleanUrl.searchParams.delete('token');

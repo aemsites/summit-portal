@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
   createShareLinkToken, verifyShareLink, signedInMarkerCookie, clearSignedInMarkerCookie,
-  EVENT_SESSION_TTL, staffDomains, isStaffEmail, sessionTtlForEmail,
+  EVENT_SESSION_TTL, staffDomains, isStaffEmail, sessionTtlForEmail, isVerifiedMethod,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
@@ -44,6 +44,42 @@ describe('createSession ttl + gen_epoch', () => {
     const env = createMockEnv();
     const token = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], gen_epoch: '1' }, EVENT_SESSION_TTL);
     expect(payloadOf(token).gen_epoch).toBe('1');
+  });
+});
+
+describe('createSession method (login provenance)', () => {
+  it('records a known method in the payload', async () => {
+    const env = createMockEnv();
+    const token = await createSession(env, {
+      email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], method: 'oauth',
+    });
+    expect(payloadOf(token).method).toBe('oauth');
+  });
+
+  it('omits an unknown/absent method rather than trusting arbitrary input', async () => {
+    const env = createMockEnv();
+    const bogus = await createSession(env, {
+      email: 'a@adobe.com', name: 'A', groups: ['adobe.com'], method: 'spoofed',
+    });
+    expect(payloadOf(bogus).method).toBeUndefined();
+    const none = await createSession(env, { email: 'a@adobe.com', name: 'A', groups: ['adobe.com'] });
+    expect(payloadOf(none).method).toBeUndefined();
+  });
+});
+
+describe('isVerifiedMethod', () => {
+  it('treats interactive logins (oauth, staff) as verified', () => {
+    expect(isVerifiedMethod('oauth')).toBe(true);
+    expect(isVerifiedMethod('staff')).toBe(true);
+  });
+  it('treats link-borne sessions (magiclink, sharelink) as unverified', () => {
+    expect(isVerifiedMethod('magiclink')).toBe(false);
+    expect(isVerifiedMethod('sharelink')).toBe(false);
+  });
+  it('treats missing/unknown method as unverified', () => {
+    expect(isVerifiedMethod(undefined)).toBe(false);
+    expect(isVerifiedMethod(null)).toBe(false);
+    expect(isVerifiedMethod('whatever')).toBe(false);
   });
 });
 

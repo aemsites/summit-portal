@@ -1,4 +1,11 @@
+import getViewerIdentity, { viewerMetadata } from './viewer-identity.js';
+
 const SCROLL_MILESTONES = [25, 50, 75, 100];
+
+// Populated once /auth/me resolves; merged into every event so we can answer
+// "which signed-in customer viewed this report?". Stays null (email omitted)
+// for anonymous and link-borne sessions — see viewer-identity.js.
+let identity = null;
 
 function getSlug() {
   const badge = document.querySelector('.rh-insight-badge');
@@ -11,13 +18,14 @@ function getSlug() {
 }
 
 function track(event, metadata) {
+  const enriched = { ...metadata, ...viewerMetadata(identity) };
   const debug = new URL(window.location.href).searchParams.has('debug-feedback');
   if (debug) {
     // eslint-disable-next-line no-console
-    console.log('[insights-tracking]', event, metadata);
+    console.log('[insights-tracking]', event, enriched);
   }
   if (typeof window.sa_event === 'function') {
-    window.sa_event(event, metadata);
+    window.sa_event(event, enriched);
   }
 }
 
@@ -91,8 +99,15 @@ function trackSectionVisibility(slug) {
   });
 }
 
-export default function mount() {
+export default async function mount() {
   const slug = getSlug();
+  // Resolve who's viewing before the pageview fires so a verified login is
+  // attributed from the first event. Identity resolution never throws and is
+  // capped so a slow/unreachable /auth/me can't hold up tracking indefinitely.
+  identity = await Promise.race([
+    getViewerIdentity(),
+    new Promise((resolve) => { setTimeout(() => resolve(null), 2000); }),
+  ]);
   track('insights_pageview', { slug, path: window.location.pathname });
   trackScrollDepth(slug);
   trackClicks(slug);

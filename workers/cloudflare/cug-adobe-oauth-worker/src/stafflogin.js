@@ -83,6 +83,7 @@ export async function handleStaffLoginRequest(request, env) {
     email,
     name: username,
     groups: [...STAFF_GROUPS],
+    method: 'staff',
     gen_epoch: String((env && env.EVENT_CRED_EPOCH) ?? ''),
   };
   const token = await createSession(env, userInfo, EVENT_SESSION_TTL);

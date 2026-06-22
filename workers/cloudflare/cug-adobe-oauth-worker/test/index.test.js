@@ -121,6 +121,33 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=345600');
     });
 
+    it('tags the session method as oauth', async () => {
+      const { getSession } = await import('../src/session.js');
+      const state = 'cb-state-method';
+      await env.SESSIONS.put(`pkce:${state}`, JSON.stringify({
+        verifier: 'v', originalUrl: 'https://mysite.com/members',
+      }));
+
+      const idToken = fakeJwt({ email: 'alice@adobe.com', name: 'Alice' });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ id_token: idToken }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ));
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/auth/callback?code=abc&state=${state}`),
+        env,
+      );
+      const newToken = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(session.method).toBe('oauth');
+    });
+
     it('also sets the non-HttpOnly signed-in marker cookie', async () => {
       const state = 'cb-state-marker';
       await env.SESSIONS.put(`pkce:${state}`, JSON.stringify({
@@ -163,6 +190,45 @@ describe('index (request routing)', () => {
       const cookies = resp.headers.getSetCookie();
       expect(cookies.some((c) => c.startsWith('auth_token=') && c.includes('Max-Age=0'))).toBe(true);
       expect(cookies.some((c) => c.startsWith('signed_in=') && c.includes('Max-Age=0'))).toBe(true);
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    it('returns authenticated:false with 401 when no session', async () => {
+      const resp = await worker.fetch(new Request('https://mysite.com/auth/me'), env);
+      expect(resp.status).toBe(401);
+      expect(await resp.json()).toEqual({ authenticated: false });
+    });
+
+    it('exposes a verified identity (email + verified:true) for an oauth session', async () => {
+      const { createSession } = await import('../src/session.js');
+      const token = await createSession(env, {
+        email: 'alice@adobe.com', name: 'Alice', groups: ['adobe.com'], method: 'oauth',
+      });
+      const resp = await worker.fetch(new Request('https://mysite.com/auth/me', {
+        headers: { Cookie: `auth_token=${token}` },
+      }), env);
+
+      const body = await resp.json();
+      expect(body.authenticated).toBe(true);
+      expect(body.email).toBe('alice@adobe.com');
+      expect(body.method).toBe('oauth');
+      expect(body.verified).toBe(true);
+    });
+
+    it('reports verified:false for a magic-link session (still returns email for the UI)', async () => {
+      const { createSession } = await import('../src/session.js');
+      const token = await createSession(env, {
+        email: 'tim@apple.com', name: 'Tim', groups: ['apple.com'], method: 'magiclink',
+      });
+      const resp = await worker.fetch(new Request('https://mysite.com/auth/me', {
+        headers: { Cookie: `auth_token=${token}` },
+      }), env);
+
+      const body = await resp.json();
+      expect(body.authenticated).toBe(true);
+      expect(body.method).toBe('magiclink');
+      expect(body.verified).toBe(false);
     });
   });
 
@@ -344,6 +410,42 @@ describe('index (request routing)', () => {
       expect(resp.status).toBe(302);
       expect(resp.headers.get('Location')).toBe('https://mysite.com/customers/test/');
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
+    });
+
+    it('tags a magic-link session method as magiclink (unverified viewer)', async () => {
+      const { getSession } = await import('../src/session.js');
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose: 'magiclink', email: 'tim@apple.com', iat: now }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/customers/test/?token=${token}`),
+        env,
+      );
+      const newToken = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(session.method).toBe('magiclink');
+    });
+
+    it('tags a share-link session method as sharelink', async () => {
+      const { getSession } = await import('../src/session.js');
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({
+        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 7 * 24 * 60 * 60,
+      }, env.JWT_SECRET);
+
+      const resp = await worker.fetch(
+        new Request(`https://mysite.com/members/apple/?token=${token}`),
+        env,
+      );
+      const newToken = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        env,
+      );
+      expect(session.method).toBe('sharelink');
     });
 
     it('also sets the signed-in marker when minting a session from a token', async () => {
@@ -544,6 +646,14 @@ describe('index (request routing)', () => {
       const authCookie = cookies.find((c) => c.startsWith('auth_token='));
       expect(authCookie).toBeTruthy();
       expect(authCookie).toContain('Max-Age=345600');
+
+      const { getSession } = await import('../src/session.js');
+      const newToken = authCookie.match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(
+        new Request('https://mysite.com/', { headers: { Cookie: `auth_token=${newToken}` } }),
+        staffEnv,
+      );
+      expect(session.method).toBe('staff');
     });
 
     it('rejects bad credentials with 401', async () => {

@@ -100,6 +100,17 @@ Auth is handled by the Cloudflare worker in `workers/cloudflare/cug-adobe-oauth-
 ### On-site event access (generic staff login)
 For non-managed event iPads that can't do Adobe SSO/Okta, `POST /auth/staff-login` (`src/stafflogin.js`) takes `{ username, password }`, verifies it against the **`EVENT_STAFF_CREDENTIALS`** worker secret, and mints a full 4-day staff session (`groups: ['adobe.com','semrush.com']` → opens every customer page; the synthetic `<username>@adobe.com` identity also passes the share-link staff gate). The login UI exposes it as a de-emphasized **"Event staff access"** form in the `portal-login` block, below the Adobe-ID and magic-link options. The credential secret is a newline/comma list of `username:sha256hex(password)` pairs — set it with `wrangler secret put EVENT_STAFF_CREDENTIALS --env summit` (never commit it). **Kill switch:** generic-login tokens carry a `gen_epoch` claim equal to the `EVENT_CRED_EPOCH` var; bumping `EVENT_CRED_EPOCH` (in `wrangler.toml`, then redeploy) instantly revokes every generic session (real-staff OAuth/magic-link sessions carry no `gen_epoch` and are unaffected). After the event, rotate the password and/or bump the epoch.
 
+## Telemetry & report-view attribution
+
+Engagement is tracked with **Simple Analytics** (`window.sa_event`, loaded in `head.html`) plus Adobe **RUM** for performance. Insight pages mount `scripts/utils/insights-tracking.js` (events: `insights_pageview`, `insights_scroll_depth` at 25/50/75/100%, `insights_download_click`, `insights_cta_click`, `insights_section_view`) and `insights-feedback.js` (thumbs up/down + tags).
+
+**Who viewed a report.** Each session records the login method it was minted from (`session.method` in the JWT — `oauth` | `staff` | `magiclink` | `sharelink`; set at every mint point in `src/index.js`/`stafflogin.js`). `/auth/me` returns `method` plus a derived `verified` flag (`isVerifiedMethod` in `src/session.js` — true only for `oauth`/`staff`, the interactive logins). Client telemetry resolves identity once via `scripts/utils/viewer-identity.js` and merges it into every event:
+- **Verified login (Adobe ID / staff):** events carry `auth_method` **and** `viewer_email` → we know which customer viewed/scrolled/downloaded the report.
+- **Magic link / share link:** events carry `auth_method` only — the **email is withheld**, because a link can be opened by anyone, so the viewer's identity isn't proven. This matches the product rule: *normal login = we know who viewed; magic link = we can't.*
+- **Anonymous / `/auth/me` unreachable:** neither field is sent. Identity resolution never throws and is time-capped (2s) so a slow auth endpoint can't block tracking.
+
+Note: `/auth/me` runs in the Cloudflare worker, so the full email-attribution path is only live behind the worker (not the bare `aem-cli` localhost preview, where it degrades to anonymous).
+
 ## Design Tokens
 
 Global tokens defined in `styles/styles.css` with `light-dark()` for automatic dark mode. Report blocks alias them via `--rpt-*` tokens:

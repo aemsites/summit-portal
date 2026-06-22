@@ -1,4 +1,9 @@
 import { loadStyle } from '../ak.js';
+import getViewerIdentity, { viewerMetadata } from './viewer-identity.js';
+
+// Resolved viewer identity, merged into feedback events so a verified login's
+// rating is attributable. Null (email omitted) for anonymous/link-borne views.
+let identity = null;
 
 const THUMB_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7V10l4.34-8.66A1.5 1.5 0 0 1 14 2a2 2 0 0 1 2 2v.12a4 4 0 0 1-1 1.76Z"/></svg>';
 const THUMB_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H17v12l-4.34 8.66A1.5 1.5 0 0 1 10 22a2 2 0 0 1-2-2v-.12a4 4 0 0 1 1-1.76Z"/></svg>';
@@ -47,6 +52,7 @@ function track(event, metadata) {
   const debug = new URL(window.location.href).searchParams.has('debug-feedback');
   const enriched = {
     ...metadata,
+    ...viewerMetadata(identity),
     max_scroll_pct: typeof window.insightsMaxScroll === 'function' ? window.insightsMaxScroll() : null,
   };
   if (debug) {
@@ -210,6 +216,10 @@ export default async function mount() {
   const slug = getSlug();
   if (alreadyHandled(slug)) return;
   if (document.querySelector('.report-feedback')) return;
+
+  // Resolve viewer identity up front (shared/cached with insights-tracking).
+  // Never throws; the widget only appears after a 12s+ delay, so this is ready.
+  getViewerIdentity().then((id) => { identity = id; });
 
   await waitForTrigger();
   if (alreadyHandled(slug)) return;
