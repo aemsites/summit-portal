@@ -88,6 +88,21 @@ export function sessionTtlForEmail(email, env) {
 
 export { EVENT_SESSION_TTL };
 
+/**
+ * How a session was established. Drives whether the viewer's identity can be
+ * trusted for telemetry: 'oauth' and 'staff' require the viewer to authenticate,
+ * so the email is theirs; 'magiclink' and 'sharelink' come from a link anyone
+ * who receives it can open, so the email identifies the *intended* recipient,
+ * not necessarily the person viewing.
+ */
+export const AUTH_METHODS = ['oauth', 'staff', 'magiclink', 'sharelink'];
+const VERIFIED_METHODS = new Set(['oauth', 'staff']);
+
+/** True when the login method proves the viewer is the named user. */
+export function isVerifiedMethod(method) {
+  return VERIFIED_METHODS.has(method);
+}
+
 /** Create a signed JWT containing the user info. Returns the token string. */
 export async function createSession(env, userInfo, ttl = SESSION_TTL) {
   const now = Math.floor(Date.now() / 1000);
@@ -98,6 +113,11 @@ export async function createSession(env, userInfo, ttl = SESSION_TTL) {
     iat: now,
     exp: now + ttl,
   };
+  // Record how the session was minted so /auth/me can tell telemetry whether the
+  // viewer's identity is proven (interactive login) or merely the link recipient.
+  if (userInfo.method && AUTH_METHODS.includes(userInfo.method)) {
+    payload.method = userInfo.method;
+  }
   // Generic-credential sessions carry a kill-switch epoch; real-staff sessions do not.
   if (userInfo.gen_epoch !== undefined && userInfo.gen_epoch !== null) {
     payload.gen_epoch = String(userInfo.gen_epoch);
