@@ -264,4 +264,46 @@ describe('sharelink', () => {
     const resp = await handleShareLinkRequest(req, customEnv);
     expect(resp.status).toBe(403);
   });
+
+  // --- Copy mode: mint a link for the staff caller, send NO email ---
+
+  it('mode:copy returns the link and sends no email', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
+    const resp = await handleShareLinkRequest(req, env);
+
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({
+      result: 'link',
+      link: 'https://mysite.com/members/apple?token=mock-share-token',
+    });
+    // No emails in copy mode — neither the recipient confirm nor the internal notify.
+    expect(sendShareLinkConfirm).not.toHaveBeenCalled();
+    expect(sendMagicLinkInternalNotify).not.toHaveBeenCalled();
+  });
+
+  it('mode:copy with no email binds the token to the caller and grants the page group', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
+    await handleShareLinkRequest(req, env);
+    // Falls back to the caller's own session email (staff@adobe.com).
+    expect(createShareLinkToken).toHaveBeenCalledWith('staff@adobe.com', env, ['apple.com']);
+  });
+
+  it('mode:copy still enforces the staff gate', async () => {
+    const req = await staffRequest(
+      env,
+      { mode: 'copy', path: '/members/apple' },
+      { groups: ['apple.com'], email: 'outsider@apple.com' },
+    );
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(403);
+  });
+
+  it('mode:copy still 404s when no CUG entry covers the page', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const req = await staffRequest(env, { mode: 'copy', path: '/members/nope' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(404);
+  });
 });

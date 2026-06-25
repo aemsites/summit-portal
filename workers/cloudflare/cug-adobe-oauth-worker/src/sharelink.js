@@ -62,14 +62,26 @@ export async function handleShareLinkRequest(request, env) {
 
   let email;
   let pathRaw;
+  let copyOnly;
   try {
     const body = await request.json();
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     pathRaw = typeof body.path === 'string' ? body.path : '';
+    // `mode: 'copy'` mints a link for the staff caller to copy and deliver
+    // themselves — NO email is sent. The email field is then optional: the link
+    // is bound to the caller's own (verified-staff) address. `mode: 'email'`
+    // (the default) keeps the original behaviour: email the link to a recipient.
+    copyOnly = body.mode === 'copy';
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
+  // In copy mode an empty email falls back to the caller's own session address,
+  // so staff can grab a link without typing anyone in. In email mode a valid
+  // recipient is required.
+  if (copyOnly && !email) {
+    email = session.email.toLowerCase();
+  }
   if (!EMAIL_RE.test(email)) {
     return jsonResponse({ error: 'Invalid email address' }, 400);
   }
@@ -127,6 +139,14 @@ export async function handleShareLinkRequest(request, env) {
   }
 
   const shareLinkUrl = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
+
+  // Copy mode: return the link for the staff caller to deliver themselves. No
+  // email is sent (neither the recipient confirm nor the internal notify), so
+  // there's no dependency on a recipient's mail gateway accepting APO mail.
+  if (copyOnly) {
+    log(`copy-mode link minted for staff=***@${callerDomain} (no email sent)`);
+    return jsonResponse({ result: 'link', link: shareLinkUrl });
+  }
 
   // Choose the email template from the PAGE's org (Semrush vs Adobe). The
   // recipient may be any domain, so org comes from the page entry, not the
