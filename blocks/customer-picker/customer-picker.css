@@ -450,6 +450,39 @@
   color: var(--color-text-muted);
 }
 
+/* Copyable link, revealed after a successful send. */
+.cp-share-link {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-s);
+  flex-wrap: wrap;
+}
+
+.cp-share-link-input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 10px 16px;
+  font-size: var(--body-font-size-xs);
+  font-family: var(--font-family-mono, monospace);
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cp-share-link-input:focus {
+  border-color: var(--color-brand);
+}
+
+.cp-share-copy {
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family);
+}
+
 /* Responsive */
 @media (width < 1024px) {
   .cp-cards {
@@ -488,6 +521,19 @@
   }
 
   .cp-share-send {
+    justify-content: center;
+  }
+
+  .cp-share-link {
+    flex-direction: column;
+  }
+
+  .cp-share-link-input,
+  .cp-share-copy {
+    width: 100%;
+  }
+
+  .cp-share-copy {
     justify-content: center;
   }
 }

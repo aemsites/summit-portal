@@ -378,6 +378,46 @@ function buildShareForm(path) {
   status.hidden = true;
   wrap.append(status);
 
+  // Copyable link, revealed after a successful send. Lets staff deliver the
+  // link by another channel (Slack/Teams) when the recipient's mail gateway
+  // quarantines the emailed copy. Built once, populated per send.
+  const linkRow = document.createElement('div');
+  linkRow.className = 'cp-share-link';
+  linkRow.hidden = true;
+
+  const linkField = document.createElement('input');
+  linkField.type = 'text';
+  linkField.className = 'cp-share-link-input';
+  linkField.readOnly = true;
+  linkField.setAttribute('aria-label', 'Shareable link');
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'cp-dialog-cta cp-dialog-cta--secondary cp-share-copy';
+  copyBtn.textContent = 'Copy';
+
+  linkRow.append(linkField, copyBtn);
+  wrap.append(linkRow);
+
+  copyBtn.addEventListener('click', async () => {
+    linkField.select();
+    try {
+      await navigator.clipboard.writeText(linkField.value);
+    } catch {
+      // Clipboard API unavailable (e.g. insecure context) — the field is
+      // already selected, so the user can copy manually with Ctrl/Cmd+C.
+      document.execCommand?.('copy');
+    }
+    copyBtn.textContent = 'Copied ✓';
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+  });
+
+  function showLink(url) {
+    if (!url) return;
+    linkField.value = url;
+    linkRow.hidden = false;
+  }
+
   function setStatus(message, kind) {
     status.textContent = message;
     status.dataset.kind = kind;
@@ -391,6 +431,7 @@ function buildShareForm(path) {
 
     button.disabled = true;
     input.disabled = true;
+    linkRow.hidden = true;
     setStatus('Sending…', 'pending');
 
     try {
@@ -402,7 +443,8 @@ function buildShareForm(path) {
       const data = await resp.json().catch(() => ({}));
 
       if (resp.ok && data.result === 'sent') {
-        setStatus(`Sent a 7-day link to ${email} ✓`, 'success');
+        setStatus(`Sent a 7-day link to ${email} — or copy it below to share directly.`, 'success');
+        showLink(data.link);
         input.value = '';
       } else if (resp.status === 401) {
         setStatus('Your session expired — please reload and sign in again.', 'error');

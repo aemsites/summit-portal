@@ -92,7 +92,7 @@ describe('sharelink', () => {
     );
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
   });
 
   it('returns 400 for an invalid recipient email', async () => {
@@ -128,7 +128,7 @@ describe('sharelink', () => {
     const req = await staffRequest(env, { email: 'stranger@gmail.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
     expect(createShareLinkToken).toHaveBeenCalledWith('stranger@gmail.com', env, ['apple.com']);
     expect(sendShareLinkConfirm).toHaveBeenCalledOnce();
   });
@@ -145,13 +145,18 @@ describe('sharelink', () => {
     expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, ['apple.com']);
   });
 
-  it('returns { result: "sent" } and emails an authorized recipient', async () => {
+  it('returns { result: "sent", link } and emails an authorized recipient', async () => {
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
     const req = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
 
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    // The response echoes the link so staff can copy it and deliver it by
+    // another channel when the emailed copy is blocked by the recipient's MX.
+    expect(await resp.json()).toEqual({
+      result: 'sent',
+      link: 'https://mysite.com/members/apple?token=mock-share-token',
+    });
     expect(sendShareLinkConfirm).toHaveBeenCalledOnce();
     const [calledEmail, calledUrl, , calledTemplate] = sendShareLinkConfirm.mock.calls[0];
     expect(calledEmail).toBe('tim@apple.com');
@@ -167,7 +172,7 @@ describe('sharelink', () => {
     const req = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple/' });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
   });
 
   it('matches a deep page path under a wildcard CUG scope', async () => {
@@ -180,7 +185,7 @@ describe('sharelink', () => {
     });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
   });
 
   it('grants only the most-specific scope group when nested scopes both cover the page', async () => {
@@ -207,7 +212,7 @@ describe('sharelink', () => {
     const req = await staffRequest(env, { email: 'dr@beats.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
   });
 
   it('uses the semrush template when the matched entry org is semrush', async () => {
@@ -241,7 +246,7 @@ describe('sharelink', () => {
     const req = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(200);
-    expect(await resp.json()).toEqual({ result: 'sent' });
+    expect(await resp.json()).toMatchObject({ result: 'sent' });
   });
 
   it('normalises recipient email to lowercase', async () => {

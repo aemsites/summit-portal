@@ -158,5 +158,10 @@ export async function handleShareLinkRequest(request, env) {
     logError(`sendMagicLinkInternalNotify failed: ${err.message}`);
   }
 
-  return jsonResponse({ result: 'sent' });
+  // Return the link itself so the (already-authenticated staff) caller can copy
+  // it and deliver it by another channel — useful when the recipient's mail
+  // gateway quarantines the APO email. This is not a secret leak: the caller
+  // passed both the recipient email and the page, the endpoint is staff-gated
+  // (Gates 1+2 above), and the same token was just emailed to that recipient.
+  return jsonResponse({ result: 'sent', link: shareLinkUrl });
 }
