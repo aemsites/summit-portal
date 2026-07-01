@@ -1,8 +1,8 @@
 import { loadStyle } from '../ak.js';
 import getViewerIdentity, { viewerMetadata } from './viewer-identity.js';
 
-// Resolved viewer identity, merged into feedback events so a verified login's
-// rating is attributable. Null (email omitted) for anonymous/link-borne views.
+// Resolved viewer identity, merged into feedback events as `auth_method` only
+// — see viewer-identity.js for why the viewer's email is never attached.
 let identity = null;
 
 const THUMB_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7V10l4.34-8.66A1.5 1.5 0 0 1 14 2a2 2 0 0 1 2 2v.12a4 4 0 0 1-1 1.76Z"/></svg>';

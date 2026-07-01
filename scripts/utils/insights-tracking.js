@@ -2,9 +2,8 @@ import getViewerIdentity, { viewerMetadata } from './viewer-identity.js';
 
 const SCROLL_MILESTONES = [25, 50, 75, 100];
 
-// Populated once /auth/me resolves; merged into every event so we can answer
-// "which signed-in customer viewed this report?". Stays null (email omitted)
-// for anonymous and link-borne sessions — see viewer-identity.js.
+// Populated once /auth/me resolves; merged into every event as `auth_method`
+// only — see viewer-identity.js for why the viewer's email is never attached.
 let identity = null;
 
 function getSlug() {

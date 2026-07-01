@@ -199,8 +199,9 @@ const handleRequest = async (request, env) => {
       name: session.name,
       groups: session.groups,
       // How the session was established, and whether that proves the viewer is
-      // the named user. Telemetry attaches the email only when verified === true
-      // (interactive login) — link-borne sessions could be opened by anyone.
+      // the named user (interactive login vs. a link-borne session that could
+      // be opened by anyone). `email` above is for this client's own UI only —
+      // client telemetry never forwards it to analytics; see viewer-identity.js.
       method: session.method || null,
       verified: isVerifiedMethod(session.method),
     }), {
