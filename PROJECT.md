@@ -104,12 +104,9 @@ For non-managed event iPads that can't do Adobe SSO/Okta, `POST /auth/staff-logi
 
 Engagement is tracked with **Simple Analytics** (`window.sa_event`, loaded in `head.html`) plus Adobe **RUM** for performance. Insight pages mount `scripts/utils/insights-tracking.js` (events: `insights_pageview`, `insights_scroll_depth` at 25/50/75/100%, `insights_download_click`, `insights_cta_click`, `insights_section_view`) and `insights-feedback.js` (thumbs up/down + tags).
 
-**Who viewed a report.** Each session records the login method it was minted from (`session.method` in the JWT — `oauth` | `staff` | `magiclink` | `sharelink`; set at every mint point in `src/index.js`/`stafflogin.js`). `/auth/me` returns `method` plus a derived `verified` flag (`isVerifiedMethod` in `src/session.js` — true only for `oauth`/`staff`, the interactive logins). Client telemetry resolves identity once via `scripts/utils/viewer-identity.js` and merges it into every event:
-- **Verified login (Adobe ID / staff):** events carry `auth_method` **and** `viewer_email` → we know which customer viewed/scrolled/downloaded the report.
-- **Magic link / share link:** events carry `auth_method` only — the **email is withheld**, because a link can be opened by anyone, so the viewer's identity isn't proven. This matches the product rule: *normal login = we know who viewed; magic link = we can't.*
-- **Anonymous / `/auth/me` unreachable:** neither field is sent. Identity resolution never throws and is time-capped (2s) so a slow auth endpoint can't block tracking.
+**Who viewed a report.** Each session records the login method it was minted from (`session.method` in the JWT — `oauth` | `staff` | `magiclink` | `sharelink`; set at every mint point in `src/index.js`/`stafflogin.js`). `/auth/me` returns that `method`. Client telemetry resolves it once via `scripts/utils/viewer-identity.js` and merges only `auth_method` into every event — **the viewer's email is never sent to Simple Analytics**, verified login or not. SA is used without a consent banner on the premise that events stay anonymous; attaching an email would identify a named individual and require consent we don't collect. (A short-lived PR briefly attached `viewer_email` for verified logins — reverted per legal/privacy review, see `fix/telemetry-drop-viewer-email`.) Identity resolution never throws and is time-capped (2s) so a slow auth endpoint can't block tracking.
 
-Note: `/auth/me` runs in the Cloudflare worker, so the full email-attribution path is only live behind the worker (not the bare `aem-cli` localhost preview, where it degrades to anonymous).
+Note: `/auth/me` runs in the Cloudflare worker, so `auth_method` attribution is only live behind the worker (not the bare `aem-cli` localhost preview, where it degrades to anonymous).
 
 ## Design Tokens
 
