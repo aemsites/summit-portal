@@ -341,11 +341,16 @@ body > header {
     }
 
     .user-sign-in {
-      font-size: 13px;
-      white-space: nowrap;
-      width: auto;
-      max-width: none;
-      flex-shrink: 0;
+      display: inline-flex;
+      margin-top: 4px;
+      padding: 8px 20px;
+      border-radius: 20px;
+      background: var(--color-adobe-red);
+      color: #fff;
+      font-size: var(--body-font-size-s);
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s;
     }
 
     .user-email {
