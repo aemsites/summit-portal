@@ -200,12 +200,22 @@ describe('customer-picker › buildEventCompanies', () => {
         'Cannes 2026': 'EY; EY Studio+',
         'Sydney Summit 2026': 'EY',
       },
+      {
+        Report: 'abb.com',
+        Customers: 'ABB',
+        Folder: '/accounts/a/abb/insights/abb-com/portal-landing/',
+        'Cannes 2026': '',
+        'Sydney Summit 2026': '',
+        'Summit London 2026': 'ABB',
+      },
     ];
     const cannes = buildEventCompanies(rows, 'Cannes 2026');
     const sydney = buildEventCompanies(rows, 'Sydney Summit 2026');
-    // EY is in both events; Qantas only in Sydney.
+    const london = buildEventCompanies(rows, 'Summit London 2026');
+    // EY is in both older events; Qantas only in Sydney; ABB only in London.
     expect(cannes.map((c) => c.Company)).to.deep.equal(['EY', 'EY Studio+']);
     expect(sydney.map((c) => c.Company)).to.deep.equal(['EY', 'Qantas', 'Qantas Loyalty']);
+    expect(london.map((c) => c.Company)).to.deep.equal(['ABB']);
     // EY's card links to the same page in both tabs.
     expect(cannes.find((c) => c.Company === 'EY').Folder)
       .to.equal(sydney.find((c) => c.Company === 'EY').Folder);
