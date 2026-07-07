@@ -1,0 +1,128 @@
+name: "B2B Problem Report"
+description: "Report something broken or wrong in a B2B microsite / report — rendering, data, auth, sharing, or generation."
+title: "[B2B Bug]: "
+labels: ["bug", "b2b"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem with the B2B microsite template.
+
+        These sites are personalized report microsites generated from a customer's analytics data.
+        Please give us enough to reproduce it. For something that isn't broken but *missing*,
+        open a **B2B Feature Request** instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Describe the problem"
+      description: "What's wrong? Be specific about what you saw."
+      placeholder: "On the insight report for <customer>, the performance gauge renders empty ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected behaviour"
+      description: "What did you expect to happen instead?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to reproduce"
+      description: "Walk through it step by step, from the analytics data / generation through to what the viewer sees."
+      placeholder: |
+        1. Generate / open the report for <customer / event>
+        2. Go to the ... section
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: report-url
+    attributes:
+      label: "Report URL or page"
+      description: "Link to the affected report or page (or the folder / customer / event, if the URL is sensitive)."
+      placeholder: "https://main--summit-portal--gabrielwalt.aem.page/... or /adobe/dashboard"
+    validations:
+      required: false
+
+  - type: input
+    id: affected-area
+    attributes:
+      label: "Affected blocks / pages"
+      description: "Which template blocks or surfaces are involved, if known? e.g. report-carousel, report-stats, customer-picker, header."
+      placeholder: "report-stats"
+    validations:
+      required: false
+
+  - type: textarea
+    id: associated-skill
+    attributes:
+      label: "Associated skill / data"
+      description: "If this looks like a generation or data problem, which skill (in the skills project) produced the content, and what did the analytics input look like? Leave 'None' if it's purely a template/rendering bug."
+      placeholder: "e.g. business-report skill — the AI-visibility metric was missing from the source data"
+      value: "None"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: "Where did you see it?"
+      description: "Which environment?"
+      options:
+        - "Production (behind the Cloudflare worker)"
+        - "Preview (aem.page)"
+        - "Local (aem-cli localhost)"
+        - "Not sure"
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: viewer
+    attributes:
+      label: "Who was viewing?"
+      description: "Auth context matters — some behaviour differs by login type."
+      options:
+        - "Staff (Adobe / Semrush login)"
+        - "Customer / prospect (magic link or share link)"
+        - "Signed out"
+        - "Not sure"
+      default: 3
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Severity"
+      options:
+        - "Cosmetic / minor"
+        - "Degraded — usable but wrong"
+        - "Broken — report or flow unusable"
+        - "Blocking a live event or customer right now"
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: "Device / browser"
+      description: "Especially useful for layout or responsive issues (single 1000px breakpoint, dark mode, etc.)."
+      placeholder: "iPad Safari, desktop Chrome dark mode, ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional context"
+      description: "Screenshots, console errors, related issues, the customer/event affected, when it started."
+    validations:
+      required: false

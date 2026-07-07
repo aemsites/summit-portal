@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "B2B microsite docs (PROJECT.md)"
+    url: "https://github.com/aemsites/summit-portal/blob/main/PROJECT.md"
+    about: "Blocks, auth, telemetry, and how reports are generated — read this before filing if you're unsure how something is meant to work."
