@@ -1,0 +1,97 @@
+name: "B2B Feature Request"
+description: "Request a new feature or improvement for the B2B microsite template and its report experience."
+title: "[B2B Feature]: "
+labels: ["enhancement", "b2b"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape the B2B microsite template.
+
+        This template powers personalized B2B microsites (e.g. performance / insight reports) that an
+        assistant generates from a customer's analytics data. Use this form to request a new capability
+        or an improvement to that experience.
+
+        For something that is **broken** rather than missing, please open a Bug report instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Describe the problem"
+      description: "What need or gap are you seeing? Focus on the pain, not the solution. Who is affected (seller, customer/prospect, staff) and in what situation?"
+      placeholder: |
+        As a seller presenting an insight report, I can't ... because ...
+        Today this forces me to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Propose a solution"
+      description: "What would you like to happen? Describe the desired behaviour or capability. Sketches, links, or examples welcome."
+      placeholder: "I'd like the report to ... so that ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: flow
+    attributes:
+      label: "Flow"
+      description: "Walk through the end-to-end flow, step by step — from the analytics data through to what the viewer sees. Note any decision points or edge cases."
+      placeholder: |
+        1. Analytics data for the customer includes ...
+        2. The assistant/skill generates ...
+        3. The template renders ...
+        4. The viewer (customer/prospect) does ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: associated-skill
+    attributes:
+      label: "Associated skill"
+      description: "Which content-generation skill (in the skills project) produces or is affected by this? Name it and, if you can, link it. Leave 'None' if this is purely a template/block change."
+      placeholder: "e.g. business-report skill — <link>"
+      value: "None"
+    validations:
+      required: false
+
+  - type: input
+    id: affected-area
+    attributes:
+      label: "Affected blocks / pages"
+      description: "Which template blocks, pages, or surfaces does this touch (if known)? e.g. report-carousel, report-stats, customer-picker, /docs/sales-playbook."
+      placeholder: "report-carousel, report-ai-visibility"
+    validations:
+      required: false
+
+  - type: textarea
+    id: data-inputs
+    attributes:
+      label: "Analytics data involved"
+      description: "What data inputs does this feature depend on (metrics, sources, formats)? Note anything the data must contain for the feature to work."
+      placeholder: "AI search visibility scores per platform, SEO health, page performance ..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      description: "How important is this to you?"
+      options:
+        - "Nice to have"
+        - "Would improve day-to-day"
+        - "Blocking / needed for an upcoming event or customer"
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional context"
+      description: "Anything else — screenshots, related issues, customers/events this is for, alternatives you've considered."
+    validations:
+      required: false
