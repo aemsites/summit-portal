@@ -4,17 +4,30 @@
 
 export function createMockKV() {
   const store = new Map();
+  const meta = new Map();
   return {
     get: async (key, type) => {
       const val = store.get(key);
       if (val === undefined) return null;
       return type === 'json' ? JSON.parse(val) : val;
     },
-    put: async (key, value) => {
+    put: async (key, value, options) => {
       store.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+      if (options && 'metadata' in options) meta.set(key, options.metadata);
     },
     delete: async (key) => {
       store.delete(key);
+      meta.delete(key);
+    },
+    // Minimal Cloudflare KV list(): returns all matching keys in one page
+    // (list_complete: true), sorted lexicographically, with metadata. The real
+    // API paginates via cursor; the mock returns everything at once.
+    list: async ({ prefix = '' } = {}) => {
+      const keys = [...store.keys()]
+        .filter((k) => k.startsWith(prefix))
+        .sort()
+        .map((name) => ({ name, metadata: meta.get(name) ?? null }));
+      return { keys, list_complete: true, cursor: undefined };
     },
     _store: store,
   };

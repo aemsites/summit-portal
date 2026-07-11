@@ -115,6 +115,52 @@ Engagement is tracked with **Simple Analytics** (`window.sa_event`, loaded in `h
 
 Note: `/auth/me` runs in the Cloudflare worker, so the full email-attribution path is only live behind the worker (not the bare `aem-cli` localhost preview, where it degrades to anonymous).
 
+### Share-link engagement analytics (100% capture)
+
+Simple Analytics samples — for the analytics dashboard we need every interaction. A separate pipeline captures 100% of events from customers who access pages via share links or magic links:
+
+**Client** (`scripts/utils/sharelink-tracking.js`): loaded lazily on `.report-hero` insight pages and `/accounts/` portal landing pages. Checks `/auth/me` at mount; no-ops for staff/anonymous sessions. For `sharelink`/`magiclink` sessions it posts 4 event types directly to `/auth/analytics` using `fetch` with `keepalive: true` (survives page unload):
+- `page_view` — referrer, device (mobile/desktop)
+- `scroll_depth` — milestone percentage (25/50/75/100)
+- `cta_click` — href of mailto/PDF/download/CTA links
+- `time_on_page` — duration in seconds (on `pagehide`)
+
+**Worker** (`workers/cloudflare/cug-adobe-oauth-worker/src/analytics.js`):
+- `POST /auth/analytics` — any authenticated session may post. Stores viewer domain always; stores viewer email only for verified (oauth/staff) sessions. Writes to `ANALYTICS_KV` (a dedicated KV namespace separate from `SESSIONS`).
+- `GET /auth/analytics` — staff-only (adobe.com / semrush.com). Returns all page summaries in DA sheet format `{total, data:[...]}`. Add `?path=` for per-page event detail (newest-first). Response is `Cache-Control: private, no-store`.
+
+**KV schema** (`ANALYTICS_KV`) — every event is its own immutable key, so concurrent events on the same page can never overwrite each other (no read-modify-write, hence no lost updates — this is what makes "100% capture" actually hold):
+- `p:{pathKey}` → the page path string. Idempotent write (same key each time), used to enumerate tracked pages.
+- `e:{pathKey}:{ts}-{rand}` → the full event JSON as the value, plus compact aggregate essentials (`ev`, `ts`, `dom`, `vid`, `d`, `dur`) in the KV **metadata** so a summary can be built from one `list()` call without reading each event body.
+
+where `pathKey = btoa(path)` URL-safe base64 (`pathToKey()` in `analytics.js`). Summaries are computed on read (GET) by listing + reducing — nothing to keep in sync. `avg_scroll_depth` is the mean of the **furthest depth reached per view** (grouped by the client's per-load `view_id`), not the mean of every cumulative milestone, so a reader who reaches the bottom counts as 100%, not the ~62% a naive milestone average gives. Server clamps `depth` to 0–100 and `duration_seconds` to 0–86400, and derives `viewer_domain`/`viewer_email`/`auth_method` from the session (never from the client body).
+
+The global GET also returns a `totals` object whose `unique_visitors` de-duplicates domains **across** pages (summing the per-page column would double-count a domain seen on two pages). NOTE: the global view fans out one `list()` per tracked page — fine at Summit scale (tens–low-hundreds of pages); revisit (Durable Objects / a rolled-up index) if the tracked-page count grows into the thousands.
+
+**Dashboard** (`blocks/engagement-dashboard/`): drop on any staff-gated page (e.g. `/adobe/dashboard` or a new `/adobe/engagement`). Fetches `/auth/analytics` on load; renders 4 summary stat cards, a sortable/filterable table with scroll-depth progress bars, and expandable per-page event detail panels. Shows a graceful "Staff access required" message on 403.
+
+**Deployment prerequisite**: create the KV namespace before deploying:
+```bash
+wrangler kv namespace create ANALYTICS_KV          # fills [[kv_namespaces]] id
+wrangler kv namespace create ANALYTICS_KV --preview # fills preview_id
+wrangler kv namespace create ANALYTICS_KV --env summit  # fills [[env.summit.kv_namespaces]] id
+```
+Replace the `REPLACE_WITH_*` placeholder IDs in `wrangler.toml` with the output.
+
+**Tracking scope**: engagement tracking is loaded on **every page** (from `lazy.js`), not a fixed page type — reports, account landing pages, anything shared. Each tracker self-gates so ordinary/internal visits produce nothing: the Worker tracker aborts unless the session is share/magic-link; the POC tracker (below) aborts unless the URL carries a `?v=` marker.
+
+### Capture backends — `ANALYTICS_MODE`
+
+`scripts/utils/analytics-config.js` exposes a single `ANALYTICS_MODE` switch selecting the capture + storage backend. Default is **`'worker'`** (production); the committed default must always be `'worker'`. The two POC modes are for local / private-branch work only and are set LOCALLY (never commit a non-worker value).
+
+Shared cores keep the three backends consistent: `scripts/utils/engagement-capture.js` (client capture — scroll milestones, generic block-aware click tracking, time-on-page, `view_id`) and `blocks/engagement-dashboard/aggregate.js` (read-side aggregation into the dashboard's shapes). `lazy.js` picks the tracker and the dashboard picks the data source off `ANALYTICS_MODE`.
+
+- **`'worker'`** (default, production): client `scripts/utils/sharelink-tracking.js` → `POST /auth/analytics` → KV; dashboard reads `GET /auth/analytics`. Attribution + staff gate from the authenticated session (see above).
+- **`'sheet'`** (POC): client `sharelink-tracking-poc.js` — page-agnostic, gated on a `?v=<who>` share marker (the only identity without an auth session), sends via `navigator.sendBeacon` (no CORS preflight) to a Google Apps Script (`tools/analytics-poc/apps-script.gs`) that appends rows to a Sheet. Dashboard reads the Sheet's published CSV via `poc-datasource.js`. `unique_visitors` counts distinct `?v=` values. Unauthenticated endpoint — POC only.
+- **`'local'`** (POC): client `sharelink-tracking-local.js` appends every event to this browser's `localStorage`; dashboard reads the same store via `local-datasource.js` and shows a **Clear local data** button. Zero setup, no accounts, no network — but data never leaves the device. Does not require `?v=` (tracks all visits on the device); uses `?v=` as the viewer if present, else `'local'`.
+
+The generic `cta_click` capture (any link/button, recording nearest block name, link text, href, `download` flag) means a `file-card` PDF download or an account-page CTA is tracked without hardcoded classes, on every page type. The Worker code/tests stay intact and unused whenever a POC mode is active. Setup + sample page in `tools/analytics-poc/README.md`.
+
 ## Design Tokens
 
 Global tokens defined in `styles/styles.css` with `light-dark()` for automatic dark mode. Report blocks alias them via `--rpt-*` tokens:

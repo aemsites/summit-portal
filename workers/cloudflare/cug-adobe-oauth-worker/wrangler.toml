@@ -27,6 +27,14 @@ EVENT_CRED_EPOCH = "1"
 binding = "SESSIONS"
 id = "a7cb2b4bb8f54391b7ae50fa1cd43749"
 
+# Engagement analytics — stores per-page event logs and summaries.
+# Create with: wrangler kv namespace create ANALYTICS_KV
+# Create (preview) with: wrangler kv namespace create ANALYTICS_KV --preview
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "REPLACE_WITH_ANALYTICS_KV_ID"
+preview_id = "REPLACE_WITH_ANALYTICS_KV_PREVIEW_ID"
+
 # Uncomment to bind to your custom domain:
 # [routes]
 # pattern = "aem-cug-cloudfare-jck1.com/*"
@@ -62,3 +70,8 @@ EVENT_CRED_EPOCH = "1"
 [[env.summit.kv_namespaces]]
 binding = "SESSIONS"
 id = "93e205ef87f54e188fe1c06bacc9a397"
+
+# Create with: wrangler kv namespace create ANALYTICS_KV --env summit
+[[env.summit.kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "REPLACE_WITH_SUMMIT_ANALYTICS_KV_ID"

@@ -9,6 +9,7 @@
  *   /auth/portal       — Redirects authenticated user based on group mapping
  *   /auth/me           — Returns current user info as JSON (email, name, groups)
  *   /auth/magiclink    — POST email, check CUG mapping, send signed magic link
+ *   /auth/analytics    — POST event from a live session; GET staff-only engagement summary
  *   RUM / media        — Passed through to origin without auth
  *   Everything else    — Proxied to origin, then CUG headers are checked
  */
@@ -23,6 +24,7 @@ import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
+import { handleAnalyticsPost, handleAnalyticsGet } from './analytics.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -144,6 +146,13 @@ const handleRequest = async (request, env) => {
   // Generic staff credential login for on-site event iPads (no Okta).
   if (url.pathname === '/auth/staff-login') {
     return handleStaffLoginRequest(request, env);
+  }
+
+  // Engagement analytics: POST from authenticated page sessions; GET for staff dashboard.
+  if (url.pathname === '/auth/analytics') {
+    if (request.method === 'POST') return handleAnalyticsPost(request, env);
+    if (request.method === 'GET') return handleAnalyticsGet(request, env);
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   // OAuth callback: exchange authorization code for tokens, create session

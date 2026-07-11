@@ -34,6 +34,23 @@ async function loadSidekick() {
     relocateFooters();
   }
 
+  // Engagement tracking for shared pages — ANY shared page (reports, account
+  // landing pages, etc.), not a fixed page type. Loaded everywhere; each tracker
+  // self-gates so ordinary/internal visits generate nothing:
+  //   - Worker (prod): self-aborts unless the session is share/magic-link.
+  //   - sheet POC: self-aborts unless the URL carries a ?v= marker.
+  //   - local POC: tracks all visits on this device (localStorage).
+  // ANALYTICS_MODE picks the backend; default 'worker' (production path).
+  import('./utils/analytics-config.js').then(({ ANALYTICS_MODE }) => {
+    if (ANALYTICS_MODE === 'local') {
+      import('./utils/sharelink-tracking-local.js').then(({ default: mount }) => mount());
+    } else if (ANALYTICS_MODE === 'sheet') {
+      import('./utils/sharelink-tracking-poc.js').then(({ default: mount }) => mount());
+    } else {
+      import('./utils/sharelink-tracking.js').then(({ default: mount }) => mount());
+    }
+  });
+
   loadSidekick();
 
   // Author facing tools
