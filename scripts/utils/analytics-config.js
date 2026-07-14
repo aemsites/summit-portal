@@ -17,7 +17,7 @@
  * See tools/analytics-poc/README.md.
  */
 
-export const ANALYTICS_MODE = 'worker';
+export const ANALYTICS_MODE = 'local';
 
 // --- 'sheet' mode (fill in from your own Apps Script deployment) ---
 // Apps Script web-app /exec URL (POST target for capturing events).
