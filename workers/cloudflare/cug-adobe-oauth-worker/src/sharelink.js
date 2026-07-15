@@ -79,22 +79,19 @@ export async function handleShareLinkRequest(request, env) {
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     pathRaw = typeof body.path === 'string' ? body.path : '';
     // `mode: 'copy'` mints a link for the staff caller to copy and deliver
-    // themselves — NO email is sent. The email field is then optional: the link
-    // is bound to the caller's own (verified-staff) address. `mode: 'email'`
-    // (the default) keeps the original behaviour: email the link to a recipient.
+    // themselves — NO email is sent. `mode: 'email'` (the default) emails it.
+    // Either way `email` is the RECIPIENT (customer): the link's token is bound
+    // to it. The staff caller's identity only authorizes the mint (Gate 1/2).
     copyOnly = body.mode === 'copy';
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
-  // In copy mode an empty email falls back to the caller's own session address,
-  // so staff can grab a link without typing anyone in. In email mode a valid
-  // recipient is required.
-  if (copyOnly && !email) {
-    email = callerEmail.toLowerCase();
-  }
+  // The recipient (customer) email is ALWAYS required — it is what the link's
+  // token is bound to. It must never fall back to the staff caller's address:
+  // the staff identity authorizes the mint (Gate 1/2), it is not the viewer.
   if (!EMAIL_RE.test(email)) {
-    return jsonResponse({ error: 'Invalid email address' }, 400);
+    return jsonResponse({ error: 'A recipient (customer) email is required' }, 400);
   }
 
   const path = safeRedirectPath(pathRaw);

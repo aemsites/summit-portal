@@ -135,20 +135,27 @@ function renderScopeNote(scope, publicPath) {
   // warning above; unknown scope (CUG unreadable) also falls through to allow.
   if (scope && !scope.covered) return;
 
-  const emailInput = el('input', { type: 'email', id: 'ml-email', placeholder: 'name@customer.com (optional)', inputMode: 'email' });
-  root.append(el('label', { className: 'field' }, el('span', { textContent: 'Customer email — binds the link to them (optional)' }), emailInput));
+  const emailInput = el('input', { type: 'email', id: 'ml-email', placeholder: 'name@customer.com', inputMode: 'email', required: true });
+  root.append(el('label', { className: 'field' }, el('span', { textContent: 'Customer email (required) — the link is bound to this address' }), emailInput));
 
   const status = el('div', { className: 'status' });
   const result = el('div', { className: 'result' });
   const genBtn = el('button', { className: 'action-btn', textContent: 'Generate secure link' });
 
   genBtn.addEventListener('click', async () => {
+    // The link's token binds to the CUSTOMER — never the salesperson. Require it.
+    const email = emailInput.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      status.className = 'status error';
+      status.textContent = 'Enter the customer email — the link is bound to it.';
+      return;
+    }
     genBtn.disabled = true;
     status.className = 'status loading';
     status.textContent = 'Generating…';
     result.replaceChildren();
     const res = await mintMagicLink({
-      publicPath, magicLinkOrigin, email: emailInput.value.trim() || undefined, token,
+      publicPath, magicLinkOrigin, email, token,
     });
     if (res.error) {
       status.className = 'status error';
