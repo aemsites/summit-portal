@@ -115,6 +115,13 @@ function renderScopeNote(scope, publicPath) {
     return;
   }
 
+  // Only account microsites are shareable. Bail out for any other page so the
+  // tool can't mint a link for, say, the home page or a marketing page.
+  if (!accountScopeFromPath(publicPath)) {
+    root.append(el('p', { className: 'note warn', textContent: 'This page can’t be shared as a microsite — open a page under /accounts/.' }));
+    return;
+  }
+
   const micrositeUrl = `${magicLinkOrigin}${publicPath}`;
   root.append(el('p', { className: 'lead', textContent: 'Create a 7-day authenticated link the customer can open with no sign-in.' }));
   root.append(el('p', { className: 'mono url', textContent: micrositeUrl }));
@@ -122,6 +129,11 @@ function renderScopeNote(scope, publicPath) {
   const rows = await fetchCugRows(org, site, token);
   const scope = rows ? evaluateCugScope(rows, publicPath) : null;
   root.append(renderScopeNote(scope, publicPath));
+
+  // Block minting when the page is readable-but-uncovered (no CUG gates it) — a
+  // link would 404 / not be gated. A broad-parent group is allowed with the
+  // warning above; unknown scope (CUG unreadable) also falls through to allow.
+  if (scope && !scope.covered) return;
 
   const emailInput = el('input', { type: 'email', id: 'ml-email', placeholder: 'name@customer.com (optional)', inputMode: 'email' });
   root.append(el('label', { className: 'field' }, el('span', { textContent: 'Customer email — binds the link to them (optional)' }), emailInput));
