@@ -128,13 +128,21 @@ export async function handleShareLinkRequest(request, env) {
     .map((e) => (e.group || '').trim().toLowerCase())
     .filter(Boolean);
 
-  // No recipient-domain filter here. A staff member (gated above) may send the
-  // link to ANY email — the link bakes in the page's CUG group(s) so it opens
-  // directly for whoever receives it. Access control still applies to anyone
-  // who navigates to the page WITHOUT this token: the page's own CUG (enforced
-  // in cug.js on every request) gates them exactly as before. This endpoint is
-  // a staff-issued "skip the login" link, not a relaxation of page access.
-  const grantGroups = allowedDomains;
+  // Grant ONLY the recipient's own group — never every group on the page. Every
+  // account row also lists the blanket staff domains (adobe.com, semrush.com),
+  // so baking all page groups would let any single link open EVERY account page.
+  // The recipient's domain must therefore be one of the page's allowed groups,
+  // and must not itself be a staff domain (a customer link never grants staff
+  // access). This scopes the link to exactly the customer's account.
+  if (staffDomains(env).has(recipientDomain)) {
+    log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
+    return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
+  }
+  const grantGroups = allowedDomains.filter((d) => d === recipientDomain);
+  if (grantGroups.length === 0) {
+    log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
+    return jsonResponse({ error: 'Recipient domain is not authorized for this page' }, 403);
+  }
 
   // --- Mint a long-lived (7-day) signed share token ---
   let token;
