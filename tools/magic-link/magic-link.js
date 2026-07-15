@@ -50,15 +50,20 @@ async function fetchCugRows(org, site, token) {
 
 // ─── Mint + QR ───────────────────────────────────────────────────────────────
 
-async function mintMagicLink({ publicPath, magicLinkOrigin, email }) {
+async function mintMagicLink({
+  publicPath, magicLinkOrigin, email, token,
+}) {
   const body = { path: publicPath, mode: 'copy' };
   if (email) body.email = email;
   let resp;
   try {
     resp = await fetch(`${magicLinkOrigin}/auth/sharelink`, {
       method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        // EW has the DA IMS token, not the act.aem.now cookie — authorize with it.
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(body),
     });
   } catch {
@@ -130,7 +135,9 @@ function renderScopeNote(scope, publicPath) {
     status.className = 'status loading';
     status.textContent = 'Generating…';
     result.replaceChildren();
-    const res = await mintMagicLink({ publicPath, magicLinkOrigin, email: emailInput.value.trim() || undefined });
+    const res = await mintMagicLink({
+      publicPath, magicLinkOrigin, email: emailInput.value.trim() || undefined, token,
+    });
     if (res.error) {
       status.className = 'status error';
       status.textContent = res.error;

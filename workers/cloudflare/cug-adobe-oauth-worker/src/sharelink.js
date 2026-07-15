@@ -1,4 +1,6 @@
-import { getSession, createShareLinkToken, staffDomains } from './session.js';
+import {
+  getSession, createShareLinkToken, staffDomains, validateImsStaffToken,
+} from './session.js';
 import {
   safeRedirectPath, appendTokenParam, fetchCugMapping, EMAIL_RE, jsonResponse, templateForOrg,
 } from './magiclink.js';
@@ -46,15 +48,24 @@ export async function handleShareLinkRequest(request, env) {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  // --- Gate 1: authenticated staff session ---
+  // --- Gate 1: authenticated staff (session cookie OR a validated IMS token) ---
+  // The Experience Workspace plugin runs cross-origin and can't send the
+  // act.aem.now cookie, so it authorizes with the DA IMS token it already holds
+  // (validated against IMS in validateImsStaffToken).
   const session = await getSession(request, env);
-  if (!session || !session.email) {
-    log('rejected: no session');
+  let callerEmail = session?.email || null;
+  if (!callerEmail) {
+    const authHeader = request.headers.get('Authorization') || '';
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    if (bearer) callerEmail = await validateImsStaffToken(bearer, env);
+  }
+  if (!callerEmail) {
+    log('rejected: no session and no valid IMS token');
     return jsonResponse({ error: 'Authentication required' }, 401);
   }
 
   // --- Gate 2: caller must be internal staff ---
-  const callerDomain = (session.email.split('@')[1] || '').toLowerCase();
+  const callerDomain = (callerEmail.split('@')[1] || '').toLowerCase();
   if (!staffDomains(env).has(callerDomain)) {
     log(`rejected: caller domain=${callerDomain} is not staff`);
     return jsonResponse({ error: 'Not authorized to share links' }, 403);
@@ -80,7 +91,7 @@ export async function handleShareLinkRequest(request, env) {
   // so staff can grab a link without typing anyone in. In email mode a valid
   // recipient is required.
   if (copyOnly && !email) {
-    email = session.email.toLowerCase();
+    email = callerEmail.toLowerCase();
   }
   if (!EMAIL_RE.test(email)) {
     return jsonResponse({ error: 'Invalid email address' }, 400);

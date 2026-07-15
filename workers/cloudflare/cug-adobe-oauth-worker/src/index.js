@@ -138,7 +138,23 @@ const handleRequest = async (request, env) => {
   // Share link request: authenticated staff POST {email, path} to send a
   // longer-lived deep link for a specific page to a customer.
   if (url.pathname === '/auth/sharelink') {
-    return handleShareLinkRequest(request, env);
+    // The Experience Workspace plugin calls this cross-origin (an *.aem.live tool
+    // page → act.aem.now), so answer the CORS preflight and echo CORS headers.
+    // Bearer auth is used (not the cookie), so no Allow-Credentials is needed.
+    const origin = request.headers.get('Origin') || '';
+    const corsOk = /^https:\/\/([a-z0-9-]+\.)*aem\.live$/.test(origin) || origin === 'https://da.live';
+    const cors = corsOk ? {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      Vary: 'Origin',
+    } : {};
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    const resp = await handleShareLinkRequest(request, env);
+    if (!corsOk) return resp;
+    const headers = new Headers(resp.headers);
+    Object.entries(cors).forEach(([k, v]) => headers.set(k, v));
+    return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers });
   }
 
   // Generic staff credential login for on-site event iPads (no Okta).
