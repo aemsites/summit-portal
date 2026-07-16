@@ -1,4 +1,6 @@
-import { getSession, createShareLinkToken, staffDomains } from './session.js';
+import {
+  getSession, createShareLinkToken, staffDomains, validateImsStaffToken,
+} from './session.js';
 import {
   safeRedirectPath, appendTokenParam, fetchCugMapping, EMAIL_RE, jsonResponse, templateForOrg,
 } from './magiclink.js';
@@ -46,15 +48,24 @@ export async function handleShareLinkRequest(request, env) {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  // --- Gate 1: authenticated staff session ---
+  // --- Gate 1: authenticated staff (session cookie OR a validated IMS token) ---
+  // The Experience Workspace plugin runs cross-origin and can't send the
+  // act.aem.now cookie, so it authorizes with the DA IMS token it already holds
+  // (validated against IMS in validateImsStaffToken).
   const session = await getSession(request, env);
-  if (!session || !session.email) {
-    log('rejected: no session');
+  let callerEmail = session?.email || null;
+  if (!callerEmail) {
+    const authHeader = request.headers.get('Authorization') || '';
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    if (bearer) callerEmail = await validateImsStaffToken(bearer, env);
+  }
+  if (!callerEmail) {
+    log('rejected: no session and no valid IMS token');
     return jsonResponse({ error: 'Authentication required' }, 401);
   }
 
   // --- Gate 2: caller must be internal staff ---
-  const callerDomain = (session.email.split('@')[1] || '').toLowerCase();
+  const callerDomain = (callerEmail.split('@')[1] || '').toLowerCase();
   if (!staffDomains(env).has(callerDomain)) {
     log(`rejected: caller domain=${callerDomain} is not staff`);
     return jsonResponse({ error: 'Not authorized to share links' }, 403);
@@ -68,22 +79,19 @@ export async function handleShareLinkRequest(request, env) {
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     pathRaw = typeof body.path === 'string' ? body.path : '';
     // `mode: 'copy'` mints a link for the staff caller to copy and deliver
-    // themselves — NO email is sent. The email field is then optional: the link
-    // is bound to the caller's own (verified-staff) address. `mode: 'email'`
-    // (the default) keeps the original behaviour: email the link to a recipient.
+    // themselves — NO email is sent. `mode: 'email'` (the default) emails it.
+    // Either way `email` is the RECIPIENT (customer): the link's token is bound
+    // to it. The staff caller's identity only authorizes the mint (Gate 1/2).
     copyOnly = body.mode === 'copy';
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
-  // In copy mode an empty email falls back to the caller's own session address,
-  // so staff can grab a link without typing anyone in. In email mode a valid
-  // recipient is required.
-  if (copyOnly && !email) {
-    email = session.email.toLowerCase();
-  }
+  // The recipient (customer) email is ALWAYS required — it is what the link's
+  // token is bound to. It must never fall back to the staff caller's address:
+  // the staff identity authorizes the mint (Gate 1/2), it is not the viewer.
   if (!EMAIL_RE.test(email)) {
-    return jsonResponse({ error: 'Invalid email address' }, 400);
+    return jsonResponse({ error: 'A recipient (customer) email is required' }, 400);
   }
 
   const path = safeRedirectPath(pathRaw);
@@ -120,13 +128,21 @@ export async function handleShareLinkRequest(request, env) {
     .map((e) => (e.group || '').trim().toLowerCase())
     .filter(Boolean);
 
-  // No recipient-domain filter here. A staff member (gated above) may send the
-  // link to ANY email — the link bakes in the page's CUG group(s) so it opens
-  // directly for whoever receives it. Access control still applies to anyone
-  // who navigates to the page WITHOUT this token: the page's own CUG (enforced
-  // in cug.js on every request) gates them exactly as before. This endpoint is
-  // a staff-issued "skip the login" link, not a relaxation of page access.
-  const grantGroups = allowedDomains;
+  // Grant ONLY the recipient's own group — never every group on the page. Every
+  // account row also lists the blanket staff domains (adobe.com, semrush.com),
+  // so baking all page groups would let any single link open EVERY account page.
+  // The recipient's domain must therefore be one of the page's allowed groups,
+  // and must not itself be a staff domain (a customer link never grants staff
+  // access). This scopes the link to exactly the customer's account.
+  if (staffDomains(env).has(recipientDomain)) {
+    log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
+    return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
+  }
+  const grantGroups = allowedDomains.filter((d) => d === recipientDomain);
+  if (grantGroups.length === 0) {
+    log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
+    return jsonResponse({ error: 'Recipient domain is not authorized for this page' }, 403);
+  }
 
   // --- Mint a long-lived (7-day) signed share token ---
   let token;

@@ -50,15 +50,20 @@ async function fetchCugRows(org, site, token) {
 
 // ─── Mint + QR ───────────────────────────────────────────────────────────────
 
-async function mintMagicLink({ publicPath, magicLinkOrigin, email }) {
+async function mintMagicLink({
+  publicPath, magicLinkOrigin, email, token,
+}) {
   const body = { path: publicPath, mode: 'copy' };
   if (email) body.email = email;
   let resp;
   try {
     resp = await fetch(`${magicLinkOrigin}/auth/sharelink`, {
       method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        // EW has the DA IMS token, not the act.aem.now cookie — authorize with it.
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(body),
     });
   } catch {
@@ -110,6 +115,13 @@ function renderScopeNote(scope, publicPath) {
     return;
   }
 
+  // Only account microsites are shareable. Bail out for any other page so the
+  // tool can't mint a link for, say, the home page or a marketing page.
+  if (!accountScopeFromPath(publicPath)) {
+    root.append(el('p', { className: 'note warn', textContent: 'This page can’t be shared as a microsite — open a page under /accounts/.' }));
+    return;
+  }
+
   const micrositeUrl = `${magicLinkOrigin}${publicPath}`;
   root.append(el('p', { className: 'lead', textContent: 'Create a 7-day authenticated link the customer can open with no sign-in.' }));
   root.append(el('p', { className: 'mono url', textContent: micrositeUrl }));
@@ -118,19 +130,33 @@ function renderScopeNote(scope, publicPath) {
   const scope = rows ? evaluateCugScope(rows, publicPath) : null;
   root.append(renderScopeNote(scope, publicPath));
 
-  const emailInput = el('input', { type: 'email', id: 'ml-email', placeholder: 'name@customer.com (optional)', inputMode: 'email' });
-  root.append(el('label', { className: 'field' }, el('span', { textContent: 'Customer email — binds the link to them (optional)' }), emailInput));
+  // Block minting when the page is readable-but-uncovered (no CUG gates it) — a
+  // link would 404 / not be gated. A broad-parent group is allowed with the
+  // warning above; unknown scope (CUG unreadable) also falls through to allow.
+  if (scope && !scope.covered) return;
+
+  const emailInput = el('input', { type: 'email', id: 'ml-email', placeholder: 'name@customer.com', inputMode: 'email', required: true });
+  root.append(el('label', { className: 'field' }, el('span', { textContent: 'Customer email (required) — the link is bound to this address' }), emailInput));
 
   const status = el('div', { className: 'status' });
   const result = el('div', { className: 'result' });
   const genBtn = el('button', { className: 'action-btn', textContent: 'Generate secure link' });
 
   genBtn.addEventListener('click', async () => {
+    // The link's token binds to the CUSTOMER — never the salesperson. Require it.
+    const email = emailInput.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      status.className = 'status error';
+      status.textContent = 'Enter the customer email — the link is bound to it.';
+      return;
+    }
     genBtn.disabled = true;
     status.className = 'status loading';
     status.textContent = 'Generating…';
     result.replaceChildren();
-    const res = await mintMagicLink({ publicPath, magicLinkOrigin, email: emailInput.value.trim() || undefined });
+    const res = await mintMagicLink({
+      publicPath, magicLinkOrigin, email, token,
+    });
     if (res.error) {
       status.className = 'status error';
       status.textContent = res.error;

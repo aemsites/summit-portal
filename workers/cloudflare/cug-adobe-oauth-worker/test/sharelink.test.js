@@ -121,28 +121,40 @@ describe('sharelink', () => {
     expect(sendShareLinkConfirm).not.toHaveBeenCalled();
   });
 
-  it('sends to ANY recipient email and bakes the page group into the link', async () => {
-    // Recipient is an outside domain not in the page CUG — staff can still send;
-    // the token grants the page group so the link opens directly.
+  it('rejects a recipient whose domain is not an allowed page group (403)', async () => {
+    // The recipient must belong to one of the page's groups — a link is scoped
+    // to the recipient's own domain, so an unrelated domain can't be granted.
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
     const req = await staffRequest(env, { email: 'stranger@gmail.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
-    expect(resp.status).toBe(200);
-    expect(await resp.json()).toMatchObject({ result: 'sent' });
-    expect(createShareLinkToken).toHaveBeenCalledWith('stranger@gmail.com', env, ['apple.com']);
-    expect(sendShareLinkConfirm).toHaveBeenCalledOnce();
+    expect(resp.status).toBe(403);
+    expect(sendShareLinkConfirm).not.toHaveBeenCalled();
   });
 
-  it('grants the page group regardless of recipient (internal or customer)', async () => {
-    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const internal = await staffRequest(env, { email: 'josec@adobe.com', path: '/members/apple' });
-    expect((await handleShareLinkRequest(internal, env)).status).toBe(200);
-    expect(createShareLinkToken).toHaveBeenCalledWith('josec@adobe.com', env, ['apple.com']);
-
+  it('grants ONLY the recipient customer domain, and rejects a staff-domain recipient', async () => {
+    // A customer recipient gets exactly their own group.
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
     const customer = await staffRequest(env, { email: 'tim@apple.com', path: '/members/apple' });
     expect((await handleShareLinkRequest(customer, env)).status).toBe(200);
     expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, ['apple.com']);
+
+    // A staff-domain recipient would inherit staff-wide access → rejected (400).
+    vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
+    const internal = await staffRequest(env, { email: 'josec@adobe.com', path: '/members/apple' });
+    expect((await handleShareLinkRequest(internal, env)).status).toBe(400);
+  });
+
+  it('grants ONLY the recipient domain group, never the blanket staff domains on the page', async () => {
+    // Account pages also list adobe.com/semrush.com (which gate every account
+    // page). A customer link must not inherit those — only the customer's group.
+    vi.stubGlobal('fetch', mockCugFetch([
+      { group: 'adobe.com', url: '/accounts/a/acme/*' },
+      { group: 'semrush.com', url: '/accounts/a/acme/*' },
+      { group: 'acme.com', url: '/accounts/a/acme/*' },
+    ]));
+    const req = await staffRequest(env, { email: 'buyer@acme.com', path: '/accounts/a/acme/index' });
+    expect((await handleShareLinkRequest(req, env)).status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('buyer@acme.com', env, ['acme.com']);
   });
 
   it('returns { result: "sent", link } and emails an authorized recipient', async () => {
@@ -198,10 +210,10 @@ describe('sharelink', () => {
     const deep = '/accounts/a/apple/insights/index';
 
     vi.stubGlobal('fetch', mockCugFetch(nestedEntries));
-    const req = await staffRequest(env, { email: 'someone@anywhere.com', path: deep });
+    const req = await staffRequest(env, { email: 'tim@apple.com', path: deep });
     expect((await handleShareLinkRequest(req, env)).status).toBe(200);
     // grant is the deeper scope (apple.com), not the broad parent (broad.com)
-    expect(createShareLinkToken).toHaveBeenCalledWith('someone@anywhere.com', env, ['apple.com']);
+    expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, ['apple.com']);
   });
 
   it('authorizes against any of several allowed domains for the same page', async () => {
@@ -269,7 +281,7 @@ describe('sharelink', () => {
 
   it('mode:copy returns the link and sends no email', async () => {
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
+    const req = await staffRequest(env, { mode: 'copy', email: 'tim@apple.com', path: '/members/apple' });
     const resp = await handleShareLinkRequest(req, env);
 
     expect(resp.status).toBe(200);
@@ -277,17 +289,19 @@ describe('sharelink', () => {
       result: 'link',
       link: 'https://mysite.com/members/apple?token=mock-share-token',
     });
+    // The link is scoped to the recipient's own group, not the whole page.
+    expect(createShareLinkToken).toHaveBeenCalledWith('tim@apple.com', env, ['apple.com']);
     // No emails in copy mode — neither the recipient confirm nor the internal notify.
     expect(sendShareLinkConfirm).not.toHaveBeenCalled();
     expect(sendMagicLinkInternalNotify).not.toHaveBeenCalled();
   });
 
-  it('mode:copy with no email binds the token to the caller and grants the page group', async () => {
+  it('mode:copy requires a recipient (customer) email — no fallback to the caller', async () => {
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
     const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
-    await handleShareLinkRequest(req, env);
-    // Falls back to the caller's own session email (staff@adobe.com).
-    expect(createShareLinkToken).toHaveBeenCalledWith('staff@adobe.com', env, ['apple.com']);
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(400);
+    expect(createShareLinkToken).not.toHaveBeenCalled();
   });
 
   it('mode:copy still enforces the staff gate', async () => {
@@ -300,9 +314,9 @@ describe('sharelink', () => {
     expect(resp.status).toBe(403);
   });
 
-  it('mode:copy still 404s when no CUG entry covers the page', async () => {
+  it('mode:copy 404s when no CUG entry covers the page', async () => {
     vi.stubGlobal('fetch', mockCugFetch([APPLE_ENTRY]));
-    const req = await staffRequest(env, { mode: 'copy', path: '/members/nope' });
+    const req = await staffRequest(env, { mode: 'copy', email: 'tim@apple.com', path: '/members/nope' });
     const resp = await handleShareLinkRequest(req, env);
     expect(resp.status).toBe(404);
   });

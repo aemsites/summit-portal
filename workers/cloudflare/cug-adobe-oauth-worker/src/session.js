@@ -81,6 +81,33 @@ export function isStaffEmail(email, env) {
   return staffDomains(env).has(domain);
 }
 
+/**
+ * Validate an IMS access token against IMS and return the caller's email
+ * (lowercased), or null. Used by the share-link endpoint so the Experience
+ * Workspace plugin — which holds a DA IMS token but not the act.aem.now session
+ * cookie (different origin) — can authorize a mint. The token is verified with
+ * IMS, not merely decoded.
+ */
+export async function validateImsStaffToken(token, env) {
+  if (!token) return null;
+  try {
+    const resp = await fetch('https://ims-na1.adobelogin.com/ims/profile/v1', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Must be the client the token was ISSUED for (the DA/nexter plugin),
+        // not the worker's own OAuth client. Override via IMS_VERIFY_CLIENT_ID.
+        'x-api-key': (env && env.IMS_VERIFY_CLIENT_ID) || 'nexter',
+      },
+    });
+    if (!resp.ok) return null;
+    const profile = await resp.json();
+    const email = String(profile.email || '').trim().toLowerCase();
+    return email || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Staff logins get the 4-day event TTL; everyone else the short default. */
 export function sessionTtlForEmail(email, env) {
   return isStaffEmail(email, env) ? EVENT_SESSION_TTL : SESSION_TTL;
