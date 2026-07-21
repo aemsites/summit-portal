@@ -34,14 +34,27 @@ function scopeCoversPath(scope, targetPath) {
 /**
  * Handle a staff "share this page" request.
  *
- * POST /auth/sharelink  { email, path }
+ * POST /auth/sharelink  { email, path, mode }
  *
- * Unlike the self-service magic link, this is an AUTHENTICATED staff action that
- * sends a link to an arbitrary recipient for a specific page. It is gated by
- * three independent checks to prevent it becoming an open email relay:
- *   1. a valid staff session (auth_token cookie)
+ * Unlike the self-service magic link, this is an AUTHENTICATED staff action.
+ * It is gated by:
+ *   1. a valid staff session (auth_token cookie) or a validated IMS bearer
  *   2. the caller's email domain is in STAFF_DOMAINS
- *   3. the recipient's email domain is allowed by the target page's CUG
+ *   3. (only when a recipient email is given) that email's domain is allowed
+ *      by the target page's CUG
+ *
+ * Three shapes of request, by `mode` and whether `email` is given:
+ *   - `mode: 'email'` (the default) ALWAYS requires a real recipient address:
+ *     the link is emailed to it, and the grant is scoped to just that
+ *     recipient's domain.
+ *   - `mode: 'copy'` WITH an email (e.g. the Experience Workspace magic-link
+ *     tool, which always supplies one) mints a link with NO email sent, but
+ *     scopes the grant to exactly that recipient's domain — same scoping as
+ *     the email path, just skipping the send.
+ *   - `mode: 'copy'` with NO email (the dashboard's one-click "Copy link",
+ *     which has no single recipient to name) grants every non-staff
+ *     (customer) domain the page's CUG allows — never wider than what the
+ *     page already permits, and never a staff domain.
  */
 export async function handleShareLinkRequest(request, env) {
   if (request.method !== 'POST') {
@@ -79,19 +92,20 @@ export async function handleShareLinkRequest(request, env) {
     email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     pathRaw = typeof body.path === 'string' ? body.path : '';
     // `mode: 'copy'` mints a link for the staff caller to copy and deliver
-    // themselves — NO email is sent. `mode: 'email'` (the default) emails it.
-    // Either way `email` is the RECIPIENT (customer): the link's token is bound
-    // to it. The staff caller's identity only authorizes the mint (Gate 1/2).
+    // themselves — NO email is sent. A recipient email is only required in
+    // `mode: 'email'` (the default), where it's where the link actually goes;
+    // in copy mode it's optional (see grant logic below) but still validated
+    // when a caller does supply one (e.g. the EW magic-link tool).
     copyOnly = body.mode === 'copy';
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
-  // The recipient (customer) email is ALWAYS required — it is what the link's
-  // token is bound to. It must never fall back to the staff caller's address:
-  // the staff identity authorizes the mint (Gate 1/2), it is not the viewer.
-  if (!EMAIL_RE.test(email)) {
+  if (!copyOnly && !email) {
     return jsonResponse({ error: 'A recipient (customer) email is required' }, 400);
+  }
+  if (email && !EMAIL_RE.test(email)) {
+    return jsonResponse({ error: 'Invalid recipient email' }, 400);
   }
 
   const path = safeRedirectPath(pathRaw);
@@ -99,9 +113,9 @@ export async function handleShareLinkRequest(request, env) {
     return jsonResponse({ error: 'Invalid page path' }, 400);
   }
 
-  const recipientDomain = email.split('@')[1];
+  const recipientDomain = email ? email.split('@')[1] : null;
   const targetPath = normalisePath(path);
-  log(`staff=***@${callerDomain} sharing path=${targetPath} with domain=${recipientDomain}`);
+  log(`staff=***@${callerDomain} sharing path=${targetPath}${recipientDomain ? ` with domain=${recipientDomain}` : ' (copy mode, no recipient)'}`);
 
   // --- Resolve the target page's CUG mapping ---
   const { entries, error: mappingError } = await fetchCugMapping(env);
@@ -128,26 +142,50 @@ export async function handleShareLinkRequest(request, env) {
     .map((e) => (e.group || '').trim().toLowerCase())
     .filter(Boolean);
 
-  // Grant ONLY the recipient's own group — never every group on the page. Every
-  // account row also lists the blanket staff domains (adobe.com, semrush.com),
-  // so baking all page groups would let any single link open EVERY account page.
-  // The recipient's domain must therefore be one of the page's allowed groups,
-  // and must not itself be a staff domain (a customer link never grants staff
-  // access). This scopes the link to exactly the customer's account.
-  if (staffDomains(env).has(recipientDomain)) {
-    log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
-    return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
-  }
-  const grantGroups = allowedDomains.filter((d) => d === recipientDomain);
-  if (grantGroups.length === 0) {
-    log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
-    return jsonResponse({ error: 'Recipient domain is not authorized for this page' }, 403);
+  let grantGroups;
+  let tokenEmail;
+  if (copyOnly && !email) {
+    // No recipient was named (the dashboard's zero-friction "Copy link"), so
+    // there's no single domain to scope to — grant every non-staff (customer)
+    // domain the page's CUG allows. Never wider than what the page already
+    // permits, and staff domains (which also gate every account page) are
+    // always excluded so a copied link can't become staff-wide access.
+    grantGroups = allowedDomains.filter((d) => !staffDomains(env).has(d));
+    if (grantGroups.length === 0) {
+      log('rejected: page has no non-staff (customer) group to share');
+      return jsonResponse({ error: 'Page has no customer group to share' }, 400);
+    }
+    // createShareLinkToken/verifyShareLink require an `email` claim, and its
+    // domain gets merged into the visitor's session groups on redemption — so
+    // it must resolve to a domain already in grantGroups (never a staff one).
+    // Pick deterministically so the same request always mints the same shape.
+    tokenEmail = `share-link@${[...grantGroups].sort()[0]}`;
+  } else {
+    // A recipient WAS named — either `mode: 'email'`, or `mode: 'copy'` from a
+    // caller that still supplies one (e.g. the EW magic-link tool). Either way,
+    // grant ONLY that recipient's own group — never every group on the page.
+    // Every account row also lists the blanket staff domains (adobe.com,
+    // semrush.com), so baking all page groups would let any single link open
+    // EVERY account page. The recipient's domain must therefore be one of the
+    // page's allowed groups, and must not itself be a staff domain (a customer
+    // link never grants staff access). This scopes the link to exactly the
+    // customer's account.
+    if (staffDomains(env).has(recipientDomain)) {
+      log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
+      return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
+    }
+    grantGroups = allowedDomains.filter((d) => d === recipientDomain);
+    if (grantGroups.length === 0) {
+      log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
+      return jsonResponse({ error: 'Recipient domain is not authorized for this page' }, 403);
+    }
+    tokenEmail = email;
   }
 
   // --- Mint a long-lived (7-day) signed share token ---
   let token;
   try {
-    token = await createShareLinkToken(email, env, grantGroups);
+    token = await createShareLinkToken(tokenEmail, env, grantGroups);
     log(`share link token created (grants: ${grantGroups.join(',') || '(none)'})`);
   } catch (err) {
     logError(`createShareLinkToken failed: ${err.message}`);
