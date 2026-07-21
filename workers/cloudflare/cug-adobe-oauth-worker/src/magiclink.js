@@ -77,6 +77,42 @@ export async function fetchCugMapping(env) {
   }
 }
 
+/**
+ * Fetch the target page's ACTUAL CUG requirement straight from the origin
+ * (the same `x-aem-cug-required` / `x-aem-cug-groups` headers `cug.js` reads
+ * on every real request), instead of trusting the separately-maintained
+ * mapping sheet above. The mapping sheet can drift from a page's real access
+ * group — seen in production, where the mapping listed `hsbc.co.uk` for an
+ * account whose live CUG group is actually `hsbc.com`. A link minted purely
+ * from stale mapping data opens fine but then 403s the moment it's used.
+ *
+ * Returns `null` on any fetch failure (network error, non-2xx) so callers can
+ * fall back to the mapping instead of hard-failing the mint over a transient
+ * origin issue — this is a cross-check, not a hard dependency.
+ */
+export async function fetchLiveCugGroups(path, env) {
+  const url = new URL(path, `https://${env.ORIGIN_HOSTNAME}`);
+  const headers = {};
+  if (env.ORIGIN_AUTHENTICATION) headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
+  try {
+    const resp = await fetch(url, { method: 'HEAD', headers });
+    if (!resp.ok) {
+      logError(`live CUG header fetch failed with status ${resp.status} for path=${path}`);
+      return null;
+    }
+    const required = resp.headers.get('x-aem-cug-required') === 'true';
+    const groups = (resp.headers.get('x-aem-cug-groups') || '')
+      .split(',')
+      .map((g) => g.trim().toLowerCase())
+      .filter(Boolean);
+    log(`live CUG check path=${path} required=${required} groups=${groups.join(',') || '(none)'}`);
+    return { required, groups };
+  } catch (err) {
+    logError(`live CUG header fetch threw: ${err.message}`);
+    return null;
+  }
+}
+
 export async function handleMagicLinkRequest(request, env) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });

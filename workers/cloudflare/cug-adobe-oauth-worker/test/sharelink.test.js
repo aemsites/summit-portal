@@ -31,6 +31,24 @@ function mockCugFetch(entries) {
   );
 }
 
+/**
+ * Mock the mapping fetch AND the live-CUG-header fetch that follows it, so
+ * tests can control what the "real" page requires independently of what the
+ * mapping sheet says — this is what lets the drift-correction tests exist.
+ */
+function mockCugFetchWithLive(entries, { required = true, groups = [] } = {}) {
+  const mappingResp = new Response(JSON.stringify({ data: entries }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const liveHeaders = { 'x-aem-cug-required': String(required) };
+  if (groups.length) liveHeaders['x-aem-cug-groups'] = groups.join(', ');
+  const liveResp = new Response(null, { status: 200, headers: liveHeaders });
+  return vi.fn()
+    .mockResolvedValueOnce(mappingResp)
+    .mockResolvedValueOnce(liveResp);
+}
+
 async function staffRequest(env, body, { groups = ['adobe.com'], email = 'staff@adobe.com' } = {}) {
   const token = await createSession(env, { email, name: 'Staff', groups });
   return new Request('https://mysite.com/auth/sharelink', {
@@ -275,6 +293,58 @@ describe('sharelink', () => {
     const req = await staffRequest(customEnv, { email: 'tim@apple.com', path: '/members/apple' }, { email: 'x@adobe.com', groups: ['adobe.com'] });
     const resp = await handleShareLinkRequest(req, customEnv);
     expect(resp.status).toBe(403);
+  });
+
+  // --- Live CUG cross-check: correct for drift between the mapping sheet
+  //     and the page's ACTUAL access group (seen in production: mapping said
+  //     hsbc.co.uk, the live page required hsbc.com) ---
+
+  it('grants the live CUG group, not the stale mapping group, when they disagree', async () => {
+    vi.stubGlobal('fetch', mockCugFetchWithLive(
+      [{ group: 'hsbc.co.uk', url: '/accounts/h/hsbc-uk/*' }],
+      { required: true, groups: ['adobe.com', 'semrush.com', 'hsbc.com'] },
+    ));
+    const req = await staffRequest(env, { mode: 'copy', path: '/accounts/h/hsbc-uk/portal-landing' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    // Live said hsbc.com — that's what gets baked in, not the mapping's hsbc.co.uk.
+    expect(createShareLinkToken).toHaveBeenCalledWith('share-link@hsbc.com', env, ['hsbc.com']);
+  });
+
+  it('falls back to the mapping when the live CUG check fails (network error)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [APPLE_ENTRY] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockRejectedValueOnce(new Error('origin unreachable'));
+    vi.stubGlobal('fetch', fetchMock);
+    const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('share-link@apple.com', env, ['apple.com']);
+  });
+
+  it('falls back to the mapping when the live check says the page is not CUG-required', async () => {
+    // An inconclusive live signal (e.g. a page mid-migration) shouldn't widen
+    // or narrow the grant — just defer to the mapping like before.
+    vi.stubGlobal('fetch', mockCugFetchWithLive([APPLE_ENTRY], { required: false, groups: [] }));
+    const req = await staffRequest(env, { mode: 'copy', path: '/members/apple' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('share-link@apple.com', env, ['apple.com']);
+  });
+
+  it('uses the live CUG group for mode:email too, not just copy mode', async () => {
+    vi.stubGlobal('fetch', mockCugFetchWithLive(
+      [{ group: 'hsbc.co.uk', url: '/accounts/h/hsbc-uk/*' }],
+      { required: true, groups: ['adobe.com', 'semrush.com', 'hsbc.com'] },
+    ));
+    // Staff types the (stale-mapping) domain — the live check still corrects it.
+    const req = await staffRequest(env, { email: 'tim@hsbc.com', path: '/accounts/h/hsbc-uk/portal-landing' });
+    const resp = await handleShareLinkRequest(req, env);
+    expect(resp.status).toBe(200);
+    expect(createShareLinkToken).toHaveBeenCalledWith('tim@hsbc.com', env, ['hsbc.com']);
   });
 
   // --- Copy mode: mint a link for the staff caller, send NO email ---

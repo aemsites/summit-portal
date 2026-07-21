@@ -2,7 +2,8 @@ import {
   getSession, createShareLinkToken, staffDomains, validateImsStaffToken,
 } from './session.js';
 import {
-  safeRedirectPath, appendTokenParam, fetchCugMapping, EMAIL_RE, jsonResponse, templateForOrg,
+  safeRedirectPath, appendTokenParam, fetchCugMapping, fetchLiveCugGroups, EMAIL_RE, jsonResponse,
+  templateForOrg,
 } from './magiclink.js';
 import { sendShareLinkConfirm, sendMagicLinkInternalNotify } from './notification.js';
 
@@ -142,6 +143,22 @@ export async function handleShareLinkRequest(request, env) {
     .map((e) => (e.group || '').trim().toLowerCase())
     .filter(Boolean);
 
+  // Cross-check against the page's REAL, live CUG groups rather than trusting
+  // the mapping sheet blindly — it can drift out of sync with what actually
+  // gates the page (see fetchLiveCugGroups doc). When the live check succeeds
+  // and the page is actually CUG-required, it wins; the mapping is only used
+  // as a fallback when the live check itself is unavailable, so a transient
+  // origin hiccup can't block minting outright.
+  const live = await fetchLiveCugGroups(path, env);
+  const domainsForGrant = (live && live.required && live.groups.length)
+    ? live.groups
+    : allowedDomains;
+  if (live && live.required && live.groups.length) {
+    log(`live CUG groups=${live.groups.join(',')} (mapping said ${allowedDomains.join(',') || '(none)'})`);
+  } else {
+    log('live CUG check unavailable or inconclusive — falling back to mapping data');
+  }
+
   let grantGroups;
   let tokenEmail;
   if (copyOnly && !email) {
@@ -150,7 +167,7 @@ export async function handleShareLinkRequest(request, env) {
     // domain the page's CUG allows. Never wider than what the page already
     // permits, and staff domains (which also gate every account page) are
     // always excluded so a copied link can't become staff-wide access.
-    grantGroups = allowedDomains.filter((d) => !staffDomains(env).has(d));
+    grantGroups = domainsForGrant.filter((d) => !staffDomains(env).has(d));
     if (grantGroups.length === 0) {
       log('rejected: page has no non-staff (customer) group to share');
       return jsonResponse({ error: 'Page has no customer group to share' }, 400);
@@ -174,7 +191,7 @@ export async function handleShareLinkRequest(request, env) {
       log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
       return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
     }
-    grantGroups = allowedDomains.filter((d) => d === recipientDomain);
+    grantGroups = domainsForGrant.filter((d) => d === recipientDomain);
     if (grantGroups.length === 0) {
       log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
       return jsonResponse({ error: 'Recipient domain is not authorized for this page' }, 403);
