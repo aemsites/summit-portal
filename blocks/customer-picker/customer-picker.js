@@ -360,11 +360,16 @@ async function requestShareLink(path, { mode, email } = {}) {
 }
 
 /**
- * Build the "Share this page" controls for a SPECIFIC page `path`. Two ways to
- * share, both minting a 7-day link that opens the page directly (no login):
- *   1. Email it — staff type a recipient; the worker emails them the link.
+ * Build the "Share this page" controls for a SPECIFIC page `path`. Two
+ * independent ways to share, both minting a 7-day link that opens the page
+ * directly (no login):
+ *   1. Send link — staff type a recipient; the worker emails them the link,
+ *      scoped to just that recipient's domain. The email is required here
+ *      because it's where the link actually goes.
  *   2. Copy link — mints a link on click and copies it to the clipboard, with
- *      NO email sent. The primary recovery path when a recipient's mail gateway
+ *      NO email sent and no email needed: the worker grants every non-staff
+ *      domain the page already allows, since there's no single recipient to
+ *      scope to. The primary recovery path when a recipient's mail gateway
  *      blocks the emailed copy: paste it into Slack/Teams instead.
  * Page access is still enforced by the page's own CUG for anyone navigating
  * there without the link. Returns the wrapper element.
@@ -375,7 +380,7 @@ function buildShareForm(path) {
 
   const hint = document.createElement('p');
   hint.className = 'cp-share-hint';
-  hint.textContent = 'A one-click link that opens this page directly — no login needed. Works for 7 days.';
+  hint.textContent = 'A one-click link that opens this page directly — no login needed. Works for 7 days. Type an email to send it directly, or just copy the link below — no email needed.';
   wrap.append(hint);
 
   // --- Email path (recipient typed, worker sends the email) ---
@@ -388,6 +393,7 @@ function buildShareForm(path) {
   input.placeholder = 'name@email.com';
   input.setAttribute('inputmode', 'email');
   input.setAttribute('autocomplete', 'off');
+  input.setAttribute('aria-label', "Recipient's (customer) email — required to send the link, not to copy it");
   input.required = true;
 
   const button = document.createElement('button');
@@ -404,7 +410,7 @@ function buildShareForm(path) {
   divider.append(Object.assign(document.createElement('span'), { textContent: 'or' }));
   wrap.append(divider);
 
-  // --- Copy path (mints + copies on click, no email) ---
+  // --- Copy path (mints + copies on click, no email needed) ---
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'cp-dialog-cta cp-dialog-cta--secondary cp-share-copy';
@@ -457,6 +463,7 @@ function buildShareForm(path) {
   let copyResetTimer;
   copyBtn.addEventListener('click', async () => {
     clearTimeout(copyResetTimer);
+
     copyBtn.disabled = true;
     setStatus('Generating link…', 'pending');
 
