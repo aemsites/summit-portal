@@ -19,6 +19,17 @@ function scopeCoversPath(scope, targetPath) {
   return target === base || target.startsWith(`${base}/`);
 }
 
+/**
+ * DA hands us the *source document* path (e.g. `/accounts/a/amazon/eds-intro.html`,
+ * or `/accounts/a/amazon/index.html` for a section root). EDS — and every CUG
+ * scope / mapping entry, plus the minted link — use the extensionless public
+ * path. Normalise so scope matching, the live CUG check, and the link all line up.
+ */
+function toPublicPath(daPath) {
+  if (typeof daPath !== 'string' || !daPath) return null;
+  return daPath.replace(/\.html$/, '').replace(/\/index$/, '/');
+}
+
 function accountScopeFromPath(publicPath) {
   const parts = normaliseScope(publicPath)?.split('/').filter(Boolean) ?? [];
   if (parts[0] === 'accounts' && parts.length >= 3) return `/${parts.slice(0, 3).join('/')}`;
@@ -104,7 +115,7 @@ function renderScopeNote(scope, publicPath) {
   const { context, token } = await DA_SDK;
   const { org, site, path } = context;
   const magicLinkOrigin = DEFAULT_MAGICLINK_ORIGIN;
-  const publicPath = path || null;
+  const publicPath = toPublicPath(path);
 
   const root = el('div', { className: 'ml' });
   document.body.append(root);
