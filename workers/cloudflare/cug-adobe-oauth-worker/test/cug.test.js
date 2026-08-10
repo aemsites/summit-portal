@@ -55,12 +55,14 @@ describe('cug', () => {
         originResponse({
           'x-aem-cug-required': 'false',
           'x-aem-cug-groups': 'adobe.com',
+          'x-aem-cug-login-path': '/custom-login',
         }),
         null, request, env,
       );
 
       expect(resp.headers.get('x-aem-cug-required')).toBeNull();
       expect(resp.headers.get('x-aem-cug-groups')).toBeNull();
+      expect(resp.headers.get('x-aem-cug-login-path')).toBeNull();
     });
   });
 
@@ -151,12 +153,14 @@ describe('cug', () => {
         originResponse({
           'x-aem-cug-required': 'true',
           'x-aem-cug-groups': 'adobe.com',
+          'x-aem-cug-login-path': '/custom-login',
         }),
         session, request, env,
       );
 
       expect(resp.headers.get('x-aem-cug-required')).toBeNull();
       expect(resp.headers.get('x-aem-cug-groups')).toBeNull();
+      expect(resp.headers.get('x-aem-cug-login-path')).toBeNull();
     });
 
     it('sets Cache-Control: private, no-store on granted responses', async () => {

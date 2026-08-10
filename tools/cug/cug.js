@@ -5,9 +5,10 @@ const ADMIN_API_BASE = 'https://admin.hlx.page';
 const CUG_SHEET_PATH = 'closed-user-groups.json';
 const HEADER_CUG_REQUIRED = 'x-aem-cug-required';
 const HEADER_CUG_GROUPS = 'x-aem-cug-groups';
+const HEADER_CUG_LOGIN_PATH = 'x-aem-cug-login-path';
 
 function isCugHeader(key) {
-  return key === HEADER_CUG_REQUIRED || key === HEADER_CUG_GROUPS;
+  return key === HEADER_CUG_REQUIRED || key === HEADER_CUG_GROUPS || key === HEADER_CUG_LOGIN_PATH;
 }
 
 async function fetchCugSheet(org, site, token) {
@@ -41,6 +42,11 @@ function transformToHeadersConfig(rows) {
     const groups = (row['cug-groups'] || '').trim();
     if (groups) {
       headers.push({ key: HEADER_CUG_GROUPS, value: groups });
+    }
+
+    const loginPath = (row['cug-login-path'] || '').trim();
+    if (loginPath) {
+      headers.push({ key: HEADER_CUG_LOGIN_PATH, value: loginPath });
     }
 
     if (headers.length > 0) {

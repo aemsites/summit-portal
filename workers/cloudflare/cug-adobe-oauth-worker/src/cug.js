@@ -12,6 +12,11 @@
  * allowed comes from the `closed-user-groups` sheet when it covers the path
  * (see cugsheet.js — the header's group list goes stale between manual
  * "Apply Page Access" runs), and from x-aem-cug-groups otherwise.
+ *
+ * x-aem-cug-login-path (an authorable redirect target for external
+ * edge-worker consumers) is stripped like the other CUG headers but not read
+ * here — this worker always redirects unauthenticated users to its own
+ * fixed /login.
  */
 
 import { cugSheetGroups } from './cugsheet.js';
@@ -82,5 +87,6 @@ function stripCugHeaders(response) {
   const resp = new Response(response.body, response);
   resp.headers.delete('x-aem-cug-required');
   resp.headers.delete('x-aem-cug-groups');
+  resp.headers.delete('x-aem-cug-login-path');
   return resp;
 }
