@@ -1,4 +1,4 @@
-const MAGIC_LINK_ENDPOINT = 'https://act.aem.now/auth/magiclink';
+const MAGIC_LINK_ENDPOINT = '/auth/magiclink';
 const STAFF_LOGIN_ENDPOINT = '/auth/staff-login';
 
 /**
