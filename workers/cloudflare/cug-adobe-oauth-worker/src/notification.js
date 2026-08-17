@@ -4,8 +4,8 @@ const IMS_HOSTS = {
 };
 
 const APO_HOSTS = {
-  prod: 'https://postoffice.adobe.com',
-  stage: 'https://stage.postoffice.adobe.com',
+  prod: 'https://apo-prod.adobe.io',
+  stage: 'https://apo-stage.adobe.io',
 };
 
 const ADMIN_EMAIL = 'aemsitestrial@adobe.com';
@@ -83,7 +83,8 @@ async function sendApoEmail({
     {
       method: 'POST',
       headers: {
-        Authorization: `IMS ${token}`,
+        Authorization: `Bearer ${token}`,
+        'x-api-key': env.APO_CLIENT_ID,
         Accept: 'application/xml',
         'Content-Type': 'application/xml',
       },

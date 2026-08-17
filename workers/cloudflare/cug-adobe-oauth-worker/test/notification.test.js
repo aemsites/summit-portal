@@ -37,7 +37,7 @@ describe('notification', () => {
       const [imsUrl, imsOpts] = fetchMock.mock.calls[0];
       expect(imsUrl).toContain('ims-na1-stg1.adobelogin.com/ims/token/v3');
       expect(imsOpts.body.toString()).toContain('grant_type=client_credentials');
-      expect(fetchMock.mock.calls[1][0]).toContain('stage.postoffice.adobe.com');
+      expect(fetchMock.mock.calls[1][0]).toContain('apo-stage.adobe.io');
     });
 
     it('sends to the user, correct template, magic_link and email data, no CC', async () => {
@@ -48,7 +48,8 @@ describe('notification', () => {
 
       const [apoUrl, apoOpts] = fetchMock.mock.calls[1];
       expect(apoUrl).toContain('templateName=expdev_actnow_magiclink');
-      expect(apoOpts.headers.Authorization).toBe('IMS test-token');
+      expect(apoOpts.headers.Authorization).toBe('Bearer test-token');
+      expect(apoOpts.headers['x-api-key']).toBe('apo-client');
       expect(apoOpts.body).toContain('<toList>alice@adobe.com</toList>');
       expect(apoOpts.body).not.toContain('<ccList>');
       expect(apoOpts.body).toContain('<key>magic_link</key>');
@@ -68,8 +69,8 @@ describe('notification', () => {
 
       expect(fetchMock.mock.calls[0][0]).toContain('ims-na1.adobelogin.com');
       expect(fetchMock.mock.calls[0][0]).not.toContain('stg1');
-      expect(fetchMock.mock.calls[1][0]).toContain('postoffice.adobe.com');
-      expect(fetchMock.mock.calls[1][0]).not.toContain('stage.');
+      expect(fetchMock.mock.calls[1][0]).toContain('apo-prod.adobe.io');
+      expect(fetchMock.mock.calls[1][0]).not.toContain('apo-stage');
     });
 
     it('uses authorization_code grant when APO_AUTHORIZATION_CODE is set', async () => {
