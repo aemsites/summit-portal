@@ -20,7 +20,7 @@ the trust model:
 | Authn | none | requires valid staff session cookie |
 | Target page | the recipient-domain's mapped URL | a **specific page** the staffer picked |
 | CUG check | recipient domain vs its own group | recipient domain vs the **chosen page's** CUG groups |
-| Link lifetime | 30 min (booth-unfriendly) | 7 days |
+| Link lifetime | 30 min (booth-unfriendly) | 30 days |
 
 If we reused `/auth/magiclink` we'd have an **open email relay** (any logged-in
 user could email arbitrary addresses) and a link too short-lived for the booth
@@ -49,7 +49,7 @@ Server steps:
    the page's allowed groups. If not → `403 { result: 'forbidden' }`. We do NOT
    send a dead link to an unauthorized address.
 5. **Mint a share token.** `createShareLinkToken(email, env)` → signed JWT
-   `{ purpose: 'sharelink', email, iat, exp }`, `exp = now + 7 days`. Same HMAC
+   `{ purpose: 'sharelink', email, iat, exp }`, `exp = now + 30 days`. Same HMAC
    signing as the session/magic-link tokens.
 6. **Build the URL.** `${origin}${path}?token=<jwt>` (reuse `appendTokenParam`).
 7. **Email it.** `sendShareLinkConfirm(email, url, env, templateName)` via APO.
@@ -65,11 +65,10 @@ calls `verifyMagicLink` (which only accepts `purpose:'magiclink'`). We add
 ## Token design + lifetime
 - New purpose `sharelink`, distinct from `magiclink` so the 30-min self-service
   freshness rule is untouched.
-- **Explicit `exp` of 7 days.** `verifyJwt` already enforces `exp`. Justification:
-  Rachel shares at the booth; the customer may open it that evening or the next
-  day. 30 min is unusable. 7 days covers the event window while staying short
-  enough to bound exposure of a leaked link. Not "non-expiring" — it's a signed,
-  expiring HMAC token, same crypto as everything else.
+- **Explicit `exp` of 30 days.** `verifyJwt` already enforces `exp`. Justification:
+  customers may return to a shared report during post-event follow-up. One month
+  covers that follow-up window while remaining bounded. It is not "non-expiring"
+  — it is a signed, expiring HMAC token, using the same crypto as everything else.
 - Clicking the link still mints only a **1-hour session** (`createSession`), so a
   forwarded link doesn't grant a week-long live session — it grants a week-long
   *ability to start* a 1-hour session, scoped to a domain in the page's CUG.

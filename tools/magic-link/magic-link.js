@@ -134,7 +134,7 @@ function renderScopeNote(scope, publicPath) {
   }
 
   const micrositeUrl = `${magicLinkOrigin}${publicPath}`;
-  root.append(el('p', { className: 'lead', textContent: 'Create a 7-day authenticated link the customer can open with no sign-in.' }));
+  root.append(el('p', { className: 'lead', textContent: 'Create a one-month authenticated link the customer can open with no sign-in.' }));
   root.append(el('p', { className: 'mono url', textContent: micrositeUrl }));
 
   const rows = await fetchCugRows(org, site, token);
@@ -186,7 +186,7 @@ function renderScopeNote(scope, publicPath) {
     result.append(
       el('div', { className: 'result-row' },
         el('img', { className: 'qr', src: qrDataUrl(res.link), alt: 'QR code for the microsite link', width: 180, height: 180 }),
-        el('div', { className: 'linkbox' }, linkField, el('p', { className: 'hint', textContent: 'Anyone with this link opens the microsite for 7 days. Treat it like a password.' }), copyBtn)),
+        el('div', { className: 'linkbox' }, linkField, el('p', { className: 'hint', textContent: 'Anyone with this link can open the microsite for one month. Treat it like a password.' }), copyBtn)),
     );
     genBtn.disabled = false;
   });

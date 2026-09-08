@@ -179,7 +179,7 @@ here (`report-ai-visibility` ships `rav-core.js` and `relocate-section-footer.js
 
 | Unit | Responsibility | Depends on |
 |---|---|---|
-| `share-form.js` (new) | `requestShareLink`, `buildShareForm`, `buildShareSection` — mint/send/copy a 7-day link for one page path | `/auth/sharelink` |
+| `share-form.js` (new) | `requestShareLink`, `buildShareForm`, `buildShareSection` — mint/send/copy a one-month link for one page path | `/auth/sharelink` |
 | `customer-picker.js` | data load, nav model, grid, dialog, filter | the above; the five `/data/` sheets |
 
 The nav builder (`buildNav`) takes the resolved mode list plus an `onChange`
