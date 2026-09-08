@@ -168,6 +168,46 @@
         line-height: 1.45;
       }
 
+      .report-example {
+        max-width: 335px;
+        margin: 0 0 30px;
+        padding: 16px 0 18px;
+        border-top: 1px solid var(--ink);
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .report-example-kicker {
+        margin: 0 0 7px;
+        color: var(--red);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+      }
+
+      .report-example p:not(.report-example-kicker) {
+        margin: 0;
+        color: #514d47;
+        font-size: 14px;
+        line-height: 1.42;
+      }
+
+      .report-example a {
+        display: inline-block;
+        margin-top: 9px;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration-color: var(--red);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 4px;
+      }
+
+      .report-example a::after {
+        margin-left: 5px;
+        color: var(--red);
+        content: "→";
+      }
+
       .field {
         position: relative;
         margin: 0 0 19px;
@@ -453,6 +493,22 @@
         line-height: 1.5;
       }
 
+      .desktop-example {
+        max-width: 390px;
+        margin: 38px 0 auto;
+        padding: 17px 0 19px;
+        border-top: 1px solid var(--ink);
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .desktop-copy .desktop-example p {
+        max-width: 320px;
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .desktop-example .report-example-kicker { margin-bottom: 7px; }
+
       .desktop-wordmark {
         color: var(--red);
         font-size: 12px;
@@ -669,6 +725,11 @@
               <p class="request-kicker">DIGITAL OPPORTUNITY REPORT</p>
               <h2>See where your digital experience can grow.</h2>
               <p class="request-intro">Request a report now. Adobe Sales will prepare it and follow up with you.</p>
+              <aside class="report-example">
+                <p class="report-example-kicker">SEE AN EXAMPLE</p>
+                <p>Want to see what you’ll receive?</p>
+                <a href="#frescopa">Explore the FrescoPa Digital Opportunity Report</a>
+              </aside>
               <div class="field"><label for="full-name">Full name</label><input id="full-name" placeholder="Jordan Lee"></div>
               <div class="field"><label for="email">Business email</label><input id="email" type="email" inputmode="email" placeholder="jordan@company.com"></div>
               <div class="field"><label for="company">Company</label><input id="company" placeholder="Company name"></div>
@@ -723,7 +784,16 @@
             <div class="desktop-public-header"><span><i aria-hidden="true"></i>Adobe Summit</span><span>Digital Opportunity Report</span></div>
             <div class="desktop-public-grid">
               <section class="desktop-copy">
-                <div><small>REQUEST A REPORT</small><h2>See where your digital experience can grow.</h2><p>Give Adobe Sales the essentials. We will prepare your report and follow up with you.</p></div>
+                <div>
+                  <small>REQUEST A REPORT</small>
+                  <h2>See where your digital experience can grow.</h2>
+                  <p>Give Adobe Sales the essentials. We will prepare your report and follow up with you.</p>
+                  <aside class="desktop-example report-example">
+                    <p class="report-example-kicker">SEE AN EXAMPLE</p>
+                    <p>Want to see what you’ll receive?</p>
+                    <a href="#frescopa">Explore the FrescoPa Digital Opportunity Report</a>
+                  </aside>
+                </div>
                 <span class="desktop-wordmark">ADOBE SUMMIT · 2026</span>
               </section>
               <section class="desktop-form">
