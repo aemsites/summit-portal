@@ -71,6 +71,7 @@ export default function init(el) {
   const shell = document.createElement('section');
   shell.className = 'rrl-shell';
   shell.innerHTML = `
+    <a class="rrl-back" href="/adobe/dashboard">← Back to dashboard</a>
     <p class="rrl-kicker">Adobe internal</p>
     <div class="rrl-title-row"><h1>Report requests</h1></div>
     <div class="rrl-controls">
