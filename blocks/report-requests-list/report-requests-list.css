@@ -27,6 +27,15 @@
   text-transform: uppercase;
 }
 
+.report-requests-list .rrl-back {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--rrl-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+
 .report-requests-list .rrl-title-row {
   padding-bottom: 18px;
   border-bottom: 2px solid var(--rrl-ink);

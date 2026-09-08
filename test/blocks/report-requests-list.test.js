@@ -40,6 +40,7 @@ describe('report-requests-list', () => {
     init(block);
     await settle();
 
+    expect(block.querySelector('.rrl-back').getAttribute('href')).to.equal('/adobe/dashboard');
     expect(block.textContent).to.include('Jordan Lee');
     expect(block.textContent).to.not.include('internal-id');
     const search = block.querySelector('input[type="search"]');

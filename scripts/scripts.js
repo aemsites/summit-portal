@@ -1,4 +1,4 @@
-import { loadStyle, loadArea, setConfig } from './ak.js';
+import { loadStyle, loadArea, loadBlock, setConfig } from './ak.js';
 
 const hostnames = ['authorkit.dev'];
 
@@ -33,9 +33,17 @@ const decorateArea = ({ area = document }) => {
   eagerLoad(area, 'img');
 };
 
+export async function ensureRequiredRouteBlocks(pathname = window.location.pathname) {
+  if (pathname === '/adobe/report-requests') {
+    const block = document.querySelector('.report-requests-list');
+    if (block && !block.querySelector('.rrl-shell')) await loadBlock(block);
+  }
+}
+
 export async function loadPage() {
   setConfig({ hostnames, locales, linkBlocks, components, decorateArea });
   await loadArea();
+  await ensureRequiredRouteBlocks();
 }
 await loadPage();
 
