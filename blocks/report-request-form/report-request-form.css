@@ -339,6 +339,8 @@
 }
 
 .report-request-form .rrf-success li::before {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   color: var(--color-adobe-red);
   content: counter(steps, decimal-leading-zero);
   font-size: 12px;
@@ -348,6 +350,7 @@
 .report-request-form .rrf-success strong,
 .report-request-form .rrf-success span {
   display: block;
+  grid-column: 2;
 }
 
 .report-request-form .rrf-success strong {
@@ -404,6 +407,11 @@
     margin: auto;
     padding: 44px;
     background: var(--rrf-panel);
+  }
+
+  .report-request-form .rrf-success h2 {
+    max-width: none;
+    white-space: nowrap;
   }
 
   .report-request-form .rrf-fields {
