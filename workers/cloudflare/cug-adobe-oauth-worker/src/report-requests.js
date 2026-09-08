@@ -8,6 +8,11 @@ const RATE_LIMIT_WINDOW_SECONDS = 600;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const CONSENT_VERSION = 'adobe-privacy-v1';
 const IDENTITY_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+// Direct AEM delivery URLs do not share the Worker origin, so limit CORS to them.
+const PUBLIC_FORM_ORIGINS = new Set([
+  'https://main--summit-portal--aemsites.aem.page',
+  'https://main--summit-portal--aemsites.aem.live',
+]);
 
 const NO_STORE_HEADERS = {
   'Cache-Control': 'private, no-store',
@@ -25,6 +30,26 @@ const normaliseText = (value) => (typeof value === 'string' ? value.trim().repla
 
 function privateResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: NO_STORE_HEADERS });
+}
+
+function publicFormCorsHeaders(request) {
+  const origin = request.headers.get('Origin');
+  if (!PUBLIC_FORM_ORIGINS.has(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Idempotency-Key',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  };
+}
+
+function withPublicFormCors(response, request) {
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: { ...Object.fromEntries(response.headers), ...publicFormCorsHeaders(request) },
+  });
 }
 
 function invalid(message) {
@@ -351,8 +376,17 @@ async function handleCsv(url, env) {
  */
 export async function handleReportRequests(request, env, session) {
   const url = new URL(request.url);
+  if (url.pathname === '/api/report-requests' && request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'private, no-store',
+        ...publicFormCorsHeaders(request),
+      },
+    });
+  }
   if (url.pathname === '/api/report-requests' && request.method === 'POST') {
-    return handleCreate(request, env);
+    return withPublicFormCors(await handleCreate(request, env), request);
   }
   if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method Not Allowed', { status: 405 });
 

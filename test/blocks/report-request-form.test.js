@@ -77,7 +77,8 @@ describe('report-request-form', () => {
     await settle();
 
     expect(fetchStub.calledOnce).to.equal(true);
-    const [, options] = fetchStub.firstCall.args;
+    const [url, options] = fetchStub.firstCall.args;
+    expect(url).to.equal('https://act.aem.now/api/report-requests');
     expect(options.headers['Idempotency-Key']).to.match(/^[A-Za-z0-9-]+$/);
     expect(JSON.parse(options.body)).to.include({
       fullName: 'Jordan Lee',

@@ -1,6 +1,6 @@
 import { getMetadata } from '../../scripts/ak.js';
 
-const API_PATH = '/api/report-requests';
+const API_PATH = 'https://act.aem.now/api/report-requests';
 const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 const fieldSpecs = [
