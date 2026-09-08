@@ -71,6 +71,22 @@ describe('report requests', () => {
     expect(unavailable.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
+  it('allows the public AEM delivery origins to submit report requests to act.aem.now', async () => {
+    const origin = 'https://main--summit-portal--aemsites.aem.page';
+    const response = await handleReportRequests(new Request('https://act.aem.now/api/report-requests', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type,idempotency-key',
+      },
+    }), environment(), null);
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
+    expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Idempotency-Key');
+  });
+
   it('stores normalised data, consent provenance, and no Turnstile or IP data', async () => {
     const env = environment();
     const response = await handleReportRequests(request(validBody), env, null);
