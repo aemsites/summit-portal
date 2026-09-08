@@ -45,6 +45,9 @@ describe('report-request-form', () => {
     expect([...block.querySelectorAll('input')].map((input) => input.name))
       .to.deep.equal(['fullName', 'email', 'company', 'website', 'jobTitle', 'primaryMarket', 'websiteConfirm', 'consent']);
     expect(block.querySelector('details summary').textContent).to.equal('Add optional details');
+    const example = block.querySelector('.rrf-example');
+    expect(example.textContent).to.include('Want to see what you\'ll receive?');
+    expect(example.querySelector('a').getAttribute('href')).to.equal('/example-report/frescopa/');
     expect(block.textContent).to.not.include('DR ID');
     expect(block.textContent).to.not.include('event code');
   });

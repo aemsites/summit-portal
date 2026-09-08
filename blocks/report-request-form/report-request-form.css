@@ -49,10 +49,51 @@
 
 .report-request-form .rrf-intro {
   max-width: 34ch;
-  margin: 20px 0 31px;
+  margin: 20px 0 24px;
   color: var(--rrf-muted);
   font-size: var(--body-font-size-m);
   line-height: 1.45;
+}
+
+.report-request-form .rrf-example {
+  max-width: 34ch;
+  margin: 0 0 31px;
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--rrf-ink);
+  border-bottom: 1px solid var(--rrf-rule);
+}
+
+.report-request-form .rrf-example p {
+  margin: 0;
+  color: var(--rrf-muted);
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+.report-request-form .rrf-example .rrf-example-kicker {
+  margin-bottom: 7px;
+  color: var(--color-adobe-red);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.report-request-form .rrf-example a {
+  display: inline-block;
+  margin-top: 9px;
+  color: var(--rrf-ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration-color: var(--color-adobe-red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.report-request-form .rrf-example a::after {
+  margin-left: 5px;
+  color: var(--color-adobe-red);
+  content: '→';
 }
 
 .report-request-form-form {
@@ -84,7 +125,8 @@
 .report-request-form .rrf-field input:focus-visible,
 .report-request-form .rrf-consent input:focus-visible,
 .report-request-form .rrf-optional summary:focus-visible,
-.report-request-form .rrf-action button:focus-visible {
+.report-request-form .rrf-action button:focus-visible,
+.report-request-form .rrf-example a:focus-visible {
   outline: 3px solid var(--color-adobe-red);
   outline-offset: 3px;
 }
@@ -342,7 +384,8 @@
 
   .report-request-form .rrf-kicker,
   .report-request-form h1,
-  .report-request-form .rrf-intro {
+  .report-request-form .rrf-intro,
+  .report-request-form .rrf-example {
     grid-column: 1;
   }
 
@@ -350,7 +393,7 @@
   .report-request-form .rrf-success,
   .report-request-form .rrf-unavailable {
     grid-column: 2;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
   }
 
   .report-request-form .rrf-fields {

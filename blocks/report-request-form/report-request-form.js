@@ -285,6 +285,11 @@ export default function init(el) {
     <p class="rrf-kicker">Digital Opportunity Report</p>
     <h1>See where your digital experience can grow.</h1>
     <p class="rrf-intro">Request a report now. Adobe Sales will prepare it and follow up with you.</p>
+    <aside class="rrf-example">
+      <p class="rrf-example-kicker">See an example</p>
+      <p>Want to see what you'll receive?</p>
+      <a href="/example-report/frescopa/">Explore the FrescoPa Digital Opportunity Report</a>
+    </aside>
   `;
   if (!siteKey) {
     const unavailable = document.createElement('p');
