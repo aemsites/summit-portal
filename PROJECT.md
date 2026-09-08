@@ -13,6 +13,8 @@ The current content is a **sample report for Nike**, used during development. In
 
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
+- `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
+- `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.
 
 ## Project Structure
 
@@ -78,6 +80,12 @@ Its auto-loaded `docs.css` scopes **every** rule under `.docs-page`, so dropping
 ### metadata
 Authored page-data block: each row becomes a `<meta>` tag (or sets `document.title` / `lang`), then the block removes itself. **Single-section reports** (e.g. insight reports) author every block — `report-hero`, `report-stats`, `report-carousel`, … plus `metadata` — inside **one** `main > div` section sharing one `.block-content`. So `init()` must NOT remove its `.section` unconditionally: it drops the `.metadata` element, then removes the `.block-content`/`.section` only when nothing else remains. Removing the section unconditionally wiped the entire report (the 18th Digitech regression after PR #73). `hidePageDataSections()` (run from `lazy.js`) is the broader cleanup for standalone page-data sections and is a no-op on single-section reports because the metadata element/markers are already gone by the lazy phase.
 
+### report-request-form
+Public, mobile-first request form. Its authoring contract is intentionally empty: customer fields are fixed in code to prevent collecting context intended for internal report generation. Required fields are full name, business email, company, website/domain, and contact consent; role/job title and primary market are optional. The form adds a honeypot, obtains a Cloudflare Turnstile token using the page's `turnstile-sitekey` metadata, creates one browser-lifecycle idempotency key, and sends JSON to `POST /api/report-requests`. Browser validation mirrors the Worker but server validation remains authoritative. On success, the visitor sees only the Adobe Sales handoff state — the generated request ID is internal-only for idempotency and auditing, not a support reference.
+
+### report-requests-list
+Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads newest-first rows from `GET /api/report-requests`, supports a debounced text search and cursor pagination, and keeps the CSV download query synchronized with the active search. On mobile, rows use labelled records rather than a horizontally overflowing table. The list intentionally has no event filter, workflow status, owner, assignment, editing, or internal request-ID surface.
+
 ### header
 Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor.
 
@@ -100,6 +108,16 @@ Renders copyright text and a horizontal list of legal links (Terms of use, Priva
 ## Authentication
 
 Auth is handled by the Cloudflare worker in `workers/cloudflare/cug-adobe-oauth-worker` (OAuth+PKCE via Adobe IMS, plus self-service magic links and staff-issued share links; CUG enforcement reads `x-aem-cug-*` headers from the origin). Token/session lifetimes (`src/session.js`): **magic link = 30 min** (`MAGIC_LINK_MAX_AGE`, self-service freshness); **share link = 30 days** (`SHARE_LINK_TTL`, dashboard and DA tool sharing). Session length is **per-login-type** (`sessionTtlForEmail`): a **staff** login (email domain in `STAFF_DOMAINS` = `adobe.com,semrush.com`) gets **4 days** (`EVENT_SESSION_TTL`) so an event device logged in over the weekend stays in all week; a **customer** session keeps **4 hours** (`SESSION_TTL`). Both the signed-JWT `exp` and the `auth_token` cookie `Max-Age` derive from that TTL. Applied at every mint point: OAuth callback and `?token=` magic/share-link redemption. Alongside the HttpOnly `auth_token`, the worker sets a non-HttpOnly **`signed_in` marker cookie** (`Max-Age = SESSION_TTL + 1 day`, so it outlives a timed-out session) carrying no identity/authorization — it only lets the header tell "session lapsed" from "never signed in" to show the expiry notice. The marker is set wherever a session is minted and cleared on `/auth/logout`.
+
+### Report-request API and lead storage
+
+`workers/cloudflare/cug-adobe-oauth-worker/src/report-requests.js` owns the lead boundary:
+
+- `POST /api/report-requests` is public, JSON-only, size-bounded, and verifies Cloudflare Turnstile server-side. It applies a honeypot, a best-effort 5-per-10-minute salted IP-digest KV rate limit, and salted idempotency-key deduplication. Raw client IPs and Turnstile tokens are never persisted or logged.
+- `GET /api/report-requests` and `GET /api/report-requests.csv` require `session.method === 'oauth'` and an exact `@adobe.com` email. Event-staff credentials, Semrush OAuth, magic links, and share links receive `401`/`403`, even though some can access other staff surfaces.
+- Durable records are stored in the `REPORT_REQUESTS` D1 binding using `migrations/0001_report_requests.sql`: internal request ID, timestamp, submitted fields, consent version/timestamp, and search text. Responses that contain lead information — and errors from these endpoints — send `Cache-Control: private, no-store`. CSV cells are quoted and formula-prefixed values are escaped.
+
+The form does not generate a report or add submission telemetry. D1 is provisioned and migrated, the internal salts and `TURNSTILE_SECRET_KEY` are configured, and the managed Turnstile widget is bound to `act.aem.now` with its public site key in DA metadata. Before production launch, establish D1 backup/recovery and obtain approval for the privacy copy, accountable data owner, and retention/deletion policy. Data is retained until that policy is approved; no automated deletion is configured.
 
 **Why staff sessions open every customer page:** the live CUG config gates every customer page to `adobe.com, semrush.com, <customer-domain>`, so a logged-in Adobe/Semrush staff session can search the dashboard (`/adobe/dashboard`) and open any report directly, then email it to a customer with the existing **Share** button (one-month link). No per-customer links need to live on a device.
 

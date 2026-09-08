@@ -23,6 +23,7 @@ import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
+import { handleReportRequests } from './report-requests.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -226,6 +227,13 @@ const handleRequest = async (request, env) => {
         'Cache-Control': 'private, no-store',
       },
     });
+  }
+
+  // Public lead creation and Adobe-IMS-only lead retrieval never proxy to the
+  // EDS origin. This keeps request data in D1 and outside authored content.
+  if (url.pathname === '/api/report-requests' || url.pathname === '/api/report-requests.csv') {
+    const session = await getSession(request, env);
+    return handleReportRequests(request, env, session);
   }
 
   // RUM and media requests bypass authentication
