@@ -37,7 +37,7 @@ per-customer link onto the device." It is only:
 2. **Keep that session alive for the whole event** (today it dies after 4h).
 
 The existing customer-facing **Share** button (`customer-picker.js` → `/auth/sharelink`,
-7-day links) already covers "email this report to a customer mid-meeting" with no device
+one-month links) already covers "email this report to a customer mid-meeting" with no device
 dependency. No change needed there.
 
 ---
@@ -58,7 +58,7 @@ Three changes, all in the auth worker + login UI:
 ### Explicitly out of scope (YAGNI)
 - Per-customer magic-link spreadsheets / AirDrop flow — unnecessary (staff CUG access).
 - Any edit to the ~2,154 CUG rows — staff domains already cover every page.
-- Changes to the customer Share tool — already issues 7-day links.
+- Changes to the customer Share tool — already issues one-month links.
 - Everything else from the broader call analysis (outcome capture, source badges, QR,
   playbook) — tracked separately, not here.
 
@@ -159,7 +159,7 @@ auth_token cookie (4-day, gen_epoch claim)       claim gen_epoch)
    │
    ▼
 GET /adobe/dashboard ─► search company ─► open /accounts/.../report  (CUG: adobe.com ✓)
-                                          └─► Share button ─► /auth/sharelink (7-day link)
+                                          └─► Share button ─► /auth/sharelink (one-month link)
 ```
 
 No CUG-row edits. No new external dependency. Customer access paths untouched.
@@ -191,7 +191,7 @@ No CUG-row edits. No new external dependency. Customer access paths untouched.
 
 **Manual (real iPad, Safari):**
 - staff-login → lands on `/adobe/dashboard` → search a company → open its report
-  (CUG passes) → Share to a test email (7-day link arrives).
+  (CUG passes) → Share to a test email (one-month link arrives).
 - session still valid after a simulated multi-day gap (short test TTL or device-clock shift).
 - magic-link fallback to a staff email works on the device.
 
