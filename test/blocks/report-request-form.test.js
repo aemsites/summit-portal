@@ -88,5 +88,7 @@ describe('report-request-form', () => {
     });
     expect(block.querySelector('.rrf-success').textContent).to.include("We'll take it from here.");
     expect(block.querySelector('.rrf-success').textContent).to.not.include('internal-only-id');
+    expect(block.querySelector('.rrf-shell > h1')).to.equal(null);
+    expect(block.querySelector('.rrf-shell').children).to.have.length(1);
   });
 });
