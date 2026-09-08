@@ -45,15 +45,16 @@ export function createMockD1() {
   const execute = (sql, params) => {
     if (sql.startsWith('INSERT OR IGNORE INTO report_request_idempotency')) {
       const [hash, requestId, createdAt] = params;
+      if (!requests.has(requestId)) throw new Error('FOREIGN KEY constraint failed');
       if (!idempotency.has(hash)) idempotency.set(hash, { requestId, createdAt });
       return { success: true };
     }
     if (sql.startsWith('INSERT INTO report_requests')) {
       const [
         requestId, submittedAt, fullName, email, company, website, jobTitle, primaryMarket,
-        consentVersion, consentedAt, searchText, hash, expectedRequestId,
+        consentVersion, consentedAt, searchText,
       ] = params;
-      if (idempotency.get(hash)?.requestId === expectedRequestId && !requests.has(requestId)) {
+      if (!requests.has(requestId)) {
         requests.set(requestId, {
           request_id: requestId,
           submitted_at: submittedAt,
@@ -68,6 +69,11 @@ export function createMockD1() {
           search_text: searchText,
         });
       }
+      return { success: true };
+    }
+    if (sql.startsWith('DELETE FROM report_requests')) {
+      const [requestId, hash, expectedRequestId] = params;
+      if (idempotency.get(hash)?.requestId !== expectedRequestId) requests.delete(requestId);
       return { success: true };
     }
     if (sql.includes('FROM report_request_idempotency i JOIN report_requests')) {
@@ -110,7 +116,9 @@ export function createMockD1() {
 
   return {
     prepare,
-    batch: async (statements) => Promise.all(statements.map((statement) => statement.run())),
+    batch: async (statements) => {
+      for (const statement of statements) await statement.run();
+    },
     requests,
     idempotency,
     _requests: requests,

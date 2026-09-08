@@ -310,16 +310,10 @@ async function handleCreate(request, env) {
     .filter(Boolean).join(' ').toLowerCase();
 
   await env.REPORT_REQUESTS.batch([
-    env.REPORT_REQUESTS.prepare(
-      'INSERT OR IGNORE INTO report_request_idempotency (request_key_hash, request_id, created_at) VALUES (?, ?, ?)',
-    ).bind(keyHash, requestId, submittedAt),
     env.REPORT_REQUESTS.prepare(`INSERT INTO report_requests (
       request_id, submitted_at, full_name, email, company, website, job_title, primary_market,
       consent_version, consented_at, search_text
-    ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      WHERE EXISTS (
-        SELECT 1 FROM report_request_idempotency WHERE request_key_hash = ? AND request_id = ?
-      )`).bind(
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
       requestId,
       submittedAt,
       fullName,
@@ -331,9 +325,20 @@ async function handleCreate(request, env) {
       CONSENT_VERSION,
       submittedAt,
       searchText,
+    ),
+    env.REPORT_REQUESTS.prepare(
+      'INSERT OR IGNORE INTO report_request_idempotency (request_key_hash, request_id, created_at) VALUES (?, ?, ?)',
+    ).bind(
       keyHash,
       requestId,
+      submittedAt,
     ),
+    // A concurrent retry may already own this idempotency key.
+    env.REPORT_REQUESTS.prepare(`DELETE FROM report_requests
+      WHERE request_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM report_request_idempotency WHERE request_key_hash = ? AND request_id = ?
+      )`).bind(requestId, keyHash, requestId),
   ]);
 
   const stored = await env.REPORT_REQUESTS.prepare(`SELECT r.request_id, r.submitted_at
