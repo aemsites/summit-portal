@@ -350,6 +350,7 @@ describe('customer-picker › share-form', () => {
     expect(form.querySelector('.cp-share-input')).to.exist;
     expect(form.querySelector('.cp-share-send')).to.exist;
     expect(form.querySelector('.cp-share-copy')).to.exist;
+    expect(form.querySelector('.cp-share-hint').textContent).to.include('Works for one month.');
   });
 
   it('returns null when the company has no folder', () => {
