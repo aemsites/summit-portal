@@ -156,7 +156,9 @@ function successView(form) {
       <li><strong>Adobe Sales follows up</strong><span>We'll share your report and help you decide what to explore next.</span></li>
     </ol>
   `;
-  form.replaceWith(success);
+  const shell = form.closest('.rrf-shell');
+  if (shell) shell.replaceChildren(success);
+  else form.replaceWith(success);
   success.focus();
 }
 

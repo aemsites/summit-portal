@@ -390,10 +390,20 @@
   }
 
   .report-request-form-form,
-  .report-request-form .rrf-success,
   .report-request-form .rrf-unavailable {
     grid-column: 2;
     grid-row: 1 / span 4;
+  }
+
+  .report-request-form .rrf-success {
+    width: 100%;
+    max-width: 640px;
+    box-sizing: border-box;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin: auto;
+    padding: 44px;
+    background: var(--rrf-panel);
   }
 
   .report-request-form .rrf-fields {
@@ -405,10 +415,6 @@
   .report-request-form .rrf-field:nth-child(3),
   .report-request-form .rrf-field:nth-child(4) {
     grid-column: span 1;
-  }
-
-  .report-request-form .rrf-success {
-    background: var(--rrf-panel);
   }
 }
 
