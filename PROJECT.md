@@ -114,7 +114,7 @@ Auth is handled by the Cloudflare worker in `workers/cloudflare/cug-adobe-oauth-
 
 `workers/cloudflare/cug-adobe-oauth-worker/src/report-requests.js` owns the lead boundary:
 
-- `POST /api/report-requests` is public, JSON-only, size-bounded, and verifies Cloudflare Turnstile server-side. It applies a honeypot, a best-effort 5-per-10-minute salted IP-digest KV rate limit, and salted idempotency-key deduplication. Raw client IPs and Turnstile tokens are never persisted or logged.
+- `POST /api/report-requests` is public, JSON-only, size-bounded, and verifies Cloudflare Turnstile server-side. It applies a honeypot, then a best-effort 5-per-10-minute salted IP-digest KV rate limit only after a valid Turnstile challenge, and salted idempotency-key deduplication. Raw client IPs and Turnstile tokens are never persisted or logged.
 - `GET /api/report-requests` and `GET /api/report-requests.csv` require `session.method === 'oauth'` and an exact `@adobe.com` email. Event-staff credentials, Semrush OAuth, magic links, and share links receive `401`/`403`, even though some can access other staff surfaces.
 - Durable records are stored in the `REPORT_REQUESTS` D1 binding using `migrations/0001_report_requests.sql`: internal request ID, timestamp, submitted fields, consent version/timestamp, and search text. Responses that contain lead information — and errors from these endpoints — send `Cache-Control: private, no-store`. CSV cells are quoted and formula-prefixed values are escaped.
 

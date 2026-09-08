@@ -123,6 +123,17 @@ describe('report requests', () => {
     expect(env.REPORT_REQUESTS.requests.size).toBe(0);
   });
 
+  it('does not let failed Turnstile challenges consume a visitor rate-limit slot', async () => {
+    const env = environment();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: false }))));
+    for (let index = 0; index < 5; index += 1) {
+      expect((await handleReportRequests(request(validBody, `failed-challenge-${index}-1234`), env, null)).status).toBe(400);
+    }
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(TURNSTILE_RESPONSE.clone()));
+    expect((await handleReportRequests(request(validBody, 'verified-challenge-1234'), env, null)).status).toBe(201);
+  });
+
   it('rate limits public submission attempts without retaining the raw client IP', async () => {
     const env = environment();
     for (let index = 0; index < 5; index += 1) {

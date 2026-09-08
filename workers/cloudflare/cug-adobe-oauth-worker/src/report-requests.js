@@ -283,9 +283,6 @@ async function handleCreate(request, env) {
   if (databaseUnavailable(env)) {
     return privateResponse({ error: 'Report requests are unavailable.' }, 503);
   }
-  if (!await rateLimit(request, env)) {
-    return privateResponse({ error: 'Too many requests. Please try again later.' }, 429);
-  }
 
   const parsed = await parsePublicRequest(request);
   if (parsed.error) return parsed.error;
@@ -298,6 +295,9 @@ async function handleCreate(request, env) {
   }
   if (!await verifyTurnstile(parsed.body.turnstileToken, env)) {
     return privateResponse({ error: 'We could not verify your submission. Please try again.' }, 400);
+  }
+  if (!await rateLimit(request, env)) {
+    return privateResponse({ error: 'Too many requests. Please try again later.' }, 429);
   }
 
   const requestId = crypto.randomUUID();
