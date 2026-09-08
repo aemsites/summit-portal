@@ -73,5 +73,5 @@ id = "93e205ef87f54e188fe1c06bacc9a397"
 [[env.summit.d1_databases]]
 binding = "REPORT_REQUESTS"
 database_name = "summit-portal-report-requests"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "1c7c03ed-ee6f-448e-acb2-4f87ca29ec2c"
 migrations_dir = "migrations"
