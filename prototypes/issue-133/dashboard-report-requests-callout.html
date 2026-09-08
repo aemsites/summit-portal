@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- PROTOTYPE ONLY — Issue #133 dashboard callout review. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Issue #133 — Dashboard report requests callout</title>
+    <link rel="stylesheet" href="../../styles/styles.css">
+    <link rel="stylesheet" href="../../blocks/report-callout/report-callout.css">
+    <style>
+      body {
+        margin: 0;
+        background: var(--color-surface-alt);
+      }
+
+      main {
+        display: block;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 48px 24px;
+      }
+
+      .block-content {
+        display: block;
+      }
+
+      .prototype-label {
+        margin: 0 0 20px;
+        color: var(--color-text-muted);
+        font-size: 13px;
+      }
+
+      @media (width < 1000px) {
+        main {
+          padding: 24px 0;
+        }
+
+        .prototype-label {
+          padding-inline: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="prototype-label">Dashboard · Insights tab</p>
+      <div class="block-content">
+        <div class="report-callout report-requests">
+          <aside class="rcl-bar rcl-bar-report-requests">
+            <div class="rcl-announcement">
+              <p class="rcl-announcement-status">New · Public report requests</p>
+              <div class="rcl-announcement-copy">
+                <h2>Customers can now request a Digital Opportunity Report online.</h2>
+                <p>Share the public form with customers—no Adobe sign-in required. When a customer appears in the request list, generate their report in <a href="https://digital-insights.corp.adobe.com/" target="_blank" rel="noreferrer">Digital Insights</a>, then use this dashboard to send the customer their magic link.</p>
+              </div>
+            </div>
+            <div class="rcl-announcement-actions">
+              <a class="rcl-announcement-action rcl-announcement-action-primary" href="/adobe/report-requests">Open report requests</a>
+              <a class="rcl-announcement-action" href="/request-report">View public request form</a>
+            </div>
+          </aside>
+        </div>
+        <div class="report-callout neutral">
+          <div class="rcl-bar">
+            <span class="rcl-icon">📘</span>
+            <p class="rcl-text"><strong>New — Sales Playbook:</strong> learn how to present and defend a Digital Opportunity Report. <a href="/docs/sales-playbook">Open the Sales Playbook</a></p>
+          </div>
+        </div>
+        <div class="report-callout neutral">
+          <div class="rcl-bar">
+            <span class="rcl-icon">ℹ️</span>
+            <p class="rcl-text"><strong>Why a report may be incomplete.</strong> Some sections depend on the data available for that domain.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
