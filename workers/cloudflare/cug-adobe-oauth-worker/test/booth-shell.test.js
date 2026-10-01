@@ -32,7 +32,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/styles/booth.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/styles/booth.css', '/styles/booth-report.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(1000);
@@ -43,6 +43,16 @@ describe('bundled booth shell and exact report injection', () => {
     expect((await serveBooth(new Request('https://portal.example/booth', { method: 'POST' }), env)).status).toBe(405);
   });
 
+  it('revalidates only the report adapter/assets and serves its versioned URL', async () => {
+    for (const path of ['/scripts/booth-report.js?v=portrait-1', '/styles/booth-report.css']) {
+      const response = await serveBooth(new Request(`https://portal.example${path}`), env);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Cache-Control')).toBe('no-cache');
+    }
+    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth.js'), env);
+    expect(unchanged.headers.has('Cache-Control')).toBe(false);
+  });
+
   it('injects only an authorized successful HTML report with exact selected pathname', async () => {
     const transform = vi.fn((response) => response);
     class Rewriter {
@@ -50,7 +60,7 @@ describe('bundled booth shell and exact report injection', () => {
         const append = vi.fn();
         handler.element({ append });
         expect(selector).toBe('body');
-        expect(append.mock.calls[0][0]).toContain('/scripts/booth-report.js');
+        expect(append.mock.calls[0][0]).toContain('/scripts/booth-report.js?v=portrait-1');
         return { transform };
       }
     }
