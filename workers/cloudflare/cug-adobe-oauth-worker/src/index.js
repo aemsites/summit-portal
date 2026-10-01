@@ -26,7 +26,7 @@ import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
 import { handleBooth } from './booth.js';
-import { serveBooth, injectBoothReturn } from './booth-shell.js';
+import { serveBooth, injectBoothReturn, protectBoothDocument } from './booth-shell.js';
 
 export { BoothCoordinator } from './booth.js';
 
@@ -130,6 +130,9 @@ const handleRequest = async (request, env) => {
     redirectTo.pathname = `${url.pathname}/`;
     return Response.redirect(redirectTo.href, 308);
   }
+
+  const boothDocument = await protectBoothDocument(request, env);
+  if (boothDocument) return boothDocument;
 
   if (isRUMRequest(url)) {
     if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
@@ -313,6 +316,8 @@ const handleRequest = async (request, env) => {
   const originResponse = await proxyToOrigin(request, env, url);
 
   const response = await checkCugAccess(originResponse, session, request, env);
+  const currentBoothDocument = await protectBoothDocument(request, env);
+  if (currentBoothDocument) return currentBoothDocument;
   return injectBoothReturn(response, request, env);
 };
 

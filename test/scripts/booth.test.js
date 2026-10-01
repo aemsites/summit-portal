@@ -54,7 +54,7 @@ describe('booth runtime boundary', () => {
       </form><p id="email-error"></p></section>
       <section data-panel="picker" hidden><div id="report-options"></div><p id="picker-status"></p></section>
       <section data-panel="finish" hidden><button id="send-report"></button><p id="finish-status"></p></section>
-      <button id="motion-toggle"></button><span id="step-index"></span>
+      <button id="motion-toggle"></button><button id="staff-exit"></button><span id="step-index"></span>
     </main>`;
     sandbox.stub(window, 'addEventListener');
     sandbox.stub(window.history, 'replaceState');

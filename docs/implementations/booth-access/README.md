@@ -21,7 +21,7 @@ reading my report** control only when its pathname exactly matches the valid
 server context. It returns to `/booth?step=finish`. **Email my report** sends to
 the address stored by lookup; the browser cannot supply another recipient or
 path. Adobe specialist/follow-up guidance remains informational. Reset clears
-attendee state, not the staff login.
+attendee state, not the staff login or non-PII device-mode marker.
 
 **Identity limitation:** asserted email is identification, not authentication.
 Anyone asserting a permitted address or domain can view its prepared reports on
@@ -100,7 +100,7 @@ mobile, safe labels, reduced motion, failed send, idle, bfcache and reset failur
 No simulated-success mode is shipped in runtime code. The historical
 `design/booth-preview.html` stays a mockup, never the production route.
 
-**Verification recorded October 1:** full Worker Vitest: 261 passed, one existing
+**Verification recorded October 1:** full Worker Vitest: 268 passed, one existing
 skip; targeted Chrome WTR: six passed; new/isolated runtime and CSS lint clean;
 Wrangler summit dry-run passed. Local real workerd
 smoke verified staff shell, three bundled assets, actual Durable Object
@@ -124,16 +124,28 @@ Two browser regressions went red before this fix and pass afterward. Explicit
 portrait/mobile rendering confirms a 62px recovery control, no horizontal
 overflow and no false success after a failed reset.
 
-**Live rollout evidence:** parent deployed the original `cb6871f` runtime and
-then the `e1df6b4` redirect correction. Active Worker version reported:
-`45ee8181-2d01-4108-a9f0-ad27506c3a5b`. Authenticated Entry works; lookup changed
-from 502 to 404. The first failure was Cloudflare workerd rejecting
+**Live rollout evidence:** parent deployed `0a5949b7`, Worker version
+`057e241a-4bb3-4cb2-9538-7a0ef313c77b`. The approved exact-email lookup opened
+one prepared report directly; real content and the fixed Finish control were
+visible at the top of a long report. One deliberate email request returned
+`sent: true` / `delivery: "sent"` and UI confirmation. **Inbox receipt is not
+verified.** Clear restored Entry without a selected path and retained staff
+authentication. Earlier failures were Cloudflare workerd rejecting
 `redirect: "error"`; discovery now uses supported `manual` and rejects actual
-redirect responses. The 404 exposed an authorized exact-email CUG entry that
+redirect responses, followed by a 404 that exposed an authorized exact-email CUG entry that
 the domain-only matcher overlooked. This branch corrects that matcher without
-editing production CUG data or granting its entire domain. Parent review,
-redeployment and authenticated end-to-end verification of this correction are
-still pending. No real email dispatch or recipient receipt is claimed.
+editing production CUG data or granting its entire domain.
+
+The production Back test then exposed a **fresh report reload** after reset,
+not a bfcache restore: staff remained authorized and the old document returned
+without attendee context. The earlier browser fixture did not cover this server
+boundary. A new signed, staff-session-bound **booth-device marker** now limits
+account document GET/HEAD to the exact live selected report, both before origin
+fetch and before returning its body. Reset retains this non-PII marker. Missing,
+expired, wrong or reset context redirects to Entry; malformed/expired/rotated
+markers deny rather than bypass; source failures remain fail-closed. Fresh
+document and concurrent-reset regressions pass locally. Production verification
+of this final history correction remains pending; do not resend the real email.
 
 ## Deployment and demo gates
 
@@ -162,7 +174,13 @@ customer, confirm the expected report, send once, check actual recipient receipt
 then rehearse reset and back/idle behavior on the final screen/network.
 
 Shared-device browser lockdown is an **operational gate**, not a UI security
-promise. The existing staff session can access other reports. Disable address
+promise. The device marker is a scoped account-document boundary, not a complete
+browser lock. It expires no later than the authenticated staff JWT and binds to
+that exact session; unmarked ordinary staff browsing is unchanged. Assets,
+downloads, other portal routes and already-delivered content are not a global
+kiosk lockdown. **Staff: sign out and leave booth mode** clears attendee state,
+device marker and staff cookies; broader staff browsing then requires login.
+Disable address
 bar/history/tab escape using managed kiosk controls and keep staff nearby.
 Ten-minute server expiry and two-minute interactive idle reset do not revoke
 that session. A failed report reset hides old report content and keeps a visible

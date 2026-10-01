@@ -1,4 +1,7 @@
-import { getSession, staffDomains, isVerifiedMethod } from './session.js';
+import {
+  getSession, staffDomains, isVerifiedMethod, createBoothDeviceToken, verifyBoothDeviceToken,
+  clearSessionCookie, clearSignedInMarkerCookie,
+} from './session.js';
 import { EMAIL_RE, jsonResponse } from './magiclink.js';
 import { parseCugSheetRows, matchSheetGroups } from './cugsheet.js';
 import { handleShareLinkRequest } from './sharelink.js';
@@ -60,6 +63,24 @@ export async function boothStaff(request, env) {
 async function staffBinding(request) {
   const token = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)auth_token=([^\s;]+)/)?.[1];
   return sha256hex(token || '');
+}
+
+export function hasBoothDevice(request) {
+  return /(?:^|;\s*)booth_device=/.test(request.headers.get('Cookie') || '');
+}
+
+export async function boothDeviceAuthorized(request, env) {
+  const session = await boothStaff(request, env);
+  const token = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)booth_device=([^;]*)/)?.[1];
+  if (!session || !token) return false;
+  const marker = await verifyBoothDeviceToken(token, env);
+  return !!marker && marker.exp <= session.exp && marker.binding === await staffBinding(request);
+}
+
+export async function boothDeviceCookie(request, session, env) {
+  const token = await createBoothDeviceToken(await staffBinding(request), session.exp, env);
+  const maxAge = Math.max(0, session.exp - Math.floor(Date.now() / 1000));
+  return `booth_device=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
 }
 
 /** Always fetch fresh private data; stale-if-error CUG caches are not discovery authority. */
@@ -172,7 +193,7 @@ export async function discoverReports(email, env) {
 export async function handleBooth(request, env) {
   if (!await boothStaff(request, env)) return reply({ error: 'Staff authentication required' }, 401);
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'lookup', 'select', 'send', 'reset'].includes(action)) {
+  if (!['status', 'lookup', 'select', 'send', 'reset', 'exit'].includes(action)) {
     return reply({ error: 'Unknown booth action' }, 404);
   }
   if (request.method !== (action === 'status' ? 'GET' : 'POST')) {
@@ -188,8 +209,13 @@ export async function handleBooth(request, env) {
   const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
   const upstream = await stub.fetch(request);
   const response = new Response(upstream.body, upstream);
-  const maxAge = action === 'reset' ? 0 : TTL;
+  const maxAge = ['reset', 'exit'].includes(action) ? 0 : TTL;
   response.headers.set('Set-Cookie', `${COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
+  if (action === 'exit' && response.ok) {
+    response.headers.append('Set-Cookie', 'booth_device=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+    response.headers.append('Set-Cookie', clearSessionCookie());
+    response.headers.append('Set-Cookie', clearSignedInMarkerCookie());
+  }
   return response;
 }
 
@@ -233,7 +259,7 @@ export class BoothCoordinator {
       await this.clear(record);
       record = null;
     }
-    if (action === 'reset') {
+    if (['reset', 'exit'].includes(action)) {
       await this.clear(record);
       return reply({ state: 'entry' });
     }

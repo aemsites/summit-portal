@@ -32,6 +32,7 @@ Neither email nor token is returned to the attendee, analytics or browser storag
 | `POST /auth/booth/select` | `{ path }` only | Selects one exact stored candidate after fresh revalidation; returns `{ state: "report", selectedPath, expiresAt }` |
 | `POST /auth/booth/send` | `{}` only | `{ sent: true }`; email and path derived exclusively from context |
 | `POST /auth/booth/reset` | `{}` | `{ state: "entry" }`; removes attendee context and expires booth cookie, not staff cookie |
+| `POST /auth/booth/exit` | `{}` | `{ state: "entry" }`; clears attendee, device-mode and staff cookies; UI navigates to staff login |
 
 Candidate shape: `{ path, label }`. Labels come from trusted `Customers`/`Report`
 index text and are rendered with `textContent`, not HTML. Error JSON contains
@@ -76,6 +77,18 @@ Opaque random `booth_context` cookie: HttpOnly, Secure, SameSite=Strict, root
 path, ten-minute maximum age. It identifies a Durable Object, not an identity or
 an access grant. The coordinator binds a context to the SHA-256 digest of the
 actual authenticated staff token and rejects another staff session.
+
+Authenticated `/booth` also sets a separate signed HttpOnly, Secure,
+SameSite=Strict `booth_device` cookie containing only purpose, the staff-token
+digest and an expiry no later than that staff JWT. It survives attendee reset
+and expiry, not explicit mode exit. Marked account document GET/HEAD requires
+valid bound staff/device and a live context selecting the exact pathname.
+The Worker checks before origin fetch and again before returning the document;
+the final helper-state check also denies if a concurrent reset cleared context.
+Missing/expired/reset/wrong context redirects to `/booth`; coordinator failure
+returns an explicit fail-closed 503. Canonical slash redirects remain intact.
+Ordinary unmarked browsing/redemption, root/login and asset routes stay unchanged;
+normal CUG authorization remains required even for the selected report.
 
 `SESSIONS` KV holds an immutable `booth:<random key>` record with asserted email
 and candidate paths for ten minutes. Durable Object storage holds the binding,

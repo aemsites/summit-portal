@@ -242,3 +242,16 @@ export async function verifyShareLink(token, env) {
   if (!payload || !payload.email || payload.purpose !== 'sharelink') return null;
   return payload;
 }
+
+export async function createBoothDeviceToken(binding, exp, env) {
+  return signJwt({ purpose: 'booth-device', binding, exp }, env.JWT_SECRET);
+}
+
+export async function verifyBoothDeviceToken(token, env) {
+  const payload = await verifyJwt(token, env.JWT_SECRET);
+  if (payload?.purpose !== 'booth-device'
+    || !/^[a-f0-9]{64}$/.test(payload.binding || '')
+    || !Number.isFinite(payload.exp)
+    || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}

@@ -71,7 +71,7 @@ export function mountBooth(root = document) {
     root.getElementById('staff-login').hidden = error.status !== 401;
   }
 
-  async function reset() {
+  async function reset(action = 'reset') {
     if (resetting) return;
     resetting = true;
     ready = false;
@@ -80,8 +80,12 @@ export function mountBooth(root = document) {
     form.querySelector('button').disabled = true;
     try {
       await settled;
-      const result = await boothRequest('reset', {});
+      const result = await boothRequest(action, {});
       if (result.state !== 'entry') throw new Error('This screen could not be cleared. Retry or ask the booth team.');
+      if (action === 'exit') {
+        window.location.replace('/login?staff&redirect=%2Fadobe%2Fdashboard');
+        return;
+      }
       window.history.replaceState(null, '', '/booth');
       stage.hidden = false;
       ready = true;
@@ -180,7 +184,8 @@ export function mountBooth(root = document) {
     }
   });
 
-  root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', reset));
+  root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
+  root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
   root.getElementById('motion-toggle').addEventListener('click', (event) => {
     const paused = stage.dataset.motion === 'playing';
     stage.dataset.motion = paused ? 'paused' : 'playing';
@@ -200,7 +205,7 @@ export function mountBooth(root = document) {
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) reset();
   });
-  window.addEventListener('popstate', reset);
+  window.addEventListener('popstate', () => reset());
   form.querySelector('button').disabled = true;
   const initialRevision = revision;
   perform('status').then((result) => {

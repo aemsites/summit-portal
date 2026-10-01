@@ -9,10 +9,11 @@ receipt. The child implementation does not deploy or merge production.
 | Isolated booth Worker + evergreen shell | Verified locally | Exact routes, bundled single-source assets, Wrangler dry-run |
 | CUG-authorized discovery + picker | Verified locally | Exact email OR domain; fresh private index/CUG/mapping, most-specific permissions, authorized-alias filtering, explicit selection; neighbor denied |
 | Context + real delivery integration | Verified locally | Bound HttpOnly context, KV TTL, Durable Object serialization, real share/JWT redemption tests; exact-email grants never add an unauthorized domain |
-| Approved Entry/Finish UI + report return | Verified with explicit test fixtures | 2160 × 3840 and 390 × 844; long report fixed control; motion/focus; reset/error/idle/bfcache |
+| Approved Entry/Finish UI + report return | Verified locally and initial live flow | 2160 × 3840 and 390 × 844 fixtures; real selected report and top-visible Finish verified; guarded Entry recovery |
+| Fresh-document history boundary + safe exit | Verified locally; final live gate pending | Bound signed non-PII device marker survives reset; exact selected document only; forged/expired/rotated markers, ordinary unmarked CUG redemption and concurrent-reset tests |
 | Documentation + PR | External PR gate | Current contract/runbook recorded; dedicated app creation failed twice with EMU 403, no matching PR exists |
-| Worker activation | Deployed; correction awaiting review/redeploy | Parent reports active `45ee8181-2d01-4108-a9f0-ad27506c3a5b`; Entry works, redirect-option 502 fixed; exact-email lookup 404 correction verified locally |
-| Actual email receipt | External gate | Staff-authenticated live lookup/send once to approved recipient; no fixture result substitutes |
+| Worker activation | Deployed; final history correction awaiting redeploy | Parent deployed `0a5949b7` as `057e241a-4bb3-4cb2-9538-7a0ef313c77b`; exact lookup/report/Finish/clear passed, then fresh Back reload exposed gap |
+| Real email dispatch / receipt | Dispatch verified; receipt external | One approved send accepted by server and shown in UI; inbox receipt not verified; do not resend during history retest |
 | Final device/privacy acceptance | External gate | Kiosk lockdown, actual CSS viewport, keyboard/network, asserted-email/domain risk acceptance |
 
 ## Superseded ten-task plan
