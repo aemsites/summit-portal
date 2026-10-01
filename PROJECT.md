@@ -22,6 +22,8 @@ The current content is a **sample report for Nike**, used during development. In
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.
 - `/example-report/frescopa` — public, delivery-published FrescoPa sample report. It is a self-contained copy of the approved FrescoPa landing page and PDF, separate from the protected customer route under `/accounts/f/frescopa/`.
 
+**Booth PR source:** at the user's explicit request, the parent pushed the aggregate to personal fork `jose-correia/summit-portal`, branch `josec-adobe-sync-remote`, using command-scoped personal credentials. The dedicated app still attempts its redundant push as `josec_adobe` and fails 403 before PR creation. No PR exists; source is ready for the upstream [manual comparison](https://github.com/aemsites/summit-portal/compare/main...jose-correia:summit-portal:josec-adobe-sync-remote?expand=1). The child upstream branch remains available; runtime is unchanged.
+
 **Booth network recovery:** initial status or idle/reset failures keep lookup blocked but now display a visible **Retry and clear screen** action. It unlocks Entry only after a confirmed server reset, never a blind local clear. Six frontend tests and portrait/mobile recovery fixtures pass; the recovery target is 62px tall on both screen sizes.
 
 ## Project Structure

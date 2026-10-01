@@ -166,8 +166,13 @@ before the isolated purpose rejection. No second real email was sent.
 with EMU 403. The parent's separate dedicated attempt failed before creation
 while pushing `jose-correia/summit-portal` as `josec_adobe` (403). Neither result
 authorized a CLI fallback. The upstream feature branch is pushed; the manual
-comparison is
-https://github.com/aemsites/summit-portal/compare/main...josec-adobe-live-booth-prototype .
+comparison for that branch remains available. At the user's explicit request,
+the parent also successfully pushed the aggregate to the personal fork
+**`jose-correia/summit-portal`**, branch **`josec-adobe-sync-remote`**, using
+command-scoped personal credentials. This is the intended PR source now.
+The dedicated app retry still failed its redundant fork push as `josec_adobe`
+(403); no PR was created. Use the upstream manual comparison:
+https://github.com/aemsites/summit-portal/compare/main...jose-correia:summit-portal:josec-adobe-sync-remote?expand=1 .
 No PR, merge or successful inbox receipt is claimed.
 
 ## Deployment and demo gates
