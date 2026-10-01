@@ -8,7 +8,7 @@ export default defineConfig({
     enforce: 'pre',
     resolveId(source, importer) {
       if (importer?.endsWith('/src/booth-shell.js')
-        && /\/(?:booth\.html|scripts\/booth(?:-report)?\.js|styles\/booth\.css)$/.test(source)) {
+        && /\/(?:booth\.html|scripts\/booth(?:-report)?\.js|styles\/booth(?:-report)?\.css)$/.test(source)) {
         return `${resolve(dirname(importer), source)}.booth-text`;
       }
       return null;

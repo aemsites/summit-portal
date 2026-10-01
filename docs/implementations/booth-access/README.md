@@ -18,7 +18,9 @@ guessed website, company search or new access grant.
 
 The real report retains its content and gains a fixed, touch-friendly **Finish
 reading my report** control only when its pathname exactly matches the valid
-server context. It returns to `/booth?step=finish`. **Email my report** sends to
+server context. Confirmed large portrait reports also receive the reading layout
+described below; ordinary reports retain their existing layout. It returns to
+`/booth?step=finish`. **Email my report** sends to
 the address stored by lookup; the browser cannot supply another recipient or
 path. Adobe specialist/follow-up guidance remains informational. Reset clears
 attendee state, not the staff login or non-PII device-mode marker.
@@ -36,12 +38,12 @@ Addresses without an authored customer CUG permission do not qualify.
 |---|---|
 | Evergreen shell | Root `booth.html`, served at exact `/booth` by Worker |
 | Entry, picker, Finish | `scripts/booth.js`, scoped `styles/booth.css` |
-| Actual report control | `scripts/booth-report.js`, shared lazy import and context-only Worker injection |
+| Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 
-Wrangler bundles the **single source** shell, stylesheet and two scripts, so
+Wrangler bundles the **single source** shell, two stylesheets and two scripts, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
 All other assets/content continue using the existing production origin. The
 logo and Adobe Clean Typekit reference are the approved design assets.
@@ -51,6 +53,51 @@ does not load the ordinary portal chrome or analytics.
 
 See [target design / API contract](context/target-design.md) for authorization,
 context lifetime, concurrency and failure semantics.
+
+## Confirmed report portrait reading
+
+The helper checks `/auth/booth/status` before adding `html.booth-report-active`
+or loading `/styles/booth-report.css`: the state must be `report`, pathname must
+match exactly, and expiry must be a finite future timestamp. Query parameters,
+screen size and stored preferences cannot opt an ordinary report in. The Worker
+continues to return `state: report` after a send; delivery does not change this
+layout contract.
+
+Inside that trusted context, the reading profile applies only at widths of at
+least 1000px, heights of at least 1600px and aspect ratios no wider than 3:4.
+At 2160 × 3840 CSS pixels it caps the shared column at 1920px, sets narrative
+text to 40px, captions to 32px, major section headings to 64px, and action
+targets to at least 96px. The 1080 × 1920 fallback uses 24px narrative text,
+18px captions and 64px targets. Other report viewports keep their normal layout.
+No browser zoom, page transform or font substitution is used.
+
+Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
+month/year lines, retaining the original date in an accessible label; this
+avoids the original overlapping dates without changing chart values. A scoped
+observer handles later-decorated charts, and leaving the portrait bounds restores
+the original ISO ticks. Touch taps reuse existing chart hit testing and keep
+the value readout visible without hover. AI panels stack with readable subtitles;
+platform bars retain icon/label/bar/value alignment, and comparison tables retain
+their columns. Details, tabs, carousel arrows/dots, links and downloads
+remain available. Existing feedback/brand controls move into document flow in
+booth context rather than overlapping Finish. The existing ResizeObserver
+reserves the measured Finish bar height, including wrapping and viewport changes.
+
+Both the helper and its new stylesheet are exact Worker-bundled assets. The
+Worker injection and shared lazy import use the same `?v=portrait-1` adapter URL
+to avoid a previously cached unversioned module; this is cache versioning, not
+a layout opt-in. Only the report adapter and its stylesheet receive `no-cache`
+revalidation. After fresh authorization the adapter can upgrade an older Finish
+control without duplicating its reset timers or counting bottom padding twice.
+Review and deploy the matching Worker bundle separately from the frontend merge.
+After deployment, close the old report document, reload `/booth` and reopen the
+selected report; already-open documents do not hot-reload modules. A frontend
+merge alone is not proof the new booth layout is active. This change
+does not deploy, send mail, change CUG data or authorize new report access.
+Authored-content local replay with production blocks is useful evidence, not a
+claim that protected production rendering or physical standing-distance
+legibility has been verified. Confirm device CSS viewport, DPR/browser scaling,
+touch interaction and viewing distance on the installed screen.
 
 ## Email policy (corrected historical claims)
 
@@ -80,9 +127,9 @@ npm ci
 npm test
 npx wrangler deploy --env summit --dry-run
 cd ../../..
-npm run test:file -- test/scripts/booth.test.js
+npm run test:file -- test/scripts/booth.test.js test/scripts/booth-report.test.js
 npx eslint scripts/booth*.js workers/cloudflare/cug-adobe-oauth-worker/src/booth*.js
-npx stylelint styles/booth.css
+npx stylelint styles/booth.css styles/booth-report.css
 ```
 
 For an explicitly isolated browser fixture:

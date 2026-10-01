@@ -4,7 +4,7 @@ compatibility_date = "2024-12-01"
 
 [[rules]]
 type = "Text"
-globs = ["**/booth.html", "**/scripts/booth.js", "**/scripts/booth-report.js", "**/styles/booth.css"]
+globs = ["**/booth.html", "**/scripts/booth.js", "**/scripts/booth-report.js", "**/styles/booth.css", "**/styles/booth-report.css"]
 fallthrough = false
 
 [[durable_objects.bindings]]

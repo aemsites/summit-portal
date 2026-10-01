@@ -4,12 +4,14 @@ import shell from '../../../../booth.html';
 import runtime from '../../../../scripts/booth.js';
 import report from '../../../../scripts/booth-report.js';
 import css from '../../../../styles/booth.css';
+import reportCss from '../../../../styles/booth-report.css';
 import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
 
 const assets = new Map([
   ['/scripts/booth.js', [runtime, 'text/javascript']],
   ['/scripts/booth-report.js', [report, 'text/javascript']],
   ['/styles/booth.css', [css, 'text/css']],
+  ['/styles/booth-report.css', [reportCss, 'text/css']],
 ]);
 
 function returnToBooth() {
@@ -27,7 +29,11 @@ export async function serveBooth(request, env) {
   const asset = assets.get(pathname);
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
-    return new Response(request.method === 'HEAD' ? null : asset[0], { headers: { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' } });
+    const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
+    if (pathname === '/scripts/booth-report.js' || pathname === '/styles/booth-report.css') {
+      headers['Cache-Control'] = 'no-cache';
+    }
+    return new Response(request.method === 'HEAD' ? null : asset[0], { headers });
   }
   if (pathname !== '/booth') return null;
   if (request.method !== 'GET') return new Response(null, { status: 405 });
@@ -88,7 +94,7 @@ export async function injectBoothReturn(response, request, env) {
   privateResponse.headers.set('Cache-Control', 'private, no-store');
   return new HTMLRewriter().on('body', {
     element(element) {
-      element.append('<script type="module" src="/scripts/booth-report.js"></script>', { html: true });
+      element.append('<script type="module" src="/scripts/booth-report.js?v=portrait-1"></script>', { html: true });
     },
   }).transform(privateResponse);
 }

@@ -1,0 +1,330 @@
+/* Only the authorized, exact selected report receives this class. */
+html.booth-report-active {
+  scroll-padding-bottom: calc(var(--booth-return-height) + 24px);
+}
+
+/* Keep the existing feedback and brand controls, without covering Finish. */
+html.booth-report-active body > :is(.report-feedback, .brand-chip) {
+  position: relative;
+  inset: auto;
+  max-width: calc(100% - 32px);
+  margin: 16px auto;
+  white-space: normal;
+  box-sizing: border-box;
+}
+
+html.booth-report-active #booth-return {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+html.booth-report-active #booth-return :is(a, button) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* Native portrait kiosk and its half-resolution fallback, not ordinary desktops. */
+@media (width >= 1000px) and (height >= 1600px) and (aspect-ratio <= 3/4) {
+  html.booth-report-active {
+    --booth-body: clamp(24px, 1.852vw, 40px);
+    --booth-caption: clamp(18px, 1.482vw, 32px);
+    --booth-title: clamp(40px, 2.963vw, 64px);
+    --booth-space: clamp(24px, 2.223vw, 48px);
+    --booth-target: clamp(64px, 4.445vw, 96px);
+    --body-font-size-m: var(--booth-body);
+    --body-font-size-s: var(--booth-caption);
+    --body-font-size-xs: var(--booth-caption);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight),
+  html.booth-report-active body:has(.report-hero.insight) main {
+    padding: var(--booth-space);
+    gap: var(--booth-space);
+    font-size: var(--booth-body);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) > :is(.section, .rcl-closing-briefing),
+  html.booth-report-active body:has(.report-hero.insight) main > :is(.section, .rcl-closing-briefing) {
+    max-width: 1920px;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .section > :is(.block-content, .default-content),
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .report-hero-wrapper, .report-stats-wrapper, .report-carousel-wrapper,
+    .report-scores-wrapper, .report-chart-wrapper, .report-download-wrapper,
+    .block-content:has(.report-hero, .report-stats, .report-carousel, .report-scores,
+    .report-chart, .report-download)
+  ) {
+    max-width: 100% !important;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .report-hero.insight .rh-insight-text, .rav-panels, .rav-gap-insight-flex, .rsc-card,
+    .rcl-bar, .report-download
+  ) {
+    padding: var(--booth-space);
+    gap: 24px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .report-hero.insight {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rh-insight-text {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rh-insight-image {
+    height: auto;
+    padding: var(--booth-space);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rh-insight-image picture {
+    width: 100%;
+    max-width: 720px;
+    max-height: 540px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rh-insight-text :is(h1, h2) {
+    font-size: clamp(56px, 4.445vw, 96px);
+    overflow-wrap: anywhere;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rh-insight-text p, .rs-dark-desc, .rc-desc, .rsc-summary,
+    .rsc-suggestion-text, .rcl-text, .rd-desc, .rav-panel-desc,
+    .rav-gap-content, .rav-insight-content, .rav-rec-detail, .rc-rec-detail,
+    .rav-cta-left p, .rav-panel-sub
+  ) {
+    font-size: var(--booth-body);
+    line-height: 1.5;
+    max-width: 65ch;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rh-insight-text .rh-insight-scope, .rh-insight-badge-date) {
+    font-size: var(--booth-caption);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rc-title, .rai-section-head-title, .rav-section-title, .rav-panel-title,
+    .rsc-page-name, .rd-heading
+  ) {
+    font-size: var(--booth-title);
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rs-dark-label, .rs-dark-trend, .rs-dark-badge, .rav-stat-label, .rav-stat-sublabel,
+    .rav-stat-delta, .rc-source, .rc-badge, .rc-footnote, .rc-callout,
+    .rc-counter-label, .rc-counter-desc, .rc-nav-label, .rc-download-note,
+    .rc-chart-title, .rc-tooltip, .rc-legend-item, .rsc-page-url,
+    .rsc-suggestion-label, .rh-insight-badge-date-label,
+    .rsc-metric-label, .rsc-metric-value, .rsc-metric-target, .rsc-lab-note,
+    .rsc-verdict, .rsc-ring-out-of, .rsc-howto-para, .rsc-summary-pill,
+    .cannes-source, .rd-meta-item, .rd-unavailable-msg, .rav-pane-badge,
+    .rav-hbar-label, .rav-hbar-val, .rav-hbar-badge, .rav-platforms-label,
+    .rav-ms-label, .rav-ms-value, .rav-ms-note, .rc-ms-label,
+    .rc-ms-value, .rc-ms-note, .rc-ms-header, .rc-stacked-legend-item,
+    .rav-st-row, .rav-st-row span
+  ) {
+    font-size: var(--booth-caption);
+    line-height: 1.4;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rs-dark-value, .rav-stat-value, .rsc-ring-num, .rc-bigfigure-value,
+    .rav-bf-value
+  ) {
+    font-size: clamp(48px, 3.704vw, 80px);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rc-rec-title, .rav-rec-title, .rc-bigfigure-ctx, .rc-bigfigure-unit,
+    .rav-bf-label, .rav-cta-left h2, .rav-cta-left h3
+  ) {
+    font-size: var(--booth-body);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    button, input, select, textarea, summary, a.btn, .rc-download-btn,
+    .rd-cta-btn, .rav-cta-btn, .report-hero.insight .rh-insight-badge, .rcl-cta,
+    .rsc-verify-link, .rsc-page-url, .rsc-page-name a
+  ),
+  html.booth-report-active body > :is(.report-feedback, .brand-chip) button {
+    min-width: var(--booth-target);
+    min-height: var(--booth-target);
+    box-sizing: border-box;
+    font-size: var(--booth-caption);
+    line-height: 1.3;
+    white-space: normal;
+    touch-action: manipulation;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(button, summary, .rc-download-btn, .rh-insight-badge) {
+    padding: 16px 24px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :focus-visible {
+    outline: 4px solid var(--rpt-red, var(--color-adobe-red));
+    outline-offset: 6px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rc-tab-bar, .rc-tabs, .rc-download-group, .rc-dots,
+    .rav-platforms, .rav-platforms-pills, .rsc-summary-pills
+  ) {
+    flex-wrap: wrap;
+    overflow: visible;
+    gap: 16px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-slide {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--booth-space);
+    gap: var(--booth-space);
+    min-height: 0;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-slide-content {
+    max-width: 65ch;
+  }
+
+  /* Preserve chart viewBox geometry: the larger plot makes its labels readable. */
+  html.booth-report-active body main:has(.report-hero.insight) .rc-slide-visual {
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    padding-bottom: var(--booth-space);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rc-chart-svg, .rc-line-svg) {
+    max-height: none;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-tooltip {
+    position: static;
+    min-height: 1.4em;
+    margin-top: 16px;
+    white-space: normal;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-donut-svg {
+    max-width: clamp(420px, 33.334vw, 720px);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-dot,
+  html.booth-report-active body main:has(.report-hero.insight) .rc-dot.active {
+    width: var(--booth-target);
+    height: var(--booth-target);
+    border-radius: 50%;
+    background-clip: content-box;
+    padding: calc(var(--booth-target) / 3);
+    transform: none;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rc-nav-btn svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rsc-grid, .rav-stats-story-row, .rav-panels) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rsc-card {
+    grid-template-columns: minmax(150px, 0.2fr) minmax(0, 1fr);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rsc-ring {
+    width: clamp(120px, 9.26vw, 200px);
+    height: clamp(120px, 9.26vw, 200px);
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rsc-metric {
+    grid-template-columns: 20px minmax(0, 1fr) auto auto;
+    padding: 20px 24px;
+    gap: 20px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rsc-summary-pill, .rc-stacked-bar) {
+    height: auto;
+    min-height: 64px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rsc-page-url {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-hbar-row {
+    grid-template-columns: minmax(160px, 0.4fr) minmax(0, 1fr) auto;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-platform-row {
+    grid-template-columns: 48px minmax(160px, 0.4fr) minmax(0, 1fr) auto;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-platform-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-platform-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-hbar-label {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-st-row {
+    grid-template-columns: minmax(0, 1fr) repeat(3, minmax(120px, 0.22fr));
+    overflow-wrap: anywhere;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rav-hbar-track {
+    height: 56px;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rav-gap-insight-flex, .rav-cta) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(.rcl-text, .rc-desc, .rsc-summary) a {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  html.booth-report-active body > .report-feedback :is(.rf-prompt, .rf-prompt-sub) {
+    font-size: var(--booth-caption);
+  }
+
+  html.booth-report-active #booth-return {
+    font-size: var(--booth-body);
+  }
+
+  html.booth-report-active #booth-return :is(a, button) {
+    min-height: var(--booth-target);
+  }
+
+  @media (pointer: coarse) {
+    html.booth-report-active body main:has(.report-hero.insight) .rc-tooltip:not(:empty) {
+      opacity: 1 !important;
+    }
+  }
+}
