@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Adobe Brand Visibility | Touchscreen review</title>
+  <style>
+    :root {
+      font-family: "adobe-clean", "Adobe Clean", -apple-system, sans-serif;
+      color: #fff;
+      background: #171717;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      height: 100dvh;
+      margin: 0;
+    }
+
+    header,
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 20px;
+      padding: 12px 20px;
+      font-size: 13px;
+    }
+
+    header { border-bottom: 1px solid #555; }
+    footer { border-top: 1px solid #555; color: #ddd; }
+    header strong { font-size: 16px; }
+    .controls { display: flex; gap: 8px; }
+
+    button {
+      min-height: 36px;
+      padding: 6px 12px;
+      border: 1px solid #999;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button[aria-pressed="true"] {
+      border-color: #fff;
+      background: #fff;
+      color: #171717;
+    }
+
+    button:focus-visible { outline: 2px solid #eb1000; outline-offset: 3px; }
+
+    main {
+      display: grid;
+      min-height: 0;
+      overflow: hidden;
+      place-items: center;
+      padding: 14px;
+    }
+
+    main[data-mode="inspect"] {
+      overflow-y: auto;
+      place-items: start center;
+    }
+
+    .frame {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 10px 35px rgb(0 0 0 / 35%);
+    }
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: block;
+      border: 0;
+      transform-origin: top left;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Adobe Brand Visibility · Touchscreen review</strong>
+    <div class="controls" aria-label="Screen resolution">
+      <button type="button" data-width="2160" data-height="3840" aria-pressed="true">2160 × 3840 · event target</button>
+      <button type="button" data-width="1080" data-height="1920" aria-pressed="false">1080 × 1920 · fallback</button>
+      <button type="button" id="inspect-toggle" aria-pressed="false">Inspect larger</button>
+    </div>
+  </header>
+  <main id="viewport" data-mode="fit">
+    <div class="frame" id="frame">
+      <iframe id="preview" title="Interactive Adobe Brand Visibility booth preview"></iframe>
+    </div>
+  </main>
+  <footer>
+    <span id="size-label">CSS viewport: 2160 × 3840 · event target</span>
+    <span id="mode-label">Scaled to fit this window; inspect larger for legibility. Confirm actual browser scaling on the event device.</span>
+  </footer>
+  <script>
+    const viewport = document.getElementById('viewport');
+    const frame = document.getElementById('frame');
+    const preview = document.getElementById('preview');
+    preview.src = `./booth-preview.html?review=${Date.now()}`;
+    const sizeLabel = document.getElementById('size-label');
+    const inspectToggle = document.getElementById('inspect-toggle');
+    const modeLabel = document.getElementById('mode-label');
+    let size = { width: 2160, height: 3840 };
+    let inspect = false;
+
+    function fit() {
+      const widthScale = (viewport.clientWidth - 28) / size.width;
+      const scale = inspect ? widthScale : Math.min(
+        widthScale,
+        (viewport.clientHeight - 28) / size.height,
+      );
+      frame.style.width = `${size.width * scale}px`;
+      frame.style.height = `${size.height * scale}px`;
+      preview.style.width = `${size.width}px`;
+      preview.style.height = `${size.height}px`;
+      preview.style.transform = `scale(${scale})`;
+    }
+
+    document.querySelectorAll('[data-width]').forEach((button) => {
+      button.addEventListener('click', () => {
+        size = { width: Number(button.dataset.width), height: Number(button.dataset.height) };
+        document.querySelectorAll('[data-width]').forEach((item) => {
+          item.setAttribute('aria-pressed', String(item === button));
+        });
+        sizeLabel.textContent = `CSS viewport: ${size.width} × ${size.height} · ${size.width === 2160 ? 'event target' : 'fallback'}`;
+        fit();
+      });
+    });
+
+    inspectToggle.addEventListener('click', () => {
+      inspect = !inspect;
+      viewport.dataset.mode = inspect ? 'inspect' : 'fit';
+      inspectToggle.setAttribute('aria-pressed', String(inspect));
+      inspectToggle.textContent = inspect ? 'Fit whole screen' : 'Inspect larger';
+      modeLabel.textContent = inspect
+        ? 'Larger view · scroll vertically to inspect the full screen.'
+        : 'Scaled to fit this window; inspect larger for legibility. Confirm actual browser scaling on the event device.';
+      fit();
+    });
+
+    new ResizeObserver(fit).observe(viewport);
+    fit();
+  </script>
+</body>
+</html>
