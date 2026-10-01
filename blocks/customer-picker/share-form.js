@@ -1,5 +1,5 @@
 /**
- * Share controls for the customer picker: mint a 7-day link to ONE page and
+ * Share controls for the customer picker: mint a one-month link to ONE page and
  * either email it to a recipient or copy it to the clipboard. Split out of
  * customer-picker.js so that file can stay focused on the picker itself.
  */
@@ -38,7 +38,7 @@ async function requestShareLink(path, { mode, email } = {}) {
 
 /**
  * Build the "Share this page" controls for a SPECIFIC page `path`. Two
- * independent ways to share, both minting a 7-day link that opens the page
+ * independent ways to share, both minting a one-month link that opens the page
  * directly (no login):
  *   1. Send link — staff type a recipient; the worker emails them the link,
  *      scoped to just that recipient's domain. The email is required here
@@ -57,7 +57,7 @@ export function buildShareForm(path) {
 
   const hint = document.createElement('p');
   hint.className = 'cp-share-hint';
-  hint.textContent = 'A one-click link that opens this page directly — no login needed. Works for 7 days. Type an email to send it directly, or just copy the link below — no email needed.';
+  hint.textContent = 'A one-click link that opens this page directly — no login needed. Works for one month. Type an email to send it directly, or just copy the link below — no email needed.';
   wrap.append(hint);
 
   // --- Email path (recipient typed, worker sends the email) ---
@@ -119,7 +119,7 @@ export function buildShareForm(path) {
     try {
       const { status: code, ok, data } = await requestShareLink(path, { mode: 'email', email });
       if (ok && data.result === 'sent') {
-        setStatus(`Sent a 7-day link to ${email} ✓`, 'success');
+        setStatus(`Sent a one-month link to ${email} ✓`, 'success');
         input.value = '';
       } else if (code === 401) {
         setStatus('Your session expired — please reload and sign in again.', 'error');

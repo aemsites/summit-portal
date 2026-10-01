@@ -52,7 +52,7 @@ Create `blocks/customer-picker/share-form.js`. Move these from `customer-picker.
 
 ```js
 /**
- * Share controls for the customer picker: mint a 7-day link to one page and
+ * Share controls for the customer picker: mint a one-month link to one page and
  * either email it to a recipient or copy it to the clipboard. Split out of
  * customer-picker.js so that file can stay focused on the picker itself.
  */

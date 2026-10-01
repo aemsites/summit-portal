@@ -98,7 +98,7 @@ A rep at a meeting wants the two or three accounts they're working *right now*, 
 - This single constant drives both the JWT `exp` (in `createSession`) and the cookie
   `Max-Age` (in `sessionCookie`), so both extend together — a session lasts the
   meeting/afternoon window instead of dying after an hour.
-- `MAGIC_LINK_MAX_AGE` (30 min) and `SHARE_LINK_TTL` (7 days) are **unchanged** by decision.
+- `MAGIC_LINK_MAX_AGE` (30 min) and `SHARE_LINK_TTL` (30 days) are **unchanged** by this decision.
 - Update the existing `// 1 hour` comment to `// 4 hours`.
 
 ### B. Graceful expiry UX (frontend, header-driven)

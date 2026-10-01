@@ -35,6 +35,137 @@
   font-weight: 600;
 }
 
+.block-content > .report-callout + .report-callout {
+  margin-top: 16px;
+}
+
+/* Dashboard announcement: public intake on the left, internal workflow on the right. */
+.report-callout.report-requests .rcl-bar-report-requests {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: 24px;
+  overflow: hidden;
+  background: light-dark(#fff, #242424);
+  border: 1px solid var(--color-border, light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%)));
+  border-radius: 0;
+  padding: 24px 20px;
+}
+
+.report-callout.report-requests .rcl-bar-report-requests::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 88px;
+  height: 4px;
+  background: var(--color-adobe-red, #e60000);
+  content: '';
+}
+
+.report-callout.report-requests .rcl-announcement {
+  min-width: 0;
+}
+
+.report-callout.report-requests .rcl-announcement-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--color-adobe-red-dark, #e60000);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.report-callout.report-requests .rcl-announcement-status::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  background: currentcolor;
+  content: '';
+}
+
+.report-callout.report-requests .rcl-announcement-copy h2 {
+  margin: 0;
+  color: var(--rpt-text, var(--color-text));
+  font-size: clamp(20px, 2.3vw, 26px);
+  line-height: 1.18;
+}
+
+.report-callout.report-requests .rcl-announcement-copy p {
+  max-width: 68ch;
+  margin: 10px 0 0;
+  color: var(--rpt-text-body, var(--color-text-body));
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.report-callout.report-requests .rcl-announcement-copy a {
+  color: var(--color-adobe-red-dark, #e60000);
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.report-callout.report-requests .rcl-announcement-copy a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.report-callout.report-requests .rcl-announcement-copy a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-adobe-red, #e60000) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.report-callout.report-requests .rcl-announcement-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.report-callout.report-requests .rcl-announcement-action {
+  box-sizing: border-box;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border, light-dark(rgb(0 0 0 / 12%), rgb(255 255 255 / 16%)));
+  border-radius: 22px;
+  padding: 10px 18px;
+  color: var(--rpt-text, var(--color-text));
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.report-callout.report-requests .rcl-announcement-action:hover {
+  background: var(--color-surface-hover, light-dark(rgb(0 0 0 / 2%), rgb(255 255 255 / 5%)));
+}
+
+.report-callout.report-requests .rcl-announcement-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-adobe-red, #e60000) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.report-callout.report-requests .rcl-announcement-action-primary {
+  border-color: var(--color-adobe-red, #e60000);
+  background: var(--color-adobe-red, #e60000);
+  color: #fff;
+}
+
+.report-callout.report-requests .rcl-announcement-action-primary:hover {
+  border-color: var(--color-adobe-red-hover, #c00);
+  background: var(--color-adobe-red-hover, #c00);
+}
+
 /* Tone variants (opt-in via class; default red bar is unchanged for summit).
    .neutral — quiet utility note (data-source line, section intro).
    .cta — dark Adobe treatment for a closing call-to-action. */
@@ -185,6 +316,12 @@ main > .rcl-bar.rcl-bar--bv-hero.rcl-closing-briefing .rcl-text a strong {
 }
 
 @media (width >= 1000px) {
+  .report-callout.report-requests .rcl-bar-report-requests {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 236px);
+    padding: 28px 32px;
+    border-radius: 16px;
+  }
+
   .section.rcl-pre-briefing > .block-content {
     box-sizing: border-box;
     max-width: 1200px;

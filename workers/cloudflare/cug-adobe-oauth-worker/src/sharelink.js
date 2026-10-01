@@ -208,7 +208,7 @@ export async function handleShareLinkRequest(request, env) {
     tokenEmail = email;
   }
 
-  // --- Mint a long-lived (7-day) signed share token ---
+  // --- Mint a long-lived (30-day) signed share token ---
   let token;
   try {
     token = await createShareLinkToken(tokenEmail, env, grantGroups);

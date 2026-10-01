@@ -371,7 +371,7 @@ describe('session (JWT)', () => {
   });
 
   describe('createShareLinkToken / verifyShareLink', () => {
-    it('embeds purpose=sharelink, email and a 7-day exp', async () => {
+    it('embeds purpose=sharelink, email and a 30-day exp', async () => {
       const before = Math.floor(Date.now() / 1000);
       const token = await createShareLinkToken('alice@adobe.com', env);
 
@@ -379,7 +379,7 @@ describe('session (JWT)', () => {
       expect(payload.purpose).toBe('sharelink');
       expect(payload.email).toBe('alice@adobe.com');
       expect(payload.iat).toBeGreaterThanOrEqual(before);
-      expect(payload.exp).toBe(payload.iat + 7 * 24 * 60 * 60);
+      expect(payload.exp).toBe(payload.iat + 30 * 24 * 60 * 60);
     });
 
     it('round-trips through verifyShareLink', async () => {

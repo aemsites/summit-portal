@@ -450,7 +450,7 @@ describe('index (request routing)', () => {
       const { getSession } = await import('../src/session.js');
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({
-        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 7 * 24 * 60 * 60,
+        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 30 * 24 * 60 * 60,
       }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
@@ -479,10 +479,10 @@ describe('index (request routing)', () => {
       expect(cookies.some((c) => c.startsWith('signed_in=1'))).toBe(true);
     });
 
-    it('creates a session for a valid 7-day share link token', async () => {
+    it('creates a session for a valid 30-day share link token', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({
-        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 7 * 24 * 60 * 60,
+        purpose: 'sharelink', email: 'tim@apple.com', iat: now, exp: now + 30 * 24 * 60 * 60,
       }, env.JWT_SECRET);
 
       const resp = await worker.fetch(
@@ -500,7 +500,7 @@ describe('index (request routing)', () => {
       const now = Math.floor(Date.now() / 1000);
       // Staff recipient: token carries the page's group so they can open it.
       const token = await signedJwt({
-        purpose: 'sharelink', email: 'josec@adobe.com', iat: now, exp: now + 7 * 24 * 60 * 60, groups: ['apple.com'],
+        purpose: 'sharelink', email: 'josec@adobe.com', iat: now, exp: now + 30 * 24 * 60 * 60, groups: ['apple.com'],
       }, env.JWT_SECRET);
 
       const resp = await worker.fetch(

@@ -11,7 +11,7 @@ const EVENT_SESSION_TTL = 345600; // 4 days — staff/event sessions
 const STAFF_DOMAINS_DEFAULT = 'adobe.com,semrush.com';
 const COOKIE_NAME = 'auth_token';
 const MAGIC_LINK_MAX_AGE = 2 * 24 * 60 * 60; // 2 days in seconds
-const SHARE_LINK_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const SHARE_LINK_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
 const MARKER_NAME = 'signed_in';
 // Marker outlives the session by a day so a timed-out session still shows the
 // "session expired" notice when the user returns to a long-open tab.
@@ -218,7 +218,7 @@ export async function verifyMagicLink(token, env) {
 /**
  * Create a signed JWT for a staff-shared link. Unlike the self-service magic
  * link (30-min iat freshness), share links carry an explicit `exp` and are
- * valid for 7 days so a customer can open the link after the booth hand-off.
+ * valid for 30 days so a customer can open the link during later follow-up.
  *
  * `grantGroups` (optional) are CUG groups baked into the link so the recipient's
  * session can open the page even when their own email domain isn't in the page's

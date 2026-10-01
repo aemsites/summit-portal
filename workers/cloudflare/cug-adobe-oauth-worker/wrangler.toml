@@ -22,6 +22,9 @@ EVENT_CRED_EPOCH = "1"
 # APO_CLIENT_SECRET = "..."
 # APO_SCOPE = "..."
 # APO_AUTHORIZATION_CODE = "..."  (optional — enables authorization_code IMS grant)
+# TURNSTILE_SECRET_KEY = "..."  (Cloudflare Turnstile server-side secret)
+# RATE_LIMIT_SALT = "..."  (server-side secret used only for ephemeral IP-digest rate keys)
+# IDEMPOTENCY_SALT = "..." (server-side secret used only to hash retry keys)
 
 [[kv_namespaces]]
 binding = "SESSIONS"
@@ -62,3 +65,13 @@ EVENT_CRED_EPOCH = "1"
 [[env.summit.kv_namespaces]]
 binding = "SESSIONS"
 id = "93e205ef87f54e188fe1c06bacc9a397"
+
+# Create the production database with:
+# wrangler d1 create summit-portal-report-requests
+# Then replace database_id and apply migrations:
+# wrangler d1 migrations apply REPORT_REQUESTS --env summit --remote
+[[env.summit.d1_databases]]
+binding = "REPORT_REQUESTS"
+database_name = "summit-portal-report-requests"
+database_id = "1c7c03ed-ee6f-448e-acb2-4f87ca29ec2c"
+migrations_dir = "migrations"

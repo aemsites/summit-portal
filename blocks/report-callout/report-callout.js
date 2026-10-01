@@ -171,6 +171,46 @@ function buildDefaultBar(icon, text) {
 }
 
 /**
+ * Build the dashboard announcement that connects the public request form to
+ * the internal request queue.
+ * @param {string} eyebrow
+ * @param {Element | undefined} contentCell
+ * @param {Element | undefined} actionsCell
+ * @returns {HTMLElement}
+ */
+function buildReportRequestsBar(eyebrow, contentCell, actionsCell) {
+  const bar = document.createElement('aside');
+  bar.className = 'rcl-bar rcl-bar-report-requests';
+
+  const announcement = document.createElement('div');
+  announcement.className = 'rcl-announcement';
+
+  const status = document.createElement('p');
+  status.className = 'rcl-announcement-status';
+  status.textContent = eyebrow;
+
+  const content = document.createElement('div');
+  content.className = 'rcl-announcement-copy';
+  [...(contentCell?.childNodes || [])].forEach((node) => {
+    content.append(node.cloneNode(true));
+  });
+  announcement.append(status, content);
+
+  const actions = document.createElement('div');
+  actions.className = 'rcl-announcement-actions';
+  [...(actionsCell?.querySelectorAll('a') || [])].forEach((link, index) => {
+    const action = link.cloneNode(true);
+    action.classList.add('rcl-announcement-action');
+    if (index === 0) action.classList.add('rcl-announcement-action-primary');
+    actions.append(action);
+  });
+
+  bar.append(announcement);
+  if (actions.children.length) bar.append(actions);
+  return bar;
+}
+
+/**
  * @param {Element} main
  * @returns {Element | null}
  */
@@ -199,7 +239,12 @@ export default function init(el) {
   const text = (soleP ? textCell.firstElementChild.innerHTML : textCell?.innerHTML || '').trim();
 
   el.textContent = '';
-  const bar = isBvCtaBanner(el) ? buildBvHeroBar(text) : buildDefaultBar(icon, text);
+  let bar;
+  if (el.classList.contains('report-requests')) {
+    bar = buildReportRequestsBar(icon, cells[1], cells[2]);
+  } else {
+    bar = isBvCtaBanner(el) ? buildBvHeroBar(text) : buildDefaultBar(icon, text);
+  }
   el.append(bar);
 
   relocateHeroCta(el);

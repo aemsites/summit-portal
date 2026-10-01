@@ -23,6 +23,7 @@ import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
+import { handleReportRequests } from './report-requests.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -228,6 +229,13 @@ const handleRequest = async (request, env) => {
     });
   }
 
+  // Public lead creation and Adobe-IMS-only lead retrieval never proxy to the
+  // EDS origin. This keeps request data in D1 and outside authored content.
+  if (url.pathname === '/api/report-requests' || url.pathname === '/api/report-requests.csv') {
+    const session = await getSession(request, env);
+    return handleReportRequests(request, env, session);
+  }
+
   // RUM and media requests bypass authentication
   if (isRUMRequest(url) || isMediaRequest(url)) {
     return proxyToOrigin(request, env, url);
@@ -238,7 +246,7 @@ const handleRequest = async (request, env) => {
   if (magicToken) {
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token present on ${url.pathname}`);
-    // Accept both the 2-day self-service magic link and the 7-day staff share
+    // Accept both the 2-day self-service magic link and the 30-day staff share
     // link — either one mints a fresh 1-hour session for the deep link.
     const claims = (await verifyMagicLink(magicToken, env))
       || (await verifyShareLink(magicToken, env));
@@ -272,7 +280,7 @@ const handleRequest = async (request, env) => {
     // own domain too. De-duplicate.
     const groups = [...new Set([domain, ...(Array.isArray(claims.groups) ? claims.groups : [])])];
     const ttl = sessionTtlForEmail(email, env);
-    // 'sharelink' purpose → staff-shared 7-day link; anything else here is the
+    // 'sharelink' purpose → staff-shared 30-day link; anything else here is the
     // self-service magic link. Both are link-borne, so neither is a verified
     // viewer identity — telemetry will record the method but withhold the email.
     const method = claims.purpose === 'sharelink' ? 'sharelink' : 'magiclink';
