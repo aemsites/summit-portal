@@ -2,13 +2,12 @@
  * CUG (Closed User Group) access control.
  *
  * Reads x-aem-cug-required and x-aem-cug-groups headers from the origin
- * response and enforces authentication and email-domain-based authorization.
+ * response and enforces authentication and email/domain group authorization.
  *
- * Group matching uses the user's email domain (e.g., "adobe.com") against the
- * allowed domains for the path. Access is granted if the user's domain matches
- * at least one (OR logic).
+ * Groups may name exact emails or domains. Match the signed session identity
+ * or its explicit grants (OR logic); an exact-email grant never implies a domain.
  *
- * WHETHER a path is gated comes from x-aem-cug-required. WHICH domains are
+ * WHETHER a path is gated comes from x-aem-cug-required. WHICH groups are
  * allowed comes from the `closed-user-groups` sheet when it covers the path
  * (see cugsheet.js — the header's group list goes stale between manual
  * "Apply Page Access" runs), and from x-aem-cug-groups otherwise.
@@ -20,6 +19,7 @@
  */
 
 import { cugSheetGroups } from './cugsheet.js';
+import { matchesCugGroup } from './cug-group.js';
 
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[cug]', ...args);
@@ -29,7 +29,7 @@ export async function checkCugAccess(originResponse, session, request, env) {
   const cugRequired = originResponse.headers.get('x-aem-cug-required');
   const headerGroups = originResponse.headers.get('x-aem-cug-groups');
 
-  log(`path=${url.pathname} cug-required=${cugRequired} cug-groups=${headerGroups}`);
+  log(`path=${url.pathname} cug-required=${cugRequired}`);
 
   // No CUG protection on this path — serve publicly
   if (cugRequired !== 'true') {
@@ -50,25 +50,25 @@ export async function checkCugAccess(originResponse, session, request, env) {
     return Response.redirect(loginUrl.href, 302);
   }
 
-  log(`path=${url.pathname} session email=***@${(session.email || '').split('@')[1]} groups=${JSON.stringify(session.groups)}`);
+  log(`path=${url.pathname} session present`);
 
-  // Which domains may see this page. The sheet is authoritative when it covers
+  // Which groups may see this page. The sheet is authoritative when it covers
   // the path — it is republished on every report, whereas the header's group
   // list only changes when someone runs the DA "Apply Page Access" tool. Any
   // sheet failure returns null and leaves the header in charge (fail closed).
   const sheetGroups = await cugSheetGroups(url.pathname, env);
   if (sheetGroups) {
-    log(`path=${url.pathname} groups from sheet=${sheetGroups.join(',')} (header said ${headerGroups || '(none)'})`);
+    log(`path=${url.pathname} groups from sheet count=${sheetGroups.length}`);
   }
   const cugGroups = sheetGroups ? sheetGroups.join(',') : headerGroups;
 
-  // If specific domains are required, check the user's email domain
+  // Match exact identity or explicitly granted groups.
   if (cugGroups) {
     const allowedGroups = cugGroups.split(',').map((g) => g.trim().toLowerCase());
     const userGroups = session.groups || [];
-    const hasAccess = allowedGroups.some((g) => userGroups.includes(g));
+    const hasAccess = allowedGroups.some((g) => matchesCugGroup(g, session.email, userGroups));
 
-    log(`path=${url.pathname} allowed=${JSON.stringify(allowedGroups)} userGroups=${JSON.stringify(userGroups)} hasAccess=${hasAccess}`);
+    log(`path=${url.pathname} allowed count=${allowedGroups.length} hasAccess=${hasAccess}`);
 
     if (!hasAccess) {
       log(`path=${url.pathname} access denied — redirecting to /403`);

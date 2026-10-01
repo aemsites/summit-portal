@@ -1,0 +1,1632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Overview of the reusable booth access experience for Adobe Digital Opportunity Reports.">
+  <link rel="icon" href="data:,">
+  <title>Universal Booth Access | Digital Opportunity Reports</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --paper-light: #fbf9f4;
+      --ink: #211d1d;
+      --ink-soft: #625b57;
+      --line: #cfc7bb;
+      --red: #e60000;
+      --red-dark: #a90000;
+      --lime: #d7ef6b;
+      --display: "Avenir Next", "Helvetica Neue", sans-serif;
+      --body: "Avenir Next", "Helvetica Neue", sans-serif;
+      --max: 1240px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, transparent 0 49.95%, rgb(33 29 29 / 4%) 50%, transparent 50.05%),
+        var(--paper);
+      font-family: var(--body);
+      font-size: 17px;
+      line-height: 1.55;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: var(--display);
+      letter-spacing: -0.035em;
+      line-height: 1;
+    }
+
+    .page {
+      overflow: hidden;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand-mark {
+      width: 26px;
+      height: 22px;
+      color: var(--red);
+    }
+
+    .masthead-meta {
+      color: var(--ink-soft);
+      text-align: right;
+    }
+
+    .hero {
+      position: relative;
+      width: min(calc(100% - 40px), var(--max));
+      min-height: 560px;
+      margin: 0 auto;
+      padding: clamp(58px, 8vw, 104px) 0 60px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      max-width: 930px;
+    }
+
+    .eyebrow {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 28px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 42px;
+      height: 3px;
+      background: currentcolor;
+      content: "";
+    }
+
+    h1 {
+      max-width: 1000px;
+      margin-bottom: 28px;
+      font-size: clamp(54px, 8vw, 112px);
+      font-weight: 700;
+      letter-spacing: -0.075em;
+    }
+
+    .hero-lede {
+      max-width: 650px;
+      margin: 0 0 34px;
+      font-size: clamp(18px, 1.8vw, 24px);
+      line-height: 1.35;
+    }
+
+    .decision-stamp {
+      display: inline-grid;
+      grid-template-columns: auto 1fr;
+      max-width: 620px;
+      border: 1px solid var(--ink);
+      background: var(--paper-light);
+    }
+
+    .decision-stamp strong {
+      padding: 14px 18px;
+      color: var(--paper-light);
+      background: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .decision-stamp span {
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .hero-code {
+      position: absolute;
+      right: -18px;
+      bottom: 48px;
+      z-index: 1;
+      color: rgb(230 0 0 / 12%);
+      font-family: var(--display);
+      font-size: clamp(180px, 29vw, 430px);
+      font-weight: 700;
+      letter-spacing: -0.12em;
+      line-height: 0.7;
+      user-select: none;
+    }
+
+    .summary {
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+      padding: 54px 0 66px;
+    }
+
+    .summary-title {
+      max-width: 740px;
+      margin-bottom: 40px;
+      font-size: clamp(34px, 4.5vw, 56px);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--ink);
+    }
+
+    .summary-item {
+      padding: 24px 34px 12px 0;
+    }
+
+    .summary-item + .summary-item {
+      padding-left: 34px;
+      border-left: 1px solid var(--line);
+    }
+
+    .summary-number {
+      display: block;
+      margin-bottom: 30px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .summary-item h3 {
+      margin-bottom: 16px;
+      font-size: 26px;
+    }
+
+    .summary-item p {
+      margin-bottom: 0;
+      color: var(--ink-soft);
+    }
+
+    .section {
+      padding: clamp(62px, 7vw, 92px) max(20px, calc((100vw - var(--max)) / 2));
+    }
+
+    .section-dark {
+      color: var(--paper-light);
+      background: var(--ink);
+    }
+
+    .section-red {
+      color: var(--paper-light);
+      background: var(--red);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(130px, 0.28fr) 1fr;
+      gap: 48px;
+      margin-bottom: clamp(44px, 5vw, 68px);
+    }
+
+    .section-index {
+      padding-top: 9px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      max-width: 880px;
+      margin-bottom: 18px;
+      font-size: clamp(40px, 5vw, 68px);
+    }
+
+    .section-intro {
+      max-width: 720px;
+      margin-bottom: 0;
+      color: var(--ink-soft);
+      font-size: 18px;
+    }
+
+    .section-dark .section-intro {
+      color: #c9c2b8;
+    }
+
+    .section-red .section-intro {
+      color: #ffe9e4;
+    }
+
+    .journeys {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-top: 1px solid #6f6863;
+      border-bottom: 1px solid #6f6863;
+    }
+
+    .journey {
+      padding: clamp(30px, 3.5vw, 48px);
+    }
+
+    .journey:first-child {
+      padding-left: 0;
+      border-right: 1px solid #6f6863;
+    }
+
+    .journey:last-child {
+      padding-right: 0;
+    }
+
+    .journey-label {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 28px;
+      color: var(--lime);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .journey-label::before {
+      width: 9px;
+      height: 9px;
+      background: currentcolor;
+      border-radius: 50%;
+      content: "";
+    }
+
+    .journey h3 {
+      max-width: 470px;
+      margin-bottom: 28px;
+      font-size: clamp(30px, 3.2vw, 44px);
+      line-height: 1.07;
+    }
+
+    .flow {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: flow;
+    }
+
+    .flow li {
+      position: relative;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 18px;
+      min-height: 62px;
+      padding-bottom: 20px;
+      counter-increment: flow;
+    }
+
+    .flow li::before {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid #807872;
+      border-radius: 50%;
+      background: var(--ink);
+      content: counter(flow);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .flow li:not(:last-child)::after {
+      position: absolute;
+      top: 36px;
+      bottom: 0;
+      left: 17px;
+      width: 1px;
+      background: #807872;
+      content: "";
+    }
+
+    .flow strong {
+      display: block;
+      margin: 4px 0 3px;
+      font-size: 18px;
+    }
+
+    .flow span {
+      color: #b8b0a7;
+      font-size: 15px;
+    }
+
+    .mockup-stage {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(22px, 4vw, 56px);
+      align-items: center;
+      width: min(100%, 1080px);
+      margin: 0 auto;
+    }
+
+    .mockup-stage figure {
+      margin: 0;
+    }
+
+    .mockup-caption {
+      margin: 22px 0 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .device-frame {
+      padding: 14px;
+      border-radius: 30px;
+      background: #100f0f;
+      box-shadow: 0 24px 60px rgb(0 0 0 / 28%);
+    }
+
+    .device-screen {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 9 / 16;
+      padding: 11%;
+      border-radius: 19px;
+      color: var(--ink);
+      background: var(--paper-light);
+    }
+
+    .device-kicker {
+      color: var(--red);
+      font-size: clamp(6px, 0.7vw, 10px);
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .device-screen h3 {
+      max-width: 90%;
+      margin: 8% 0 4%;
+      font-size: clamp(20px, 2.2vw, 32px);
+      line-height: 0.98;
+    }
+
+    .device-screen > p {
+      max-width: 88%;
+      color: var(--ink-soft);
+      font-size: clamp(7px, 0.9vw, 13px);
+      line-height: 1.4;
+    }
+
+    .code-slots {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5%;
+      margin: 10% 0 8%;
+    }
+
+    .code-slots span {
+      aspect-ratio: 0.76;
+      border-bottom: 2px solid var(--ink);
+      font-size: clamp(16px, 2.3vw, 34px);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6%;
+      width: 56%;
+      margin: 0 auto;
+    }
+
+    .keypad span {
+      display: grid;
+      aspect-ratio: 1;
+      place-items: center;
+      border: 1px solid #d7d0c7;
+      border-radius: 50%;
+      background: #f2eee8;
+      font-size: clamp(8px, 1.2vw, 17px);
+      font-weight: 700;
+    }
+
+    .keypad .key-enter {
+      color: var(--paper-light);
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .email-field {
+      margin: 9% 0 6%;
+      padding: 6% 0 4%;
+      border-bottom: 2px solid var(--ink);
+      color: var(--ink-soft);
+      font-size: clamp(7px, 0.95vw, 13px);
+    }
+
+    .screen-button {
+      display: grid;
+      width: 100%;
+      min-height: 42px;
+      place-items: center;
+      padding: 4% 6%;
+      border-radius: 999px;
+      color: var(--paper-light);
+      background: var(--red);
+      font-size: clamp(7px, 0.9vw, 12px);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .screen-note {
+      margin-top: 6%;
+      color: var(--ink-soft);
+      font-size: clamp(6px, 0.72vw, 10px);
+      line-height: 1.4;
+    }
+
+    .mini-report {
+      display: grid;
+      gap: 7%;
+      margin-top: 13%;
+    }
+
+    .mini-report-hero {
+      padding: 9%;
+      color: var(--paper-light);
+      background: var(--ink);
+    }
+
+    .mini-report-hero span {
+      color: var(--lime);
+      font-size: clamp(6px, 0.7vw, 9px);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .mini-report-hero strong {
+      display: block;
+      margin-top: 5%;
+      font-size: clamp(13px, 1.8vw, 24px);
+      line-height: 1;
+    }
+
+    .mini-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7%;
+    }
+
+    .mini-metric {
+      padding: 12%;
+      border: 1px solid #d7d0c7;
+    }
+
+    .mini-metric strong {
+      display: block;
+      font-size: clamp(14px, 2vw, 27px);
+      line-height: 1;
+    }
+
+    .mini-metric span {
+      display: block;
+      margin-top: 8%;
+      color: var(--ink-soft);
+      font-size: clamp(5px, 0.65vw, 9px);
+      line-height: 1.25;
+    }
+
+    .mini-finish-control {
+      margin-top: 16%;
+      padding: 6% 8%;
+      border: 1px solid var(--ink);
+      color: var(--ink);
+      font-size: clamp(7px, 0.85vw, 11px);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .finish-actions {
+      display: grid;
+      gap: 6px;
+      margin-top: 8%;
+    }
+
+    .finish-action {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid #d7d0c7;
+      border-radius: 8px;
+      background: #f2eee8;
+    }
+
+    .finish-action:first-child {
+      color: var(--paper-light);
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .finish-action b {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border: 1px solid currentcolor;
+      border-radius: 50%;
+      font-size: 10px;
+    }
+
+    .finish-action span {
+      font-size: clamp(6px, 0.78vw, 11px);
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .finish-note {
+      display: grid;
+      gap: 4px;
+      margin-top: 7%;
+      padding: 8%;
+      border: 1px solid #d7d0c7;
+      border-radius: 8px;
+      background: #f2eee8;
+      font-size: clamp(7px, 0.8vw, 11px);
+      line-height: 1.3;
+    }
+
+    .device-phone-option {
+      display: flex;
+      gap: 8%;
+      align-items: center;
+      margin-top: 5%;
+      padding-top: 5%;
+      border-top: 1px solid #d7d0c7;
+    }
+
+    .device-phone-option svg {
+      flex: 0 0 21%;
+      color: var(--ink);
+    }
+
+    .device-phone-option p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: clamp(6px, 0.75vw, 10px);
+      line-height: 1.35;
+    }
+
+    .device-phone-option strong {
+      display: block;
+      color: var(--ink);
+    }
+
+    .phone-frame {
+      padding: 9px;
+      border-radius: 28px;
+      background: var(--ink);
+      box-shadow: 0 20px 48px rgb(33 29 29 / 20%);
+      transform: rotate(2.5deg);
+    }
+
+    .phone-screen {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 9 / 18.5;
+      padding: 16% 10%;
+      border-radius: 20px;
+      background: var(--paper-light);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      width: 35%;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--ink);
+      transform: translateX(-50%);
+    }
+
+    .phone-logo {
+      display: block;
+      width: 17px;
+      height: 15px;
+      margin: 0 0 20%;
+      color: var(--red);
+    }
+
+    .phone-screen h3 {
+      margin-bottom: 12%;
+      font-size: clamp(13px, 2vw, 26px);
+      line-height: 1.05;
+    }
+
+    .report-bars {
+      display: grid;
+      gap: 9px;
+      margin-top: 25%;
+    }
+
+    .report-bars span {
+      display: block;
+      height: 8px;
+      background: #d9d1c7;
+    }
+
+    .report-bars span:nth-child(1) {
+      width: 92%;
+      background: var(--red);
+    }
+
+    .report-bars span:nth-child(2) {
+      width: 68%;
+      background: var(--lime);
+    }
+
+    .report-bars span:nth-child(3) {
+      width: 81%;
+      background: var(--ink);
+    }
+
+    .badge {
+      position: relative;
+      padding: 11% 10% 13%;
+      color: var(--ink);
+      background: var(--paper-light);
+      box-shadow: 0 20px 48px rgb(33 29 29 / 16%);
+      transform: rotate(-3deg);
+    }
+
+    .badge::before {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      width: 48px;
+      height: 29px;
+      border: 8px solid var(--ink);
+      border-bottom: 0;
+      border-radius: 26px 26px 0 0;
+      content: "";
+      transform: translateX(-50%);
+    }
+
+    .badge-kicker {
+      color: var(--red);
+      font-size: clamp(6px, 0.7vw, 9px);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .badge h3 {
+      margin: 10% 0 4%;
+      font-size: clamp(15px, 2.2vw, 30px);
+      line-height: 1.05;
+    }
+
+    .badge-company {
+      margin-bottom: 17%;
+      color: var(--ink-soft);
+      font-size: clamp(7px, 0.9vw, 12px);
+    }
+
+    .qr-illustration {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      width: 72%;
+      aspect-ratio: 1;
+      margin: 0 auto 14%;
+      padding: 8%;
+      background: var(--paper-light);
+      border: 4px solid var(--ink);
+    }
+
+    .qr-illustration i {
+      background: var(--ink);
+    }
+
+    .qr-illustration i:nth-child(3n),
+    .qr-illustration i:nth-child(5n) {
+      background: transparent;
+    }
+
+    .badge-code-label {
+      margin: 0 0 3%;
+      color: var(--ink-soft);
+      font-size: clamp(6px, 0.7vw, 9px);
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .badge-code {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 42px);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-align: center;
+    }
+
+    .changes {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 17px;
+    }
+
+    .changes th,
+    .changes td {
+      padding: 25px 18px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .changes th {
+      width: 28%;
+      padding-left: 0;
+      color: var(--red);
+      font-size: 13px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .changes td {
+      padding-right: 0;
+      font-size: 19px;
+    }
+
+    .handoff {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: clamp(48px, 8vw, 120px);
+      align-items: start;
+    }
+
+    .handoff-copy h3 {
+      margin-bottom: 26px;
+      font-size: clamp(34px, 4vw, 52px);
+    }
+
+    .handoff-copy p {
+      color: #ffe9e4;
+      font-size: 17px;
+    }
+
+    .data-sheet {
+      color: var(--ink);
+      background: var(--paper-light);
+      box-shadow: 16px 16px 0 var(--red-dark);
+    }
+
+    .data-sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .data-sheet-head span:last-child {
+      color: var(--red);
+    }
+
+    .data-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1.4fr 0.65fr;
+      border-bottom: 1px solid #e4ddd3;
+      font-size: 12px;
+    }
+
+    .data-row > span {
+      overflow: hidden;
+      padding: 14px 11px;
+      border-right: 1px solid #e4ddd3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .data-row > span:last-child {
+      border-right: 0;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+    }
+
+    .data-row.head {
+      color: var(--ink-soft);
+      background: #ede8df;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .ownership {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--ink);
+    }
+
+    .owner {
+      min-height: 250px;
+      padding: 28px 32px 0 0;
+    }
+
+    .owner + .owner {
+      padding-left: 32px;
+      border-left: 1px solid var(--line);
+    }
+
+    .owner-role {
+      margin-bottom: 34px;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .owner h3 {
+      margin-bottom: 18px;
+      font-size: 26px;
+    }
+
+    .owner ul {
+      margin: 0;
+      padding: 0;
+      color: var(--ink-soft);
+      list-style: none;
+    }
+
+    .owner li {
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .screen-spec {
+      display: grid;
+      grid-template-columns: 0.68fr 1.32fr;
+      gap: clamp(48px, 9vw, 130px);
+      align-items: center;
+    }
+
+    .screen-silhouette {
+      position: relative;
+      width: min(100%, 290px);
+      aspect-ratio: 9 / 16;
+      margin: 0 auto;
+      padding: 18px;
+      border: 9px solid #131111;
+      background: #2b2928;
+      box-shadow: 0 28px 70px rgb(0 0 0 / 36%);
+    }
+
+    .screen-silhouette::after {
+      position: absolute;
+      right: 20%;
+      bottom: -52px;
+      left: 20%;
+      height: 45px;
+      background: #131111;
+      border-radius: 50% 50% 0 0;
+      content: "";
+    }
+
+    .screen-inner {
+      display: grid;
+      height: 100%;
+      place-items: center;
+      border: 1px solid #58514c;
+      color: var(--lime);
+      background:
+        linear-gradient(145deg, transparent 35%, rgb(215 239 107 / 8%)),
+        #1b1919;
+      text-align: center;
+    }
+
+    .screen-inner strong {
+      display: block;
+      font-size: clamp(42px, 6vw, 82px);
+      letter-spacing: -0.06em;
+      line-height: 0.9;
+    }
+
+    .screen-inner span {
+      display: block;
+      margin-top: 12px;
+      color: #b8b0a7;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .spec-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin: 0 0 52px;
+      border-top: 1px solid #6f6863;
+    }
+
+    .spec {
+      padding: 22px 20px 22px 0;
+      border-bottom: 1px solid #6f6863;
+    }
+
+    .spec:nth-child(even) {
+      padding-left: 20px;
+      border-left: 1px solid #6f6863;
+    }
+
+    .spec dt {
+      margin-bottom: 6px;
+      color: #b8b0a7;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .spec dd {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .touch-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 36px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .touch-list li {
+      position: relative;
+      padding: 12px 0 12px 26px;
+      border-top: 1px solid #6f6863;
+      color: #d5cec4;
+    }
+
+    .touch-list li::before {
+      position: absolute;
+      top: 19px;
+      left: 0;
+      width: 9px;
+      height: 9px;
+      background: var(--lime);
+      content: "";
+    }
+
+    .closing {
+      position: relative;
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+      padding: clamp(70px, 8vw, 110px) 0;
+    }
+
+    .closing p {
+      max-width: 1020px;
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(42px, 6vw, 78px);
+      font-weight: 700;
+      letter-spacing: -0.065em;
+      line-height: 0.95;
+    }
+
+    .closing em {
+      color: var(--red);
+      font-style: normal;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+      padding: 26px 0 38px;
+      border-top: 1px solid var(--line);
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    @media (width < 800px) {
+      body {
+        font-size: 16px;
+      }
+
+      .masthead-meta {
+        display: none;
+      }
+
+      .hero {
+        min-height: 520px;
+      }
+
+      .decision-stamp {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-code {
+        right: 0;
+        bottom: 32px;
+      }
+
+      .summary-grid,
+      .journeys,
+      .mockup-stage,
+      .handoff,
+      .ownership,
+      .screen-spec {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-item,
+      .summary-item + .summary-item {
+        padding: 22px 0;
+        border-bottom: 1px solid var(--line);
+        border-left: 0;
+      }
+
+      .summary-number {
+        margin-bottom: 22px;
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+
+      .journey,
+      .journey:first-child,
+      .journey:last-child {
+        padding: 36px 0;
+        border-right: 0;
+      }
+
+      .journey:first-child {
+        border-bottom: 1px solid #6f6863;
+      }
+
+      .mockup-stage {
+        max-width: 430px;
+        margin: 0 auto;
+      }
+
+      .badge {
+        order: 1;
+      }
+
+      .device-frame {
+        order: 2;
+      }
+
+      .phone-frame {
+        order: 3;
+      }
+
+      .device-screen h3 {
+        margin: 8% 0 4%;
+        font-size: clamp(27px, 8vw, 34px);
+      }
+
+      .device-screen > p,
+      .keypad span {
+        font-size: 10px;
+      }
+
+      .device-screen {
+        padding: 8%;
+      }
+
+      .code-slots {
+        margin: 7% 0 6%;
+      }
+
+      .keypad {
+        width: 45%;
+        gap: 5%;
+      }
+
+      .device-phone-option {
+        margin-top: 4%;
+        padding-top: 4%;
+      }
+
+      .device-phone-option p {
+        font-size: 8px;
+      }
+
+      .email-field,
+      .screen-button {
+        font-size: 10px;
+      }
+
+      .screen-note,
+      .mini-finish-control,
+      .mini-report-hero span,
+      .mini-metric span,
+      .finish-action span {
+        font-size: 8px;
+      }
+
+      .badge h3,
+      .phone-screen h3 {
+        font-size: 27px;
+      }
+
+      .ownership {
+        border-top: 0;
+      }
+
+      .owner,
+      .owner + .owner {
+        min-height: 0;
+        padding: 28px 0 42px;
+        border-top: 1px solid var(--ink);
+        border-left: 0;
+      }
+
+      .owner-role {
+        margin-bottom: 28px;
+      }
+
+      .screen-silhouette {
+        margin-bottom: 70px;
+      }
+
+      .spec-list,
+      .touch-list {
+        grid-template-columns: 1fr;
+      }
+
+      .spec:nth-child(even) {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .footer {
+        display: block;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      body {
+        background: var(--paper-light);
+        font-size: 11pt;
+      }
+
+      .masthead,
+      .hero,
+      .summary,
+      .section,
+      .closing,
+      .footer {
+        width: 100%;
+        padding-right: 0;
+        padding-left: 0;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 42mm;
+        page-break-after: always;
+      }
+
+      .hero-code {
+        display: none;
+      }
+
+      .section,
+      .summary {
+        break-before: page;
+      }
+
+      .section-dark,
+      .section-red {
+        print-color-adjust: exact;
+      }
+
+      .device-frame,
+      .phone-frame,
+      .badge,
+      .data-sheet,
+      .screen-silhouette {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 28 24" aria-hidden="true">
+          <path fill="currentColor" d="M10.3 0h7.4L28 24h-7.4l-2.5-6H9.9l-2.5 6H0L10.3 0Zm1.9 12.5h3.6L14 8.2l-1.8 4.3Z"/>
+        </svg>
+        <span>Adobe Brand Visibility</span>
+      </div>
+      <div class="masthead-meta">Experience overview · September 2026</div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Email-first booth access</p>
+        <h1>One email.<br>One report.<br>One conversation.</h1>
+        <p class="hero-lede">One reusable booth page at act.aem.now/booth. Enter a registration email, open the existing Digital Opportunity Report, then return to Finish for a sales conversation.</p>
+        <div class="decision-stamp">
+          <strong>Updated plan</strong>
+          <span>Badge QR scanning is unavailable. Attendees will use the email address they registered with.</span>
+        </div>
+      </div>
+      <div class="hero-code" aria-hidden="true">@</div>
+    </section>
+
+    <section class="summary" aria-labelledby="summary-title">
+      <p class="eyebrow">The proposal in 30 seconds</p>
+      <h2 class="summary-title" id="summary-title">A simple flow built around information attendees already know.</h2>
+      <div class="summary-grid">
+        <article class="summary-item">
+          <span class="summary-number">01 / Find the report</span>
+          <h3>Enter the registered email</h3>
+          <p>The attendee uses the same email address they used to register. The booth concept has no competing example link on this screen; a staff-led demonstration can use the public sample separately.</p>
+        </article>
+        <article class="summary-item">
+          <span class="summary-number">02 / Explore together</span>
+          <h3>Open the live report</h3>
+          <p>The prepared portal-landing page opens directly, with a booth-only Finish control to return to the next step.</p>
+        </article>
+        <article class="summary-item">
+          <span class="summary-number">03 / Continue the conversation</span>
+          <h3>Email the report</h3>
+          <p>The attendee can send the report to their registration email. Guidance points them to the booth team for a sales conversation or later 1:1.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-dark" aria-labelledby="journey-title">
+      <div class="section-head">
+        <div class="section-index">01 · The experience</div>
+        <div>
+          <h2 class="section-title" id="journey-title">From registration email to a sales conversation.</h2>
+          <p class="section-intro">Before attendees arrive, staff sign in and choose the active event using a setup link. The touchscreen then stays on one clean /booth page. A registered email opens the existing report directly; a booth-only Finish control brings the attendee back.</p>
+        </div>
+      </div>
+      <div class="journeys">
+        <article class="journey">
+          <p class="journey-label">Touchscreen journey</p>
+          <h3>A guided, interactive conversation.</h3>
+          <ol class="flow">
+            <li><div><strong>Enter the registration email</strong><span>The attendee uses the email address submitted during event registration.</span></div></li>
+            <li><div><strong>Open the existing report</strong><span>A match takes the browser straight to the prepared portal-landing page, without a confirmation screen.</span></div></li>
+            <li><div><strong>Explore, then tap Finish</strong><span>The same report has a booth-only return control so the attendee can move to the final step.</span></div></li>
+            <li><div><strong>Handle a missing match</strong><span>A booth expert checks the address against the registration list. The portal never opens a different company’s report.</span></div></li>
+          </ol>
+        </article>
+        <article class="journey">
+          <p class="journey-label">Finish the session</p>
+          <h3>Turn the insight into a next step.</h3>
+          <ol class="flow">
+            <li><div><strong>Return to the booth page</strong><span>Finish opens the final view of the same reusable page, not an event-specific site.</span></div></li>
+            <li><div><strong>Email the report</strong><span>Send a secure link to the same registered address so the attendee can revisit it later.</span></div></li>
+            <li><div><strong>Talk to the booth team</strong><span>On-screen text suggests asking for a sales introduction or a later 1:1; these are not booking buttons.</span></div></li>
+            <li><div><strong>Reset the screen</strong><span>Finish the session and return to the welcome page for the next attendee.</span></div></li>
+          </ol>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="mockup-title">
+      <div class="section-head">
+        <div class="section-index">02 · Simple mock-ups</div>
+        <div>
+          <h2 class="section-title" id="mockup-title">The idea, made tangible.</h2>
+          <p class="section-intro">There are only two new views: email entry and Finish. These diagrams show the flow, not the final screen layout; <a href="implementations/booth-access/design/booth-preview.html">review the portrait design preview</a> for the current question-led booth concept. The middle illustration represents the report page we already have, with a new booth-only return control. Adobe review is still pending.</p>
+        </div>
+      </div>
+
+      <div class="mockup-stage">
+        <figure>
+          <div class="device-frame">
+            <div class="device-screen">
+              <div class="device-kicker">Adobe Brand Visibility</div>
+              <h3>Is your brand visible in AI search?</h3>
+              <p>Enter the email address you used to register for this event.</p>
+              <div class="email-field">jordan.lee@company.com</div>
+              <div class="screen-button">View my report</div>
+              <p class="screen-note">We can only find reports prepared for registered attendees.</p>
+            </div>
+          </div>
+          <figcaption class="mockup-caption">1 · Enter registered email</figcaption>
+        </figure>
+
+        <figure>
+          <div class="device-frame">
+            <div class="device-screen">
+              <div class="device-kicker">Adobe Brand Visibility</div>
+              <h3>Prepared report</h3>
+              <p>The existing Digital Opportunity Report opens here.</p>
+              <div class="mini-report">
+                <div class="mini-report-hero">
+                  <span>Existing report</span>
+                  <strong>Your brand’s findings</strong>
+                </div>
+                <div class="mini-metrics">
+                  <div class="mini-metric"><strong>—</strong><span>Illustrative layout</span></div>
+                  <div class="mini-metric"><strong>—</strong><span>Report-specific data</span></div>
+                </div>
+              </div>
+              <div class="mini-finish-control">Finish session &rarr;</div>
+            </div>
+          </div>
+          <figcaption class="mockup-caption">2 · Existing report page + Finish control</figcaption>
+        </figure>
+
+        <figure>
+          <div class="device-frame">
+            <div class="device-screen">
+              <div class="device-kicker">Finish the session</div>
+              <h3>Your report. Your next move.</h3>
+              <p>Take the report with you and talk through what you found.</p>
+              <div class="finish-actions">
+                <div class="finish-action"><b>↗</b><span>Email my report</span></div>
+              </div>
+              <div class="finish-note"><strong>Talk through your report here</strong><span>Ask the booth team to introduce you to an Adobe specialist.</span></div>
+              <p class="screen-note">Finish and clear this screen.</p>
+            </div>
+          </div>
+          <figcaption class="mockup-caption">3 · Email the report or talk to the team</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="changes-title">
+      <div class="section-head">
+        <div class="section-index">03 · What changes</div>
+        <div>
+          <h2 class="section-title" id="changes-title">A focused set of improvements.</h2>
+          <p class="section-intro">We are adapting the existing portal into a reusable event experience, without building scanner integration or separate pages for each event.</p>
+        </div>
+      </div>
+      <table class="changes">
+        <tbody>
+          <tr>
+            <th scope="row">Portal design</th>
+            <td>Create a question-led, motion-optional booth welcome that draws attendees in before showing the prepared-report email action. Motion pauses during entry and respects reduced-motion settings. Keep the normal portal entry and login flow unchanged.</td>
+          </tr>
+          <tr>
+            <th scope="row">Booth setup</th>
+            <td>Staff sign in once and select the event with a staff-only setup link. The event selection stays on the device; the attendee sees only the clean, reusable /booth page.</td>
+          </tr>
+          <tr>
+            <th scope="row">Booth access</th>
+            <td>Match a registered attendee’s email and navigate directly to the prepared portal-landing page, with no extra company confirmation screen.</td>
+          </tr>
+          <tr>
+            <th scope="row">Example report</th>
+            <td>Keep the public Frescopa asset for a staff-led demonstration if useful, not as a competing report screenshot or link on the attendee Entry. A future kiosk link requires approval and a safe way back to the booth.</td>
+          </tr>
+          <tr>
+            <th scope="row">Learn-more QR</th>
+            <td>Consider the existing static QR asset for separate booth signage, clearly labeled as the Adobe Brand Visibility product website for a visitor’s phone. It is not on the current Entry or Finish concept. Company reports still open through registration email; this is not badge scanning or report access.</td>
+          </tr>
+          <tr>
+            <th scope="row">Report return</th>
+            <td>Show a booth-only Finish control on the existing report page. It returns to the final view on the same reusable booth page; no per-report edits.</td>
+          </tr>
+          <tr>
+            <th scope="row">Attendee preparation</th>
+            <td>Load and validate the final Name, Company and Email registration list before the event.</td>
+          </tr>
+          <tr>
+            <th scope="row">Report delivery</th>
+            <td>Email a secure report link at the end of the booth session so the attendee can revisit it later.</td>
+          </tr>
+          <tr>
+            <th scope="row">Touchscreen support</th>
+            <td>Review and adapt report landing pages so they read and behave well on the 40-inch portrait touchscreen.</td>
+          </tr>
+          <tr>
+            <th scope="row">Sales handoff</th>
+            <td>Make the in-person Adobe-team introduction visually prominent after the report, but non-interactive until there is a named owner, available salesperson, fallback and booking destination. Keep report email as the confirmed action and reset quiet but accessible.</td>
+          </tr>
+          <tr>
+            <th scope="row">Branding</th>
+            <td>Use the same reusable experience with an Adobe or Semrush presentation, selected for the event without creating a bespoke page.</td>
+          </tr>
+          <tr>
+            <th scope="row">Shared-device access</th>
+            <td>Entering a registered email identifies a prepared report but does not verify the attendee’s identity. The event team must agree how the staffed touchscreen is managed.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section section-red" aria-labelledby="prepare-title">
+      <div class="section-head">
+        <div class="section-index">04 · Preparing an event</div>
+        <div>
+          <h2 class="section-title" id="prepare-title">The attendee list is the key input.</h2>
+          <p class="section-intro">The lookup only works when the final registration list is complete, matched to the available reports and loaded before the event.</p>
+        </div>
+      </div>
+      <div class="handoff">
+        <div class="handoff-copy">
+          <h3>What we need</h3>
+          <p>The event team provides the final attendee list with Name, Company and Email. Digital Insights matches each registered email to the correct report and flags any gaps before the event.</p>
+          <p>Attendee communications must make one point clear: use the same email address at the booth that was used during registration.</p>
+        </div>
+        <div class="data-sheet" aria-label="Illustrative attendee report matching spreadsheet">
+          <div class="data-sheet-head">
+            <span>Attendee report matching</span>
+            <span>Illustrative</span>
+          </div>
+          <div class="data-row head">
+            <span>Name</span><span>Company</span><span>Registration email</span><span>Status</span>
+          </div>
+          <div class="data-row">
+            <span>Jordan Lee</span><span>Northstar</span><span>jordan@northstar.com</span><span>Matched</span>
+          </div>
+          <div class="data-row">
+            <span>Sam Rivera</span><span>Field &amp; Co.</span><span>sam@field.co</span><span>Matched</span>
+          </div>
+          <div class="data-row">
+            <span>Alex Morgan</span><span>Meridian</span><span>alex@meridian.com</span><span>Review</span>
+          </div>
+          <div class="data-row">
+            <span>Taylor Chen</span><span>Harbor Group</span><span>taylor@harbor.com</span><span>Matched</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="ownership-title">
+      <div class="section-head">
+        <div class="section-index">05 · Who does what</div>
+        <div>
+          <h2 class="section-title" id="ownership-title">Clear ownership keeps it simple.</h2>
+          <p class="section-intro">The experience depends on an accurate registration list, prepared reports, working screen equipment and a clear sales path.</p>
+        </div>
+      </div>
+      <div class="ownership">
+        <article class="owner">
+          <p class="owner-role">Digital Insights</p>
+          <h3>Prepare access</h3>
+          <ul>
+            <li>Match registration emails to reports</li>
+            <li>Flag missing reports before the event</li>
+            <li>Prepare report email delivery</li>
+            <li>Configure the agreed brand presentation and event setup</li>
+          </ul>
+        </article>
+        <article class="owner">
+          <p class="owner-role">Event team</p>
+          <h3>Prepare the event</h3>
+          <ul>
+            <li>Provide the final Name, Company and Email list</li>
+            <li>Tell attendees to use their registration email</li>
+            <li>Confirm Adobe or Semrush branding</li>
+            <li>Prepare the booth bookmark, browser device and internet access</li>
+          </ul>
+        </article>
+        <article class="owner">
+          <p class="owner-role">Booth experts</p>
+          <h3>Guide the conversation</h3>
+          <ul>
+            <li>Help attendees enter their registration email</li>
+            <li>Walk through the report</li>
+            <li>Explain the most important opportunities</li>
+            <li>Connect attendees with sales or a later meeting</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-dark" aria-labelledby="screen-title">
+      <div class="section-head">
+        <div class="section-index">06 · Touchscreen readiness</div>
+        <div>
+          <h2 class="section-title" id="screen-title">Designed for the screen in the room.</h2>
+          <p class="section-intro">The content is a responsive website. The display needs a browser-capable device and reliable internet, plus portrait testing on the final hardware.</p>
+        </div>
+      </div>
+      <div class="screen-spec">
+        <div class="screen-silhouette" aria-label="Portrait touchscreen illustration">
+          <div class="screen-inner">
+            <div><strong>40″</strong><span>Portrait touchscreen</span></div>
+          </div>
+        </div>
+        <div>
+          <dl class="spec-list">
+            <div class="spec"><dt>Content format</dt><dd>Website</dd></div>
+            <div class="spec"><dt>Runtime</dt><dd>Web browser</dd></div>
+            <div class="spec"><dt>Orientation</dt><dd>Portrait</dd></div>
+            <div class="spec"><dt>Aspect ratio</dt><dd>16:9 rotated</dd></div>
+            <div class="spec"><dt>Maximum resolution</dt><dd>2160 × 3840</dd></div>
+            <div class="spec"><dt>Refresh rate</dt><dd>50 / 60 Hz</dd></div>
+          </dl>
+          <ul class="touch-list">
+            <li>Readable at standing distance</li>
+            <li>Large, comfortable touch targets</li>
+            <li>No essential hover interactions</li>
+            <li>Layouts that use the tall format</li>
+            <li>Responsive charts and carousels</li>
+            <li>Clear email and reset actions; sales guidance is not a button</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <p>One registered email opens the right report and the <em>next conversation.</em></p>
+    </section>
+
+    <footer class="footer">
+      <span>Adobe Brand Visibility</span>
+      <span>Universal booth access · Experience overview</span>
+    </footer>
+  </main>
+</body>
+</html>
