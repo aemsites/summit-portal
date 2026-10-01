@@ -166,6 +166,12 @@ describe('booth fresh-document history boundary', () => {
     expect(response.headers.get('Location')).toBe('https://portal.example/403');
   });
 
+  it('never accepts the signed device marker as an authentication session', async () => {
+    await request('/booth');
+    const session = await getSession(new Request('https://portal.example/', { headers: { Cookie: `auth_token=${cookies.get('booth_device')}` } }), env);
+    expect(session).toBeNull();
+  });
+
   it('does not return the report if reset happens during the final return-helper context check', async () => {
     await request('/booth');
     await request('/auth/booth/lookup', { email: 'visitor@example.com' });

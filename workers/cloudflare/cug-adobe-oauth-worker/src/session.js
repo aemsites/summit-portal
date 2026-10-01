@@ -159,7 +159,7 @@ export async function getSession(request, env) {
   if (!match) return null;
 
   const payload = await verifyJwt(match[1], env.JWT_SECRET);
-  if (!payload) return null;
+  if (!payload || payload.purpose === 'booth-device') return null;
 
   // Kill switch: a generic-credential token is only valid while its baked-in
   // epoch matches the current env value. Bumping EVENT_CRED_EPOCH revokes all
