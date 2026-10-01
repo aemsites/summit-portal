@@ -1,24 +1,35 @@
 # Reusable booth access: tracker
 
-Status: `Not started`, `In progress`, `Review`, `Complete`, `Blocked`, `Scope reduction`. `Complete` means verified, not simply coded. No production work is authorized by this plan.
+**October 1:** implementation authorized and roster scope superseded. “Verified”
+below means repository/fixture verification, not production rollout or inbox
+receipt. The child implementation does not deploy or merge production.
 
-| Wave | Total | Not started | In progress | Review | Complete | Blocked |
-|---|---:|---:|---:|---:|---:|---:|
-| 0 | 2 | 2 | 0 | 0 | 0 | 0 |
-| 1 | 6 | 6 | 0 | 0 | 0 | 0 |
-| 2 | 1 | 1 | 0 | 0 | 0 | 0 |
-| 3 | 1 | 1 | 0 | 0 | 0 | 0 |
-| **Total** | **10** | **10** | **0** | **0** | **0** | **0** |
+| Area | State | Evidence / remaining gate |
+|---|---|---|
+| Isolated booth Worker + evergreen shell | Verified locally | Exact routes, bundled single-source assets, Wrangler dry-run |
+| Domain discovery + picker | Verified locally | Fresh private index/CUG/mapping, most-specific permissions, authorized-alias filtering, explicit selection |
+| Context + real delivery integration | Verified locally | Bound HttpOnly context, KV TTL, Durable Object serialization, existing share-link policy, duplicate/uncertain send tests |
+| Approved Entry/Finish UI + report return | Verified with explicit test fixtures | 2160 × 3840 and 390 × 844; long report fixed control; motion/focus; reset/error/idle/bfcache |
+| Documentation + PR | Implementation handoff | README, target contract, PROJECT; PR creation tracked separately |
+| Worker activation | External gate | Parent reviews exact commit, checks live baseline, approves/deploys binding/migration |
+| Actual email receipt | External gate | Staff-authenticated live lookup/send once to approved recipient; no fixture result substitutes |
+| Final device/privacy acceptance | External gate | Kiosk lockdown, actual CSS viewport, keyboard/network, asserted-domain risk acceptance |
 
-| ID | Task | Size | Wave | Stream | Status | Depends on | File |
-|---|---|---|---:|---|---|---|---|
-| ARC-01 | Approve access, roster, report-link and branding contracts | M | 0 | A | Not started | - | [ARC-01](tasks/architecture/ARC-01.md) |
-| INF-01 | Provision a private event roster and operations contract | M | 0 | A | Not started | ARC-01 | [INF-01](tasks/infrastructure/INF-01.md) |
-| BE-01 | Implement staff-only attendee lookup | M | 1 | B | Not started | INF-01 | [BE-01](tasks/backend/BE-01.md) |
-| BE-02 | Constrain event report-link redemption to one report | L | 1 | B | Not started | BE-01 | [BE-02](tasks/backend/BE-02.md) |
-| BE-03 | Send a report link to the matched registration address | M | 1 | B | Not started | BE-02 | [BE-03](tasks/backend/BE-03.md) |
-| FE-01 | Build the reusable portrait email-lookup screen | M | 1 | C | Not started | BE-01 | [FE-01](tasks/frontend/FE-01.md) |
-| FE-02 | Link the real report to Finish, email and reset | L | 1 | C | Not started | FE-01, BE-03 | [FE-02](tasks/frontend/FE-02.md) |
-| FE-03 | Adapt report portrait behavior and approved branding | M | 1 | D | Not started | ARC-01 | [FE-03](tasks/frontend/FE-03.md) |
-| QA-01 | Rehearse complete flow and final device | M | 2 | Integration | Not started | BE-03, FE-02, FE-03 | [QA-01](tasks/testing/QA-01.md) |
-| DOC-01 | Update shared brief and handoff guide | S | 3 | Integration | Not started | QA-01 | [DOC-01](tasks/docs-process/DOC-01.md) |
+## Superseded ten-task plan
+
+These are **not** completed as originally specified. Retain the historical task
+documents as planning evidence; the current contract is in
+[target design](context/target-design.md).
+
+| ID | Historical task | October 1 disposition |
+|---|---|---|
+| ARC-01 | Approve access, roster, report-link and branding contracts | Revised: domain discovery approved; operational/privacy gate remains |
+| INF-01 | Provision private event roster | Scope reduction: no roster or event binding |
+| BE-01 | Staff-only exact attendee lookup | Replaced by CUG-domain prepared-report discovery |
+| BE-02 | Constrain event link to one report | Scope reduction: preserve existing 30-day domain share grant, no new token |
+| BE-03 | Email matched registration address | Replaced by stored asserted business email + selected authorized path |
+| FE-01 | Reusable portrait lookup | Implemented using preserved design, business-domain copy |
+| FE-02 | Real report to Finish/email/reset | Implemented; existing report content remains intact |
+| FE-03 | Report portrait/branding adaptation | Scope reduction: no unrelated report layout or runtime co-brand switching |
+| QA-01 | Rehearse flow and final device | Fixture flow verified; live mail/hardware/operator gates remain |
+| DOC-01 | Shared handoff guide | Current implementation/runbook recorded, original design artifacts preserved |

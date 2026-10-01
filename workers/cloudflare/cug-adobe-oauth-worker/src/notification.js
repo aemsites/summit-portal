@@ -48,23 +48,19 @@ async function getImsToken(env) {
     signal: AbortSignal.timeout(5000),
   });
   if (!resp.ok) {
-    const headers = Object.fromEntries(resp.headers.entries());
-    const body = await resp.text();
-    logError(`IMS token request failed status=${resp.status} headers=${JSON.stringify(headers)} body=${body}`);
+    logError(`IMS token request failed status=${resp.status}`);
     throw new Error(`IMS auth failed: ${resp.status}`);
   }
-  const { access_token } = await resp.json();
-  if (!access_token) {
+  const { access_token: accessToken } = await resp.json();
+  if (!accessToken) {
     logError('IMS response missing access_token');
     throw new Error('IMS response missing access_token');
   }
   log('IMS token obtained');
-  return access_token;
+  return accessToken;
 }
 
-async function sendApoEmail({
-  templateName, toEmails, ccEmails = [], data, env,
-}) {
+async function sendApoEmail({ templateName, toEmails, ccEmails = [], data, env }) {
   const token = await getImsToken(env);
   const apoHost = APO_HOSTS[env.ENVIRONMENT] ?? APO_HOSTS.stage;
   log(`sending APO email template=${templateName} host=${apoHost}`);
@@ -98,7 +94,7 @@ async function sendApoEmail({
   }
   const text = await resp.text();
   if (!text.includes('status="OK"')) {
-    logError(`APO non-OK response template=${templateName} body=${text}`);
+    logError(`APO non-OK response template=${templateName}`);
     throw new Error('APO returned non-OK status');
   }
   log(`APO email sent successfully template=${templateName}`);

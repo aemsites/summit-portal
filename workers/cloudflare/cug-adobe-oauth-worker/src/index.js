@@ -24,6 +24,10 @@ import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
+import { handleBooth } from './booth.js';
+import { serveBooth, injectBoothReturn } from './booth-shell.js';
+
+export { BoothCoordinator } from './booth.js';
 
 const getExtension = (path) => {
   const basename = path.split('/').pop();
@@ -95,6 +99,9 @@ async function proxyToOrigin(request, env, url) {
 
 const handleRequest = async (request, env) => {
   const url = new URL(request.url);
+  if (url.pathname.startsWith('/auth/booth/')) return handleBooth(request, env);
+  const boothResponse = await serveBooth(request, env);
+  if (boothResponse) return boothResponse;
 
   // Strip non-standard ports
   // if (url.port) {
@@ -302,7 +309,8 @@ const handleRequest = async (request, env) => {
   const session = await getSession(request, env);
   const originResponse = await proxyToOrigin(request, env, url);
 
-  return checkCugAccess(originResponse, session, request, env);
+  const response = await checkCugAccess(originResponse, session, request, env);
+  return injectBoothReturn(response, request, env);
 };
 
 export default {

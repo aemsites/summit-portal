@@ -1,95 +1,149 @@
 # Reusable booth access
 
-> Status: Implementation authorized for the October 1 demo; scope revised below
->
-> Source: [`docs/universal-booth-access.html`](../../universal-booth-access.html)
->
-> Created: 2026-09-24
+**October 1 implementation:** the approved Entry/Finish design now has an isolated
+Worker runtime. This is a reusable domain-based prototype, not an event roster
+system. Deployment, real email receipt, final hardware rehearsal and PR merge
+are separate gates; code and fixture tests do not prove those gates passed.
 
-## October 1 implementation decision
+## Approved scope
 
-José authorized implementing the current design and creating a PR for a working
-booth prototype. The lookup contract supersedes the roster-based proposal below:
-use existing customer CUG email-domain permissions to discover prepared reports,
-without an event roster or event binding. One authorized report opens directly;
-multiple authorized reports require an explicit report picker. Do not guess a
-website from an email domain, expose the staff report catalogue to visitors, or
-grant staff domains customer-wide lookup.
+`/booth` and every booth API are **staff-only**. Staff sets up the device through
+`/login?staff&redirect=%2Fbooth`; staff authentication remains in the existing
+secure HttpOnly session cookie, not an attendee URL token. At `/booth`,
+the attendee enters a **business email**. The Worker uses the email's domain to
+discover prepared account insight reports permitted by existing CUGs. One
+eligible website report opens directly; several require an explicit picker.
+There is no event selection, private attendee roster, registration-email match,
+guessed website, company search or new access grant.
 
-Keep the kiosk staff-authenticated and derive recipient/report state on the
-Worker. Entering an email is identification, not authentication. Reuse existing
-staff share-link delivery and its seven-day, domain-scoped access policy; do not
-claim a new report-exclusive grant or change normal login. Sales handoff remains
-informational. Private-roster provisioning and new report-token infrastructure
-in the historical task plan are not prerequisites for this revised prototype.
+The real report retains its content and gains a fixed, touch-friendly **Finish
+reading my report** control only when its pathname exactly matches the valid
+server context. It returns to `/booth?step=finish`. **Email my report** sends to
+the address stored by lookup; the browser cannot supply another recipient or
+path. Adobe specialist/follow-up guidance remains informational. Reset clears
+attendee state, not the staff login.
 
-Publishing `/booth`, deploying the Worker, merging code, and approving event
-rollout are separate steps. Record their actual status rather than treating a
-PR or mockup as a live deployment.
+**Identity limitation:** asserted email is identification, not authentication.
+Anyone knowing a permitted domain can view its prepared reports on this
+staff-authenticated kiosk. CUGs are domain permissions, not registration lists.
+Staff domains never discover every company. Personal addresses without a
+customer CUG permission do not qualify.
 
-## Objective
+## Implementation
 
-At an event, attract a registered attendee to the reusable **`https://act.aem.now/booth`** touchscreen page, have them enter their registration email, open the **existing prepared portal-landing page directly**, and return from that report to a Finish view that emails the report link to the same registration address. The current concept makes the on-site sales conversation more prominent, but does not book meetings. Keep the current portal entry/login flow for ordinary visitors.
+| Surface | Source |
+|---|---|
+| Evergreen shell | Root `booth.html`, served at exact `/booth` by Worker |
+| Entry, picker, Finish | `scripts/booth.js`, scoped `styles/booth.css` |
+| Actual report control | `scripts/booth-report.js`, shared lazy import and context-only Worker injection |
+| Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
+| Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text-module rules |
+| Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 
-## Success criteria
+Wrangler bundles the **single source** shell, stylesheet and two scripts, so
+the deployed Worker can serve the complete booth before the frontend PR merges.
+All other assets/content continue using the existing production origin. The
+logo and Adobe Clean Typekit reference are the approved design assets.
+No global origin switch, content imports, DA credentials or authored booth page
+are required. `ak.js` and `aem.js` are untouched; the standalone kiosk shell
+does not load the ordinary portal chrome or analytics.
 
-1. Every attendee in the approved event roster has either exactly one checked report assignment or a visible preparation exception before doors open. No guessed website search or fallback to another company's report.
-2. The kiosk works at one reusable `/booth` URL with an existing staff login, without a badge reader, custom event landing page, or a requirement that an expert verify the attendee's identity.
-3. A booth-only Finish control on the actual report returns to the **same reusable booth page**. The only attendee action there is **Email my report**, which sends the prepared report link to the registration address used for lookup. Sales and later 1:1s are non-interactive guidance; **Done** clears the attendee's visible state.
-4. No roster emails, report mappings, credentials or signed links are published in the site's client-side HTML/JSON, source control or analytics.
-5. The welcome page, actual report with its Finish control, and Finish view work without horizontal overflow on the supplied 40-inch portrait screen (up to 2160 x 3840), with touch targets, keyboard support and a tested reset path.
+See [target design / API contract](context/target-design.md) for authorization,
+context lifetime, concurrency and failure semantics.
 
-## Scope
+## Email policy (corrected historical claims)
 
-**In:** registration-email lookup, private event roster/report mapping, reusable booth welcome/Finish UI, a booth-only return control on existing report pages, report email to the matched registration address, non-interactive sales guidance, configured Adobe/Semrush presentation, portrait report readiness, event rehearsal and runbook.
+The current repository's `SHARE_LINK_TTL` is **30 days**, not the seven days
+claimed by the September planning documents. This implementation does not
+change it. The emailed link is a **customer-domain CUG grant**, not a
+report-exclusive grant. It opens the selected report first, and may authorize
+other reports permitting that domain. Existing share-link expiry, redemption,
+templates and global staff/share-link behavior remain unchanged.
 
-**Out:** QR scanner integration, five-digit codes, arbitrary company search, badge printing, clickable sales or booking controls without a defined owner/process, automatic CRM booking, new report generation, a different site per event, changes to existing customer login for non-event visitors, and import scripts for authored site content.
+APO success confirms dispatch, not inbox receipt. Upstream failure is explicit.
+An uncertain send is not automatically retryable: a durable `attempted` record
+is persisted before contacting APO, so crashes, duplicate taps and races cannot
+issue a second send for that context. Staff should investigate uncertain delivery
+before starting another lookup. This trades automatic retry for avoiding
+duplicate mail; it is not a guarantee of delivery.
 
-## Read order
+## Local verification
 
-1. [`AGENTS.md`](../../../AGENTS.md) and [`PROJECT.md`](../../../PROJECT.md).
-2. [`../AGENT-GUIDELINES.md`](../AGENT-GUIDELINES.md).
-3. This README and the [shared booth brief](../../universal-booth-access.html).
-4. [`context/current-state.md`](context/current-state.md), then [`context/target-design.md`](context/target-design.md).
-5. [`design/experience.md`](design/experience.md).
-6. [`roadmap.md`](roadmap.md) and [`tracker.md`](tracker.md).
-7. The assigned task file.
+```sh
+npm ci
+cd workers/cloudflare/cug-adobe-oauth-worker
+npm ci
+npm test
+npx wrangler deploy --env summit --dry-run
+cd ../../..
+npm run test:file -- test/scripts/booth.test.js
+npx eslint scripts/booth*.js workers/cloudflare/cug-adobe-oauth-worker/src/booth*.js
+npx stylelint styles/booth.css
+```
 
-## Architecture in one sentence
+For an explicitly isolated browser fixture:
 
-At `/booth`, an existing staff login authorizes a staff-only event selection, which persists on the locked-down kiosk. Each attendee lookup creates a separate short-lived context and sends the browser directly to the approved report page. A conditional report-page control returns to Finish on `/booth`; the Worker handles a recipient-bound report email while existing CUG still protects reports.
+```sh
+node test/fixtures/booth-server.mjs
+```
 
-This is a **proposal**, not a claim that the current Worker already supports it. The roster store, email token design and brand configuration need owners and sign-off before implementation. Sales and booking workflows can be defined separately.
+Preview `http://localhost:3000/content/index`. This server **does not implement
+live auth or delivery**; without test interceptions it reports an unavailable
+API. `test/fixtures/booth-browser.js` exports a Playwright runner accepting
+`page`, with explicitly intercepted synthetic network data. It exercises
+2160 × 3840 CSS-pixel Entry/picker/long report/Finish/send/reset and 390 × 844
+mobile, safe labels, reduced motion, failed send, idle, bfcache and reset failure.
+No simulated-success mode is shipped in runtime code. The historical
+`design/booth-preview.html` stays a mockup, never the production route.
 
-## Decisions and risks
+**Verification recorded October 1:** full Worker Vitest: 251 passed, one existing
+skip; targeted Chrome WTR: four passed; changed runtime/module CSS lint clean;
+Wrangler summit dry-run passed (109.38 KiB / 27.42 KiB gzip). Local real workerd
+smoke verified staff shell, three bundled assets, actual Durable Object
+lookup/status/reset and anonymous 401 without customer discovery/mail. Explicit
+Playwright fixtures passed portrait/mobile, long report, picker, failed delivery,
+idle/bfcache/back and reset-failure checks. Repository-wide `npm run lint` still
+fails on existing lint debt; no mass autofix is included.
 
-| Topic | Current direction | Boundary / risk |
-|---|---|---|
-| Booth URL | **Confirmed by José:** one evergreen `https://act.aem.now/booth`, with existing entry/login unchanged. Event setup may use `/booth?event=<id>` once, then return to a clean `/booth` URL. For unmanaged devices, the operator can bookmark the existing `/login?staff&redirect=<encoded booth URL>` flow. | `<id>` identifies an event; it is not an access credential. Gate `/booth` to staff in the existing CUG configuration, require staff auth for setup/lookup, and lock the browser before attendees use it. |
-| Attendee identity | Email match opens a report on a staff-authenticated booth device; the expert may check the badge, but verification is not required. | Anyone who knows an enrolled email at an unattended kiosk might see that company's report. This is **not** attendee authentication. Event/privacy owners must accept or change this before rollout. |
-| Existing staff access | Reuse `/login?staff` and the Worker session; never ship staff credentials to the page. | The staff session can access all customer reports. Lock the browser to the booth experience and rehearse back-navigation and inactivity; a UI reset is not a security boundary. |
-| Report-to-Finish | Load a small Finish control only on the approved report path while a valid booth context exists. Return to the same reusable booth page, not an event-specific page. | The report is a separate DA page. The control must survive navigation and keep Finish reachable without exposing the attendee's email in the URL or client storage. |
-| Roster | Private Worker-side event-to-email-to-report map, separate from the public report index. | Do not publish registration PII in DA `/data/` or checked-in JSON. Confirm who can provision, correct and delete event records. |
-| Report email | Send only to the matched registration address; use a report-scoped link design. | Today's `/auth/sharelink` is staff-only, lasts seven days, rejects recipients whose domain is not allowed, and grants domain-based CUG access. It cannot simply be repurposed as an unrestricted month-long event link. |
-| Branding | **Adobe Brand Visibility** is the product name on both modes. Event configuration chooses Adobe-only or Adobe/Semrush co-branded booth chrome using existing approved assets. | Existing `cobrand` styles imply a Cannes-specific theme. Do not recolor all reports or rename the product to suit an event; brand-owner review remains necessary. |
-| Sales | José confirmed that "Speak with sales here" and "Schedule a 1:1" are **guidance, not buttons** in the current design. | There is no agreed booking destination, staffing handoff or CRM integration. Do not make these paths implementation gates or pretend the UI has actions until owners define them. |
-| Feedback on the mockups (Sept 29) | The Entry needs an event-worthy attract moment; the example screenshot and product QR compete with lookup. The Finish should feel like a reward and give human handoff more visual prominence. The [local design preview](design/booth-preview.html) now illustrates this direction **for review**, not as approved production UI. | "Your AI visibility score, in 60 seconds" is not a supported promise: reports are prepared in advance, and a score or completion time is not guaranteed. A direct booking action remains contingent on a real sales workflow. The separate product QR asset remains available for physical signage. |
-| Deadline | First cited event: October 13; prior request: finalized two weeks earlier (September 29). | As of September 24, this leaves roughly five days for a production-ready cut. Confirm which gates can actually be met before committing to that date. |
+## Deployment and demo gates
 
-## Decisions to confirm with owners
+Authorized operator, after reviewing the exact commit:
 
-- **Privacy/event owner:** explicitly accept email-only report access on the staff kiosk, or require a stronger gate.
-- **Event team:** final roster format, correction deadline, branding mode, staff-only event setup/bookmark, screen browser and network. Name who handles a live Adobe specialist introduction, whether there is on-site availability, and the fallback when nobody is free before turning the guidance into an action. Booking mechanics remain optional follow-up work.
-- **Adobe brand/content owner:** approve the revised attract motion/headline, any real search snippets or customer logos before use, and placement/copy for a separate product-page QR sign.
-- **Engineering owner:** approved private roster store and provisioning path; report-bound email link lifetime and whether personal registration addresses can receive them.
-- **Report/content owner:** which existing portal landing pages demonstrate portrait layout and whether their branding can change at runtime.
+```sh
+cd workers/cloudflare/cug-adobe-oauth-worker
+npx wrangler whoami
+npx wrangler deployments list --env summit
+npx wrangler deploy --env summit --dry-run
+# Only with activation approval:
+npx wrangler deploy --env summit
+```
 
-No live roster, tokens or production worker changes are part of this planning phase.
+The config adds `BOOTH_COORDINATOR` and SQLite Durable Object migration
+`booth-v1`; preserve existing KV/D1 IDs, staff epoch, origin and secrets.
+The Worker needs the existing JWT/staff/origin/APO configuration and access to
+the complete private report index, CUG sheet and CUG mapping. A missing
+binding/data/template fails closed; do not substitute fixture data in production.
 
-## Files in this project
+The functional URL is **`https://act.aem.now/booth` after Worker deployment**.
+An AEM feature preview alone does not serve the booth auth APIs or deployed
+Worker shell. Feature preview can inspect code/assets, not prove the integrated
+demo or real email. Authenticate the actual device, look up an approved test
+customer, confirm the expected report, send once, check actual recipient receipt,
+then rehearse reset and back/idle behavior on the final screen/network.
 
-- `context/`: grounded current state and proposed target contracts.
-- `design/experience.md`: screen states, copy and portrait design requirements; [`design/booth-preview.html`](design/booth-preview.html) is a local clickable review mockup, and [`design/touchscreen-review.html`](design/touchscreen-review.html) is its scaled portrait Chrome review window. Those source files depend on one another and on repository logos, so **do not send the reviewer HTML alone**. Run `node docs/implementations/booth-access/design/export-touchscreen-review.mjs <destination.html>` to create a single shareable file containing the reviewer, both screens and embedded logos. Adobe Clean loads from Typekit when online; the file remains functional with a system-font fallback offline. Neither file is a production page.
-- `roadmap.md`: dependencies and gates.
-- `tracker.md`: task status.
-- `tasks/`: implementation-ready slices, pending the explicit decisions above.
+Shared-device browser lockdown is an **operational gate**, not a UI security
+promise. The existing staff session can access other reports. Disable address
+bar/history/tab escape using managed kiosk controls and keep staff nearby.
+Ten-minute server expiry and two-minute interactive idle reset do not revoke
+that session. A failed report reset hides old report content and keeps a visible
+recovery message; staff must resolve it before the next visitor.
+
+## Planning history
+
+The former ten-task roster/report-exclusive-token roadmap is **superseded**,
+not completed as originally specified. [Tracker](tracker.md) records the scope
+reductions and remaining operational gates. The design review source and
+shareable export remain preserved; no redesign or unrelated report layout work
+is included. Any co-brand presentation/configuration beyond the default Adobe
+chrome, new personal-email grants, event lists or booking flow requires a
+separate agreed change.

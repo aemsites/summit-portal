@@ -1,5 +1,11 @@
 # Reusable booth access: delivery roadmap
 
+> **Historical plan, superseded October 1.** Roster provisioning, event binding
+> and report-exclusive tokens below are not implementation requirements. See
+> [README](README.md), [current tracker](tracker.md) and
+> [implemented contract](context/target-design.md) for the approved domain-based
+> prototype and separate deployment/rehearsal gates.
+
 This is a dependency map, **not** a promise that an October 13 event can be supported by the earlier September 29 finalization target. Set dates with the owners once ARC-01 is signed off.
 
 | Wave | Goal | Entry gate | Tasks |

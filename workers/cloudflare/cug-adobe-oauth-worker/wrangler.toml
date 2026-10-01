@@ -2,6 +2,19 @@ name = "cug-adobe-oauth-worker"
 main = "src/index.js"
 compatibility_date = "2024-12-01"
 
+[[rules]]
+type = "Text"
+globs = ["**/booth.html", "**/scripts/booth.js", "**/scripts/booth-report.js", "**/styles/booth.css"]
+fallthrough = false
+
+[[durable_objects.bindings]]
+name = "BOOTH_COORDINATOR"
+class_name = "BoothCoordinator"
+
+[[migrations]]
+tag = "booth-v1"
+new_sqlite_classes = ["BoothCoordinator"]
+
 [vars]
 ORIGIN_HOSTNAME = "main--cloudfare1--jckautzmann.aem.live"
 OAUTH_AUTHORIZE_URL = "https://ims-na1.adobelogin.com/ims/authorize/v2"
@@ -39,6 +52,10 @@ id = "a7cb2b4bb8f54391b7ae50fa1cd43749"
 
 [env.summit]
 name = "summit-portal"
+
+[[env.summit.durable_objects.bindings]]
+name = "BOOTH_COORDINATOR"
+class_name = "BoothCoordinator"
 
 [env.summit.vars]
 ORIGIN_HOSTNAME = "main--summit-portal--aemsites.aem.live"

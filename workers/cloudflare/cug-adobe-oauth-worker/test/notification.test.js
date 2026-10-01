@@ -111,6 +111,25 @@ describe('notification', () => {
         .rejects.toThrow('APO returned non-OK');
     });
 
+    it('logs bounded failure reasons without raw upstream headers or payloads', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(
+          'test-only-private-upstream-data',
+          { status: 401, headers: { 'x-sensitive': 'test-only-private-header' } },
+        )));
+        await expect(sendMagicLinkConfirm('visitor@example.com', 'https://portal.example/', env))
+          .rejects.toThrow('IMS auth failed: 401');
+        vi.stubGlobal('fetch', mockImsAndApo({ apoBody: 'test-only-private-upstream-data' }));
+        await expect(sendMagicLinkConfirm('visitor@example.com', 'https://portal.example/', env))
+          .rejects.toThrow('APO returned non-OK');
+        expect(JSON.stringify(logged.mock.calls)).not.toContain('test-only-private');
+        expect(JSON.stringify(logged.mock.calls)).toContain('status=401');
+      } finally {
+        logged.mockRestore();
+      }
+    });
+
     it('XML-escapes ampersands in data values', async () => {
       const fetchMock = mockImsAndApo();
       vi.stubGlobal('fetch', fetchMock);
