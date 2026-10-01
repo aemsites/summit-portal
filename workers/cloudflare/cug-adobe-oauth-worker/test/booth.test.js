@@ -139,6 +139,43 @@ describe('booth isolated context', () => {
     expect((await request('lookup', { email: 'visitor@example.com' })).status).toBe(502);
   });
 
+  it('accepts the live full-sheet metadata shape and counts without pagination guesses', async () => {
+    const counts = {
+      '/data/insights-list.json': 9277,
+      '/closed-user-groups.json': 8641,
+      '/closed-user-groups-mapping.json': 9380,
+    };
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const name = new URL(url).pathname;
+      const rows = Array.from({ length: counts[name] }, (_, index) => data[name][index] || {});
+      return new Response(JSON.stringify({ total: rows.length, limit: rows.length, offset: 0, data: rows, ':type': 'sheet' }));
+    });
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    expect(response.status).toBe(200);
+    expect((await response.json()).selectedPath).toBe(path);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('classifies timeout at the lookup seam without logging raw exception content', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      vi.mocked(fetch).mockRejectedValue(new DOMException(
+        'test-only-sensitive-header visitor@example.com https://private.example/?token=private',
+        'TimeoutError',
+      ));
+      const response = await request('lookup', { email: 'visitor@example.com' });
+      expect(response.status).toBe(502);
+      expect((await response.json()).error).toBe('Prepared reports cannot be checked right now. Ask the booth team.');
+      const output = JSON.stringify(logged.mock.calls);
+      expect(output).toContain('index fetch page=0 deadline-or-abort');
+      expect(output).not.toContain('visitor@');
+      expect(output).not.toContain('sensitive');
+      expect(output).not.toContain('token=');
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
   it('requires explicit selection from candidates and revalidates current permissions', async () => {
     data['/data/insights-list.json'].push({ Folder: second, Report: '<script>test</script>' });
     const result = await (await request('lookup', { email: 'visitor@example.com' })).json();

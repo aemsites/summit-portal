@@ -23,6 +23,27 @@ function operationalError(reason) {
   console.error('[booth]', reason);
 }
 
+const DATA_ERROR = Symbol('booth-data-error');
+
+function dataError(dataset, stage, category) {
+  const error = new Error(`${dataset} ${stage} ${category}`);
+  error[DATA_ERROR] = true;
+  return error;
+}
+
+function failureCategory(error) {
+  if (['TimeoutError', 'AbortError'].includes(error?.name)) return 'deadline-or-abort';
+  if (/redirect/i.test(error?.message || '')) return 'redirect';
+  if (/cache|\bcf\b/i.test(error?.message || '')) return 'fetch-options';
+  if (/header/i.test(error?.message || '')) return 'request-headers';
+  return 'transport-or-runtime';
+}
+
+function discoveryFailure(error) {
+  const category = error?.[DATA_ERROR] ? error.message : 'unknown runtime failure';
+  operationalError(`[DEBUG-booth-fetch] ${category}`);
+}
+
 function contextId(request) {
   const match = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)booth_context=([a-f0-9-]{36})(?:;|$)/);
   return match?.[1] || null;
@@ -42,24 +63,46 @@ async function staffBinding(request) {
 
 /** Always fetch fresh private data; stale-if-error CUG caches are not discovery authority. */
 async function sheet(path, env) {
+  const dataset = {
+    '/data/insights-list.json': 'index',
+    '/closed-user-groups.json': 'cugs',
+    '/closed-user-groups-mapping.json': 'mapping',
+  }[path];
   const headers = { 'Cache-Control': 'no-cache' };
   if (env.ORIGIN_AUTHENTICATION) headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
   const base = `https://${env.ORIGIN_HOSTNAME}${path}`;
   const rows = [];
-  const signal = AbortSignal.timeout(10000);
+  let signal;
+  try {
+    signal = AbortSignal.timeout(10000);
+  } catch (error) {
+    throw dataError(dataset, 'signal', failureCategory(error));
+  }
   for (let page = 0; page < 20; page += 1) {
     const url = page ? `${base}?offset=${rows.length}&limit=1000` : base;
-    const response = await fetch(url, { headers, signal, redirect: 'error', cf: { cacheTtl: 0, cacheEverything: false } });
-    if (!response.ok) throw new Error('Private report data unavailable');
-    const data = await response.json();
-    if (!Array.isArray(data.data)) throw new Error('Invalid private report data');
+    let response;
+    try {
+      response = await fetch(url, { headers, signal, redirect: 'error', cf: { cacheTtl: 0, cacheEverything: false } });
+    } catch (error) {
+      throw dataError(dataset, `fetch page=${page}`, failureCategory(error));
+    }
+    if (!response.ok) throw dataError(dataset, 'http', `status=${response.status}`);
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw dataError(dataset, 'json', failureCategory(error));
+    }
+    if (!Array.isArray(data.data)) throw dataError(dataset, 'schema', 'missing-data-array');
     rows.push(...data.data);
     const total = Number(data.total ?? rows.length);
-    if (!Number.isFinite(total) || total < rows.length) throw new Error('Invalid pagination');
+    if (!Number.isFinite(total) || total < rows.length) {
+      throw dataError(dataset, 'pagination', 'invalid-total');
+    }
     if (rows.length >= total) return rows;
-    if (!data.data.length) throw new Error('Incomplete private report data');
+    if (!data.data.length) throw dataError(dataset, 'pagination', 'incomplete');
   }
-  throw new Error('Private report data exceeds pagination limit');
+  throw dataError(dataset, 'pagination', 'page-limit');
 }
 
 function reportPath(folder) {
@@ -227,8 +270,8 @@ export class BoothCoordinator {
       let candidates;
       try {
         candidates = await discoverReports(email, this.env);
-      } catch {
-        operationalError('Private discovery unavailable or invalid');
+      } catch (error) {
+        discoveryFailure(error);
         return reply({ error: 'Prepared reports cannot be checked right now. Ask the booth team.' }, 502);
       }
       if (!candidates.length) {
@@ -271,8 +314,8 @@ export class BoothCoordinator {
     try {
       const current = await discoverReports(data.email, this.env);
       authorized = current.some((candidate) => candidate.path === path);
-    } catch {
-      operationalError('Selected report authorization unavailable or invalid');
+    } catch (error) {
+      discoveryFailure(error);
       return reply({ error: 'Report authorization cannot be checked right now.' }, 502);
     }
     if (!authorized) {
