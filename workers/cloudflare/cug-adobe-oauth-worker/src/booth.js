@@ -33,7 +33,7 @@ function dataError(dataset, stage, category) {
 
 function failureCategory(error) {
   if (['TimeoutError', 'AbortError'].includes(error?.name)) return 'deadline-or-abort';
-  if (/redirect/i.test(error?.message || '')) return 'redirect';
+  if (/redirect/i.test(error?.message || '')) return 'redirect-option';
   if (/cache|\bcf\b/i.test(error?.message || '')) return 'fetch-options';
   if (/header/i.test(error?.message || '')) return 'request-headers';
   return 'transport-or-runtime';
@@ -41,7 +41,7 @@ function failureCategory(error) {
 
 function discoveryFailure(error) {
   const category = error?.[DATA_ERROR] ? error.message : 'unknown runtime failure';
-  operationalError(`[DEBUG-booth-fetch] ${category}`);
+  operationalError(`Private discovery failed: ${category}`);
 }
 
 function contextId(request) {
@@ -82,7 +82,7 @@ async function sheet(path, env) {
     const url = page ? `${base}?offset=${rows.length}&limit=1000` : base;
     let response;
     try {
-      response = await fetch(url, { headers, signal, redirect: 'error', cf: { cacheTtl: 0, cacheEverything: false } });
+      response = await fetch(url, { headers, signal, redirect: 'manual', cf: { cacheTtl: 0, cacheEverything: false } });
     } catch (error) {
       throw dataError(dataset, `fetch page=${page}`, failureCategory(error));
     }

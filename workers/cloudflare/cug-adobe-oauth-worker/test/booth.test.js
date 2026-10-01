@@ -135,7 +135,7 @@ describe('booth isolated context', () => {
     env.ORIGIN_AUTHENTICATION = 'test-only-origin-secret';
     await discoverReports('visitor@example.com', env);
     expect(fetch.mock.calls[0][1].headers.authorization).toBe('token test-only-origin-secret');
-    vi.mocked(fetch).mockResolvedValue(new Response('{"data":[],"total":2}'));
+    vi.mocked(fetch).mockImplementation(async () => new Response('{"data":[],"total":2}'));
     expect((await request('lookup', { email: 'visitor@example.com' })).status).toBe(502);
   });
 
@@ -154,6 +154,30 @@ describe('booth isolated context', () => {
     expect(response.status).toBe(200);
     expect((await response.json()).selectedPath).toBe(path);
     expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses workerd-supported manual redirects and completes an authorized lookup', async () => {
+    const originFetch = fetch.getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (url, options) => {
+      if (options.redirect === 'error') {
+        throw new TypeError('Invalid redirect value, must be one of "follow" or "manual"');
+      }
+      return originFetch(url, options);
+    });
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    expect(response.status).toBe(200);
+    expect((await response.json()).selectedPath).toBe(path);
+    expect(fetch.mock.calls.every(([, options]) => options.redirect === 'manual')).toBe(true);
+  });
+
+  it('rejects actual origin redirects without following them or leaking credentials', async () => {
+    env.ORIGIN_AUTHENTICATION = 'test-only-private-origin-token';
+    vi.mocked(fetch).mockImplementation(async () => new Response(null, { status: 302, headers: { Location: 'https://untrusted.example/elsewhere' } }));
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    expect(response.status).toBe(502);
+    expect(fetch.mock.calls).toHaveLength(3);
+    expect(fetch.mock.calls.every(([url, options]) => new URL(url).hostname === env.ORIGIN_HOSTNAME
+      && options.redirect === 'manual')).toBe(true);
   });
 
   it('classifies timeout at the lookup seam without logging raw exception content', async () => {
