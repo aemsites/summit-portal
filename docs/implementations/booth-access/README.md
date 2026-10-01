@@ -100,7 +100,7 @@ mobile, safe labels, reduced motion, failed send, idle, bfcache and reset failur
 No simulated-success mode is shipped in runtime code. The historical
 `design/booth-preview.html` stays a mockup, never the production route.
 
-**Verification recorded October 1:** full Worker Vitest: 268 passed, one existing
+**Verification recorded October 1:** full Worker Vitest: 269 passed, one existing
 skip; targeted Chrome WTR: six passed; new/isolated runtime and CSS lint clean;
 Wrangler summit dry-run passed. Local real workerd
 smoke verified staff shell, three bundled assets, actual Durable Object
@@ -144,8 +144,31 @@ account document GET/HEAD to the exact live selected report, both before origin
 fetch and before returning its body. Reset retains this non-PII marker. Missing,
 expired, wrong or reset context redirects to Entry; malformed/expired/rotated
 markers deny rather than bypass; source failures remain fail-closed. Fresh
-document and concurrent-reset regressions pass locally. Production verification
-of this final history correction remains pending; do not resend the real email.
+document and concurrent-reset regressions pass.
+
+**History/exit verified live:** parent deployed `9779109` as
+`c13ab557-dccd-43c4-9348-895f39e88900`. The real direct report/Finish flow passed
+again **without another send**. Reset returned Entry; a fresh report request
+redirected, and actual browser Back landed on `/booth` with no report present.
+Explicit staff exit landed at staff login for the dashboard; `/auth/me` and
+booth status both returned 401. Managed-device rehearsal/lockdown and actual
+inbox receipt remain separate gates.
+
+The final coupled hardening `01df090` rejects the signed device marker when
+transplanted into `auth_token`; it is a mode guard, **never a login credential**.
+The real signed-token regression ran red then green. Legacy session/link
+behavior is untouched. Parent deployed exact `01df090d7cc8de6dc15eb1f0b9e6b85f69a6e37d`
+as final Worker **`ab90af30-5e54-4f99-99dd-af21df62f395`**. This is the frozen
+runtime; the history/exit receiving-end evidence above was recorded on `c13ab557`
+before the isolated purpose rejection. No second real email was sent.
+
+**PR creation remains blocked:** two dedicated app attempts in the child failed
+with EMU 403. The parent's separate dedicated attempt failed before creation
+while pushing `jose-correia/summit-portal` as `josec_adobe` (403). Neither result
+authorized a CLI fallback. The upstream feature branch is pushed; the manual
+comparison is
+https://github.com/aemsites/summit-portal/compare/main...josec-adobe-live-booth-prototype .
+No PR, merge or successful inbox receipt is claimed.
 
 ## Deployment and demo gates
 

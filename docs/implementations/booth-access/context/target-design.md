@@ -80,7 +80,9 @@ actual authenticated staff token and rejects another staff session.
 
 Authenticated `/booth` also sets a separate signed HttpOnly, Secure,
 SameSite=Strict `booth_device` cookie containing only purpose, the staff-token
-digest and an expiry no later than that staff JWT. It survives attendee reset
+digest and an expiry no later than that staff JWT. `getSession` rejects its
+`booth-device` purpose: a marker can never act as an authentication cookie.
+It survives attendee reset
 and expiry, not explicit mode exit. Marked account document GET/HEAD requires
 valid bound staff/device and a live context selecting the exact pathname.
 The Worker checks before origin fetch and again before returning the document;

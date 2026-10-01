@@ -10,9 +10,9 @@ receipt. The child implementation does not deploy or merge production.
 | CUG-authorized discovery + picker | Verified locally | Exact email OR domain; fresh private index/CUG/mapping, most-specific permissions, authorized-alias filtering, explicit selection; neighbor denied |
 | Context + real delivery integration | Verified locally | Bound HttpOnly context, KV TTL, Durable Object serialization, real share/JWT redemption tests; exact-email grants never add an unauthorized domain |
 | Approved Entry/Finish UI + report return | Verified locally and initial live flow | 2160 × 3840 and 390 × 844 fixtures; real selected report and top-visible Finish verified; guarded Entry recovery |
-| Fresh-document history boundary + safe exit | Verified locally; final live gate pending | Bound signed non-PII device marker survives reset; exact selected document only; forged/expired/rotated markers, ordinary unmarked CUG redemption and concurrent-reset tests |
-| Documentation + PR | External PR gate | Current contract/runbook recorded; dedicated app creation failed twice with EMU 403, no matching PR exists |
-| Worker activation | Deployed; final history correction awaiting redeploy | Parent deployed `0a5949b7` as `057e241a-4bb3-4cb2-9538-7a0ef313c77b`; exact lookup/report/Finish/clear passed, then fresh Back reload exposed gap |
+| Fresh-document history boundary + safe exit | Verified live on `c13ab557` | Fresh report request redirects; actual Back lands Entry with no report; exit signs out, `/auth/me` and booth status return 401; ordinary unmarked CUG redemption and races verified in tests |
+| Documentation + PR | External PR gate | Dedicated child attempts failed EMU 403; parent's separate attempt failed fork push as `josec_adobe` (403), before PR creation; upstream feature branch ready, no bypass |
+| Worker activation | Deployed; runtime frozen | Exact `01df090` deployed as `ab90af30-5e54-4f99-99dd-af21df62f395`; adds marker-purpose/auth separation after verified `c13ab557` history flow; 269 Worker tests pass, one existing skip |
 | Real email dispatch / receipt | Dispatch verified; receipt external | One approved send accepted by server and shown in UI; inbox receipt not verified; do not resend during history retest |
 | Final device/privacy acceptance | External gate | Kiosk lockdown, actual CSS viewport, keyboard/network, asserted-email/domain risk acceptance |
 
