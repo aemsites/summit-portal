@@ -28,6 +28,7 @@
     <div class="stage-main">
       <p id="booth-status" class="notice" role="status" aria-live="polite"></p>
       <a id="staff-login" class="primary" href="/login?staff&amp;redirect=%2Fbooth" hidden>Staff: set up this device</a>
+      <button id="booth-retry" class="link-button" data-reset type="button" hidden>Retry and clear screen</button>
       <section class="panel" data-panel="welcome" aria-labelledby="welcome-heading">
         <div class="welcome-layout">
           <div class="welcome-intro">
@@ -46,7 +47,7 @@
               <input id="registration-email" name="email" type="email" autocomplete="off"
                 autocapitalize="none" spellcheck="false" inputmode="email"
                 placeholder="name@company.com" required aria-describedby="email-help email-error">
-              <p class="form-help" id="email-help">Your email domain identifies the reports you can view. This is not a sign-in.</p>
+              <p class="form-help" id="email-help">Your business email identifies the reports you can view. This is not a sign-in.</p>
               <p class="notice" id="email-error" role="alert" hidden></p>
               <button class="primary" type="submit">View my report <span class="arrow" aria-hidden="true">↗</span></button>
             </form>
@@ -56,7 +57,7 @@
 
       <section class="panel welcome-entry" data-panel="picker" aria-labelledby="picker-heading" hidden>
         <h2 id="picker-heading">Choose your report.</h2>
-        <p class="lead">Several prepared reports are authorized for your email domain.</p>
+        <p class="lead">Several prepared reports are authorized for your business email.</p>
         <div id="report-options" class="finish-actions"></div>
         <p id="picker-status" class="notice" role="alert" hidden></p>
         <button class="link-button" data-reset type="button">Start again</button>

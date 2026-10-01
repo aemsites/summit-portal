@@ -5,7 +5,7 @@ binding, roster provisioning or new report-exclusive token is implemented.
 
 ## Flow
 
-`staff login → /booth → domain lookup → one real report OR explicit picker →
+`staff login → /booth → CUG-authorized email lookup → one real report OR explicit picker →
 real report → /booth?step=finish → deliberate email send → reset → /booth`
 
 The standalone semantic shell and approved portrait CSS are bundled from
@@ -36,7 +36,7 @@ Neither email nor token is returned to the attendee, analytics or browser storag
 Candidate shape: `{ path, label }`. Labels come from trusted `Customers`/`Report`
 index text and are rendered with `textContent`, not HTML. Error JSON contains
 `error`: 400 malformed/select/send input, 401 missing/expired/revoked staff,
-403 wrong origin/binding or revoked permission, 404 no prepared domain report,
+403 wrong origin/binding or revoked permission, 404 no prepared authorized report,
 405 wrong method, 409 uncertain delivery already attempted, 410 expired context,
 502 unavailable private data or failed mail, 503 missing coordinator binding.
 
@@ -53,8 +53,15 @@ reaches the client.
 `/accounts/<letter>/<account>/insights/<website>/[variant]/`.
 Authoritative sheet groups use the existing `parseCugSheetRows` /
 `matchSheetGroups` most-specific matching semantics. The most-specific mapping
-scope must also permit the customer's domain for mail eligibility. Existing
+scope must also permit the customer's exact email or domain for mail eligibility. Existing
 staff-wide grants are never attendee discovery permission.
+
+The shared normalized group matcher distinguishes exact address entries from
+domain entries. An exact address does not authorize other addresses at the
+same domain. Booth discovery/mapping, staff share delivery, self-service
+magic-link mapping, portal mapping and actual CUG enforcement reuse it.
+Signed session email can match an exact-address CUG; explicit signed groups
+remain authoritative for domain and delegated bearer grants.
 
 Filter authorized candidates **before** collapsing aliases by website slug.
 Prefer an authorized `portal-landing`, otherwise the latest authorized variant
@@ -86,8 +93,13 @@ non-retryable in that context, including after isolate restart. Reset/new lookup
 starts a new visitor context, so operator judgment is still needed before
 manually retrying an uncertain email. No exact-once/inbox-delivery claim.
 
-Current share links are **30-day domain grants**. No TTL, global CUG policy,
-template, staff authentication or report-link redemption changes are made.
+Current share links retain their **30-day TTL** and only grant matching authored
+email/domain groups. Exact-email share redemption retains those explicit groups
+without implicitly adding an unauthorized recipient domain; legacy/domain links
+keep their previous domain behavior. Copy without a recipient excludes full
+staff-email groups as well as staff domains and uses an exact customer email
+verbatim as token identity. Session lifetimes/method attribution, templates,
+staff authentication and production CUG data are unchanged.
 
 ## Kiosk lifecycle and presentation
 
@@ -103,6 +115,11 @@ Entry. The report hides its cached document and clears on bfcache return.
 Its fixed Finish bar is visible at the top of long content, reserves measured
 bottom padding and does not replace/report reconstruct content. If reset
 fails, old report content stays hidden behind a neutral recovery surface.
+Entry status/reset failure displays **Retry and clear screen** (or staff login
+for 401). Retry uses the same serialized reset path, not a blind local unlock.
+Lookup remains disabled and keyboard/stale-submit guarded until the server
+confirms an entry-state reset. Locally cached attendee state is scrubbed even
+when cleanup fails; recovery remains visible after a failed bfcache reset.
 
 Primary design target is **2160 × 3840 CSS pixels**, with 68px input text and
 174px Entry action height. Smaller screens retain functional controls.
@@ -113,7 +130,7 @@ no unrelated report restyling or invented booking action.
 
 Reviewed Worker deploy including `BOOTH_COORDINATOR` binding and `booth-v1`
 migration; existing private origin and APO credentials/template; staff setup on
-the actual device; owner acceptance of asserted-domain access; real recipient
+the actual device; owner acceptance of asserted-email/domain access; real recipient
 receipt; final portrait/browser/network rehearsal; managed kiosk lockdown.
 PR creation, code sync, Worker activation and merge are separate. The source
 implementation is not a claim those gates passed.

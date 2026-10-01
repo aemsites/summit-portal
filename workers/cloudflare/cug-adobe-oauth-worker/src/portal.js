@@ -3,11 +3,13 @@
  * group in the /members/closed-user-groups-mapping spreadsheet.
  *
  * The mapping is fetched from the AEM origin as JSON:
- *   { "data": [{ "group": "<domain>", "url": "/path" }, ...] }
+ *   { "data": [{ "group": "<email-or-domain>", "url": "/path" }, ...] }
  *
- * The user's groups (derived from their email domain during login) are matched
- * against the "group" column. The first match wins.
+ * The signed identity and explicit session groups match the "group" column.
+ * The first match wins.
  */
+
+import { matchesCugGroup } from './cug-group.js';
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
 const FALLBACK_PATH = '/';
@@ -74,10 +76,7 @@ export async function handlePortalRedirect(session, request, env) {
   const entries = Array.isArray(mapping.data) ? mapping.data : [];
   const userGroups = session.groups || [];
 
-  const match = entries.find((entry) => {
-    const group = (entry.group || '').trim();
-    return userGroups.includes(group);
-  });
+  const match = entries.find((entry) => matchesCugGroup(entry.group, session.email, userGroups));
 
   return redirect(request, match ? match.url : FALLBACK_PATH);
 }

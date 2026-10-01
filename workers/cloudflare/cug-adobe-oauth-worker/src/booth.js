@@ -3,6 +3,7 @@ import { EMAIL_RE, jsonResponse } from './magiclink.js';
 import { parseCugSheetRows, matchSheetGroups } from './cugsheet.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { sha256hex } from './stafflogin.js';
+import { matchesCugGroup, normalizeCugGroup } from './cug-group.js';
 
 const TTL = 600;
 const COOKIE = 'booth_context';
@@ -124,16 +125,16 @@ function created(value) {
   return Date.parse(value) || 0;
 }
 
-function mappingAllows(entries, path, domain) {
+function mappingAllows(entries, path, email) {
   const covering = entries.map((entry) => ({ ...entry, scope: typeof entry.url === 'string' ? entry.url.replace(/\*+$/, '').replace(/\/+$/, '') : '' })).filter((entry) => entry.scope
     && (path === `${entry.scope}/` || path.startsWith(`${entry.scope}/`)));
   const longest = Math.max(0, ...covering.map((entry) => entry.scope.length));
   return covering.some((entry) => entry.scope.length === longest
-    && String(entry.group || '').trim().toLowerCase() === domain);
+    && matchesCugGroup(entry.group, email));
 }
 
 export async function discoverReports(email, env) {
-  const domain = email.split('@')[1];
+  const domain = normalizeCugGroup(email).split('@')[1];
   if (staffDomains(env).has(domain)) return [];
   const [index, cugs, mapping] = await Promise.all([
     sheet('/data/insights-list.json', env),
@@ -145,8 +146,8 @@ export async function discoverReports(email, env) {
   for (const row of index) {
     const path = reportPath(row.Folder);
 
-    if (!path || !matchSheetGroups(groups, path)?.includes(domain)
-      || !mappingAllows(mapping, path, domain)) {
+    if (!path || !matchSheetGroups(groups, path)?.some((group) => matchesCugGroup(group, email))
+      || !mappingAllows(mapping, path, email)) {
       // eslint-disable-next-line no-continue
       continue;
     }

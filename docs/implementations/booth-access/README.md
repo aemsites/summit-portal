@@ -1,7 +1,7 @@
 # Reusable booth access
 
 **October 1 implementation:** the approved Entry/Finish design now has an isolated
-Worker runtime. This is a reusable domain-based prototype, not an event roster
+Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
@@ -10,8 +10,8 @@ are separate gates; code and fixture tests do not prove those gates passed.
 `/booth` and every booth API are **staff-only**. Staff sets up the device through
 `/login?staff&redirect=%2Fbooth`; staff authentication remains in the existing
 secure HttpOnly session cookie, not an attendee URL token. At `/booth`,
-the attendee enters a **business email**. The Worker uses the email's domain to
-discover prepared account insight reports permitted by existing CUGs. One
+the attendee enters a **business email**. The Worker matches its **exact address
+or domain** against existing CUGs to discover prepared account insight reports. One
 eligible website report opens directly; several require an explicit picker.
 There is no event selection, private attendee roster, registration-email match,
 guessed website, company search or new access grant.
@@ -24,10 +24,11 @@ path. Adobe specialist/follow-up guidance remains informational. Reset clears
 attendee state, not the staff login.
 
 **Identity limitation:** asserted email is identification, not authentication.
-Anyone knowing a permitted domain can view its prepared reports on this
-staff-authenticated kiosk. CUGs are domain permissions, not registration lists.
-Staff domains never discover every company. Personal addresses without a
-customer CUG permission do not qualify.
+Anyone asserting a permitted address or domain can view its prepared reports on
+this staff-authenticated kiosk. CUGs can contain exact emails as well as domains;
+an exact-email entry does not permit neighboring addresses at that domain.
+CUGs are not registration lists. Staff identities never discover every company.
+Addresses without an authored customer CUG permission do not qualify.
 
 ## Implementation
 
@@ -55,10 +56,13 @@ context lifetime, concurrency and failure semantics.
 
 The current repository's `SHARE_LINK_TTL` is **30 days**, not the seven days
 claimed by the September planning documents. This implementation does not
-change it. The emailed link is a **customer-domain CUG grant**, not a
-report-exclusive grant. It opens the selected report first, and may authorize
-other reports permitting that domain. Existing share-link expiry, redemption,
-templates and global staff/share-link behavior remain unchanged.
+change it. The emailed link contains only the recipient's matching **authored
+email/domain CUG groups**, not a report-exclusive grant. It opens the selected
+report first, and may authorize other reports permitting those exact groups.
+Exact-email share redemption does not add the recipient's unauthorized domain.
+Copy without a recipient excludes both staff domains and exact staff emails;
+an exact customer group becomes the token's email unchanged. Expiry, session
+method attribution, templates and existing domain-grant behavior stay unchanged.
 
 APO success confirms dispatch, not inbox receipt. Upstream failure is explicit.
 An uncertain send is not automatically retryable: a durable `attempted` record
@@ -96,14 +100,40 @@ mobile, safe labels, reduced motion, failed send, idle, bfcache and reset failur
 No simulated-success mode is shipped in runtime code. The historical
 `design/booth-preview.html` stays a mockup, never the production route.
 
-**Verification recorded October 1:** full Worker Vitest: 251 passed, one existing
-skip; targeted Chrome WTR: four passed; changed runtime/module CSS lint clean;
-Wrangler summit dry-run passed (109.38 KiB / 27.42 KiB gzip). Local real workerd
+**Verification recorded October 1:** full Worker Vitest: 261 passed, one existing
+skip; targeted Chrome WTR: six passed; new/isolated runtime and CSS lint clean;
+Wrangler summit dry-run passed. Local real workerd
 smoke verified staff shell, three bundled assets, actual Durable Object
 lookup/status/reset and anonymous 401 without customer discovery/mail. Explicit
 Playwright fixtures passed portrait/mobile, long report, picker, failed delivery,
 idle/bfcache/back and reset-failure checks. Repository-wide `npm run lint` still
-fails on existing lint debt; no mass autofix is included.
+fails on existing lint debt, including four pre-existing `cug.js`/`index.js`
+errors; no mass autofix is included.
+
+Exact-email regressions were run red before the correction, then green through
+fresh discovery, the real booth/share handler, signed token mint/redemption and
+current CUG enforcement. A synthetic approved address succeeds; its neighbor,
+an unrelated report and a report permitting only the otherwise unauthorized
+recipient domain remain denied. Revoked mapping permission blocks booth send.
+Operational group logs use counts, never raw exact-address groups.
+
+Entry status/idle-reset network failures now expose a **Retry and clear screen**
+control rather than permanently disabling lookup. It uses the guarded server
+reset path and keeps lookup blocked until `{ state: "entry" }` confirms cleanup.
+Two browser regressions went red before this fix and pass afterward. Explicit
+portrait/mobile rendering confirms a 62px recovery control, no horizontal
+overflow and no false success after a failed reset.
+
+**Live rollout evidence:** parent deployed the original `cb6871f` runtime and
+then the `e1df6b4` redirect correction. Active Worker version reported:
+`45ee8181-2d01-4108-a9f0-ad27506c3a5b`. Authenticated Entry works; lookup changed
+from 502 to 404. The first failure was Cloudflare workerd rejecting
+`redirect: "error"`; discovery now uses supported `manual` and rejects actual
+redirect responses. The 404 exposed an authorized exact-email CUG entry that
+the domain-only matcher overlooked. This branch corrects that matcher without
+editing production CUG data or granting its entire domain. Parent review,
+redeployment and authenticated end-to-end verification of this correction are
+still pending. No real email dispatch or recipient receipt is claimed.
 
 ## Deployment and demo gates
 

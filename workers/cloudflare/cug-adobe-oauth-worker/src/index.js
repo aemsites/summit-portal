@@ -19,6 +19,7 @@ import {
   signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail, isVerifiedMethod,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
+import { normalizeCugGroup } from './cug-group.js';
 import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
@@ -272,7 +273,7 @@ const handleRequest = async (request, env) => {
       return Response.redirect(loginUrl.href, 302);
     }
 
-    const email = claims.email.toLowerCase();
+    const email = normalizeCugGroup(claims.email);
     const domain = email.split('@')[1];
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token valid email=***@${domain} iat=${claims.iat}`);
@@ -282,10 +283,12 @@ const handleRequest = async (request, env) => {
       console.error('[magiclink] token missing domain in email claim');
       return new Response('Invalid token', { status: 400 });
     }
-    // A staff-shared link may carry extra CUG groups so an internal recipient
-    // can open a page their own domain isn't in. Always include the recipient's
-    // own domain too. De-duplicate.
-    const groups = [...new Set([domain, ...(Array.isArray(claims.groups) ? claims.groups : [])])];
+    // Exact-email share grants must not become an unauthorized domain grant.
+    // Preserve existing domain-token semantics for other and legacy links.
+    const grants = Array.isArray(claims.groups) ? claims.groups : [];
+    const exactGrant = claims.purpose === 'sharelink'
+      && grants.some((group) => normalizeCugGroup(group) === email);
+    const groups = [...new Set(exactGrant ? grants : [domain, ...grants])];
     const ttl = sessionTtlForEmail(email, env);
     // 'sharelink' purpose → staff-shared 30-day link; anything else here is the
     // self-service magic link. Both are link-borne, so neither is a verified

@@ -220,11 +220,10 @@ export async function verifyMagicLink(token, env) {
  * link (30-min iat freshness), share links carry an explicit `exp` and are
  * valid for 30 days so a customer can open the link during later follow-up.
  *
- * `grantGroups` (optional) are CUG groups baked into the link so the recipient's
- * session can open the page even when their own email domain isn't in the page's
- * CUG — used when staff share a page with another internal (Adobe/Semrush) email
- * so they can review it. The session still also includes the recipient's own
- * domain group. Only the authenticated staff share endpoint sets this.
+ * `grantGroups` (optional) are authored customer email/domain CUG groups baked
+ * into the link by the authenticated staff share endpoint. Exact-email grants
+ * do not add the recipient's domain when redeemed; other/legacy links preserve
+ * their existing domain behavior.
  */
 export async function createShareLinkToken(email, env, grantGroups = []) {
   const now = Math.floor(Date.now() / 1000);

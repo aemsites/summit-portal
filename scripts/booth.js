@@ -24,6 +24,8 @@ export function mountBooth(root = document) {
   const form = root.getElementById('email-form');
   const send = root.getElementById('send-report');
   const status = root.getElementById('booth-status');
+  const retry = root.getElementById('booth-retry');
+  let ready = false;
   let busy = false;
   let idle;
   let expiry;
@@ -53,26 +55,39 @@ export function mountBooth(root = document) {
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'booth-status'].forEach((id) => notice(id, ''));
     send.disabled = false;
+    retry.hidden = true;
+    root.getElementById('staff-login').hidden = true;
     clearTimeout(expiry);
     clearTimeout(idle);
     show('welcome');
   }
 
+  function recovery(error) {
+    ready = false;
+    stage.hidden = false;
+    form.querySelector('button').disabled = true;
+    notice('booth-status', error.message);
+    retry.hidden = error.status === 401;
+    root.getElementById('staff-login').hidden = error.status !== 401;
+  }
+
   async function reset() {
     if (resetting) return;
     resetting = true;
+    ready = false;
     revision += 1;
     scrub();
     form.querySelector('button').disabled = true;
     try {
       await settled;
-      await boothRequest('reset', {});
+      const result = await boothRequest('reset', {});
+      if (result.state !== 'entry') throw new Error('This screen could not be cleared. Retry or ask the booth team.');
       window.history.replaceState(null, '', '/booth');
       stage.hidden = false;
+      ready = true;
       form.querySelector('button').disabled = false;
     } catch (error) {
-      notice('booth-status', error.message);
-      if (error.status === 401) root.getElementById('staff-login').hidden = false;
+      recovery(error);
     } finally {
       resetting = false;
     }
@@ -108,7 +123,7 @@ export function mountBooth(root = document) {
         button.type = 'button';
         button.textContent = candidate.label;
         button.addEventListener('click', async () => {
-          if (busy || resetting) return;
+          if (busy || resetting || !ready) return;
           busy = true;
           const current = revision;
           button.disabled = true;
@@ -129,7 +144,7 @@ export function mountBooth(root = document) {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (busy || resetting) return;
+    if (busy || resetting || !ready) return;
     busy = true;
     const current = revision;
     const button = form.querySelector('button');
@@ -143,7 +158,7 @@ export function mountBooth(root = document) {
       email.value = '';
       if (current === revision) notice('email-error', error.message);
     } finally {
-      button.disabled = resetting;
+      button.disabled = resetting || !ready;
       busy = false;
     }
   });
@@ -178,6 +193,7 @@ export function mountBooth(root = document) {
   ['pointerdown', 'keydown'].forEach((name) => root.addEventListener(name, activity));
   window.addEventListener('pagehide', () => {
     revision += 1;
+    ready = false;
     scrub();
     stage.hidden = true;
   });
@@ -191,12 +207,12 @@ export function mountBooth(root = document) {
     if (initialRevision !== revision) return;
     const finishing = new URL(window.location.href).searchParams.get('step') === 'finish';
     apply(result, finishing);
+    ready = true;
     status.hidden = true;
     form.querySelector('button').disabled = false;
   }).catch((error) => {
     if (initialRevision !== revision) return;
-    notice('booth-status', error.message);
-    root.getElementById('staff-login').hidden = error.status !== 401;
+    recovery(error);
   });
   activity();
 }

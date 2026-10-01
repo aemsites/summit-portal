@@ -1,5 +1,6 @@
 import { createMagicLinkToken } from './session.js';
 import { sendMagicLinkConfirm, sendMagicLinkInternalNotify, sendMagicLinkNotFound } from './notification.js';
+import { matchesCugGroup } from './cug-group.js';
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -105,7 +106,7 @@ export async function fetchLiveCugGroups(path, env) {
       .split(',')
       .map((g) => g.trim().toLowerCase())
       .filter(Boolean);
-    log(`live CUG check path=${path} required=${required} groups=${groups.join(',') || '(none)'}`);
+    log(`live CUG check path=${path} required=${required} group count=${groups.length}`);
     return { required, groups };
   } catch (err) {
     logError(`live CUG header fetch threw: ${err.message}`);
@@ -143,10 +144,10 @@ export async function handleMagicLinkRequest(request, env) {
   log(`request for domain=${domain}${redirectPath ? ` redirect=${redirectPath}` : ''}`);
 
   const { entries, error: mappingError } = await fetchCugMapping(env);
-  const match = entries.find((e) => (e.group || '').trim().toLowerCase() === domain);
+  const match = entries.find((e) => matchesCugGroup(e.group, email));
 
   if (match) {
-    log(`CUG match found group=${match.group} url=${match.url} org=${match.org || '(none)'}`);
+    log(`CUG match found url=${match.url} org=${match.org || '(none)'}`);
 
     if (!match.url || !match.url.startsWith('/') || match.url.startsWith('//')) {
       logError(`invalid CUG url value: ${match.url}`);
