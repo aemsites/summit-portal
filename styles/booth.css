@@ -157,12 +157,18 @@
 
   .brand {
     display: inline-flex;
+    min-width: 0;
     align-items: center;
     gap: 14px;
     font-size: clamp(22px, 2.7vw, 36px);
     font-weight: 700;
     letter-spacing: -.02em;
-    line-height: 1.1;
+    line-height: 1.25;
+  }
+
+  .brand span {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .brand-icon {
@@ -184,6 +190,7 @@
 
   .header-context {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: flex-end;
     gap: clamp(12px, 2vw, 24px);
@@ -209,6 +216,11 @@
     max-width: 1050px;
     margin-inline: auto;
     padding: clamp(64px, 8vh, 160px) 0;
+  }
+
+  .stage-main:has([data-panel="finish"]:not([hidden])) {
+    justify-content: flex-start;
+    padding-block: clamp(32px, 4vh, 80px);
   }
 
   @media (width >= 651px) and (orientation: portrait) {
@@ -254,50 +266,15 @@
   .welcome-intro h1 {
     position: relative;
     z-index: 1;
-    max-width: 12ch;
-    overflow-wrap: anywhere;
+    max-width: 21ch;
+    font-size: clamp(44px, 5.5vw, 80px);
+    letter-spacing: -.04em;
+    line-height: 1.06;
+    text-wrap: balance;
   }
 
   .welcome-intro .eyebrow {
     color: var(--surface);
-  }
-
-  .welcome-intro .signal-field {
-    position: absolute;
-    right: -8%;
-    bottom: -26%;
-    width: 65%;
-    aspect-ratio: 1;
-    border: 1px solid var(--hero-rule);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-
-  .welcome-intro .signal-field::before,
-    .welcome-intro .signal-field::after {
-    position: absolute;
-    border: 1px solid var(--hero-rule);
-    border-radius: 50%;
-    content: "";
-  }
-
-  .welcome-intro .signal-field::before {
-    inset: 15%;
-  }
-
-  .welcome-intro .signal-field::after {
-    inset: 30%;
-  }
-
-  .welcome-intro .signal-point {
-    position: absolute;
-    top: 8%;
-    left: 24%;
-    width: 5%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: var(--accent);
-    transform-origin: 550% 850%;
   }
 
   .welcome-intro .hero-bottom {
@@ -314,29 +291,6 @@
   .welcome-intro .hero-bottom p {
     margin: 0;
     font-size: clamp(20px, 2vw, 30px);
-  }
-
-  .motion-toggle {
-    flex: none;
-    min-height: 48px;
-    border: 1px solid var(--hero-rule);
-    border-radius: 10px;
-    padding: 8px 16px;
-    background: transparent;
-    color: var(--surface);
-    font-size: clamp(16px, 1.2vw, 22px);
-  }
-
-  .motion-toggle:hover {
-    border-color: var(--surface);
-  }
-
-  .motion-toggle:focus-visible {
-    outline-color: var(--surface);
-  }
-
-  .motion-toggle:active {
-    transform: translateY(1px);
   }
 
   .welcome-entry {
@@ -477,6 +431,7 @@
   }
 
   .primary,
+    .secondary,
     .link-button {
     display: inline-flex;
     align-items: center;
@@ -487,6 +442,7 @@
     padding: 15px 24px;
     font-size: clamp(19px, 1.6vw, 23px);
     font-weight: 700;
+    line-height: 1.3;
     text-align: left;
   }
 
@@ -496,6 +452,20 @@
       border: 2px solid var(--accent);
       background: var(--accent);
       color: var(--surface);
+  }
+
+  .secondary {
+    width: 100%;
+    min-height: 64px;
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink);
+    justify-content: center;
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--surface-hover);
   }
 
   .email-form .primary {
@@ -525,6 +495,7 @@
     flex: none;
     font-size: 1.3em;
     font-weight: 400;
+    line-height: 1;
   }
 
   .finish-actions {
@@ -544,13 +515,16 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    justify-content: space-evenly;
+    justify-content: flex-start;
     width: min(100%, 900px);
     margin-inline: auto;
   }
 
-  #finish-heading .accent {
-    color: var(--accent);
+  .finish-content > h2 {
+    margin: 0 0 24px;
+    font-size: clamp(32px, 4vw, 52px);
+    letter-spacing: -.03em;
+    line-height: 1.2;
   }
 
   .finish-actions button {
@@ -594,14 +568,9 @@
     font-size: clamp(12px, 1vw, 16px);
   }
 
-  .step-index {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: .13em;
-  }
-
   .review button:active,
-    .primary:active:not(:disabled) {
+    .primary:active:not(:disabled),
+    .secondary:active:not(:disabled) {
     transform: translateY(1px);
   }
 
@@ -646,7 +615,6 @@
     .brand {
       max-width: 100%;
       font-size: clamp(18px, 5.5vw, 22px);
-      white-space: nowrap;
     }
 
     .stage[data-brand="adobe"] .header-context {
@@ -668,12 +636,7 @@
 
     .welcome-intro h1 {
       margin-block: 18px 16px;
-    }
-
-    .welcome-intro .signal-field {
-      width: 100%;
-      bottom: 0;
-      opacity: .55;
+      font-size: clamp(36px, 9vw, 58px);
     }
 
     .welcome-entry .lead {
@@ -717,7 +680,7 @@
     }
 
     .welcome-intro h1 {
-      font-size: 102px;
+      font-size: clamp(64px, 7vw, 84px);
     }
 
     .welcome-entry {
@@ -749,7 +712,8 @@
       max-width: 900px;
     }
 
-    .finish-actions button {
+    .finish-actions button,
+    .finish-content > .secondary {
       min-height: 96px;
       padding: 22px 28px;
       font-size: 30px;
@@ -760,8 +724,7 @@
     }
 
     .finish-guidance {
-      min-height: 360px;
-      align-content: space-around;
+      align-content: start;
       gap: 24px;
       padding: 32px;
     }
@@ -835,7 +798,7 @@
 
     .welcome-intro h1 {
       margin-block: 36px 0;
-      font-size: 202px;
+      font-size: 172px;
     }
 
     .welcome-intro .hero-bottom {
@@ -844,12 +807,6 @@
 
     .welcome-intro .hero-bottom p {
       font-size: 42px;
-    }
-
-    .motion-toggle {
-      min-height: 72px;
-      padding: 16px 24px;
-      font-size: 28px;
     }
 
     .welcome-entry {
@@ -898,7 +855,7 @@
 
     .stage-main:has([data-panel="finish"]:not([hidden])) {
       max-width: 1800px;
-      justify-content: center;
+      justify-content: flex-start;
       padding-block: 80px;
     }
 
@@ -906,17 +863,9 @@
       width: min(100%, 1500px);
     }
 
-    [data-panel="finish"] .eyebrow {
-      font-size: 26px;
-    }
-
-    [data-panel="finish"] h2 {
-      font-size: 190px;
-    }
-
-    [data-panel="finish"] .lead {
-      max-width: 1300px;
-      font-size: 52px;
+    .finish-content > h2 {
+      margin-bottom: 48px;
+      font-size: 72px;
     }
 
     .finish-content {
@@ -927,7 +876,8 @@
       margin-bottom: 60px;
     }
 
-    .finish-actions button {
+    .finish-actions button,
+    .finish-content > .secondary {
       min-height: 154px;
       padding: 32px 48px;
       font-size: 52px;
@@ -938,8 +888,7 @@
     }
 
     .finish-guidance {
-      min-height: 620px;
-      align-content: space-around;
+      align-content: start;
       gap: 38px;
       padding: 52px;
       margin-bottom: 60px;
@@ -969,22 +918,6 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .signal-point {
-      animation: signal-orbit 16s linear infinite;
-    }
-
-    .stage[data-motion="paused"] .signal-point,
-      .stage:focus-within .signal-point,
-      .stage:has(.welcome-intro:hover) .signal-point {
-      animation-play-state: paused;
-    }
-
-    @keyframes signal-orbit {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
     .panel:not([hidden]) {
       animation: appear .36s cubic-bezier(.16, 1, .3, 1) both;
     }
@@ -1002,9 +935,4 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .motion-toggle {
-      display: none;
-    }
-  }
 }

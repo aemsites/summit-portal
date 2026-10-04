@@ -10,7 +10,8 @@ const FOOTER_HOST_RESOLVERS = {
   'report-stats': (widget) => widget.querySelector('[data-widget-footer-host]')
     || widget.querySelector(':scope > .rav-panels-outer')
     || widget,
-  'report-scores': (widget) => widget,
+  // Direct divs are authored page rows until scores decoration creates its grid.
+  'report-scores': (widget) => (widget.querySelector(':scope > .rsc-grid') ? widget : null),
   'report-chart': (widget) => widget,
   'report-bar': (widget) => widget,
   'report-cards': (widget) => widget,

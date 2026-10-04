@@ -1,3 +1,5 @@
+import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
+
 export async function boothRequest(action, body) {
   const response = await fetch(`/auth/booth/${action}`, {
     method: body === undefined ? 'GET' : 'POST',
@@ -19,6 +21,8 @@ export function mountBooth(root = document) {
   const stage = root.getElementById('stage');
   if (!stage || stage.dataset.ready) return;
   stage.dataset.ready = 'true';
+  const presentation = readBoothPresentation(window.location.search);
+  applyBoothPresentation(root, presentation);
   const panels = [...root.querySelectorAll('[data-panel]')];
   const email = root.getElementById('registration-email');
   const form = root.getElementById('email-form');
@@ -47,7 +51,6 @@ export function mountBooth(root = document) {
 
   function show(name) {
     panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
-    root.getElementById('step-index').textContent = { welcome: '01 / 03 · ENTRY', picker: '02 / 03 · CHOOSE', finish: '03 / 03 · FINISH' }[name];
   }
 
   function scrub() {
@@ -86,7 +89,7 @@ export function mountBooth(root = document) {
         window.location.replace('/login?staff&redirect=%2Fadobe%2Fdashboard');
         return;
       }
-      window.history.replaceState(null, '', '/booth');
+      window.history.replaceState(null, '', withBoothPresentation('/booth', presentation));
       stage.hidden = false;
       ready = true;
       form.querySelector('button').disabled = false;
@@ -105,7 +108,7 @@ export function mountBooth(root = document) {
   function apply(result, finishing = false) {
     schedule(result);
     if (result.selectedPath && !finishing) {
-      window.location.assign(result.selectedPath);
+      window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
     if (result.selectedPath && finishing) {
@@ -186,11 +189,6 @@ export function mountBooth(root = document) {
 
   root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
   root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
-  root.getElementById('motion-toggle').addEventListener('click', (event) => {
-    const paused = stage.dataset.motion === 'playing';
-    stage.dataset.motion = paused ? 'paused' : 'playing';
-    event.target.textContent = paused ? 'Play motion' : 'Pause motion';
-  });
   const activity = () => {
     clearTimeout(idle);
     idle = setTimeout(reset, 120000);

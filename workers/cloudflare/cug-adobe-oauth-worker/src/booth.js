@@ -219,6 +219,53 @@ export async function handleBooth(request, env) {
   return response;
 }
 
+/** A verified staff dashboard navigation explicitly ends this browser's booth mode. */
+export async function resumeStaffPortal(request, response, env) {
+  const { pathname } = new URL(request.url);
+  const destination = request.headers.get('Sec-Fetch-Dest');
+  const prefetch = /prefetch/i.test(`${request.headers.get('Purpose') || ''} ${request.headers.get('Sec-Purpose') || ''}`);
+  if (request.method !== 'GET' || !/^\/adobe\/dashboard(?:\/|\.html)?$/.test(pathname)
+    || (response.status !== 304 && (response.status !== 200 || !response.headers.get('Content-Type')?.includes('text/html')))
+    || (destination !== null && !['document', 'iframe'].includes(destination))
+    || prefetch || !await boothStaff(request, env)) return null;
+
+  if (contextId(request)) {
+    try {
+      const reset = await handleBooth(new Request(new URL('/auth/booth/reset', request.url), {
+        method: 'POST',
+        headers: {
+          Cookie: request.headers.get('Cookie') || '',
+          Origin: new URL(request.url).origin,
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+      }), env);
+      if (!reset.ok) {
+        if (reset.status === 403 && !await boothDeviceAuthorized(request, env)) {
+          // A new verified staff session cannot revoke its predecessor's private context.
+          // eslint-disable-next-line no-console
+          console.warn('[booth] Staff portal discarded stale cross-session booth cookies');
+        } else {
+          throw new Error('Booth context could not be cleared');
+        }
+      }
+    } catch {
+      operationalError('Staff portal transition could not clear the booth context');
+      return new Response('Booth mode could not be cleared. Retry or sign out before returning to the staff dashboard.', {
+        status: 503,
+        headers: { ...ASSET_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+  }
+
+  const portal = new Response(response.body, response);
+  portal.headers.set('Cache-Control', 'private, no-store');
+  [COOKIE, 'booth_device'].forEach((name) => {
+    portal.headers.append('Set-Cookie', `${name}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
+  });
+  return portal;
+}
+
 /** Durable serialization + persistent send outcomes; KV is not a lock. */
 export class BoothCoordinator {
   constructor(state, env) {

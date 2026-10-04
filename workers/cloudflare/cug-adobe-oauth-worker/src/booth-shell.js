@@ -3,6 +3,7 @@
 import shell from '../../../../booth.html';
 import runtime from '../../../../scripts/booth.js';
 import report from '../../../../scripts/booth-report.js';
+import presentation from '../../../../scripts/booth-presentation.js';
 import css from '../../../../styles/booth.css';
 import reportCss from '../../../../styles/booth-report.css';
 import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
@@ -10,6 +11,7 @@ import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDe
 const assets = new Map([
   ['/scripts/booth.js', [runtime, 'text/javascript']],
   ['/scripts/booth-report.js', [report, 'text/javascript']],
+  ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
   ['/styles/booth.css', [css, 'text/css']],
   ['/styles/booth-report.css', [reportCss, 'text/css']],
 ]);
@@ -39,7 +41,22 @@ export async function serveBooth(request, env) {
   if (request.method !== 'GET') return new Response(null, { status: 405 });
   const session = await boothStaff(request, env);
   if (!session) {
-    return new Response(null, { status: 302, headers: { Location: '/login?staff&redirect=%2Fbooth', 'Cache-Control': 'private, no-store' } });
+    const setup = new URL('/booth', request.url);
+    const params = new URL(request.url).searchParams;
+    const headings = params.getAll('heading');
+    const heading = headings.length === 1 ? headings[0].trim() : '';
+    const invalidHeading = params.has('heading') && (headings.length !== 1 || !heading
+      || [...heading].length > 80 || /[\p{C}\p{Zl}\p{Zp}<>]/u.test(headings[0] || ''));
+    if (params.has('heading') && !invalidHeading) setup.searchParams.set('heading', heading);
+    const brands = params.getAll('brand');
+    const invalidBrand = params.has('brand') && (brands.length !== 1 || !['adobe', 'semrush'].includes(brands[0]));
+    if (params.has('brand') && !invalidBrand) setup.searchParams.set('brand', brands[0]);
+    if (invalidHeading || invalidBrand) {
+      // eslint-disable-next-line no-console
+      console.warn('[booth] Ignored invalid presentation parameters on staff login redirect');
+    }
+    const redirect = encodeURIComponent(`${setup.pathname}${setup.search}`);
+    return new Response(null, { status: 302, headers: { Location: `/login?staff&redirect=${redirect}`, 'Cache-Control': 'private, no-store' } });
   }
   const headers = new Headers({
     'Content-Type': 'text/html; charset=utf-8',
@@ -94,7 +111,7 @@ export async function injectBoothReturn(response, request, env) {
   privateResponse.headers.set('Cache-Control', 'private, no-store');
   return new HTMLRewriter().on('body', {
     element(element) {
-      element.append('<script type="module" src="/scripts/booth-report.js?v=portrait-1"></script>', { html: true });
+      element.append('<script type="module" src="/scripts/booth-report.js?v=portrait-2"></script>', { html: true });
     },
   }).transform(privateResponse);
 }

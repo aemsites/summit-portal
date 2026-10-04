@@ -25,6 +25,16 @@ the address stored by lookup; the browser cannot supply another recipient or
 path. Adobe specialist/follow-up guidance remains informational. Reset clears
 attendee state, not the staff login or non-PII device-mode marker.
 
+Verified staff returning to `/adobe/dashboard` leave booth mode without signing
+out. Only a successful, CUG-approved document navigation triggers this
+transition: the Worker clears the owned attendee context and expires
+`booth_context` and `booth_device` before allowing ordinary dashboard report
+browsing. HEAD, background fetches, prefetch, denied access and unverified
+link-borne sessions do not clear kiosk state. If the owned context cannot be
+cleared, the dashboard returns a visible recovery error and retains booth
+protection. A newly authenticated staff session discards stale browser cookies
+without revoking another session's private context.
+
 **Identity limitation:** asserted email is identification, not authentication.
 Anyone asserting a permitted address or domain can view its prepared reports on
 this staff-authenticated kiosk. CUGs can contain exact emails as well as domains;
@@ -38,12 +48,13 @@ Addresses without an authored customer CUG permission do not qualify.
 |---|---|
 | Evergreen shell | Root `booth.html`, served at exact `/booth` by Worker |
 | Entry, picker, Finish | `scripts/booth.js`, scoped `styles/booth.css` |
+| Cosmetic header/partner settings | `scripts/booth-presentation.js`, shared by Entry and the report control |
 | Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 
-Wrangler bundles the **single source** shell, two stylesheets and two scripts, so
+Wrangler bundles the **single source** shell, two stylesheets and three scripts, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
 All other assets/content continue using the existing production origin. The
 logo and Adobe Clean Typekit reference are the approved design assets.
@@ -53,6 +64,59 @@ does not load the ordinary portal chrome or analytics.
 
 See [target design / API contract](context/target-design.md) for authorization,
 context lifetime, concurrency and failure semantics.
+
+## Entry and Finish feedback
+
+The default shared header is the event-neutral **Adobe Brand Visibility**, retaining the official
+Adobe logo with accessible attribution and meaningful Digital Opportunity Report
+context. The requested **Amplify your brand visibility** header is an optional
+URL configuration rather than an event-specific default. Entry reads
+**Turn your brand content into an AI search advantage.** and
+**See where your brand appears in AI search.** The longer headline wraps at
+deliberate responsive sizes rather than inheriting the former question's size.
+**Open your customized report.** describes existing authorized company reports:
+the Business email field still identifies CUG-authorized prepared reports, not
+registrants or an on-demand generation request. The picker and help keep that
+contract explicit.
+
+The custom orbit artwork, motion toggle and artificial Entry/Finish step-index
+are removed from markup and runtime wiring. There is no production design-review
+toolbar; session review controls are not visitor features. Brand-gradient artwork
+is **deferred from this iteration's approved scope**. The hero retains its existing
+static dark surface; no invented gradient is claimed to be brand-approved.
+
+Finish removes the decorative marketing intro and reserved spacer. A concise
+**Your report** heading labels the panel within its actionable content, placed
+directly below the shared header. **Email my report** remains the only email
+dispatch and uses the lookup business address. Specialist guidance and
+**Arrange a follow-up with the booth team** are plain informational text:
+**Ask the team to help arrange a follow-up conversation.** There is no booking
+button, link, endpoint or scheduling success claim. The prominent full-width
+secondary **Finish** control invokes the existing server reset only, without
+sending email. Privacy clearing, expiry, recovery and staff-only exit behavior
+are unchanged.
+
+### Cosmetic URL settings
+
+`/booth` without settings always uses the neutral Adobe identity.
+`heading` overrides only the shared shell header, not authored report headings.
+It must occur once and contain 1–80 Unicode code points after trimming; markup
+delimiters, control/format characters and line/paragraph separators are rejected.
+Unicode text is rendered with `textContent`, never HTML. `brand` accepts only
+`adobe` or `semrush`; missing, invalid or duplicate values use Adobe. Semrush
+uses the existing allowlisted logo, not a URL-supplied asset.
+
+Example: `/booth?heading=Amplify%20your%20brand%20visibility&brand=semrush`.
+Only valid heading and non-default brand settings follow the server-selected
+canonical report pathname, the Finish URL and reset/next-visitor URL.
+Unknown parameters are dropped; only the explicit `/booth?step=finish` target
+retains a step parameter. The staff-login redirect is always scoped to `/booth`,
+carrying only the same safe cosmetics. No event settings are persisted in
+browser storage, cookies, CUG data or API bodies. The server's `selectedPath`
+and emailed/shared report links remain canonical and event-neutral. Opening
+a bare `/booth` document cannot inherit the previous event's settings.
+Cosmetic parameters cannot authorize a report, change expiry or opt into
+either portrait layout without validated server status.
 
 ## Confirmed report portrait reading
 
@@ -71,12 +135,36 @@ targets to at least 96px. The 1080 × 1920 fallback uses 24px narrative text,
 18px captions and 64px targets. Other report viewports keep their normal layout.
 No browser zoom, page transform or font substitution is used.
 
+An additional composition profile applies **only at exact 9:16**, inside those
+same minimum dimensions and validated server context. It adds
+`html.booth-report-composition`; neither that class nor the reversible
+performance disclosures is created for ordinary reports. At 2160 × 3840 it uses
+36px prose, 56px section headings, 48px card headings and the existing 96px
+primary controls. At 1080 × 1920 prose remains 24px and controls at least 64px.
+AI comparison panels sit side by side; findings use an unboxed asymmetric grid
+with all authored prose visible by default. Performance is a two-column overview
+(four pages in 2×2), retaining the original field/lab grade semantics, score,
+all three metric values and thresholds. Exact-ratio widths below 1600px place
+thresholds on a second row rather than squeezing the metric columns.
+
+Each performance card has a native **Read analysis** disclosure containing the
+original summary, recommendation, URL and verification nodes, not rewritten
+or cloned content. When activation moves a focused analysis descendant, only
+that card's disclosure opens and the exact element is refocused after attachment.
+Without analysis focus, all disclosures remain closed for the default overview.
+Leaving the exact ratio, or clearing booth mode, restores the original DOM
+positions, event listeners and focus. Later-rendered cards share the existing
+chart observer; no additional idle/reset/expiry timers are added.
+The original broad portrait date/touch query stays separate. The 2:3, 3:4,
+landscape, mobile and nearby non-exact viewports retain the preceding layout.
+
 Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
 month/year lines, retaining the original date in an accessible label; this
 avoids the original overlapping dates without changing chart values. A scoped
 observer handles later-decorated charts, and leaving the portrait bounds restores
 the original ISO ticks. Touch taps reuse existing chart hit testing and keep
-the value readout visible without hover. AI panels stack with readable subtitles;
+the value readout visible without hover. Outside the exact composition, AI panels
+stack with readable subtitles;
 platform bars retain icon/label/bar/value alignment, and comparison tables retain
 their columns. Details, tabs, carousel arrows/dots, links and downloads
 remain available. Existing feedback/brand controls move into document flow in
@@ -84,7 +172,7 @@ booth context rather than overlapping Finish. The existing ResizeObserver
 reserves the measured Finish bar height, including wrapping and viewport changes.
 
 Both the helper and its new stylesheet are exact Worker-bundled assets. The
-Worker injection and shared lazy import use the same `?v=portrait-1` adapter URL
+Worker injection and shared lazy import use the same `?v=portrait-2` adapter URL
 to avoid a previously cached unversioned module; this is cache versioning, not
 a layout opt-in. Only the report adapter and its stylesheet receive `no-cache`
 revalidation. After fresh authorization the adapter can upgrade an older Finish
@@ -98,6 +186,14 @@ Authored-content local replay with production blocks is useful evidence, not a
 claim that protected production rendering or physical standing-distance
 legibility has been verified. Confirm device CSS viewport, DPR/browser scaling,
 touch interaction and viewing distance on the installed screen.
+
+**Footer decoration ordering:** the shared section-footer relocator accepts
+`report-scores` only after its direct `.rsc-grid` exists. Before decoration,
+direct divs are authored page rows and must not receive a footer slot. The
+scores decorator's post-init scheduler completes relocation after the
+performance shell is ready, preserving authentic callout/data-source nodes.
+The regression covers interleaved before/after decoration and repeated
+relocation, rather than suppressing a bogus extra card.
 
 ## Email policy (corrected historical claims)
 
@@ -255,6 +351,10 @@ that exact session; unmarked ordinary staff browsing is unchanged. Assets,
 downloads, other portal routes and already-delivered content are not a global
 kiosk lockdown. **Staff: sign out and leave booth mode** clears attendee state,
 device marker and staff cookies; broader staff browsing then requires login.
+Alternatively, deliberately opening the authorized staff dashboard clears booth
+state and the device marker while keeping verified staff signed in. The
+ordinary dashboard is not an attendee reset target; account documents remain
+restricted until that staff transition succeeds.
 Disable address
 bar/history/tab escape using managed kiosk controls and keep staff nearby.
 Ten-minute server expiry and two-minute interactive idle reset do not revoke
@@ -266,7 +366,7 @@ recovery message; staff must resolve it before the next visitor.
 The former ten-task roster/report-exclusive-token roadmap is **superseded**,
 not completed as originally specified. [Tracker](tracker.md) records the scope
 reductions and remaining operational gates. The design review source and
-shareable export remain preserved; no redesign or unrelated report layout work
-is included. Any co-brand presentation/configuration beyond the default Adobe
-chrome, new personal-email grants, event lists or booking flow requires a
-separate agreed change.
+shareable export remain preserved. The exact portrait composition and bounded
+heading/partner options above are separately approved extensions. Further
+branding beyond those options, new personal-email grants, event lists or booking
+flows require a separate agreed change.

@@ -54,7 +54,7 @@ describe('booth runtime boundary', () => {
       </form><p id="email-error"></p></section>
       <section data-panel="picker" hidden><div id="report-options"></div><p id="picker-status"></p></section>
       <section data-panel="finish" hidden><button id="send-report"></button><p id="finish-status"></p></section>
-      <button id="motion-toggle"></button><button id="staff-exit"></button><span id="step-index"></span>
+      <button id="staff-exit"></button>
     </main>`;
     sandbox.stub(window, 'addEventListener');
     sandbox.stub(window.history, 'replaceState');
@@ -99,5 +99,102 @@ describe('booth runtime boundary', () => {
     expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
     expect(root.querySelector('#email-form button').disabled).to.equal(false);
     expect(root.getElementById('booth-status').textContent).to.equal('');
+  });
+
+  async function productionFixture() {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const root = new DOMParser().parseFromString(await response.text(), 'text/html');
+    sandbox.stub(window, 'addEventListener');
+    return root;
+  }
+
+  it('retains approved copy, accessible attribution and accurate business-email lookup without review chrome', async () => {
+    const root = await productionFixture();
+    expect(root.querySelector('.brand span').textContent).to.equal('Adobe Brand Visibility');
+    expect(root.querySelector('.brand-icon').alt).to.equal('Adobe');
+    expect(root.getElementById('welcome-heading').textContent).to.equal('Turn your brand content into an AI search advantage.');
+    expect(root.querySelector('.hero-bottom p').textContent).to.equal('See where your brand appears in AI search.');
+    expect(root.querySelector('.welcome-entry .lead').textContent).to.equal('Open your customized report.');
+    expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Business email');
+    expect(root.getElementById('email-help').textContent).to.include('This is not a sign-in.');
+    expect(root.querySelector('.review, #motion-toggle, .signal-field, #step-index')).to.equal(null);
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    expect(() => mountBooth(root)).not.to.throw();
+    await clock.tickAsync(0);
+    expect(root.querySelector('#email-form button').disabled).to.equal(false);
+    expect(fetchStub.calledOnce).to.equal(true);
+  });
+
+  it('keeps customized picker lookup on business email without dispatching or generating reports', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({
+      ok: true,
+      json: async () => ({
+        state: 'picker',
+        candidates: [{ label: 'Company website', path: '/accounts/e/example/insights/example-com/portal-landing/' }],
+      }),
+    });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('registration-email').value = 'visitor@example.com';
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(0);
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/lookup');
+    expect(fetchStub.secondCall.args[1].body).to.equal('{"email":"visitor@example.com"}');
+    expect(root.getElementById('registration-email').value).to.equal('');
+    expect(root.querySelector('[data-panel="picker"]').hidden).to.equal(false);
+    expect(root.getElementById('report-options').textContent).to.equal('Company website');
+    expect(fetchStub.callCount).to.equal(2);
+  });
+
+  it('makes Finish a reset-only secondary action and follow-up explicit manual guidance', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish&heading=Amplify+your+brand+visibility&brand=semrush');
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({
+        state: 'report',
+        selectedPath: '/accounts/e/example/insights/example-com/portal-landing/',
+        expiresAt: Date.now() + 600000,
+      }),
+    });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ sent: true }) });
+    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      const finish = root.querySelector('[data-panel="finish"]');
+      expect(finish.hidden).to.equal(false);
+      expect(root.querySelector('.brand span').textContent).to.equal('Amplify your brand visibility');
+      expect(root.getElementById('stage').dataset.brand).to.equal('semrush');
+      expect(finish.querySelector('.finish-intro')).to.equal(null);
+      expect(root.getElementById(finish.getAttribute('aria-labelledby')).textContent).to.equal('Your report');
+      expect(finish.querySelector('.finish-guidance').textContent).to.include('Ask the team to help arrange a follow-up conversation.');
+      expect(finish.querySelector('.finish-guidance a, .finish-guidance button')).to.equal(null);
+      expect(fetchStub.calledOnce).to.equal(true);
+      root.getElementById('send-report').click();
+      await clock.tickAsync(0);
+      expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/send');
+      expect(fetchStub.secondCall.args[1].body).to.equal('{}');
+      expect(root.getElementById('finish-status').textContent).to.include('was emailed');
+      const reset = finish.querySelector('[data-reset]');
+      expect(reset.textContent).to.equal('Finish');
+      expect(reset.classList.contains('secondary')).to.equal(true);
+      reset.click();
+      await clock.tickAsync(0);
+      expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
+      expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
+      expect(window.location.pathname + window.location.search).to.equal('/booth?heading=Amplify+your+brand+visibility&brand=semrush');
+      expect(fetchStub.callCount).to.equal(3);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
   });
 });
