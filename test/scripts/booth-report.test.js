@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setViewport } from '@web/test-runner-commands';
 import sinon from 'sinon';
-import mountBoothReturn, { formatBoothChartDates } from '../../scripts/booth-report.js';
+import mountBoothReturn, { createBoothPerformanceLayout, formatBoothChartDates } from '../../scripts/booth-report.js';
 import decorateCarousel from '../../blocks/report-carousel/report-carousel.js';
 import decorateScores from '../../blocks/report-scores/report-scores.js';
 import decorateHero from '../../blocks/report-hero/report-hero.js';
@@ -51,14 +51,14 @@ describe('confirmed booth report portrait layout', () => {
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
     document.querySelector('main')?.remove();
-    document.documentElement.classList.remove('booth-report-active');
+    document.documentElement.classList.remove('booth-report-active', 'booth-report-composition', 'booth-report-clearing');
     TestObserver.instances = [];
     sandbox.restore();
   });
 
   after(() => styles.forEach((link) => link.remove()));
 
-  function reportFixture() {
+  async function reportFixture() {
     const main = document.createElement('main');
     main.innerHTML = `<div class="section"><div class="block-content">
       <div class="report-hero insight"><div><div>
@@ -100,19 +100,25 @@ describe('confirmed booth report portrait layout', () => {
     heading.textContent = 'Example international organization with a longer report name';
     heading.classList.remove('rh-typing');
     decorateCarousel(main.querySelector('.report-carousel'));
-    decorateScores(main.querySelector('.report-scores'));
+    await decorateScores(main.querySelector('.report-scores'));
     const visibility = main.querySelector('.report-ai-visibility');
     const panels = document.createElement('div');
     panels.className = 'rav-panels';
     panels.append(...parseVisibilityRows(visibility).map((row) => renderPanel(row)));
-    visibility.replaceChildren(panels);
+    const outer = document.createElement('div');
+    outer.className = 'rav-panels-outer';
+    outer.append(panels);
+    visibility.replaceChildren(outer);
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
     return main;
   }
 
   async function mount(context = {}) {
     const nativeMatchMedia = window.matchMedia.bind(window);
     sandbox.stub(window, 'matchMedia').callsFake((query) => ({
-      matches: nativeMatchMedia(query).matches,
+      get matches() { return nativeMatchMedia(query).matches; },
       addEventListener() {},
     }));
     sandbox.stub(window, 'MutationObserver').value(TestObserver);
@@ -149,13 +155,48 @@ describe('confirmed booth report portrait layout', () => {
     { expiresAt: '9999999999999' }, { expiresAt: null }, { selectedPath: '/another-report/' },
   ]) {
     it(`does not opt in with invalid context ${JSON.stringify(invalid)}`, async () => {
-      reportFixture();
+      await reportFixture();
       await mount(invalid);
       expect(document.getElementById('booth-return')).to.equal(null);
       expect(document.documentElement.classList.contains('booth-report-active')).to.equal(false);
       expect(document.querySelector('link[href="/styles/booth-report.css"]')).to.equal(null);
+      expect(document.querySelector('.booth-score-analysis')).to.equal(null);
+      expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(false);
     });
   }
+
+  it('carries cosmetic settings to Finish only after exact server-context validation', async () => {
+    const previousUrl = window.location.href;
+    const url = new URL(previousUrl);
+    url.search = '?heading=Amplify+your+brand+visibility&brand=semrush&portrait=true';
+    window.history.replaceState(null, '', url);
+    try {
+      await setViewport({ width: 1080, height: 1920 });
+      await reportFixture();
+      await mount();
+      expect(document.querySelector('#booth-return a').getAttribute('href')).to.equal('/booth?step=finish&heading=Amplify+your+brand+visibility&brand=semrush');
+      expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(true);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('does not grant report controls or a portrait profile through cosmetic/query parameters', async () => {
+    const previousUrl = window.location.href;
+    const url = new URL(previousUrl);
+    url.search = '?heading=Amplify&brand=semrush&state=report&selectedPath=/report/&expiresAt=9999999999999&portrait=true';
+    window.history.replaceState(null, '', url);
+    try {
+      await setViewport({ width: 2160, height: 3840 });
+      await reportFixture();
+      await mount({ state: 'entry' });
+      expect(document.getElementById('booth-return')).to.equal(null);
+      expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(false);
+      expect(document.querySelector('.booth-score-analysis')).to.equal(null);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
 
   for (const [width, height, portrait] of [
     [2160, 3840, true], [1080, 1920, true], [390, 844, false],
@@ -163,17 +204,17 @@ describe('confirmed booth report portrait layout', () => {
   ]) {
     it(`uses the complete portrait bounds at ${width}x${height}`, async () => {
       await setViewport({ width, height });
-      reportFixture();
+      await reportFixture();
       await mount();
       expect(document.documentElement.scrollWidth).to.equal(width);
       const baseline = width < 1000 ? 14 : 18;
-      const readingSize = width === 2160 ? 40 : 24;
+      const readingSize = width === 2160 ? 36 : 24;
       expect(font('.rc-desc')).to.equal(portrait ? readingSize : baseline);
       if (portrait) {
         expect(rect('.rc-tab').height).to.be.at.least(width === 2160 ? 96 : 64);
         expect(rect('.rc-dot').width).to.be.at.least(width === 2160 ? 96 : 64);
-        expect(font('.rsc-summary')).to.equal(width === 2160 ? 40 : 24);
-        expect(font('.rav-hbar-val')).to.equal(width === 2160 ? 32 : 18);
+        expect(font('.rsc-summary')).to.equal(width === 2160 ? 36 : 24);
+        expect(font('.rav-hbar-val')).to.equal(width === 2160 ? 32 : 22);
         expect(font('.rav-panel-sub')).to.equal(readingSize);
         expect(font('.rav-st-brand')).to.equal(width === 2160 ? 32 : 18);
         expect(font('.rs-dark-badge')).to.equal(width === 2160 ? 32 : 18);
@@ -205,7 +246,7 @@ describe('confirmed booth report portrait layout', () => {
 
   it('leaves large ordinary portrait reports unchanged, even if the stylesheet is cached', async () => {
     await setViewport({ width: 2160, height: 3840 });
-    reportFixture();
+    await reportFixture();
     await mount();
     document.documentElement.classList.remove('booth-report-active');
     expect(font('.rc-desc')).to.equal(18);
@@ -214,7 +255,7 @@ describe('confirmed booth report portrait layout', () => {
 
   it('mounts controls/styles once and keeps real tabs, navigation and details usable', async () => {
     await setViewport({ width: 2160, height: 3840 });
-    reportFixture();
+    await reportFixture();
     await mount();
     await mountBoothReturn();
     expect(document.querySelectorAll('#booth-return')).to.have.length(1);
@@ -231,7 +272,7 @@ describe('confirmed booth report portrait layout', () => {
 
   it('reuses real chart hit testing for a touch value without sending requests', async () => {
     await setViewport({ width: 2160, height: 3840 });
-    reportFixture();
+    await reportFixture();
     await mount();
     const handler = document.addEventListener.getCalls()
       .find((call) => call.args[0] === 'pointerup').args[1];
@@ -247,7 +288,7 @@ describe('confirmed booth report portrait layout', () => {
 
   it('upgrades an existing older Finish control without duplicating reset timers or padding', async () => {
     await setViewport({ width: 2160, height: 3840 });
-    reportFixture();
+    await reportFixture();
     const existing = document.createElement('aside');
     existing.id = 'booth-return';
     existing.innerHTML = '<a href="/booth?step=finish">Finish</a><button>Clear</button>';
@@ -263,7 +304,7 @@ describe('confirmed booth report portrait layout', () => {
     await mount();
     expect(document.querySelector('#booth-return')).to.equal(existing);
     expect(document.querySelectorAll('link[data-booth-report-layout]')).to.have.length(1);
-    expect(font('.rc-desc')).to.equal(40);
+    expect(font('.rc-desc')).to.equal(36);
     expect(document.documentElement.style.getPropertyValue('--booth-original-padding')).to.equal('0px');
     expect(timers.callCount).to.equal(timerCount);
     expect(parseFloat(getComputedStyle(document.body).paddingBottom))
@@ -274,7 +315,7 @@ describe('confirmed booth report portrait layout', () => {
 
   it('does not upgrade an older control without fresh selected-report authorization', async () => {
     await setViewport({ width: 2160, height: 3840 });
-    reportFixture();
+    await reportFixture();
     const existing = document.createElement('aside');
     existing.id = 'booth-return';
     document.body.append(existing);
@@ -285,8 +326,8 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.querySelector('[data-booth-date]')).to.equal(null);
   });
 
-  it('restores original ISO ticks outside portrait and handles later-rendered charts', () => {
-    const main = reportFixture();
+  it('restores original ISO ticks outside portrait and handles later-rendered charts', async () => {
+    const main = await reportFixture();
     formatBoothChartDates(main, true);
     const tick = main.querySelector('.rc-line-svg text[data-booth-date]');
     expect(tick.textContent).to.equal('Jan2026');
@@ -295,5 +336,171 @@ describe('confirmed booth report portrait layout', () => {
     formatBoothChartDates(main, false);
     expect(tick.textContent).to.equal('2026-01');
     expect(tick.hasAttribute('data-booth-date')).to.equal(false);
+  });
+
+  for (const [width, height, exact] of [
+    [2160, 3840, true], [1080, 1920, true],
+    [1008, 1792, true], [999, 1776, false], [900, 1600, false],
+    [1280, 1920, false], [1440, 1920, false], [1920, 1080, false],
+    [320, 700, false], [375, 812, false], [414, 896, false], [768, 1024, false],
+    [2160, 3841, false], [2160, 3600, false],
+  ]) {
+    it(`restricts reversible composition to exact eligible 9:16 at ${width}x${height}`, async () => {
+      await setViewport({ width, height });
+      const main = await reportFixture();
+      const before = main.innerHTML;
+      await mount();
+      expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(exact);
+      expect(main.querySelectorAll('.booth-score-analysis')).to.have.length(exact ? 1 : 0);
+      if (exact) {
+        const grid = main.querySelector('.rsc-grid');
+        expect(getComputedStyle(grid).gridTemplateColumns.split(' ')).to.have.length(2);
+        expect(rect('.booth-score-analysis > summary').height).to.be.at.least(width >= 2160 ? 96 : 64);
+        expect(font('.rsc-page-name')).to.equal(width >= 2160 ? 48 : 36);
+        expect(font('.rsc-metric-value')).to.equal(width >= 2160 ? 36 : 24);
+        const target = main.querySelector('.rsc-metric-target');
+        expect(getComputedStyle(target).gridColumnStart).to.equal(width < 1600 ? '2' : 'auto');
+        const panels = main.querySelector('.rav-panels');
+        expect(getComputedStyle(panels).gridTemplateColumns.split(' ')).to.have.length(2);
+      } else {
+        // ISO ticks still use the separate, original broad portrait profile.
+        formatBoothChartDates(main, false);
+        expect(main.innerHTML).to.equal(before);
+      }
+    });
+  }
+
+  it('keeps the complete long URL visible and accessible inside native analysis', async () => {
+    await setViewport({ width: 1080, height: 1920 });
+    await reportFixture();
+    const url = document.querySelector('.rsc-page-url');
+    const text = `example.com/${'long-page-path/'.repeat(20)}`;
+    url.textContent = text;
+    url.href = `https://${text}`;
+    await mount();
+    const details = url.closest('details');
+    details.open = true;
+    expect(getComputedStyle(url).whiteSpace).to.equal('normal');
+    expect(url.scrollWidth).to.be.at.most(url.clientWidth + 1);
+    expect(url.textContent).to.equal(text);
+    expect(url.href).to.equal(`https://${text}`);
+    expect(details.querySelector('.rsc-verify-link')).not.to.equal(null);
+  });
+
+  it('restores identical nodes, order, markup and listeners on profile exit', async () => {
+    const main = await reportFixture();
+    const layout = createBoothPerformanceLayout(main);
+    const card = main.querySelector('.rsc-card');
+    const before = card.innerHTML;
+    const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+    const click = sandbox.spy();
+    nodes[0].addEventListener('click', click);
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      layout(true);
+      layout(true);
+      expect(card.querySelectorAll('.booth-score-analysis')).to.have.length(1);
+      const details = card.querySelector('.booth-score-analysis');
+      expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
+      expect(card.querySelectorAll('.rsc-metric')).to.have.length(3);
+      details.querySelector('summary').click();
+      expect(details.open).to.equal(true);
+      layout(false);
+      expect(card.innerHTML).to.equal(before);
+      expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+        .to.deep.equal(nodes);
+    }
+    nodes[0].dispatchEvent(new Event('click'));
+    expect(click.callCount).to.equal(1);
+  });
+
+  it('enhances later cards, releases removed cards and restores focus when leaving a disclosure', async () => {
+    const main = await reportFixture();
+    const layout = createBoothPerformanceLayout(main);
+    const card = main.querySelector('.rsc-card');
+    const before = card.innerHTML;
+    layout(true);
+    card.querySelector('.booth-score-analysis > summary').focus();
+    layout(false);
+    expect(document.activeElement).to.equal(card.querySelector('.rsc-page-name a'));
+    const later = card.cloneNode(true);
+    card.parentElement.append(later);
+    layout(true);
+    expect(main.querySelectorAll('.booth-score-analysis')).to.have.length(2);
+    card.remove();
+    layout(true);
+    expect(card.innerHTML).to.equal(before);
+    layout(false);
+    expect(later.innerHTML).to.equal(before);
+  });
+
+  ['.rsc-page-url', '.rsc-verify-link'].forEach((selector) => {
+    it(`preserves focused ${selector} through exact-profile activation, exit and reentry`, async () => {
+      await setViewport({ width: 2160, height: 3841 });
+      const main = await reportFixture();
+      const first = main.querySelector('.rsc-card');
+      const card = first.cloneNode(true);
+      first.parentElement.append(card);
+      await mount();
+      const before = card.innerHTML;
+      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const focused = card.querySelector(selector);
+      const click = sandbox.spy((event) => event.preventDefault());
+      focused.addEventListener('click', click);
+      focused.focus();
+      expect(document.activeElement).to.equal(focused);
+      const count = timers.callCount;
+      for (let cycle = 0; cycle < 2; cycle += 1) {
+        await setViewport({ width: 2160, height: 3840 });
+        TestObserver.instances.forEach((observer) => observer.callback());
+        expect(document.activeElement).to.equal(focused);
+        const details = focused.closest('.booth-score-analysis');
+        expect(details.open).to.equal(true);
+        expect(first.querySelector('.booth-score-analysis').open).to.equal(false);
+        expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
+        expect(timers.callCount).to.equal(count);
+        await setViewport({ width: 2160, height: 3841 });
+        TestObserver.instances.forEach((observer) => observer.callback());
+        expect(document.activeElement).to.equal(focused);
+        expect(card.innerHTML).to.equal(before);
+        expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+          .to.deep.equal(nodes);
+        expect(timers.callCount).to.equal(count);
+      }
+      focused.dispatchEvent(new Event('click', { cancelable: true }));
+      expect(click.callCount).to.equal(1);
+    });
+  });
+
+  it('reconciles resize and clearing without adding reset timers', async () => {
+    await setViewport({ width: 2160, height: 3840 });
+    await reportFixture();
+    await mount();
+    const count = timers.callCount;
+    document.documentElement.classList.add('booth-report-clearing');
+    TestObserver.instances.forEach((observer) => observer.callback());
+    expect(document.querySelector('.booth-score-analysis')).to.equal(null);
+    expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(false);
+    expect(timers.callCount).to.equal(count);
+  });
+
+  ['missing', 'unavailable'].forEach((failure) => {
+    it(`does not opt in when status is ${failure}`, async () => {
+      await setViewport({ width: 2160, height: 3840 });
+      const main = await reportFixture();
+      const before = main.innerHTML;
+      const fetch = sandbox.stub(window, 'fetch');
+      if (failure === 'missing') fetch.resolves(new Response(null, { status: 404 }));
+      else fetch.rejects(new Error('Status network failure'));
+      let error;
+      try {
+        await mountBoothReturn();
+      } catch (caught) {
+        error = caught;
+      }
+      if (failure === 'unavailable') expect(error.message).to.equal('Status network failure');
+      expect(document.querySelector('link[data-booth-report-layout]')).to.equal(null);
+      expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(false);
+      expect(main.innerHTML).to.equal(before);
+    });
   });
 });

@@ -25,7 +25,7 @@ import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
-import { handleBooth } from './booth.js';
+import { handleBooth, resumeStaffPortal } from './booth.js';
 import { serveBooth, injectBoothReturn, protectBoothDocument } from './booth-shell.js';
 
 export { BoothCoordinator } from './booth.js';
@@ -316,6 +316,8 @@ const handleRequest = async (request, env) => {
   const originResponse = await proxyToOrigin(request, env, url);
 
   const response = await checkCugAccess(originResponse, session, request, env);
+  const staffPortal = await resumeStaffPortal(request, response, env);
+  if (staffPortal) return staffPortal;
   const currentBoothDocument = await protectBoothDocument(request, env);
   if (currentBoothDocument) return currentBoothDocument;
   return injectBoothReturn(response, request, env);

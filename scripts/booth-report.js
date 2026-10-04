@@ -1,4 +1,63 @@
+import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
+
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
+const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
+
+/** Move the original analysis nodes into native disclosures, reversibly. */
+export function createBoothPerformanceLayout(root) {
+  const cards = new Map();
+
+  function restore(card, { details, origins }) {
+    const focused = document.activeElement;
+    const restoreFocus = details.contains(focused);
+    origins.forEach(({ node, marker }) => marker.replaceWith(node));
+    details.remove();
+    cards.delete(card);
+    if (restoreFocus) {
+      const target = focused === details.firstElementChild
+        ? card.querySelector('.rsc-page-name a') : focused;
+      target?.focus({ preventScroll: true });
+    }
+  }
+
+  return (active) => {
+    cards.forEach((state, card) => {
+      if (!active || !root.contains(card)) restore(card, state);
+    });
+    if (!active) return;
+    root.querySelectorAll('.report-scores .rsc-card').forEach((card) => {
+      if (cards.has(card)) return;
+      const body = card.querySelector('.rsc-body');
+      const name = card.querySelector('.rsc-page-name')?.textContent;
+      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      if (!body || !name || !nodes.length) return;
+      const focused = document.activeElement;
+      const restoreFocus = nodes.some((node) => node.contains(focused));
+      const details = document.createElement('details');
+      details.className = 'booth-score-analysis';
+      details.open = restoreFocus;
+      const summary = document.createElement('summary');
+      const label = () => {
+        summary.textContent = details.open ? 'Close analysis' : 'Read analysis';
+        summary.setAttribute('aria-label', `${summary.textContent} for ${name}`);
+      };
+      label();
+      details.addEventListener('toggle', label);
+      const content = document.createElement('div');
+      content.className = 'booth-score-analysis-content';
+      details.append(summary, content);
+      const origins = nodes.map((node) => {
+        const marker = document.createComment('Original performance analysis position');
+        node.before(marker);
+        content.append(node);
+        return { node, marker };
+      });
+      body.append(details);
+      cards.set(card, { details, origins });
+      if (restoreFocus) focused.focus({ preventScroll: true });
+    });
+  };
+}
 
 /** Split ISO month ticks without changing their dates or the chart's data. */
 export function formatBoothChartDates(root, portrait) {
@@ -39,6 +98,7 @@ export default async function mountBoothReturn() {
   if (context.state !== 'report' || context.selectedPath !== window.location.pathname
     || !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now()) return;
   if (document.querySelector('link[data-booth-report-layout]')) return;
+  const presentation = readBoothPresentation(window.location.search);
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
   stylesheet.href = '/styles/booth-report.css';
@@ -69,13 +129,25 @@ export default async function mountBoothReturn() {
     html.style.setProperty('--booth-original-padding', getComputedStyle(document.body).paddingBottom);
     document.body.append(control);
   }
+  control.querySelector('a').href = withBoothPresentation('/booth?step=finish', presentation);
   html.classList.add('booth-report-active');
   const portrait = window.matchMedia(portraitQuery);
-  const formatDates = () => formatBoothChartDates(document, portrait.matches);
-  const charts = new MutationObserver(formatDates);
-  charts.observe(document.querySelector('main') || document.body, { childList: true, subtree: true });
-  portrait.addEventListener('change', formatDates);
-  formatDates();
+  const composition = window.matchMedia(compositionQuery);
+  const root = document.querySelector('main') || document.body;
+  const layout = createBoothPerformanceLayout(root);
+  const reconcile = () => {
+    formatBoothChartDates(root, portrait.matches);
+    const active = composition.matches && html.classList.contains('booth-report-active')
+      && !html.classList.contains('booth-report-clearing');
+    html.classList.toggle('booth-report-composition', active);
+    layout(active);
+  };
+  const charts = new MutationObserver(reconcile);
+  charts.observe(root, { childList: true, subtree: true });
+  charts.observe(html, { attributes: true, attributeFilter: ['class'] });
+  portrait.addEventListener('change', reconcile);
+  composition.addEventListener('change', reconcile);
+  reconcile();
   document.addEventListener('pointerup', (event) => {
     if (!portrait.matches || event.pointerType === 'mouse') return;
     const point = event.target.closest('.report-carousel .rc-line-hit, .report-carousel .rc-chart-hover');
@@ -103,7 +175,7 @@ export default async function mountBoothReturn() {
         body: '{}',
       });
       if (!result.ok) throw new Error('Could not clear the booth. Ask the booth team.');
-      window.location.replace('/booth');
+      window.location.replace(withBoothPresentation('/booth', presentation));
     } catch (error) {
       document.documentElement.style.visibility = '';
       control.querySelector('a').hidden = true;
