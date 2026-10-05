@@ -3,6 +3,9 @@
 /* Wrapper centering — support both ak.js and aem.js conventions */
 .portal-login-wrapper,
 .block-content:has(.portal-login) {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   padding-inline: 0;
 }
 
@@ -63,9 +66,9 @@
   display: block;
   width: 100%;
   padding: 10px var(--spacing-m);
-  line-height: var(--body-line-height);
   text-align: center;
   font: inherit;
+  line-height: var(--body-line-height);
   font-weight: 500;
   cursor: pointer;
   box-sizing: border-box;
@@ -100,6 +103,7 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
+  font-size: max(16px, 1em);
 
   &:focus {
     outline: 2px solid var(--color-adobe-red);
@@ -136,6 +140,69 @@
   font-size: var(--body-font-size-s);
   color: var(--color-red-600);
   margin: 0;
+}
+
+.portal-login .pl-request,
+.portal-login .pl-lookup-error {
+  margin: 0 0 var(--spacing-l);
+  padding-inline: var(--spacing-xl);
+}
+
+.portal-login .pl-request a,
+.portal-login .pl-lookup-error a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.portal-login .pl-unavailable {
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--color-border);
+}
+
+.portal-login .pl-unavailable h4 {
+  margin: 0;
+  font-size: var(--body-font-size-m);
+  line-height: 1.5;
+}
+
+.portal-login .pl-unavailable p {
+  margin: var(--spacing-s) 0 var(--spacing-m);
+  color: var(--color-text-secondary);
+}
+
+.portal-login .pl-request-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--spacing-s) var(--spacing-m);
+  box-sizing: border-box;
+  background: var(--color-adobe-red);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.portal-login .pl-request-action:hover {
+  background: var(--color-adobe-red-hover);
+}
+
+.portal-login a:focus-visible,
+.portal-login button:focus-visible {
+  outline: 2px solid var(--color-adobe-red);
+  outline-offset: 3px;
+}
+
+@media (width >= 1000px) {
+  .portal-login .pl-request,
+  .portal-login .pl-lookup-error {
+    padding-inline: 0;
+  }
 }
 
 /* Mobile "or" divider — shown between stacked cards on mobile */

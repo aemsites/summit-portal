@@ -293,6 +293,15 @@ export default function init(el) {
       <a href="/example-report/frescopa/">Explore the FrescoPa Digital Opportunity Report</a>
     </aside>
   `;
+  if (new URLSearchParams(window.location.search).get('reason') === 'unavailable') {
+    const notice = document.createElement('aside');
+    notice.className = 'rrf-recovery';
+    notice.innerHTML = `
+      <p class="rrf-recovery-title"><strong>We couldn't find a report available to your email address.</strong></p>
+      <p>You can request one below, or <a href="/auth/logout">sign out and use another account</a>.</p>
+    `;
+    main.prepend(notice);
+  }
   if (!siteKey) {
     const unavailable = document.createElement('p');
     unavailable.className = 'rrf-unavailable';

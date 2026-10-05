@@ -176,8 +176,20 @@ const handleRequest = async (request, env) => {
 
   // OAuth callback: exchange authorization code for tokens, create session
   if (url.pathname === '/auth/callback') {
-    const result = await handleCallback(request, env);
-    if (result instanceof Response) return result;
+    let result;
+    try {
+      result = await handleCallback(request, env);
+    } catch (error) {
+      console.error('[oauth] callback unavailable:', error.message);
+      return Response.redirect(new URL('/login?reason=authentication-failed', url).href, 302);
+    }
+    if (result instanceof Response) {
+      if (result.status >= 400) {
+        console.error('[oauth] callback failed:', result.status);
+        return Response.redirect(new URL('/login?reason=authentication-failed', url).href, 302);
+      }
+      return result;
+    }
 
     const ttl = sessionTtlForEmail(result.userInfo.email, env);
     const token = await createSession(env, { ...result.userInfo, method: 'oauth' }, ttl);
@@ -206,7 +218,9 @@ const handleRequest = async (request, env) => {
       // post-login destination, so the callback lands the user on their page
       // instead of falling through to the group-mapped dashboard.
       const deepLink = safeRedirectPath(url.searchParams.get('redirect'));
-      const originalUrl = deepLink ? new URL(deepLink, url).href : request.url;
+      const originalUrl = deepLink && deepLink !== '/'
+        ? new URL(deepLink, url).href
+        : new URL('/auth/portal', url).href;
       return redirectToLogin(originalUrl, env);
     }
     return handlePortalRedirect(session, request, env);
@@ -316,6 +330,12 @@ const handleRequest = async (request, env) => {
   const originResponse = await proxyToOrigin(request, env, url);
 
   const response = await checkCugAccess(originResponse, session, request, env);
+  // A permitted account document may have been removed after the QR was printed.
+  if (session && request.method === 'GET' && response.status === 404
+    && originResponse.headers.get('x-aem-cug-required') === 'true'
+    && url.pathname.startsWith('/accounts/') && getExtension(url.pathname) === '') {
+    return Response.redirect(new URL('/request-report?reason=unavailable', request.url).href, 302);
+  }
   const staffPortal = await resumeStaffPortal(request, response, env);
   if (staffPortal) return staffPortal;
   const currentBoothDocument = await protectBoothDocument(request, env);

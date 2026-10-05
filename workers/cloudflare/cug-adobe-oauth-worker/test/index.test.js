@@ -114,6 +114,30 @@ describe('index (request routing)', () => {
   });
 
   describe('auth callback', () => {
+    it('offers another sign-in attempt after an OAuth cancellation or failure', async () => {
+      const req = new Request('https://mysite.com/auth/callback?error=access_denied');
+      const resp = await worker.fetch(req, env);
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=authentication-failed');
+      expect(resp.headers.has('Set-Cookie')).toBe(false);
+    });
+
+    it('offers recovery for expired OAuth state without inventing a missing report', async () => {
+      const req = new Request('https://mysite.com/auth/callback?code=abc&state=expired');
+      const resp = await worker.fetch(req, env);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=authentication-failed');
+    });
+
+    it('offers recovery when the token exchange is unavailable', async () => {
+      const state = { verifier: 'v', originalUrl: 'https://mysite.com/members' };
+      await env.SESSIONS.put('pkce:unavailable', JSON.stringify(state));
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('network unavailable')));
+      const req = new Request('https://mysite.com/auth/callback?code=abc&state=unavailable');
+      const resp = await worker.fetch(req, env);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=authentication-failed');
+      expect(resp.headers.has('Set-Cookie')).toBe(false);
+    });
+
     it('creates a session and redirects to original URL on success', async () => {
       const state = 'cb-state';
       await env.SESSIONS.put(`pkce:${state}`, JSON.stringify({
@@ -299,6 +323,41 @@ describe('index (request routing)', () => {
   });
 
   describe('portal redirect', () => {
+    it('offers intake for a missing authorized account document', async () => {
+      const headers = { 'x-aem-cug-required': 'true', 'x-aem-cug-groups': 'adobe.com' };
+      vi.stubGlobal('fetch', mockOriginFetch('Missing report', headers, 404));
+      const { createSession } = await import('../src/session.js');
+      const token = await createSession(env, { email: 'alice@adobe.com', groups: ['adobe.com'] });
+      const path = 'https://mysite.com/accounts/c/customer/';
+      const req = new Request(path, { headers: { Cookie: `auth_token=${token}` } });
+      const resp = await worker.fetch(req, env);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/request-report?reason=unavailable');
+    });
+
+    it('retains access denial for a missing account document the customer cannot access', async () => {
+      const headers = { 'x-aem-cug-required': 'true', 'x-aem-cug-groups': 'other.com' };
+      vi.stubGlobal('fetch', mockOriginFetch('Missing report', headers, 404));
+      const { createSession } = await import('../src/session.js');
+      const token = await createSession(env, { email: 'alice@customer.com', groups: ['customer.com'] });
+      const path = 'https://mysite.com/accounts/c/customer/';
+      const req = new Request(path, { headers: { Cookie: `auth_token=${token}` } });
+      const resp = await worker.fetch(req, env);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/403');
+    });
+
+    it('does not turn unrelated public 404s into report requests', async () => {
+      vi.stubGlobal('fetch', mockOriginFetch('Not found', {}, 404));
+      const resp = await worker.fetch(new Request('https://mysite.com/missing'), env);
+      expect(resp.status).toBe(404);
+    });
+    it('keeps homepage sign-ins on the portal lookup after OAuth', async () => {
+      const req = new Request('https://mysite.com/auth/portal?redirect=%2F');
+      const resp = await worker.fetch(req, env);
+      const state = new URL(resp.headers.get('Location')).searchParams.get('state');
+      const stored = await env.SESSIONS.get(`pkce:${state}`, 'json');
+      expect(stored.originalUrl).toBe('https://mysite.com/auth/portal');
+    });
+
     it('redirects to IMS login when no session', async () => {
       const request = new Request('https://mysite.com/auth/portal');
       const resp = await worker.fetch(request, env);
@@ -332,8 +391,7 @@ describe('index (request routing)', () => {
       expect(resp.status).toBe(302);
       const state = new URL(resp.headers.get('Location')).searchParams.get('state');
       const stored = await env.SESSIONS.get(`pkce:${state}`, 'json');
-      const unsafe = 'https://mysite.com/auth/portal?redirect=https%3A%2F%2Fevil.example.com%2Fphish';
-      expect(stored.originalUrl).toBe(unsafe);
+      expect(stored.originalUrl).toBe('https://mysite.com/auth/portal');
     });
 
     it('fetches mapping and redirects to matched page when session exists', async () => {

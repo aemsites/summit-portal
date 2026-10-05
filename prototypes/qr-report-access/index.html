@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <title>QR report access - design review</title>
+    <link rel="stylesheet" href="/styles/styles.css">
+    <link rel="stylesheet" href="/blocks/portal-login/portal-login.css">
+    <link rel="stylesheet" href="/blocks/portal-recovery/portal-recovery.css">
+    <link rel="stylesheet" href="/blocks/report-request-form/report-request-form.css">
+    <link rel="stylesheet" href="./review.css">
+    <script type="module" src="./review.js"></script>
+  </head>
+  <body class="no-header">
+    <aside class="review-toolbar" aria-label="Design review controls">
+      <span class="review-label">Design review / no real emails or submissions</span>
+      <label>Screen
+        <select id="screen">
+          <option value="login">Sign-in / request alternative</option>
+          <option value="no-match">Email / no report match</option>
+          <option value="sent">Email / link sent</option>
+          <option value="lookup-error">Adobe ID / lookup unavailable</option>
+          <option value="email-error">Email / lookup unavailable</option>
+          <option value="send-error">Email / delivery failed</option>
+          <option value="auth-error">Adobe ID / sign-in failed</option>
+          <option value="denied">Signed in / access denied</option>
+          <option value="request">Signed in / no mapped report</option>
+          <option value="request-plain">Public report request</option>
+          <option value="request-success">Request / confirmation</option>
+          <option value="staff">Event staff / unchanged</option>
+        </select>
+      </label>
+      <label>Theme
+        <select id="theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+    </aside>
+    <header class="review-header">
+      <a href="?screen=login"><svg viewBox="0 0 24 24" width="25" height="25" aria-hidden="true"><path fill="#e60000" d="M0 0h9L0 24ZM15 0h9v24ZM12 9l6 15h-4l-1.5-4H8Z"/></svg><span>Adobe Digital Opportunities Portal</span></a>
+      <span>Customer journey preview</span>
+    </header>
+    <main id="preview"></main>
+    <footer class="review-footer">Adobe / Digital Opportunity Reports / Design review only</footer>
+  </body>
+</html>

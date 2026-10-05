@@ -63,13 +63,17 @@ export async function fetchCugMapping(env) {
   if (env.ORIGIN_AUTHENTICATION) headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
   try {
     log(`fetching CUG mapping from ${url}`);
-    const resp = await fetch(url, { headers });
+    const resp = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
     if (!resp.ok) {
       logError(`mapping fetch failed with status ${resp.status}`);
       return { error: `mapping fetch failed (${resp.status})`, entries: [] };
     }
     const json = await resp.json();
-    const entries = Array.isArray(json.data) ? json.data : [];
+    if (!Array.isArray(json?.data)) {
+      logError('mapping response has no data array');
+      return { error: 'invalid mapping response', entries: [] };
+    }
+    const entries = json.data;
     log(`CUG mapping loaded entries=${entries.length}`);
     return { entries };
   } catch (err) {
@@ -144,6 +148,12 @@ export async function handleMagicLinkRequest(request, env) {
   log(`request for domain=${domain}${redirectPath ? ` redirect=${redirectPath}` : ''}`);
 
   const { entries, error: mappingError } = await fetchCugMapping(env);
+  if (mappingError) {
+    return jsonResponse({
+      code: 'lookup_unavailable',
+      error: "We couldn't check report availability. Please try again.",
+    }, 503);
+  }
   const match = entries.find((e) => matchesCugGroup(e.group, email));
 
   if (match) {
@@ -165,7 +175,7 @@ export async function handleMagicLinkRequest(request, env) {
 
     // Prefer the caller-supplied deep link (e.g. the page that triggered the
     // login redirect) over the group's default mapped URL.
-    const targetPath = redirectPath || match.url;
+    const targetPath = (redirectPath !== '/' && redirectPath) || match.url;
     const magicLinkUrl = `${new URL(request.url).origin}${appendTokenParam(targetPath, token)}`;
     log(`magic link target=${targetPath}${redirectPath ? ' (from redirect)' : ' (from CUG mapping)'}`);
     const templateName = templateForOrg('magiclink', match.org);
@@ -191,17 +201,14 @@ export async function handleMagicLinkRequest(request, env) {
     return jsonResponse({ result: 'sent' });
   }
 
-  log(`no CUG match for domain=${domain}${mappingError ? ` (mapping error: ${mappingError})` : ''}`);
+  log(`no CUG match for domain=${domain}`);
 
   try {
     await sendMagicLinkNotFound(email, env);
     log('not-found notification dispatched');
   } catch (err) {
     logError(`sendMagicLinkNotFound failed: ${err.message}`);
-    return jsonResponse({ error: 'Failed to send notification email' }, 502);
   }
 
-  return jsonResponse(mappingError
-    ? { result: 'not_found', reason: mappingError }
-    : { result: 'not_found' });
+  return jsonResponse({ result: 'not_found' });
 }

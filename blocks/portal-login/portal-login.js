@@ -6,9 +6,9 @@ const STAFF_LOGIN_ENDPOINT = '/auth/staff-login';
  * when it is a safe same-origin path (starts with `/`, not `//`). The worker
  * re-validates this on the server, so this is just a UX best-effort.
  */
-function getRedirectPath() {
+function getRedirectPath(allowHomepage = false) {
   const raw = new URLSearchParams(window.location.search).get('redirect');
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (!raw || (!allowHomepage && raw === '/') || !raw.startsWith('/') || raw.startsWith('//')) return null;
   return raw;
 }
 
@@ -60,6 +60,17 @@ function createMagicForm() {
   error.textContent = 'Something went wrong. Please try again.';
 
   form.append(label, input, btn, error);
+  const unavailable = document.createElement('div');
+  unavailable.className = 'pl-unavailable';
+  unavailable.hidden = true;
+  unavailable.tabIndex = -1;
+  unavailable.setAttribute('role', 'status');
+  unavailable.innerHTML = `
+    <h4>We couldn't find a report available to this email address.</h4>
+    <p>Try another business email, or request a report. Adobe Sales will prepare it and follow up.</p>
+    <a class="pl-request-action" href="/request-report?reason=unavailable">Request a report</a>
+  `;
+  form.append(unavailable);
   return form;
 }
 
@@ -69,9 +80,11 @@ function attachSubmitHandler(form) {
     const input = form.querySelector('#pl-email');
     const btn = form.querySelector('.pl-submit');
     const errorEl = form.querySelector('.pl-error');
+    const unavailable = form.querySelector('.pl-unavailable');
     const email = input.value.trim();
 
     errorEl.hidden = true;
+    unavailable.hidden = true;
     btn.disabled = true;
     btn.textContent = 'Sending…';
 
@@ -83,15 +96,34 @@ function attachSubmitHandler(form) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const result = await resp.json();
+      if (result.code === 'lookup_unavailable' || (result.result === 'not_found' && result.reason)) {
+        throw new Error("We couldn't check report availability. Please try again.");
+      }
+      if (!resp.ok) throw new Error("We couldn't send your login link. Please try again.");
+      if (result.result === 'not_found') {
+        unavailable.hidden = false;
+        unavailable.focus();
+        return;
+      }
+      if (result.result !== 'sent') {
+        throw new Error("We couldn't confirm your login link was sent. Please try again.");
+      }
       const msg = document.createElement('p');
       msg.className = 'pl-success';
+      msg.tabIndex = -1;
+      msg.setAttribute('role', 'status');
       msg.textContent = `Check your inbox — we've sent a login link to ${email}.`;
       form.replaceWith(msg);
-    } catch {
+      msg.focus();
+    } catch (error) {
+      errorEl.textContent = error.message?.startsWith("We couldn't")
+        ? error.message
+        : "We couldn't send your login link. Please try again.";
+      errorEl.hidden = false;
+    } finally {
       btn.disabled = false;
       btn.textContent = 'Send login link';
-      errorEl.hidden = false;
     }
   });
 }
@@ -204,7 +236,7 @@ function attachStaffHandler(form) {
         body: JSON.stringify({ username, password }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      window.location.assign(getRedirectPath() || '/adobe/dashboard');
+      window.location.assign(getRedirectPath(true) || '/adobe/dashboard');
     } catch {
       btn.disabled = false;
       btn.textContent = 'Sign in';
@@ -245,4 +277,26 @@ export default function init(el) {
   attachSubmitHandler(form);
 
   injectDivider(row);
+
+  const request = document.createElement('p');
+  request.className = 'pl-request';
+  request.innerHTML = 'Don\'t have a report yet? <a href="/request-report">Request a report</a>.';
+  el.prepend(request);
+
+  const reason = new URLSearchParams(window.location.search).get('reason');
+  if (['lookup-unavailable', 'authentication-failed'].includes(reason)) {
+    const notice = document.createElement('div');
+    notice.className = 'pl-lookup-error';
+    notice.setAttribute('role', 'alert');
+    const message = reason === 'authentication-failed'
+      ? "We couldn't sign you in. Please try again, or use the email login option below."
+      : "We couldn't check report availability. Please try again.";
+    const text = document.createElement('p');
+    text.textContent = message;
+    const retry = document.createElement('a');
+    retry.href = '/auth/portal';
+    retry.textContent = 'Try again';
+    notice.append(text, retry);
+    el.prepend(notice);
+  }
 }

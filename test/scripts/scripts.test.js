@@ -30,4 +30,17 @@ describe('scripts.js', () => {
     expect(block.querySelector('.rrl-back').getAttribute('href')).to.equal('/adobe/dashboard');
     block.remove();
   });
+
+  it('initializes a visible access-denied recovery without duplicate decoration', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = '<div><p>You are not authorized.</p></div>';
+    document.body.append(main);
+    await ensureRequiredRouteBlocks('/403');
+    await ensureRequiredRouteBlocks('/403');
+    expect(main.querySelectorAll('.portal-recovery')).to.have.length(1);
+    expect(main.querySelector('.section').style.display).to.equal('block');
+    expect(main.querySelector('h1').textContent).to.include("isn't available");
+    expect(main.querySelector('.pr-primary').getAttribute('href')).to.equal('/request-report');
+    main.remove();
+  });
 });
