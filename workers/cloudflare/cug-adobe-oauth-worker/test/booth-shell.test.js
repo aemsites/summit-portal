@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, readFile, unlink, rmdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execPath } from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
 import { createMockEnv } from './helpers.js';
 import { createSession } from '../src/session.js';
@@ -25,6 +31,9 @@ describe('bundled booth shell and exact report injection', () => {
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
     expect(html).toContain('Adobe Brand Visibility');
+    expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
+    expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
+    expect(html).not.toMatch(/brand\s+visibility\s+report/i);
     expect(html).not.toContain('send-demo');
     expect(html).not.toContain('jordan@');
     expect(html).not.toContain('Design review controls');
@@ -124,5 +133,49 @@ describe('bundled booth shell and exact report injection', () => {
     await injectBoothReturn(content(), new Request(`https://portal.example${selectedPath}`), env);
     expect(transform).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('Digital Opportunity Report review naming', () => {
+  const design = new URL('../../../../docs/implementations/booth-access/design/', import.meta.url);
+
+  it('uses the canonical report name in the legacy preview and touchscreen reviewer', async () => {
+    const [preview, review] = await Promise.all([
+      readFile(new URL('booth-preview.html', design), 'utf8'),
+      readFile(new URL('touchscreen-review.html', design), 'utf8'),
+    ]);
+    expect(preview).toContain('<title>Digital Opportunity Report / booth preview</title>');
+    expect(preview).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
+    expect(preview).toContain('<span>Adobe Brand Visibility</span>');
+    expect(preview).toContain('data-brand="adobe"');
+    expect(preview).not.toMatch(/brand\s+visibility\s+report/i);
+    expect(review).toContain('<title>Digital Opportunity Report | Touchscreen review</title>');
+    expect(review).toContain('<strong>Digital Opportunity Report · Touchscreen review</strong>');
+    expect(review).toContain('title="Interactive Digital Opportunity Report booth preview"');
+    expect(review).not.toMatch(/brand\s+visibility\s+report/i);
+  });
+
+  it('exports the legacy preview with canonical naming and embedded assets', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'booth-naming-'));
+    const destination = join(directory, 'review.html');
+    try {
+      execFileSync(execPath, [
+        fileURLToPath(new URL('export-touchscreen-review.mjs', design)), destination,
+      ]);
+      const exported = await readFile(destination, 'utf8');
+      expect(exported).toContain('<title>Digital Opportunity Report | Shareable touchscreen review</title>');
+      expect(exported).toContain('title="Interactive Digital Opportunity Report booth preview" srcdoc="');
+      expect(exported).toContain('&lt;div class=&quot;eyebrow&quot;&gt;Digital Opportunity Report&lt;/div&gt;');
+      expect(exported).toContain('&lt;span&gt;Adobe Brand Visibility&lt;/span&gt;');
+      expect(exported).toContain('data:image/svg+xml;base64,');
+      expect(exported).toContain('data:image/png;base64,');
+      expect(exported).not.toContain('preview.src =');
+      expect(exported).not.toMatch(/brand\s+visibility\s+report/i);
+    } finally {
+      await unlink(destination).catch((error) => {
+        if (error.code !== 'ENOENT') throw error;
+      });
+      await rmdir(directory);
+    }
   });
 });

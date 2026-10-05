@@ -6,6 +6,13 @@ A personalized digital performance report delivered to Adobe Summit attendees wh
 
 The current content is a **sample report for Nike**, used during development. In production, the same block system will generate unique reports for each Summit attendee's site.
 
+**Canonical report name:** **Digital Opportunity Report**, including booth labels,
+page titles and review/export wording. **Adobe Brand Visibility** remains the
+product/brand identity, not an alternative report name. The approved
+**Amplify your brand visibility** marketing heading remains configurable through
+the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
+[`CONTEXT.md`](CONTEXT.md) for the domain glossary.
+
 - **Framework**: `ak.js` (Author Kit / Document Authoring)
 - **Content source**: https://main--summit-portal--gabrielwalt.aem.page
 - **Initial import**: Created via the [Slicc browser extension](https://github.com/ai-ecoverse/slicc)
