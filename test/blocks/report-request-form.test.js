@@ -14,8 +14,10 @@ function makeBlock() {
 
 describe('report-request-form', () => {
   let fetchStub;
+  let originalUrl;
 
   beforeEach(() => {
+    originalUrl = window.location.href;
     document.head.innerHTML = '<meta name="turnstile-sitekey" content="site-key">';
     document.body.innerHTML = '';
     let callback;
@@ -36,6 +38,7 @@ describe('report-request-form', () => {
   afterEach(() => {
     fetchStub.restore();
     delete window.turnstile;
+    window.history.replaceState(null, '', originalUrl);
   });
 
   it('renders exactly the customer fields, consent, and optional disclosure', () => {
@@ -61,6 +64,23 @@ describe('report-request-form', () => {
     expect(block.querySelector('.rrf-error-summary').hidden).to.equal(false);
     expect(block.querySelector('.rrf-field-error').textContent).to.include('full name');
     expect(fetchStub.called).to.equal(false);
+  });
+
+  it('explains an unavailable report without changing the intake fields', () => {
+    window.history.replaceState(null, '', '/request-report?reason=unavailable');
+    const block = makeBlock();
+    init(block);
+    expect(block.querySelector('.rrf-recovery-title').textContent).to.include('available to your email address');
+    expect(block.querySelector('.rrf-recovery a').getAttribute('href')).to.equal('/auth/logout');
+    expect(block.querySelector('form')).to.exist;
+    expect(block.querySelector('[name="email"]').value).to.equal('');
+  });
+
+  it('does not show the contextual recovery notice for ordinary or unknown reasons', () => {
+    window.history.replaceState(null, '', '/request-report?reason=anything');
+    const block = makeBlock();
+    init(block);
+    expect(block.querySelector('.rrf-recovery')).to.equal(null);
   });
 
   it('submits with a retry-safe idempotency key and presents no customer-visible request ID', async () => {

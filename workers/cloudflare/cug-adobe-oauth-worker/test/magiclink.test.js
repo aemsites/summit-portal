@@ -236,7 +236,7 @@ describe('magiclink', () => {
     expect(sendMagicLinkConfirm.mock.calls[0][0]).toBe('alice@adobe.com');
   });
 
-  it('returns { result: "not_found" } when the CUG mapping fetch fails (network error)', async () => {
+  it('returns a retryable error without a no-report notification when mapping fetch fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
 
     const resp = await handleMagicLinkRequest(
@@ -248,12 +248,32 @@ describe('magiclink', () => {
       env,
     );
 
-    expect(resp.status).toBe(200);
+    expect(resp.status).toBe(503);
     const json = await resp.json();
-    expect(json.result).toBe('not_found');
-    expect(json.reason).toBe('network error');
-    expect(sendMagicLinkNotFound).toHaveBeenCalledOnce();
-    expect(sendMagicLinkNotFound.mock.calls[0][0]).toBe('alice@adobe.com');
+    expect(json.code).toBe('lookup_unavailable');
+    expect(sendMagicLinkNotFound).not.toHaveBeenCalled();
+    expect(sendMagicLinkConfirm).not.toHaveBeenCalled();
+  });
+
+  it('does not report no match when the mapping response is malformed', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ total: 0 })));
+    const req = new Request('https://mysite.com/auth/magiclink', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'alice@adobe.com' }),
+    });
+    const resp = await handleMagicLinkRequest(req, env);
+    expect(resp.status).toBe(503);
+    expect(sendMagicLinkNotFound).not.toHaveBeenCalled();
+  });
+
+  it('sends homepage sign-ins to the mapped report', async () => {
+    vi.stubGlobal('fetch', mockCugFetch([{ group: 'adobe.com', url: '/members/adobe' }]));
+    const req = new Request('https://mysite.com/auth/magiclink', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'alice@adobe.com', redirect: '/' }),
+    });
+    await handleMagicLinkRequest(req, env);
+    expect(sendMagicLinkConfirm.mock.calls[0][1]).toBe('https://mysite.com/members/adobe?token=mock-token');
   });
 
   it('sends ORIGIN_AUTHENTICATION as authorization header when fetching the CUG mapping', async () => {
@@ -416,7 +436,7 @@ describe('magiclink', () => {
     expect(calledUrl).toBe('https://mysite.com/insights/x?token=mock-token');
   });
 
-  it('returns 502 when sendMagicLinkNotFound throws', async () => {
+  it('keeps no-match recovery available when the internal notification fails', async () => {
     vi.stubGlobal('fetch', mockCugFetch([])); // no entries → not found
     sendMagicLinkNotFound.mockRejectedValueOnce(new Error('APO error'));
 
@@ -429,7 +449,7 @@ describe('magiclink', () => {
       env,
     );
 
-    expect(resp.status).toBe(502);
-    expect(await resp.json()).toMatchObject({ error: 'Failed to send notification email' });
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ result: 'not_found' });
   });
 });

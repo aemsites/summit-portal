@@ -47,7 +47,7 @@ describe('portal', () => {
     expect(resp.headers.get('Location')).toBe('https://mysite.com/members/first');
   });
 
-  it('redirects to / when no group matches', async () => {
+  it('offers report intake when no group matches', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       mappingResponse([
         { group: 'adobe.com', url: '/members/adobe-portal' },
@@ -58,10 +58,10 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/request-report?reason=unavailable');
   });
 
-  it('redirects to / when mapping fetch returns non-200', async () => {
+  it('offers a retry when mapping fetch returns non-200', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       new Response('Not Found', { status: 404 }),
     ));
@@ -70,17 +70,17 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=lookup-unavailable');
   });
 
-  it('redirects to / when mapping fetch throws', async () => {
+  it('offers a retry when mapping fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('network error')));
 
     const session = { email: 'alice@adobe.com', groups: ['adobe.com'] };
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=lookup-unavailable');
   });
 
   it('handles whitespace in group values', async () => {
@@ -96,7 +96,7 @@ describe('portal', () => {
     expect(resp.headers.get('Location')).toBe('https://mysite.com/members/partner-portal');
   });
 
-  it('redirects to / when data array is missing from response', async () => {
+  it('treats a missing data array as a lookup failure, not no report', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({ total: 0 }), {
         status: 200,
@@ -108,10 +108,10 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=lookup-unavailable');
   });
 
-  it('redirects to / when session has no groups', async () => {
+  it('offers report intake when session has no matching groups', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       mappingResponse([
         { group: 'adobe.com', url: '/members/adobe-portal' },
@@ -122,7 +122,28 @@ describe('portal', () => {
     const resp = await handlePortalRedirect(session, request, env);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe('https://mysite.com/');
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/request-report?reason=unavailable');
+  });
+
+  it('uses the mapped report instead of an explicit homepage return', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+      mappingResponse([{ group: 'customer.com', url: '/accounts/c/customer/' }]),
+    ));
+    const resp = await handlePortalRedirect(
+      { email: 'alice@customer.com', groups: ['customer.com'] },
+      new Request('https://mysite.com/auth/portal?redirect=%2F'),
+      env,
+    );
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/accounts/c/customer/');
+  });
+
+  it('does not navigate to an invalid mapped URL', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+      mappingResponse([{ group: 'customer.com', url: '//other.example/report' }]),
+    ));
+    const session = { email: 'alice@customer.com', groups: ['customer.com'] };
+    const resp = await handlePortalRedirect(session, request, env);
+    expect(resp.headers.get('Location')).toBe('https://mysite.com/login?reason=lookup-unavailable');
   });
 
   it('honors a same-origin ?redirect= path over the CUG mapping', async () => {

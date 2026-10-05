@@ -34,6 +34,18 @@ const decorateArea = ({ area = document }) => {
 };
 
 export async function ensureRequiredRouteBlocks(pathname = window.location.pathname) {
+  if (pathname === '/403') {
+    const main = document.querySelector('main');
+    if (main && !main.querySelector('.portal-recovery')) {
+      const section = document.createElement('div');
+      section.className = 'section';
+      section.style.display = 'block';
+      section.innerHTML = '<div class="block-content"><div class="portal-recovery"></div></div>';
+      section.querySelector('.portal-recovery').innerHTML = '<p>This report is not available to your account. <a href="/request-report">Request a report</a>, or <a href="/auth/logout">sign out and use another account</a>.</p>';
+      main.replaceChildren(section);
+      await loadBlock(section.querySelector('.portal-recovery'));
+    }
+  }
   if (pathname === '/adobe/report-requests') {
     const block = document.querySelector('.report-requests-list');
     if (block && !block.querySelector('.rrl-shell')) await loadBlock(block);

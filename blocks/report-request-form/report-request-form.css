@@ -12,6 +12,9 @@
 
 .report-request-form-wrapper,
 .block-content:has(.report-request-form) {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   padding-inline: 0;
 }
 
@@ -30,6 +33,32 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+}
+
+.report-request-form .rrf-recovery {
+  margin: 0 0 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--rrf-rule);
+}
+
+.report-request-form .rrf-recovery .rrf-recovery-title {
+  margin: 0;
+  color: var(--rrf-ink);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.report-request-form .rrf-recovery p {
+  margin: 12px 0 0;
+  color: var(--rrf-muted);
+}
+
+.report-request-form .rrf-recovery a {
+  display: inline-block;
+  min-height: 44px;
+  align-content: center;
+  color: var(--rrf-ink);
+  text-underline-offset: 3px;
 }
 
 .report-request-form .rrf-kicker::before {
@@ -112,6 +141,7 @@
 }
 
 .report-request-form .rrf-field input {
+  box-sizing: border-box;
   width: 100%;
   min-height: 52px;
   border: 1px solid color-mix(in srgb, var(--rrf-ink), transparent 55%);
@@ -127,6 +157,11 @@
 .report-request-form .rrf-optional summary:focus-visible,
 .report-request-form .rrf-action button:focus-visible,
 .report-request-form .rrf-example a:focus-visible {
+  outline: 3px solid var(--color-adobe-red);
+  outline-offset: 3px;
+}
+
+.report-request-form .rrf-recovery a:focus-visible {
   outline: 3px solid var(--color-adobe-red);
   outline-offset: 3px;
 }
@@ -383,6 +418,15 @@
     align-items: start;
     min-height: 680px;
     padding: 78px 58px;
+  }
+
+  .report-request-form .rrf-recovery {
+    grid-column: 1 / -1;
+  }
+
+  .report-request-form .rrf-shell:has(.rrf-recovery) .report-request-form-form,
+  .report-request-form .rrf-shell:has(.rrf-recovery) .rrf-unavailable {
+    grid-row: 2 / span 4;
   }
 
   .report-request-form .rrf-kicker,

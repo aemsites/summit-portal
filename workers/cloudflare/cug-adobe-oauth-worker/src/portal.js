@@ -12,7 +12,8 @@
 import { matchesCugGroup } from './cug-group.js';
 
 const MAPPING_PATH = '/closed-user-groups-mapping.json';
-const FALLBACK_PATH = '/';
+const NO_REPORT_PATH = '/request-report?reason=unavailable';
+const LOOKUP_ERROR_PATH = '/login?reason=lookup-unavailable';
 // Reject characters that could break out of the URL or smuggle CRLF.
 // eslint-disable-next-line no-control-regex
 const UNSAFE_PATH_RE = /[\u0000-\u001F\u007F\s\\]/;
@@ -40,8 +41,8 @@ function redirect(request, path) {
 
 /**
  * Fetches the group-to-URL mapping from the origin and redirects the user
- * to the page that matches their group. Falls back to / when the
- * mapping is unavailable or no group matches.
+ * to the page that matches their group. No match offers report intake;
+ * unavailable or invalid mappings offer a retry instead.
  */
 export async function handlePortalRedirect(session, request, env) {
   const requestUrl = new URL(request.url);
@@ -49,7 +50,7 @@ export async function handlePortalRedirect(session, request, env) {
   // Caller-supplied deep link wins over the group's default mapped URL,
   // so users dropped on /login?redirect=... land on the originally requested page.
   const redirectParam = safeRedirectPath(requestUrl.searchParams.get('redirect'));
-  if (redirectParam) {
+  if (redirectParam && redirectParam !== '/') {
     return redirect(request, redirectParam);
   }
 
@@ -64,19 +65,31 @@ export async function handlePortalRedirect(session, request, env) {
     if (env.ORIGIN_AUTHENTICATION) {
       headers.authorization = `token ${env.ORIGIN_AUTHENTICATION}`;
     }
-    const resp = await fetch(origin, { headers });
+    const resp = await fetch(origin, { headers, signal: AbortSignal.timeout(5000) });
     if (!resp.ok) {
-      return redirect(request, FALLBACK_PATH);
+      console.error('[portal] mapping fetch failed:', resp.status);
+      return redirect(request, LOOKUP_ERROR_PATH);
     }
     mapping = await resp.json();
-  } catch {
-    return redirect(request, FALLBACK_PATH);
+  } catch (error) {
+    console.error('[portal] mapping fetch failed:', error.message);
+    return redirect(request, LOOKUP_ERROR_PATH);
   }
 
-  const entries = Array.isArray(mapping.data) ? mapping.data : [];
+  if (!Array.isArray(mapping?.data)) {
+    console.error('[portal] mapping response has no data array');
+    return redirect(request, LOOKUP_ERROR_PATH);
+  }
+  const entries = mapping.data;
   const userGroups = session.groups || [];
 
   const match = entries.find((entry) => matchesCugGroup(entry.group, session.email, userGroups));
 
-  return redirect(request, match ? match.url : FALLBACK_PATH);
+  if (!match) return redirect(request, NO_REPORT_PATH);
+  const target = safeRedirectPath(match.url);
+  if (!target) {
+    console.error('[portal] invalid mapped destination');
+    return redirect(request, LOOKUP_ERROR_PATH);
+  }
+  return redirect(request, target);
 }
