@@ -27,7 +27,9 @@ standalonePreview = embed(
   semrushLogo,
 );
 
-const iframe = '<iframe id="preview" title="Interactive Adobe Brand Visibility booth preview"></iframe>';
+const iframe = '<iframe id="preview" title="Interactive Digital Opportunity Report booth preview"></iframe>';
+// Match the reviewer's template source literally, without evaluating it.
+// eslint-disable-next-line no-template-curly-in-string
 const loadPreview = '    preview.src = `./booth-preview.html?review=${Date.now()}`;';
 const reviewer = review.toString();
 if (!reviewer.includes(iframe) || !reviewer.includes(loadPreview)) {
@@ -40,14 +42,14 @@ const attribute = standalonePreview
   .replaceAll('<', '&lt;')
   .replaceAll('>', '&gt;');
 const standalone = reviewer
-  .replace(iframe, `<iframe id="preview" title="Interactive Adobe Brand Visibility booth preview" srcdoc="${attribute}"></iframe>`)
+  .replace(iframe, `<iframe id="preview" title="Interactive Digital Opportunity Report booth preview" srcdoc="${attribute}"></iframe>`)
   .replace(`${loadPreview}\n`, '')
   .replace(
-    '<title>Adobe Brand Visibility | Touchscreen review</title>',
-    '<title>Adobe Brand Visibility | Shareable touchscreen review</title>',
+    '<title>Digital Opportunity Report | Touchscreen review</title>',
+    '<title>Digital Opportunity Report | Shareable touchscreen review</title>',
   );
 
 const destination = process.argv[2]
   || fileURLToPath(new URL('./booth-touchscreen-shareable.html', import.meta.url));
 await writeFile(destination, standalone);
-console.log(destination);
+process.stdout.write(`${destination}\n`);

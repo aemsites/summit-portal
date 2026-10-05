@@ -67,6 +67,13 @@ context lifetime, concurrency and failure semantics.
 
 ## Entry and Finish feedback
 
+The canonical report name is **Digital Opportunity Report**, as defined in the
+[domain glossary](../../../CONTEXT.md). Use that exact name for the booth
+eyebrow, report context, page titles and touchscreen review/export labels.
+**Adobe Brand Visibility** is the product/brand identity, not the report name.
+The legacy design preview and its shareable export use the same report name;
+their mock interactions and historical layout remain unchanged.
+
 The default shared header is the event-neutral **Adobe Brand Visibility**, retaining the official
 Adobe logo with accessible attribution and meaningful Digital Opportunity Report
 context. The requested **Amplify your brand visibility** header is an optional
@@ -107,6 +114,9 @@ Unicode text is rendered with `textContent`, never HTML. `brand` accepts only
 uses the existing allowlisted logo, not a URL-supplied asset.
 
 Example: `/booth?heading=Amplify%20your%20brand%20visibility&brand=semrush`.
+For an Adobe-only review, use `/booth?heading=Amplify%20your%20brand%20visibility`
+without a partner-brand override. The marketing heading does not rename the
+Digital Opportunity Report.
 Only valid heading and non-default brand settings follow the server-selected
 canonical report pathname, the Finish URL and reset/next-visitor URL.
 Unknown parameters are dropped; only the explicit `/booth?step=finish` target
