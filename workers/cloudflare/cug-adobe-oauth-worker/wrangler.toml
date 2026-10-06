@@ -79,6 +79,12 @@ EVENT_CRED_EPOCH = "1"
 # APO_SCOPE = "..."
 # APO_AUTHORIZATION_CODE = "..."  (optional — enables authorization_code IMS grant)
 
+# Aggregate counts only; identified booth activity stays in REPORT_REQUESTS.
+BOOTH_ANALYTICS_HOSTNAME = "act.aem.now"
+
+[env.summit.triggers]
+crons = ["0 * * * *"]
+
 [[env.summit.kv_namespaces]]
 binding = "SESSIONS"
 id = "93e205ef87f54e188fe1c06bacc9a397"

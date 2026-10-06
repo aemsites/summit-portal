@@ -129,6 +129,12 @@ export default async function mountBoothReturn() {
     html.style.setProperty('--booth-original-padding', getComputedStyle(document.body).paddingBottom);
     document.body.append(control);
   }
+  if (!control.querySelector('p')) {
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.hidden = true;
+    control.append(status);
+  }
   control.querySelector('a').href = withBoothPresentation('/booth?step=finish', presentation);
   html.classList.add('booth-report-active');
   const portrait = window.matchMedia(portraitQuery);
@@ -162,6 +168,20 @@ export default async function mountBoothReturn() {
   const reserveSpace = () => html.style.setProperty('--booth-return-height', `${control.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveSpace).observe(control);
   reserveSpace();
+  fetch('/auth/booth/view', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: window.location.pathname }),
+  }).then((result) => {
+    if (!result.ok) throw new Error('Booth report activity could not be recorded. Ask the booth team.');
+  }).catch((error) => {
+    if (html.classList.contains('booth-report-clearing')) return;
+    const status = control.querySelector('p');
+    status.textContent = error.message;
+    status.hidden = false;
+  });
   if (existingControl) return;
   let idle;
   async function reset() {

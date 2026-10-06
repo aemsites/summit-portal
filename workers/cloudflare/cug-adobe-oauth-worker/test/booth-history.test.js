@@ -6,7 +6,7 @@ import { BoothCoordinator } from '../src/booth.js';
 import { createSession, createBoothDeviceToken, getSession } from '../src/session.js';
 import { sha256hex } from '../src/stafflogin.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
-import { createMockEnv } from './helpers.js';
+import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
 
 const selected = '/accounts/e/example/insights/example-com/portal-landing/';
 const other = '/accounts/o/other/insights/other-com/portal-landing/';
@@ -17,6 +17,7 @@ describe('booth fresh-document history boundary', () => {
   let actor;
 
   async function request(path, body, method, headers = {}) {
+    const payload = path === '/auth/booth/lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body;
     const response = await worker.fetch(new Request(`https://portal.example${path}`, {
       method: method || (body === undefined ? 'GET' : 'POST'),
       headers: {
@@ -25,7 +26,7 @@ describe('booth fresh-document history boundary', () => {
         'Content-Type': 'application/json',
         ...headers,
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: JSON.stringify(payload) }),
     }), env);
     response.headers.getSetCookie().forEach((cookie) => {
       const [pair] = cookie.split(';');
@@ -39,16 +40,11 @@ describe('booth fresh-document history boundary', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     resetCugSheetCache();
-    env = createMockEnv();
+    env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1() });
     cookies = new Map([['auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' })]]);
-    const values = new Map();
     actor = new BoothCoordinator({
-      storage: {
-        get: async (key) => structuredClone(values.get(key)),
-        put: async (key, value) => values.set(key, structuredClone(value)),
-        deleteAll: async () => values.clear(),
-        setAlarm: vi.fn(),
-      },
+      storage: createMockBoothStorage(),
+      waitUntil: vi.fn(),
     }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
     class Rewriter {

@@ -25,6 +25,7 @@ import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
+import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, resumeStaffPortal } from './booth.js';
 import { serveBooth, injectBoothReturn, protectBoothDocument } from './booth-shell.js';
 
@@ -260,6 +261,9 @@ const handleRequest = async (request, env) => {
     const session = await getSession(request, env);
     return handleReportRequests(request, env, session);
   }
+  if (url.pathname === '/api/booth-activity' || url.pathname === '/api/booth-activity.csv') {
+    return handleBoothActivity(request, env, await getSession(request, env));
+  }
 
   // RUM and media requests bypass authentication
   if (isRUMRequest(url) || isMediaRequest(url)) {
@@ -344,6 +348,9 @@ const handleRequest = async (request, env) => {
 };
 
 export default {
+  async scheduled(event, env) {
+    await purgeBoothActivity(env);
+  },
   async fetch(request, env) {
     try {
       return await handleRequest(request, env);

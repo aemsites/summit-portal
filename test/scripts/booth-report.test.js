@@ -22,6 +22,8 @@ describe('confirmed booth report portrait layout', () => {
   let sandbox;
   let timers;
   const styles = [];
+  // Viewport commands also create runner-owned timeouts.
+  const resetTimerCount = () => timers.getCalls().filter((call) => call.args[0].name === 'reset').length;
 
   before(async () => {
     await Promise.all([
@@ -270,7 +272,7 @@ describe('confirmed booth report portrait layout', () => {
     expect(details.open).to.equal(true);
   });
 
-  it('reuses real chart hit testing for a touch value without sending requests', async () => {
+  it('reuses chart hit testing without requests beyond initial status and view', async () => {
     await setViewport({ width: 2160, height: 3840 });
     await reportFixture();
     await mount();
@@ -283,7 +285,8 @@ describe('confirmed booth report portrait layout', () => {
       clientY: 400,
     });
     expect(document.querySelector('.rc-tooltip').textContent).to.equal('2026-01: 100');
-    expect(window.fetch.callCount).to.equal(1);
+    expect(window.fetch.callCount).to.equal(2);
+    expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/view');
   });
 
   it('upgrades an existing older Finish control without duplicating reset timers or padding', async () => {
@@ -310,7 +313,8 @@ describe('confirmed booth report portrait layout', () => {
     expect(parseFloat(getComputedStyle(document.body).paddingBottom))
       .to.be.closeTo(rect('#booth-return').height, 0.01);
     await mountBoothReturn();
-    expect(window.fetch.callCount).to.equal(1);
+    expect(window.fetch.callCount).to.equal(2);
+    expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/view');
   });
 
   it('does not upgrade an older control without fresh selected-report authorization', async () => {
@@ -448,7 +452,8 @@ describe('confirmed booth report portrait layout', () => {
       focused.addEventListener('click', click);
       focused.focus();
       expect(document.activeElement).to.equal(focused);
-      const count = timers.callCount;
+      const count = resetTimerCount();
+      expect(count).to.equal(2);
       for (let cycle = 0; cycle < 2; cycle += 1) {
         await setViewport({ width: 2160, height: 3840 });
         TestObserver.instances.forEach((observer) => observer.callback());
@@ -457,14 +462,14 @@ describe('confirmed booth report portrait layout', () => {
         expect(details.open).to.equal(true);
         expect(first.querySelector('.booth-score-analysis').open).to.equal(false);
         expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
-        expect(timers.callCount).to.equal(count);
+        expect(resetTimerCount()).to.equal(count);
         await setViewport({ width: 2160, height: 3841 });
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
         expect(card.innerHTML).to.equal(before);
         expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
           .to.deep.equal(nodes);
-        expect(timers.callCount).to.equal(count);
+        expect(resetTimerCount()).to.equal(count);
       }
       focused.dispatchEvent(new Event('click', { cancelable: true }));
       expect(click.callCount).to.equal(1);

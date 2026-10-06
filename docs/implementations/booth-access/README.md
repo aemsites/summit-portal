@@ -22,8 +22,10 @@ server context. Confirmed large portrait reports also receive the reading layout
 described below; ordinary reports retain their existing layout. It returns to
 `/booth?step=finish`. **Email my report** sends to
 the address stored by lookup; the browser cannot supply another recipient or
-path. Adobe specialist/follow-up guidance remains informational. Reset clears
-attendee state, not the staff login or non-PII device-mode marker.
+path. **Please contact me** separately records explicit permission for Adobe to
+follow up by email about the report. It does not send mail or schedule a meeting.
+Reset clears attendee access, not the staff login, non-PII device marker or
+disclosed lead-history records.
 
 Verified staff returning to `/adobe/dashboard` leave booth mode without signing
 out. Only a successful, CUG-approved document navigation triggers this
@@ -53,6 +55,7 @@ Addresses without an authored customer CUG permission do not qualify.
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
+| Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
 
 Wrangler bundles the **single source** shell, two stylesheets and three scripts, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
@@ -60,7 +63,8 @@ All other assets/content continue using the existing production origin. The
 logo and Adobe Clean Typekit reference are the approved design assets.
 No global origin switch, content imports, DA credentials or authored booth page
 are required. `ak.js` and `aem.js` are untouched; the standalone kiosk shell
-does not load the ordinary portal chrome or analytics.
+does not load the ordinary portal chrome or browser analytics. The Worker
+submits anonymous action counts separately, never the identified lead data.
 
 See [target design / API contract](context/target-design.md) for authorization,
 context lifetime, concurrency and failure semantics.
@@ -95,13 +99,85 @@ static dark surface; no invented gradient is claimed to be brand-approved.
 Finish removes the decorative marketing intro and reserved spacer. A concise
 **Your report** heading labels the panel within its actionable content, placed
 directly below the shared header. **Email my report** remains the only email
-dispatch and uses the lookup business address. Specialist guidance and
-**Arrange a follow-up with the booth team** are plain informational text:
-**Ask the team to help arrange a follow-up conversation.** There is no booking
-button, link, endpoint or scheduling success claim. The prominent full-width
+dispatch and uses the lookup business address. Specialist guidance remains
+informational. **Please contact me** is a separate, explicit report-follow-up
+request, not a booking or scheduling claim. The prominent full-width
 secondary **Finish** control invokes the existing server reset only, without
 sending email. Privacy clearing, expiry, recovery and staff-only exit behavior
 are unchanged.
+
+### Identified booth leads and privacy notices
+
+The lead system of record is **first-party D1**, not Simple Analytics. Each
+valid lookup creates a visit ID and records the normalized, attendee-asserted
+business email, even if no authorized report matches or discovery fails.
+Subsequent `report_selected`, `report_viewed`, `contact_requested` and
+`report_sent` events carry the same visit ID/email and the server-authorized
+report path, label and company. `report_viewed` means the exact selected report's
+browser adapter loaded and acknowledged opening; selection alone never implies
+viewing. This is not verification of identity, physical attendance or reading.
+`report_sent` means the existing mail service accepted the send, not proof of
+inbox receipt. Uncertain or rejected sends are not listed as sent.
+
+The standalone shell displays a compact notice immediately beside **View my
+report**; it discloses identified email/report-activity recording, the purpose
+and **90-day** record lifetime, and links to Adobe's Privacy Policy. It is
+acknowledgement of a notice, not a blanket marketing opt-in. Finish explains
+that **Email my report** sends only the link and records delivery activity.
+The separate **Please contact me** action explains report-related email
+follow-up, record retention and withdrawal through the Privacy Policy. The
+Worker requires the current notice version on lookup and explicit `consent:
+true` plus that version for contact. The recorded event time is the opt-in
+timestamp. Search/view/send events must not be treated as permission for sales
+or general marketing communications.
+
+Only real Adobe OAuth sessions can retrieve PII. Event/booth credentials,
+Semrush OAuth and magic/share-link sessions are rejected:
+
+| List | Authenticated CSV route |
+|---|---|
+| All booth activity, correlated by Visit | `/api/booth-activity.csv` |
+| Emails that searched | `/api/booth-activity.csv?kind=search` |
+| Company/report opened by each email | `/api/booth-activity.csv?kind=report_viewed` |
+| Explicit contact requests | `/api/booth-activity.csv?kind=contact_requested` |
+| Report emails accepted by the mail service | `/api/booth-activity.csv?kind=report_sent` |
+
+These CSVs contain activity rows (repeat visits remain separate), not an
+anonymous audience. Join on **Visit** to reconstruct the flow, or deduplicate
+Email for an address list. Optional `from=YYYY-MM-DD&until=YYYY-MM-DD` selects a
+UTC date range, with `from` inclusive and `until` exclusive. JSON at
+`/api/booth-activity` accepts the same filters and returns a `nextCursor`;
+continue using the same filters until it is null. CSV streams every page
+without a hidden 1000-row cap. A database failure interrupts the download
+rather than silently returning an incomplete list.
+
+Records expire 90 days after the action. Retrieval immediately excludes expired
+rows; the hourly Worker scheduled handler physically deletes expired D1 rows.
+The Durable Object outbox first persists actions and their outcomes atomically
+before D1 export writes. It retries outages by alarm, survives attendee reset,
+deduplicates replay, and discards expired pending records even during an outage.
+New search attempts append their emails instead of being lost behind an older
+pending event. A saved selection can be retried for the same report without
+switching reports or duplicating history. It never resends
+email to repair telemetry. Reporting delays explicitly preserve the confirmed
+email/contact outcome; they do not ask the visitor to send again or repeat an
+already recorded contact request. Reset still removes the live attendee context and
+KV access data. Anonymous Simple Analytics events are only best-effort counts:
+`booth_search`, `booth_report_selected`, `booth_report_viewed`,
+`booth_contact_requested`, `booth_report_sent`. No email, email hash, visit ID,
+company/report identifiers, attendee IP, browser headers or cosmetics are sent.
+
+**Activation gates:** have Adobe Privacy/Legal review this report-specific notice
+and contact permission, purpose/lawful basis, geographic requirements and the
+rights/withdrawal process. Confirm Cloudflare backup/PITR retention and handling
+of exported copies; the 90-day automatic purge covers operational booth
+records, not somebody's downloaded CSV or all platform backups. Do not claim
+legal approval from this implementation. Apply D1 migration `0002_booth_activity.sql`
+before separately approved Worker deployment, then roll out the matching
+shared adapter and reset/reload existing kiosk tabs so the current notice is
+shown. Do not enable the new UI without persistence and the scheduled purge.
+The legacy design reviewer/export remains a historical mock, not this lead
+collection runtime.
 
 ### Cosmetic URL settings
 

@@ -7,7 +7,7 @@ import { handleMagicLinkRequest } from '../src/magiclink.js';
 import { handlePortalRedirect } from '../src/portal.js';
 import { createSession, getSession, verifyShareLink } from '../src/session.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
-import { createMockEnv } from './helpers.js';
+import { createMockEnv, createMockBoothStorage, createMockBoothD1 } from './helpers.js';
 import { sendShareLinkConfirm, sendMagicLinkConfirm } from '../src/notification.js';
 
 vi.mock('../src/notification.js', () => ({
@@ -82,7 +82,7 @@ describe('exact-email CUG integration', () => {
 
   it('discovers an exact authorized email without authorizing its neighboring address or domain', async () => {
     expect(await discoverReports(` ${email.toUpperCase()} `, env)).toEqual([
-      { path, label: 'Example — example.com' },
+      { path, label: 'Example — example.com', company: 'Example' },
     ]);
     expect(await discoverReports(neighbor, env)).toEqual([]);
     rows['/closed-user-groups-mapping.json'][0].group = neighbor;
@@ -108,14 +108,10 @@ describe('exact-email CUG integration', () => {
   });
 
   it('looks up and sends the exact email through the real booth context, then rejects a neighbor', async () => {
-    const values = new Map();
+    env.REPORT_REQUESTS = createMockBoothD1();
     const actor = new BoothCoordinator({
-      storage: {
-        get: async (key) => structuredClone(values.get(key)),
-        put: async (key, value) => values.set(key, structuredClone(value)),
-        deleteAll: async () => values.clear(),
-        setAlarm: vi.fn(),
-      },
+      storage: createMockBoothStorage(),
+      waitUntil: vi.fn(),
     }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
     let cookie = staffCookie;
@@ -123,7 +119,7 @@ describe('exact-email CUG integration', () => {
       const response = await handleBooth(new Request(`https://portal.example/auth/booth/${action}`, {
         method: 'POST',
         headers: { Cookie: cookie, Origin: 'https://portal.example', 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(action === 'lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body),
       }), env);
       const context = response.headers.get('Set-Cookie')?.match(/booth_context=[^;]+/)[0];
       if (context) cookie = `${staffCookie}; ${context}`;

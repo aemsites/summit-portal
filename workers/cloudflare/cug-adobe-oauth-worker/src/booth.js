@@ -7,6 +7,10 @@ import { parseCugSheetRows, matchSheetGroups } from './cugsheet.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { sha256hex } from './stafflogin.js';
 import { matchesCugGroup, normalizeCugGroup } from './cug-group.js';
+import {
+  BOOTH_NOTICE_VERSION, BoothActivityError, createBoothActivity,
+  storeBoothActivity, countBoothActivity,
+} from './booth-activity.js';
 
 const TTL = 600;
 const COOKIE = 'booth_context';
@@ -175,6 +179,8 @@ export async function discoverReports(email, env) {
     const website = path.split('/insights/')[1].split('/')[0];
     const candidate = {
       path,
+      company: typeof row.Customers === 'string' && row.Customers.trim()
+        ? row.Customers.trim().slice(0, 240) : path.split('/')[3],
       label: [row.Customers, row.Report].filter((text) => typeof text === 'string' && text.trim())
         .join(' — ').slice(0, 240) || website,
       portal: path.endsWith('/portal-landing/'),
@@ -187,13 +193,13 @@ export async function discoverReports(email, env) {
       websites.set(website, candidate);
     }
   }
-  return [...websites.values()].map(({ path, label }) => ({ path, label }));
+  return [...websites.values()].map(({ path, label, company }) => ({ path, label, company }));
 }
 
 export async function handleBooth(request, env) {
   if (!await boothStaff(request, env)) return reply({ error: 'Staff authentication required' }, 401);
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'lookup', 'select', 'send', 'reset', 'exit'].includes(action)) {
+  if (!['status', 'lookup', 'select', 'view', 'contact', 'send', 'reset', 'exit'].includes(action)) {
     return reply({ error: 'Unknown booth action' }, 404);
   }
   if (request.method !== (action === 'status' ? 'GET' : 'POST')) {
@@ -275,13 +281,36 @@ export class BoothCoordinator {
   }
 
   fetch(request) {
-    const operation = this.queue.then(() => this.handle(request));
+    const operation = this.queue.then(() => this.handle(request)).catch(async (error) => {
+      if (!(error instanceof BoothActivityError)) throw error;
+      const action = new URL(request.url).pathname.split('/').pop();
+      const record = await this.state.storage.get('context');
+      const sent = action === 'send' && record?.delivery === 'sent';
+      const contactRequested = action === 'contact' && record?.contactRequested === true;
+      let { message } = error;
+      if (sent) message = 'Your report link was emailed. Activity reporting is delayed. Ask the booth team; do not send again.';
+      else if (action === 'send' && record?.delivery === 'ready') {
+        message = 'Your report has not been sent. Activity reporting is unavailable. Ask the booth team for help.';
+      }
+      if (contactRequested) message = 'Your contact request is recorded. Activity reporting is delayed. The booth team can help.';
+      return reply({
+        error: message,
+        activityPending: true,
+        sent,
+        contactRequested,
+      }, 503);
+    });
     this.queue = operation.then(() => undefined, () => undefined);
     return operation;
   }
 
   alarm() {
     const operation = this.queue.then(async () => {
+      try {
+        await this.flushActivity();
+      } catch (error) {
+        if (!(error instanceof BoothActivityError)) throw error;
+      }
       const record = await this.state.storage.get('context');
       if (record && record.expiresAt <= Date.now()) await this.clear(record);
     });
@@ -290,8 +319,53 @@ export class BoothCoordinator {
   }
 
   async clear(record) {
-    await this.state.storage.deleteAll();
+    // Pending lead records survive a privacy reset, but attendee access does not.
+    await this.state.storage.delete('context');
     if (record) await this.env.SESSIONS.delete(`booth:${record.key}`);
+    if (await this.state.storage.get('activity')) {
+      await this.state.storage.setAlarm(Date.now() + 60000);
+    }
+  }
+
+  async flushActivity() {
+    const outbox = await this.state.storage.get('activity');
+    if (!outbox) return;
+    const pending = outbox.filter((activity) => Date.parse(activity.expires_at) > Date.now());
+    if (!pending.length) {
+      await this.state.storage.delete('activity');
+      return;
+    }
+    if (pending.length !== outbox.length) await this.state.storage.put('activity', pending);
+    try {
+      for (const activity of pending) {
+        if (Date.parse(activity.expires_at) > Date.now()) {
+          const inserted = await storeBoothActivity(this.env, activity);
+          if (inserted) this.state.waitUntil(countBoothActivity(this.env, activity.kind));
+        }
+      }
+      await this.state.storage.delete('activity');
+      const record = await this.state.storage.get('context');
+      if (record) await this.state.storage.setAlarm(record.expiresAt);
+    } catch (error) {
+      await this.state.storage.setAlarm(Date.now() + 60000);
+      throw error;
+    }
+  }
+
+  async activity(events, record) {
+    const pending = await this.state.storage.get('activity') || [];
+    const queued = new Map(pending.filter((event) => Date.parse(event.expires_at) > Date.now())
+      .map((event) => [event.event_id, event]));
+    events.forEach((event) => {
+      if (!queued.has(event.event_id)) queued.set(event.event_id, event);
+    });
+    // A multi-key put atomically saves the action outcome and its export outbox.
+    await this.state.storage.put({
+      activity: [...queued.values()],
+      ...(record ? { context: record } : {}),
+    });
+    await this.state.storage.setAlarm(Date.now() + 60000);
+    await this.flushActivity();
   }
 
   async handle(request) {
@@ -322,6 +396,8 @@ export class BoothCoordinator {
         selectedPath: record.selectedPath,
         candidates: record.selectedPath ? [] : data.candidates,
         sent: record.delivery === 'sent',
+        contactRequested: record.contactRequested === true,
+        activityPending: !!await this.state.storage.get('activity'),
         delivery: record.delivery,
         expiresAt: record.expiresAt,
       });
@@ -337,10 +413,15 @@ export class BoothCoordinator {
       // Clear the previous visitor even if the new lookup fails.
       await this.clear(record);
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-      if (Object.keys(body).some((key) => key !== 'email')
+      if (Object.keys(body).some((key) => !['email', 'noticeVersion'].includes(key))
         || email.length > 254 || !EMAIL_RE.test(email)) {
         return reply({ error: 'Enter a valid business email.' }, 400);
       }
+      if (body.noticeVersion !== BOOTH_NOTICE_VERSION) {
+        return reply({ error: 'Reload the booth to review the current privacy notice before searching.' }, 409);
+      }
+      const key = crypto.randomUUID();
+      await this.activity([createBoothActivity('search', key, email)]);
       let candidates;
       try {
         candidates = await discoverReports(email, this.env);
@@ -351,7 +432,6 @@ export class BoothCoordinator {
       if (!candidates.length) {
         return reply({ error: 'No prepared report is authorized for this email domain. Ask the booth team.' }, 404);
       }
-      const key = crypto.randomUUID();
       await this.env.SESSIONS.put(`booth:${key}`, JSON.stringify({ email, candidates }), { expirationTtl: TTL });
       record = {
         key,
@@ -359,9 +439,13 @@ export class BoothCoordinator {
         expiresAt: Date.now() + TTL * 1000,
         selectedPath: candidates.length === 1 ? candidates[0].path : null,
         delivery: 'ready',
+        noticeVersion: BOOTH_NOTICE_VERSION,
       };
       await this.state.storage.put('context', record);
       await this.state.storage.setAlarm(record.expiresAt);
+      if (record.selectedPath) {
+        await this.activity([createBoothActivity('report_selected', key, email, candidates[0])], record);
+      }
       return reply({
         state: record.selectedPath ? 'report' : 'picker',
         selectedPath: record.selectedPath,
@@ -370,15 +454,30 @@ export class BoothCoordinator {
       });
     }
     if (!record) return reply({ error: 'Booth context expired. Start again.' }, 410);
+    if (record.noticeVersion !== BOOTH_NOTICE_VERSION) {
+      return reply({ error: 'Start again to review the current booth privacy notice.' }, 409);
+    }
     if (action === 'select') {
       if (Object.keys(body).some((key) => key !== 'path')
-        || record.selectedPath
+        || (record.selectedPath && record.selectedPath !== body.path)
         || !data.candidates.some((candidate) => candidate.path === body.path)) {
         return reply({ error: 'Select one of your prepared reports.' }, 400);
+      }
+    } else if (action === 'contact') {
+      if (Object.keys(body).some((key) => !['consent', 'noticeVersion'].includes(key))
+        || body.consent !== true || body.noticeVersion !== BOOTH_NOTICE_VERSION
+        || !record.selectedPath) {
+        return reply({ error: 'Confirm that Adobe may contact you about your report.' }, 400);
+      }
+    } else if (action === 'view') {
+      if (Object.keys(body).some((key) => key !== 'path')
+        || body.path !== record.selectedPath || !record.selectedPath) {
+        return reply({ error: 'Only the selected report can be recorded as opened.' }, 400);
       }
     } else if (Object.keys(body).length || !record.selectedPath) {
       return reply({ error: 'No selected report or invalid request.' }, 400);
     }
+    if (action === 'send') await this.flushActivity();
     if (action === 'send' && record.delivery !== 'ready') {
       return record.delivery === 'sent' ? reply({ sent: true })
         : reply({ error: 'Delivery was already attempted. Ask the booth team before trying again.' }, 409);
@@ -387,7 +486,7 @@ export class BoothCoordinator {
     let authorized;
     try {
       const current = await discoverReports(data.email, this.env);
-      authorized = current.some((candidate) => candidate.path === path);
+      authorized = current.find((candidate) => candidate.path === path);
     } catch (error) {
       discoveryFailure(error);
       return reply({ error: 'Report authorization cannot be checked right now.' }, 502);
@@ -402,8 +501,22 @@ export class BoothCoordinator {
     }
     if (action === 'select') {
       record.selectedPath = path;
-      await this.state.storage.put('context', record);
+      await this.activity([createBoothActivity('report_selected', record.key, data.email, authorized)], record);
       return reply({ state: 'report', selectedPath: path, expiresAt: record.expiresAt });
+    }
+    if (action === 'view') {
+      if (!record.viewed) {
+        record.viewed = true;
+        await this.activity([createBoothActivity('report_viewed', record.key, data.email, authorized)], record);
+      } else await this.flushActivity();
+      return reply({ viewed: true });
+    }
+    if (action === 'contact') {
+      if (!record.contactRequested) {
+        record.contactRequested = true;
+        await this.activity([createBoothActivity('contact_requested', record.key, data.email, authorized)], record);
+      } else await this.flushActivity();
+      return reply({ contactRequested: true });
     }
     // Persist BEFORE calling APO. A restart or ambiguous upstream failure must never resend.
     record.delivery = 'attempted';
@@ -419,7 +532,7 @@ export class BoothCoordinator {
       return reply({ error: 'Email delivery could not be confirmed. Ask the booth team; do not send again.' }, 502);
     }
     record.delivery = 'sent';
-    await this.state.storage.put('context', record);
+    await this.activity([createBoothActivity('report_sent', record.key, data.email, authorized)], record);
     return reply({ sent: true });
   }
 }

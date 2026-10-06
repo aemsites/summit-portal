@@ -46,14 +46,15 @@ describe('booth runtime boundary', () => {
 
   function recoveryFixture() {
     const root = document.implementation.createHTMLDocument();
-    root.body.innerHTML = `<main id="stage">
+    root.body.innerHTML = `<main id="stage" data-notice-version="booth-privacy-v1">
       <p id="booth-status"></p><a id="staff-login" hidden></a>
       <button id="booth-retry" data-reset hidden>Retry and clear screen</button>
       <section data-panel="welcome"><form id="email-form">
         <input id="registration-email"><button>View my report</button>
       </form><p id="email-error"></p></section>
       <section data-panel="picker" hidden><div id="report-options"></div><p id="picker-status"></p></section>
-      <section data-panel="finish" hidden><button id="send-report"></button><p id="finish-status"></p></section>
+      <section data-panel="finish" hidden><button id="send-report"></button><p id="finish-status"></p>
+        <button id="request-contact"></button><p id="contact-status"></p></section>
       <button id="staff-exit"></button>
     </main>`;
     sandbox.stub(window, 'addEventListener');
@@ -144,14 +145,14 @@ describe('booth runtime boundary', () => {
     root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await clock.tickAsync(0);
     expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/lookup');
-    expect(fetchStub.secondCall.args[1].body).to.equal('{"email":"visitor@example.com"}');
+    expect(JSON.parse(fetchStub.secondCall.args[1].body)).to.deep.equal({ email: 'visitor@example.com', noticeVersion: 'booth-privacy-v1' });
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.querySelector('[data-panel="picker"]').hidden).to.equal(false);
     expect(root.getElementById('report-options').textContent).to.equal('Company website');
     expect(fetchStub.callCount).to.equal(2);
   });
 
-  it('makes Finish a reset-only secondary action and follow-up explicit manual guidance', async () => {
+  it('keeps Finish reset-only and never infers contact opt-in from Email my report', async () => {
     const root = await productionFixture();
     const previousUrl = window.location.href;
     window.history.replaceState(null, '', '/booth?step=finish&heading=Amplify+your+brand+visibility&brand=semrush');
@@ -176,8 +177,8 @@ describe('booth runtime boundary', () => {
       expect(root.getElementById('stage').dataset.brand).to.equal('semrush');
       expect(finish.querySelector('.finish-intro')).to.equal(null);
       expect(root.getElementById(finish.getAttribute('aria-labelledby')).textContent).to.equal('Your report');
-      expect(finish.querySelector('.finish-guidance').textContent).to.include('Ask the team to help arrange a follow-up conversation.');
-      expect(finish.querySelector('.finish-guidance a, .finish-guidance button')).to.equal(null);
+      expect(root.getElementById('request-contact').textContent).to.equal('Please contact me');
+      expect(root.getElementById('contact-privacy').textContent).to.include('contact you by email about this report');
       expect(fetchStub.calledOnce).to.equal(true);
       root.getElementById('send-report').click();
       await clock.tickAsync(0);
@@ -193,6 +194,73 @@ describe('booth runtime boundary', () => {
       expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
       expect(window.location.pathname + window.location.search).to.equal('/booth?heading=Amplify+your+brand+visibility&brand=semrush');
       expect(fetchStub.callCount).to.equal(3);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('places compact privacy notices at search and both Finish decisions, with independent explicit contact consent', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
+    });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ contactRequested: true }) });
+    try {
+      expect(root.getElementById('search-privacy').textContent).to.include('90 days');
+      expect(root.getElementById('search-privacy').textContent).to.include('does not request sales contact');
+      expect(root.getElementById('send-privacy').textContent).to.include('not a request for sales contact');
+      ['search-privacy', 'contact-privacy'].forEach((id) => {
+        expect(root.getElementById(id).querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
+      });
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.getElementById('request-contact').click();
+      await clock.tickAsync(0);
+      expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/contact');
+      expect(JSON.parse(fetchStub.secondCall.args[1].body)).to.deep.equal({ consent: true, noticeVersion: 'booth-privacy-v1' });
+      expect(root.getElementById('contact-status').textContent).to.include('Your request is recorded');
+      expect(root.getElementById('request-contact').disabled).to.equal(true);
+      expect(root.getElementById('send-report').disabled).to.equal(false);
+      root.getElementById('request-contact').click();
+      expect(fetchStub.callCount).to.equal(2);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('keeps a confirmed contact request disabled when export reporting is delayed', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
+    });
+    fetchStub.onSecondCall().resolves({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: 'Your contact request is recorded. Activity reporting is delayed. The booth team can help.',
+        contactRequested: true,
+        activityPending: true,
+      }),
+    });
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.getElementById('request-contact').click();
+      await clock.tickAsync(0);
+      expect(root.getElementById('contact-status').textContent).to.include('recorded');
+      expect(root.getElementById('contact-status').textContent).to.include('reporting is delayed');
+      expect(root.getElementById('request-contact').disabled).to.equal(true);
+      expect(root.getElementById('send-report').disabled).to.equal(false);
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }

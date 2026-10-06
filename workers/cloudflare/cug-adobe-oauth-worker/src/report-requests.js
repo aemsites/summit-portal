@@ -239,7 +239,7 @@ function requestRowsQuery(search, cursor, limit) {
   };
 }
 
-function csvCell(value) {
+export function csvCell(value) {
   const text = String(value == null ? '' : value);
   const protectedValue = /^[=+\-@]/.test(text) ? `'${text}` : text;
   return `"${protectedValue.replace(/"/g, '""')}"`;
