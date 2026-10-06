@@ -53,7 +53,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates only the report adapter/assets and serves its versioned URL', async () => {
-    for (const path of ['/scripts/booth-report.js?v=portrait-2', '/styles/booth-report.css']) {
+    for (const path of ['/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -117,7 +117,7 @@ describe('bundled booth shell and exact report injection', () => {
         const append = vi.fn();
         handler.element({ append });
         expect(selector).toBe('body');
-        expect(append.mock.calls[0][0]).toContain('/scripts/booth-report.js?v=portrait-2');
+        expect(append.mock.calls[0][0]).toContain('/scripts/booth-report.js?v=booth-activity-1');
         return { transform };
       }
     }

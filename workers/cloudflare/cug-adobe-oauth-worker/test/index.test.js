@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from '../src/index.js';
-import { createMockEnv, fakeJwt, signedJwt } from './helpers.js';
+import { createMockEnv, createMockBoothD1, fakeJwt, signedJwt } from './helpers.js';
+import { createSession as createBoothSession } from '../src/session.js';
+import { createBoothActivity, storeBoothActivity, BOOTH_RETENTION_MS } from '../src/booth-activity.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
 import { sendMagicLinkConfirm } from '../src/notification.js';
 
@@ -59,6 +61,33 @@ describe('index (request routing)', () => {
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(404);
+    });
+  });
+
+  describe('identified booth activity', () => {
+    it('routes lead exports without proxying them and requires real Adobe OAuth', async () => {
+      env.REPORT_REQUESTS = createMockBoothD1();
+      vi.stubGlobal('fetch', vi.fn());
+      await storeBoothActivity(env, createBoothActivity('search', 'visit', 'visitor@example.com'));
+      for (const suffix of ['', '.csv']) {
+        const url = `https://mysite.com/api/booth-activity${suffix}`;
+        expect((await worker.fetch(new Request(url), env)).status).toBe(401);
+        const staff = await createBoothSession(env, { email: 'operator@adobe.com', method: 'staff' });
+        expect((await worker.fetch(new Request(url, { headers: { Cookie: `auth_token=${staff}` } }), env)).status).toBe(403);
+        const oauth = await createBoothSession(env, { email: 'operator@adobe.com', method: 'oauth' });
+        const response = await worker.fetch(new Request(url, { headers: { Cookie: `auth_token=${oauth}` } }), env);
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain('visitor@example.com');
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('purges expired activity through the scheduled Worker entry point', async () => {
+      env.REPORT_REQUESTS = createMockBoothD1();
+      await storeBoothActivity(env, createBoothActivity('search', 'old', 'expired@example.com', null, Date.now() - BOOTH_RETENTION_MS - 1));
+      await storeBoothActivity(env, createBoothActivity('search', 'new', 'current@example.com'));
+      await worker.scheduled({}, env);
+      expect([...env.REPORT_REQUESTS.events.values()].map((event) => event.email)).toEqual(['current@example.com']);
     });
   });
 

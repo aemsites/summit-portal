@@ -126,6 +126,75 @@ export function createMockD1() {
   };
 }
 
+export function createMockBoothD1() {
+  const events = new Map();
+  const execute = (sql, params) => {
+    if (sql.startsWith('INSERT OR IGNORE INTO booth_activity')) {
+      const keys = ['event_id', 'flow_id', 'occurred_at', 'expires_at', 'email', 'kind', 'report_path', 'company', 'report_label', 'notice_version'];
+      const row = Object.fromEntries(keys.map((key, index) => [key, params[index]]));
+      const changes = events.has(row.event_id) ? 0 : 1;
+      events.set(row.event_id, events.get(row.event_id) || row);
+      return { success: true, meta: { changes } };
+    }
+    if (sql.startsWith('DELETE FROM booth_activity')) {
+      events.forEach((row, id) => { if (row.expires_at <= params[0]) events.delete(id); });
+      return { success: true };
+    }
+    if (sql.includes('FROM booth_activity WHERE')) {
+      let rows = [...events.values()].filter((row) => row.expires_at > params[0]
+        && row.occurred_at <= params[1]);
+      let offset = 2;
+      if (sql.includes('kind = ?')) {
+        const kind = params[offset];
+        offset += 1;
+        rows = rows.filter((row) => row.kind === kind);
+      }
+      if (sql.includes('occurred_at >= ?')) {
+        const from = params[offset];
+        offset += 1;
+        rows = rows.filter((row) => row.occurred_at >= from);
+      }
+      if (sql.includes('AND occurred_at < ?')) {
+        const until = params[offset];
+        offset += 1;
+        rows = rows.filter((row) => row.occurred_at < until);
+      }
+      if (sql.includes('(occurred_at < ?')) {
+        const at = params[offset];
+        const id = params[offset + 2];
+        rows = rows.filter((row) => row.occurred_at < at
+          || (row.occurred_at === at && row.event_id < id));
+      }
+      rows.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)
+        || b.event_id.localeCompare(a.event_id));
+      return { success: true, results: rows.slice(0, params.at(-1)) };
+    }
+    throw new Error('Unexpected booth database query');
+  };
+  return {
+    events,
+    prepare: (sql) => ({
+      bind: (...params) => ({
+        run: async () => execute(sql, params),
+        all: async () => execute(sql, params),
+      }),
+    }),
+  };
+}
+
+export function createMockBoothStorage() {
+  const values = new Map();
+  return {
+    get: async (key) => structuredClone(values.get(key)),
+    put: async (key, value) => {
+      const entries = typeof key === 'object' ? Object.entries(key) : [[key, value]];
+      entries.forEach(([name, item]) => values.set(name, structuredClone(item)));
+    },
+    delete: async (key) => values.delete(key),
+    setAlarm: async () => {},
+  };
+}
+
 /**
  * Encode a JWT with the given payload (no signature verification in the worker).
  */

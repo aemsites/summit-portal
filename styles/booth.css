@@ -421,6 +421,33 @@
     font-size: clamp(14px, 1.2vw, 18px);
   }
 
+  .privacy-note {
+    margin: 16px 0 0;
+    color: var(--muted);
+    font-size: clamp(14px, 1.2vw, 18px);
+    line-height: 1.45;
+  }
+
+  .privacy-note a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .finish-guidance .privacy-note {
+    margin-top: 16px;
+    font-size: clamp(14px, 1.2vw, 18px);
+  }
+
+  .finish-guidance .notice {
+    margin-top: 16px;
+    color: var(--surface);
+  }
+
+  #request-contact {
+    margin-top: 16px;
+  }
+
   .notice {
     max-width: 40ch;
     margin: 0 0 22px;
@@ -723,6 +750,11 @@
       font-size: 23px;
     }
 
+    .privacy-note,
+    .finish-guidance .privacy-note {
+      font-size: 18px;
+    }
+
     .finish-guidance {
       align-content: start;
       gap: 24px;
@@ -885,6 +917,17 @@
 
     .send-hint {
       font-size: 38px;
+    }
+
+    .privacy-note,
+    .finish-guidance .privacy-note {
+      font-size: 30px;
+    }
+
+    #request-contact {
+      min-height: 120px;
+      margin-top: 24px;
+      font-size: 44px;
     }
 
     .finish-guidance {

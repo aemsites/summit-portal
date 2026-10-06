@@ -111,7 +111,7 @@ export async function injectBoothReturn(response, request, env) {
   privateResponse.headers.set('Cache-Control', 'private, no-store');
   return new HTMLRewriter().on('body', {
     element(element) {
-      element.append('<script type="module" src="/scripts/booth-report.js?v=portrait-2"></script>', { html: true });
+      element.append('<script type="module" src="/scripts/booth-report.js?v=booth-activity-1"></script>', { html: true });
     },
   }).transform(privateResponse);
 }
