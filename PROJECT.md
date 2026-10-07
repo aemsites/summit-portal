@@ -91,7 +91,7 @@ diagnostics are unchanged. Close old report documents and reload `/booth` to
 load the new flow. Real Turnstile/submission and physical kiosk rehearsal remain
 rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
 
-### October 7 Finish 6 iteration (pending production deployment)
+### October 7 Finish 6 production rollout
 
 **Touchscreen follow-up:** Jose confirmed that the placeholder three-part
 footer progress bar should stay removed. The real Finish step badge remains.
@@ -140,9 +140,15 @@ remain omitted; the static Finish step badge now follows the approved design.
 
 Entry 3 is unchanged. The exact-dimension local reviewer at
 `http://localhost:3000/` includes native **2160 × 3840**, reference **2160 × 2881**
-and fallback **1080 × 1920** sizes. Production still runs Finish 5 on Worker
-`10608171-3483-4835-95ef-4e290b4ac677`; the Finish 6 branch is ready for review,
-with production deployment still pending. See [current booth flow](docs/implementations/booth-access/README.md#october-7-fixed-entry-3--finish-6).
+and fallback **1080 × 1920** sizes. Following explicit approval, merged
+[#153](https://github.com/aemsites/summit-portal/pull/153), main `b53db04`,
+was deployed on October 7 at 15:31 UTC as Worker
+**`baeeaccd-e9b2-4a4e-bdb4-5068491316cb`**, serving **100%** of traffic.
+Live Finish 6 runtime, preview renderers, styles and icon match merged source.
+Anonymous `/booth` retains its staff-login redirect; status and demo catalogue
+retain 401 responses. Reload `/booth` and reopen the report to load the new
+version; existing tabs do not hot-reload. Authenticated email delivery and
+physical kiosk rehearsal remain unverified. See [current booth flow](docs/implementations/booth-access/README.md#october-7-fixed-entry-3--finish-6).
 
 ### October 7 initial approved Figma booth implementation (historical Finish 5)
 

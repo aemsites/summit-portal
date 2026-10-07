@@ -256,8 +256,14 @@ contract explicit.
 The approved [Final Design frames](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
 are fixed to **Entry 3 / Finish 6**, with
 [Screen 2_Finish_version 6](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=244-579)
-replacing Finish 5. This iteration is ready for review, not deployed; the last production
-rollout remains Worker `10608171-3483-4835-95ef-4e290b4ac677` with Finish 5.
+replacing Finish 5. Following explicit approval, merged
+[#153](https://github.com/aemsites/summit-portal/pull/153), main `b53db04`,
+was deployed on October 7 at 15:31 UTC as Worker
+**`baeeaccd-e9b2-4a4e-bdb4-5068491316cb`** at **100%**.
+Live runtime, preview renderers, styles and icon match merged source; anonymous
+staff-login and API access gates remain unchanged. Reload `/booth` and reopen
+the report to receive the new version. Authenticated email delivery and
+physical kiosk rehearsal remain unverified.
 Legacy `entry`/`finish` parameters are ignored
 and no longer follow staff setup, the report, Finish or reset. Safe `heading` and
 `brand` cosmetics remain; they never change access or API payloads and never reach
