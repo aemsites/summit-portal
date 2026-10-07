@@ -6,16 +6,31 @@ export default async function verifyBooth(page) {
   let multiple = false;
   let failedSend = false;
   let calls = 0;
+  let lookups = 0;
+  let reportRequests = 0;
   const check = (condition, message) => {
     if (!condition) throw new Error(message);
   };
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const reportHTML = await (await page.request.get('http://localhost:3000/test/fixtures/booth-preview-report.html')).text();
+  await page.route('**/accounts/**', async (route) => {
+    reportRequests += 1;
+    const selected = new URL(route.request().url()).pathname;
+    if (state.state !== 'report' || state.selectedPath !== selected) {
+      await route.fulfill({ status: 302, headers: { Location: '/booth' } });
+      return;
+    }
+    await route.fulfill({ contentType: 'text/html', body: reportHTML });
+  });
   await page.route('**/auth/booth/**', async (route) => {
     const action = new URL(route.request().url()).pathname.split('/').pop();
     let status = 200;
     let result = state;
     const expiresAt = Date.now() + 600000;
     if (action === 'lookup') {
+      lookups += 1;
+      const payload = JSON.parse(route.request().postData());
+      check(!['entry', 'finish', 'brand', 'heading'].some((key) => key in payload), 'Cosmetics leaked into lookup');
       state = multiple ? {
         state: 'picker',
         candidates: [{ path, label: 'Example.com' }, { path: other, label: '<img src=x onerror=alert(1)> Example.org' }],
@@ -36,6 +51,10 @@ export default async function verifyBooth(page) {
         state.sent = true;
         result = { sent: true };
       }
+    } else if (action === 'contact') {
+      check(JSON.parse(route.request().postData()).consent === true, 'Contact requires explicit consent');
+      state.contactRequested = true;
+      result = { contactRequested: true };
     } else if (action === 'reset') {
       state = { state: 'entry' };
       result = state;
@@ -52,10 +71,10 @@ export default async function verifyBooth(page) {
     actionHeight: document.querySelector('#email-form button').getBoundingClientRect().height,
     keyboardFocus: document.activeElement.id,
   }));
-  check(!entry.overflow && entry.inputText === '68px' && entry.actionHeight >= 174, 'Portrait sizing changed');
+  check(!entry.overflow && Math.abs(parseFloat(entry.inputText) - 68) < 1
+    && entry.actionHeight >= 129, 'Figma portrait sizing changed');
   check(entry.keyboardFocus !== 'registration-email', 'Attract screen must not force keyboard');
-  await page.getByRole('button', { name: 'Pause motion' }).click();
-  check(await page.locator('#stage').getAttribute('data-motion') === 'paused', 'Pause motion failed');
+  check(await page.locator('#motion-toggle, .review, #step-index').count() === 0, 'Preview-only controls shipped');
   await page.locator('#registration-email').fill('visitor@example.com');
   await page.locator('#email-form button').click();
   await page.waitForURL(`**${path}`);
@@ -66,19 +85,28 @@ export default async function verifyBooth(page) {
   await page.getByRole('link', { name: 'Finish reading my report' }).click();
   await page.waitForURL('**/booth?step=finish');
   await page.locator('[data-panel="finish"]:not([hidden])').waitFor();
+  await page.locator('#report-preview h3').waitFor();
+  check(lookups === 1 && reportRequests === 2, 'Finish must fetch the selected report without another lookup');
+  check(await page.locator('#report-preview .rs-dark-value').first().textContent() === '61/100', 'Finish preview must use actual report scores');
+  check(await page.getByRole('heading', { name: 'Talk through your report here' }).count() === 0, 'Removed guidance section returned');
   const finish = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     guidance: document.querySelector('.finish-guidance').getBoundingClientRect().height,
     action: document.querySelector('#send-report').getBoundingClientRect().height,
   }));
-  check(!finish.overflow && finish.guidance >= 620 && finish.action >= 154, 'Portrait Finish sizing changed');
+  check(!finish.overflow && finish.guidance >= 262 && finish.action >= 129, 'Figma portrait Finish sizing changed');
   await page.getByRole('button', { name: 'Email my report' }).click();
   await page.waitForFunction(() => document.querySelector('#finish-status').textContent.includes('was emailed'));
   check(calls === 1 && await page.locator('#send-report').isDisabled(), 'Duplicate send UI protection failed');
+  check(!state.contactRequested, 'Report email must not imply sales consent');
+  await page.getByRole('button', { name: 'Please contact me' }).click();
+  await page.waitForFunction(() => document.querySelector('#contact-status').textContent.includes('recorded'));
+  check(state.contactRequested && await page.locator('#request-contact').isDisabled(), 'Explicit contact request failed');
   await page.getByRole('button', { name: 'Finish and clear this screen' }).click();
   await page.waitForURL('**/booth');
   check(await page.locator('#registration-email').inputValue() === '', 'Reset leaked email');
   check(state.state === 'entry', 'Reset failed to clear server fixture context');
+  check(await page.locator('#report-preview').textContent() === '', 'Reset leaked report preview');
 
   multiple = true;
   await page.locator('#registration-email').fill('visitor@example.com');
@@ -101,7 +129,7 @@ export default async function verifyBooth(page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
-  check(!await page.locator('#motion-toggle').isVisible(), 'Reduced-motion controls must be hidden');
+  check(await page.locator('#motion-toggle').count() === 0, 'Decorative motion controls must not ship');
   const mobile = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     actionHeight: document.querySelector('#email-form button').getBoundingClientRect().height,
@@ -149,5 +177,20 @@ export default async function verifyBooth(page) {
   await page.goBack();
   await page.waitForURL('**/booth');
   check(await page.locator('#registration-email').inputValue() === '', 'Back navigation resurrected attendee');
-  return { entry, finish, mobile, checked: 'Entry → direct report → Finish → send → reset; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage. All emails are synthetic fixtures, no live email sent.' };
+
+  multiple = false;
+  await page.goto('http://localhost:3000/content/index?entry=3&finish=2');
+  await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
+  await page.locator('#registration-email').fill('visitor@example.com');
+  await page.locator('#email-form button').click();
+  await page.waitForURL(`**${path}`);
+  await page.getByRole('link', { name: 'Finish reading my report' }).click();
+  await page.waitForURL('**/booth?step=finish');
+  await page.locator('[data-panel="finish"]:not([hidden])').waitFor();
+  check(await page.locator('#stage').getAttribute('data-finish') === '5', 'Legacy query changed fixed Finish 5');
+  await page.getByRole('button', { name: 'Finish and clear this screen' }).click();
+  await page.waitForURL('**/booth');
+  check(await page.locator('#stage').getAttribute('data-entry') === '3'
+    && await page.locator('#registration-email').inputValue() === '', 'Reset lost variant or leaked email');
+  return { entry, finish, mobile, checked: 'Fixed Entry 3 → direct report → native Finish 5 preview without another lookup → send/contact → reset; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage; ignored legacy variants. All emails are synthetic fixtures, no live email sent.' };
 }

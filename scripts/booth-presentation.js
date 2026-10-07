@@ -9,7 +9,12 @@ export function readBoothPresentation(search = '') {
     && !/[\p{C}\p{Zl}\p{Zp}<>]/u.test(value);
   const brand = params.getAll('brand').length === 1 && params.get('brand') === 'semrush'
     ? 'semrush' : 'adobe';
-  return { heading: validHeading ? heading : '', brand };
+  return {
+    heading: validHeading ? heading : '',
+    brand,
+    entry: '3',
+    finish: '5',
+  };
 }
 
 /** Keep only presentation settings and the explicitly requested Finish step. */
@@ -28,6 +33,8 @@ export function withBoothPresentation(path, presentation) {
 export function applyBoothPresentation(root, presentation) {
   const stage = root.getElementById('stage');
   stage.dataset.brand = presentation.brand;
+  stage.dataset.entry = '3';
+  stage.dataset.finish = '5';
   const heading = root.querySelector('.brand span');
   if (heading) heading.textContent = presentation.heading || defaultHeading;
   const login = root.getElementById('staff-login');

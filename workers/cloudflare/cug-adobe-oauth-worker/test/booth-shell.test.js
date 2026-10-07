@@ -41,15 +41,42 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/styles/booth.css', '/styles/booth-report.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/styles/booth.css', '/styles/booth-report.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
-      expect((await response.text()).length).toBeGreaterThan(1000);
+      expect((await response.text()).length).toBeGreaterThan(500);
     }
     expect(await serveBooth(new Request('https://portal.example/'), env)).toBeNull();
     expect(await serveBooth(new Request('https://portal.example/login'), env)).toBeNull();
     expect(await serveBooth(new Request('https://portal.example/scripts/ak.js'), env)).toBeNull();
     expect((await serveBooth(new Request('https://portal.example/booth', { method: 'POST' }), env)).status).toBe(405);
+  });
+
+  it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
+    const images = [
+      'action-arrow.svg', 'entry-webpage-glow.svg', 'entry-webpage.png',
+    ];
+    for (const name of images) {
+      const url = `https://portal.example/img/booth/${name}`;
+      const response = await serveBooth(new Request(url), env);
+      const bytes = await response.arrayBuffer();
+      const source = await readFile(new URL(`../../../../img/booth/${name}`, import.meta.url));
+      expect(Buffer.from(bytes).equals(source)).toBe(true);
+      const type = name.endsWith('.svg') ? 'image/svg+xml' : `image/${name.endsWith('.jpg') ? 'jpeg' : 'png'}`;
+      expect(response.headers.get('Content-Type')).toBe(type);
+      const head = await serveBooth(new Request(url, { method: 'HEAD' }), env);
+      expect((await head.arrayBuffer()).byteLength).toBe(0);
+      expect((await serveBooth(new Request(url, { method: 'POST' }), env)).status).toBe(405);
+    }
+  });
+
+  it('drops legacy screen variants through staff setup and serves only the chosen designs', async () => {
+    const response = await serveBooth(new Request('https://portal.example/booth?entry=3&finish=2&step=finish'), env);
+    expect(response.headers.get('Location')).toBe('/login?staff&redirect=%2Fbooth');
+    for (const query of ['entry=5&finish=6', 'entry=2&entry=3&finish=2&finish=3', 'entry=https://example.com&finish=../other']) {
+      const invalid = await serveBooth(new Request(`https://portal.example/booth?${query}`), env);
+      expect(invalid.headers.get('Location')).toBe('/login?staff&redirect=%2Fbooth');
+    }
   });
 
   it('revalidates only the report adapter/assets and serves its versioned URL', async () => {

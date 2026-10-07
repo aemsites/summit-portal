@@ -1,4 +1,5 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
+import { createBoothPreview } from './booth-preview.js';
 
 export async function boothRequest(action, body) {
   const response = await fetch(`/auth/booth/${action}`, {
@@ -31,6 +32,8 @@ export function mountBooth(root = document) {
   const contact = root.getElementById('request-contact');
   const status = root.getElementById('booth-status');
   const retry = root.getElementById('booth-retry');
+  const previewTarget = root.getElementById('report-preview');
+  const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
   let ready = false;
   let busy = false;
   let idle;
@@ -56,6 +59,7 @@ export function mountBooth(root = document) {
   }
 
   function scrub() {
+    preview?.clear();
     email.value = '';
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'contact-status', 'booth-status'].forEach((id) => notice(id, ''));
@@ -116,6 +120,7 @@ export function mountBooth(root = document) {
     }
     if (result.selectedPath && finishing) {
       show('finish');
+      preview?.load(result);
       send.disabled = result.sent || result.delivery === 'attempted';
       contact.disabled = result.contactRequested === true;
       notice('contact-status', result.contactRequested ? 'Your request is recorded. Adobe can contact you about this report.' : '');

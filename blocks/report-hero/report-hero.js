@@ -16,7 +16,7 @@ function typeText(el) {
   tick();
 }
 
-function buildInsightHero(block, rows) {
+export function buildInsightHero(block, rows) {
   const row = rows[0];
   if (!row) return;
 
@@ -108,7 +108,8 @@ function buildInsightHero(block, rows) {
           if (measuredDate) {
             const dateSuffix = document.createElement('span');
             dateSuffix.className = 'rh-insight-badge-date';
-            dateSuffix.innerHTML = `<span class="rh-insight-badge-date-label">Measured</span> ${measuredDate}`;
+            dateSuffix.innerHTML = '<span class="rh-insight-badge-date-label">Measured</span>';
+            dateSuffix.append(document.createTextNode(` ${measuredDate}`));
             anchor.append(dateSuffix);
           }
           anchor.setAttribute('aria-label', `Visit ${pretty} (opens in a new tab)`);

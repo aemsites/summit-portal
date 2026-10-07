@@ -50,17 +50,22 @@ Addresses without an authored customer CUG permission do not qualify.
 |---|---|
 | Evergreen shell | Root `booth.html`, served at exact `/booth` by Worker |
 | Entry, picker, Finish | `scripts/booth.js`, scoped `styles/booth.css` |
+| Actual selected-report preview | `scripts/booth-preview.js`, shared insight-hero/dark-stat builders |
 | Cosmetic header/partner settings | `scripts/booth-presentation.js`, shared by Entry and the report control |
 | Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
-| Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text-module rules |
+| Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text/Data-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 | Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
 
-Wrangler bundles the **single source** shell, two stylesheets and three scripts, so
+Wrangler bundles the **single source** shell, two stylesheets, four booth scripts
+and the shared hero/stat renderer modules, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
-All other assets/content continue using the existing production origin. The
-logo and Adobe Clean Typekit reference are the approved design assets.
+The fixed Entry 3 design bundles only the arrow, website/glow illustration assets
+in `img/booth/` (SVG Text modules and raster Data modules). Other assets/content
+continue using the existing production origin. Adobe Clean retains the existing
+`pbq1nqa` Typekit kit; Adobe Clean Display Black loads through Adobe's `hah7vzn`
+kit.
 No global origin switch, content imports, DA credentials or authored booth page
 are required. `ak.js` and `aem.js` are untouched; the standalone kiosk shell
 does not load the ordinary portal chrome or browser analytics. The Worker
@@ -90,19 +95,62 @@ the Business email field still identifies CUG-authorized prepared reports, not
 registrants or an on-demand generation request. The picker and help keep that
 contract explicit.
 
-The custom orbit artwork, motion toggle and artificial Entry/Finish step-index
-are removed from markup and runtime wiring. There is no production design-review
-toolbar; session review controls are not visitor features. Brand-gradient artwork
-is **deferred from this iteration's approved scope**. The hero retains its existing
-static dark surface; no invented gradient is claimed to be brand-approved.
+### October 7 fixed Entry 3 / Finish 5
 
-Finish removes the decorative marketing intro and reserved spacer. A concise
-**Your report** heading labels the panel within its actionable content, placed
-directly below the shared header. **Email my report** remains the only email
-dispatch and uses the lookup business address. Specialist guidance remains
-informational. **Please contact me** is a separate, explicit report-follow-up
-request, not a booking or scheduling claim. The prominent full-width
-secondary **Finish** control invokes the existing server reset only, without
+The approved [Final Design frames](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
+are fixed to **Entry 3 / Finish 5**. Legacy `entry`/`finish` parameters are ignored
+and no longer follow staff setup, the report, Finish or reset. Safe `heading` and
+`brand` cosmetics remain; they never change access or API payloads and never reach
+emailed links. There is no artwork rotation, local-storage preference or
+attendee-facing variant selector.
+
+For local touchscreen review, run `npm run preview:booth` and open
+`http://localhost:3000/`. The actual shell runs inside a 2160 × 3840 CSS iframe,
+with fallback/Figma-reference resolutions and fit, fill-width or 1:1 inspection.
+The surrounding review controls never alter the production shell. All APIs are
+explicit synthetic fixtures: any business email opens the example report,
+email/contact actions only simulate feedback, and no entered email is retained
+or transmitted to a live service. The warning remains visible while interacting.
+Confirm actual CSS viewport, browser zoom/DPR and legibility on event hardware.
+
+Entry uses the fixed website/glow artwork above the rounded white form, positioned
+in native Figma coordinates relative to the 259px header. Finish replaces the
+old tagline/illustration with the visitor's **actual selected report** preview,
+above **Email my report**, as Jose approved. **Talk through your report here**
+is removed; **Prefer to meet later?** remains as one full-width consent panel.
+Blue pill actions and the exported arrow follow the mockups. At 2160 × 2881,
+spacing and type follow Figma's composition; the 2160 × 3840 kiosk adds white
+space rather than stretching the artwork. Below 1000px, the preview hero stacks,
+metrics use two columns and controls remain usable while scrolling.
+
+After full-page report navigation, Finish fetches the exact `selectedPath`
+once with same-origin credentials, `cache: no-store` and rejected redirects.
+The server context is still `report`, so existing exact-path authorization
+applies; no new endpoint, lookup, discovery or generation is needed. Only the
+raw authored `.report-hero.insight` and `.report-stats.dark` content is extracted.
+Sanitized hero content and text-only metric cells feed shared builders with
+typing/metric animations and interaction disabled. Report scripts, controls,
+footers and analytics are not executed or copied; there is no full-report iframe
+or exported preview image. Ordinary report-builder defaults are unchanged.
+
+The native preview is 1950px wide, with 552.5px hero and 447.65px metric-strip
+minimum heights and 26px corners. Real content can grow without clipping.
+Unsupported heroes produce an explicit preview error with **Retry preview**;
+missing metrics are identified rather than substituted. Email/contact/reset do
+not wait for the preview. Abort/revision guards and expiry checks prevent stale
+responses from reappearing after reset or navigation. Preview HTML is never put
+in local/session storage, and privacy scrubbing clears it alongside attendee
+fields. Hero/stat imports use `?v=booth-preview-1` for cache freshness.
+`test/scripts/booth-preview.test.js` covers extraction and lifecycle;
+`booth-artwork.test.js` covers fixed Entry geometry and native preview CSS scope.
+
+The mock preview toolbar, entry/finish switcher, artificial step badges and
+placeholder **02 LOREM** progress are intentionally not production features.
+Canonical naming, Business email identification and privacy notices remain.
+**Email my report** remains the only email
+dispatch and uses the lookup business address. **Please contact me** is a separate, explicit report-follow-up
+request, not a booking or scheduling claim. The blue pill
+**Finish and clear this screen** control invokes the existing server reset only, without
 sending email. Privacy clearing, expiry, recovery and staff-only exit behavior
 are unchanged.
 
@@ -122,8 +170,9 @@ inbox receipt. Uncertain or rejected sends are not listed as sent.
 The standalone shell displays a compact notice immediately beside **View my
 report**; it discloses identified email/report-activity recording, the purpose
 and **90-day** record lifetime, and links to Adobe's Privacy Policy. It is
-acknowledgement of a notice, not a blanket marketing opt-in. Finish explains
-that **Email my report** sends only the link and records delivery activity.
+acknowledgement of a notice, not a blanket marketing opt-in. Finish keeps the
+business-address delivery hint; the separate delivery/privacy sentence below
+**Email my report** was removed at Jose's request. Delivery activity is still recorded.
 The separate **Please contact me** action explains report-related email
 follow-up, record retention and withdrawal through the Privacy Policy. The
 Worker requires the current notice version on lookup and explicit `consent:
@@ -193,7 +242,7 @@ Example: `/booth?heading=Amplify%20your%20brand%20visibility&brand=semrush`.
 For an Adobe-only review, use `/booth?heading=Amplify%20your%20brand%20visibility`
 without a partner-brand override. The marketing heading does not rename the
 Digital Opportunity Report.
-Only valid heading and non-default brand settings follow the server-selected
+Only valid heading and non-default brand/entry/finish settings follow the server-selected
 canonical report pathname, the Finish URL and reset/next-visitor URL.
 Unknown parameters are dropped; only the explicit `/booth?step=finish` target
 retains a step parameter. The staff-login redirect is always scoped to `/booth`,

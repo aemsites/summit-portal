@@ -21,7 +21,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker serves the Adobe Entry/Finish design from bundled `booth.html`, the three `scripts/booth*.js` modules and scoped `styles/booth.css` and `styles/booth-report.css`. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. The 2160 × 3840 portrait design retains 68px input text, a 174px Entry action, keyboard/reduced-motion support, real email action and non-interactive Adobe specialist guidance. The default shared header is the event-neutral **Adobe Brand Visibility**, with accessible Adobe logo attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and allowlisted `brand=adobe|semrush` are cosmetic only. For example, `/booth?heading=Amplify%20your%20brand%20visibility&brand=semrush` configures an event without hardcoded presets or browser persistence; safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Decorative orbit motion, its toggle and artificial step counters are removed. Finish starts directly below the header with a concise accessible heading, email/help and manual specialist/follow-up guidance; the full-width secondary **Finish** action only resets. Brand-gradient artwork is deferred from this iteration's approved scope; the existing plain hero background remains, with no invented gradient represented as approved. Details, superseded roster tasks and separate activation gates: `docs/implementations/booth-access/README.md`.
+- `/booth` — **reusable booth prototype**: the Worker serves fixed **Entry 3 / Finish 5** from bundled `booth.html`, four `scripts/booth*.js` modules, scoped `styles/booth.css` and `styles/booth-report.css`, shared hero/stat renderers and three Entry/action artwork assets. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. Finish re-fetches that exact selected document to show its actual hero and metrics above **Email my report**, without another lookup or report generation. Entry uses 68px input text and approximately 134px primary actions at 2160px width, with keyboard/reduced-motion support. The default shared header is the event-neutral **Adobe Brand Visibility**, with accessible Adobe logo attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and `brand=adobe|semrush` remain cosmetic only; legacy `entry`/`finish` settings are ignored and no longer propagated. Safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Mock preview controls, decorative motion, artificial step counters and the talk-through guidance section are omitted. Separate contact consent and privacy notices remain; **Finish and clear this screen** only resets. See the Figma redesign section below and `docs/implementations/booth-access/README.md` for scope and separate activation gates.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
 **Booth Finish UX decision:** **Email my report** sends only the report link. The separate **Please contact me** button records an explicit request for Adobe to follow up by email about that report; it neither sends the report nor books a meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a staff-bound, ten-minute HttpOnly context. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records attempts before APO; uncertain delivery is explicit and non-retryable. Reset clears attendee access but retains staff/device mode and the separately disclosed lead history. The signed non-PII `booth_device` marker binds to staff JWT/expiry and requires the exact live selected context before fetching/returning account documents, including reset races. Fresh report navigation and browser Back after reset return to Entry. Explicit staff exit clears booth mode and signs out. Unmarked ordinary staff and CUG redemption remain unchanged; the device marker is never an authentication credential. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; this scoped boundary is not a complete device privacy guarantee.
@@ -46,6 +46,85 @@ The lead-history privacy exclusions apply to the new **server-side action events
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
 **Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-activity-1` adapter URL, solely for cache versioning. Only the report adapter and its stylesheet receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+
+### October 7 approved Figma booth implementation
+
+The booth shell implements the designer's
+[Final Design](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
+as fixed [Entry 3](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=92-648)
+and [Finish 5](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=209-2214).
+Legacy `entry`/`finish` URL settings no longer select or propagate variants.
+Entry keeps the website/glow artwork in native Figma coordinates and the
+rounded white email surface; there is no artwork rotation. Adobe Clean Display
+Black loads through Adobe's `hah7vzn` Typekit kit while body text retains
+`pbq1nqa`; actions use Spectrum blue pills and the exported arrow.
+The 2160 × 2881 reference composition scales from 1000px; taller 2160 × 3840
+displays add white space, while mobile stacks the hero and uses two metric columns.
+
+**Actual-report preview:** `scripts/booth-preview.js` makes one same-origin,
+`no-store` GET of the exact server `selectedPath` after returning from the report.
+Full-page navigation does not retain the previous report DOM. Finish is a
+client-side view, so the valid server context remains in `report` state and the
+existing exact-path authorization permits this request. No new endpoint,
+email lookup, report discovery, generation, iframe or exported preview image
+is used. Narrow sanitized extraction supplies the existing insight-hero and
+dark-stat builders with the report's real title, illustration, metadata and values.
+The preview is read-only and static: no links, metric controls, typing or number
+animations, report scripts, portal chrome or relocated footer.
+Shared builder defaults remain unchanged on ordinary reports.
+
+The preview stays **above Email my report**, as Jose explicitly chose. Its native
+width is 1950px, with 552.5px hero / 447.65px metric-strip minimum heights and
+26px corners; real report text can increase its height rather than being clipped.
+Loading, explicit failure and Retry preview states do not disable email/contact
+actions. Missing metrics are identified rather than fabricated. Requests are
+aborted/revision-guarded and preview content cleared on reset, pagehide and expiry,
+without storing attendee report HTML in local/session storage. Hero/stat module
+imports use `?v=booth-preview-1` to avoid previously cached versions without the
+new named exports.
+
+Approved production differences: no mock preview toolbar, screen switcher,
+step badges or placeholder progress; canonical report naming, business-email
+identification, accessible Adobe attribution, 90-day privacy notices, separate
+**Please contact me** consent and confirmed server reset remain intact.
+The tagline/exported Finish illustrations and **Talk through your report here**
+section are removed. **Prefer to meet later?** remains as a single full-width
+contact panel. At Jose's request, the delivery/privacy sentence beneath
+**Email my report** is removed; the business-address hint, Entry activity notice
+and separate contact-consent notice remain. **Finish and clear this screen** is reset-only.
+The Worker bundles only the arrow, website illustration and website glow from
+`img/booth/`, plus the shared renderer modules using Text/Data rules. Deploy the
+updated Worker separately; local implementation does not imply deployment or
+real email delivery. The legacy review/export prototype is unchanged.
+
+**October 7 design review:** Rosie explicitly selected **Entry 3** in the
+[Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).
+Its hero and form are unchanged from the October 6 native Figma reference;
+pixel differences are confined to upper-right prototype controls.
+[Sara/Rosie's direction](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wKQAA&exvsurl=1&viewmodel=ReadMessageItem)
+requested removal of the tagline, prominent email action and a generic/blank
+preview. Jose subsequently approved **Finish 5**, explicitly chose the actual
+selected report instead of a generic example, kept the preview above the CTA,
+and confirmed removal of the talk-through guidance. These user decisions govern
+the implementation. Comment coverage remains limited to retrieved notifications,
+not complete native Figma comment-resolution or version history.
+
+**Local touchscreen review:** `npm run preview:booth` serves
+`http://localhost:3000/` on loopback. The review frame loads the actual booth
+shell at an exact **2160 × 3840 CSS viewport**, with optional 1080 × 1920 fallback
+and 2160 × 2881 Figma reference. Fit, fill-width and 1:1 inspection change only
+the frame's visual scale, never its CSS viewport. Entry/Finish controls switch
+between the two fixed screens. Explicit local fixtures enable example-report navigation,
+send/contact feedback and reset without real email, lead recording or staff
+authentication; entered emails are not retained. The selected synthetic report and
+Finish preview share the same authored hero/metrics. Browser flow checks cover
+one lookup followed by the report document and one preview document request,
+consent/delivery/reset failures and privacy clearing. Render checks cover
+2160 × 2881, 2160 × 3840, 1080 × 1920 and 390 × 844 without horizontal overflow;
+all Finish actions fit the portrait reference/target/fallback viewports, with
+mobile content deliberately scrollable. This does not verify physical
+legibility, browser zoom/DPR or the actual event hardware's CSS viewport.
+Without `--preview`, the fixture server still returns 503 for unmocked APIs.
 
 ## Project Structure
 
