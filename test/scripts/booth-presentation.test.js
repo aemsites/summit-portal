@@ -66,6 +66,7 @@ describe('cosmetic booth presentation', () => {
     expect(report).to.equal(`${canonicalReport}?heading=Amplify+your+brand+visibility&brand=semrush`);
     expect(new URL(report, 'https://portal.example').pathname).to.equal(canonicalReport);
     expect(withBoothPresentation('/booth?step=finish', presentation)).to.equal('/booth?step=finish&heading=Amplify+your+brand+visibility&brand=semrush');
+    expect(withBoothPresentation('/booth?step=picker&email=visitor@example.com', presentation)).to.equal('/booth?step=picker&heading=Amplify+your+brand+visibility&brand=semrush');
     expect(withBoothPresentation('/booth', presentation)).to.equal('/booth?heading=Amplify+your+brand+visibility&brand=semrush');
     expect(withBoothPresentation(`${canonicalReport}?email=visitor@example.com&step=finish`, presentation)).to.equal(report);
   });

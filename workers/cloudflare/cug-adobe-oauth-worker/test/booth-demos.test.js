@@ -4,8 +4,7 @@ import {
 import { BOOTH_DEMOS } from '../src/booth-demos.js';
 import { BoothCoordinator, handleBooth } from '../src/booth.js';
 import { createBoothActivity } from '../src/booth-activity.js';
-import { createSession } from '../src/session.js';
-import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
+import { createMockEnv, createMockBoothD1, createMockBoothStorage, createMockBoothCookie } from './helpers.js';
 
 describe('staff-bound, identity-free booth demos and report requests', () => {
   let env;
@@ -19,13 +18,13 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     }), env);
     const context = response.headers.get('Set-Cookie')?.match(/booth_context=([^;]+)/)?.[1];
-    if (context) cookie = `${cookie.split(';')[0]}; booth_context=${context}`;
+    if (context) cookie = `${cookie.replace(/;\s*booth_context=[^;]+/, '')}; booth_context=${context}`;
     return response;
   }
 
   beforeEach(async () => {
     env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1() });
-    cookie = `auth_token=${await createSession(env, { email: 'operator@adobe.com', method: 'oauth' })}`;
+    cookie = await createMockBoothCookie(env);
     storage = createMockBoothStorage();
     const actor = new BoothCoordinator({ storage, waitUntil: vi.fn() }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
@@ -115,12 +114,12 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
   it('expires demo/request state and prevents a different staff session from reusing it', async () => {
     await request('request', {});
     const original = cookie;
-    cookie = `auth_token=${await createSession(env, { email: 'another@adobe.com', method: 'oauth' })}; ${cookie.split(';')[1]}`;
+    cookie = `${await createMockBoothCookie(env, 'another@adobe.com')}; ${original.match(/booth_context=[^;]+/)[0]}`;
     expect((await request('status')).status).toBe(403);
     cookie = original;
     const record = await storage.get('context');
     await storage.put('context', { ...record, expiresAt: Date.now() - 1 });
-    expect(await (await request('status')).json()).toEqual({ state: 'entry' });
+    expect(await (await request('status')).json()).toEqual({ state: 'entry', canChooseAnother: false });
     expect(await storage.get('context')).toBeUndefined();
   });
 });

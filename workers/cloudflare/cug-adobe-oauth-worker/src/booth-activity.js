@@ -25,7 +25,7 @@ function logFailure(operation) {
 
 export function createBoothActivity(kind, flowId, email, report, occurredAt = Date.now()) {
   return {
-    event_id: `${flowId}:${kind}`,
+    event_id: `${flowId}:${kind}${report?.path ? `:${report.path}` : ''}`,
     flow_id: flowId,
     occurred_at: new Date(occurredAt).toISOString(),
     expires_at: new Date(occurredAt + BOOTH_RETENTION_MS).toISOString(),

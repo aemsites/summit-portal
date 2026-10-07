@@ -2,6 +2,7 @@ import { readBoothPresentation, withBoothPresentation } from './booth-presentati
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
+const guards = new WeakMap();
 
 function clearRequestFields(root) {
   root.querySelectorAll('form').forEach((form) => form.reset());
@@ -9,6 +10,162 @@ function clearRequestFields(root) {
     if (['checkbox', 'radio'].includes(input.type)) input.checked = false;
     else input.value = '';
   });
+}
+
+function isBoothDownload(link) {
+  const href = link.getAttribute('href') || '';
+  const path = URL.canParse(href, window.location.href) ? new URL(href, window.location.href).pathname : '';
+  return link.hasAttribute('download') || /\.pdf$/i.test(path)
+    || link.matches('.rc-download-btn, .rd-cta-btn, .rd-pdf-tag')
+    || (link.closest('.report-download') && /\/content\/|media_/.test(path));
+}
+
+export function restrictBoothLinks(root) {
+  root.querySelectorAll('a').forEach((link) => {
+    if (isBoothDownload(link)) {
+      link.hidden = true;
+      link.dataset.boothDownloadDisabled = 'true';
+      link.removeAttribute('href');
+      link.removeAttribute('download');
+    }
+    if (link.hasAttribute('target')) link.removeAttribute('target');
+  });
+  root.querySelectorAll('form[target]').forEach((form) => form.removeAttribute('target'));
+}
+
+function createReportGuard(key, expiresAt, requesting, presentation, pendingVerification = false) {
+  if (guards.has(key)) return guards.get(key);
+  const html = document.documentElement;
+  let idle;
+  let deadline;
+  let revision = 0;
+  let resetting = false;
+  let interrupted = false;
+  let pending = Promise.resolve();
+  if (!document.querySelector('style[data-booth-report-safety]')) {
+    const style = document.createElement('style');
+    style.dataset.boothReportSafety = 'true';
+    style.textContent = `
+      :is(.booth-report-pending, .booth-report-clearing) body > :not(#booth-return, #booth-recovery) { display: none !important; }
+      :is(.booth-report-active, .booth-report-pending) [data-booth-download-disabled] { display: none !important; }
+      #booth-recovery { position: fixed; inset: 0; z-index: 101; padding: 32px; background: #fff; color: #222; font: 700 clamp(22px, 2.6vw, 56px)/1.4 adobe-clean, sans-serif; }
+      #booth-recovery[hidden] { display: none !important; }
+      #booth-recovery button { min-height: 64px; padding: 24px; font: inherit; cursor: pointer; }
+    `;
+    document.head.append(style);
+  }
+  const recovery = document.getElementById('booth-recovery') || document.createElement('aside');
+  if (!recovery.id) {
+    recovery.id = 'booth-recovery';
+    recovery.setAttribute('aria-label', 'Booth recovery');
+    recovery.innerHTML = '<p role="alert">Checking this booth report...</p><button type="button" data-booth-recover>Retry and clear screen</button>';
+    document.body.append(recovery);
+  }
+  const recoveryButton = recovery.querySelector('[data-booth-recover]');
+  const hide = () => {
+    interrupted = true;
+    html.classList.add('booth-report-clearing');
+    if (requesting) clearRequestFields(document);
+    const control = document.getElementById('booth-return');
+    control?.querySelectorAll('a, button:not([data-booth-clear])').forEach((action) => { action.hidden = true; });
+  };
+  const fail = (error) => {
+    hide();
+    html.style.visibility = '';
+    recovery.hidden = false;
+    recovery.querySelector('p').textContent = error.message;
+    recoveryButton.disabled = false;
+    const control = document.getElementById('booth-return');
+    const status = control?.querySelector('p');
+    if (status) {
+      status.textContent = error.message;
+      status.hidden = false;
+    }
+  };
+  async function reset() {
+    if (resetting) return;
+    resetting = true;
+    revision += 1;
+    clearTimeout(idle);
+    clearTimeout(deadline);
+    hide();
+    recovery.hidden = false;
+    recoveryButton.disabled = true;
+    recovery.querySelector('p').textContent = 'Clearing this screen...';
+    try {
+      await pending;
+      const result = await fetch('/auth/booth/reset', {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!result.ok || (await result.json()).state !== 'entry') {
+        throw new Error('Could not clear the booth. Retry or ask the booth team.');
+      }
+      window.location.replace(withBoothPresentation('/booth', presentation));
+    } catch (error) {
+      resetting = false;
+      fail(error);
+    }
+  }
+  function activity() {
+    if (interrupted || resetting) return;
+    clearTimeout(idle);
+    idle = setTimeout(reset, 120000);
+  }
+  const guard = {
+    fail,
+    reset,
+    get revision() { return revision; },
+    get interrupted() { return interrupted; },
+    get resetting() { return resetting; },
+    track(operation) { pending = operation.then(() => undefined, () => undefined); },
+    conceal() { hide(); },
+    activate(context) {
+      if (interrupted) return false;
+      clearTimeout(deadline);
+      const remaining = Math.min(expiresAt, context.expiresAt) - Date.now();
+      if (remaining <= 0) {
+        fail(new Error('This booth report has expired. Retry and clear the screen.'));
+        return false;
+      }
+      deadline = setTimeout(reset, Math.max(0, remaining));
+      recovery.hidden = true;
+      activity();
+      return true;
+    },
+  };
+  guards.set(key, guard);
+  recoveryButton.addEventListener('click', reset);
+  ['pointerdown', 'keydown', ...(requesting ? ['input', 'change'] : [])]
+    .forEach((name) => document.addEventListener(name, activity));
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest?.('a');
+    if (!link) return;
+    if (link.dataset.boothDownloadDisabled || isBoothDownload(link)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+    if (link.hasAttribute('target')) link.removeAttribute('target');
+  }, true);
+  window.addEventListener('pagehide', () => {
+    revision += 1;
+    clearTimeout(idle);
+    hide();
+    html.style.visibility = 'hidden';
+  });
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) reset();
+  });
+  window.addEventListener('popstate', reset);
+  if (pendingVerification) {
+    deadline = setTimeout(reset, Math.max(0, expiresAt - Date.now()));
+    activity();
+  }
+  return guard;
 }
 
 /** Move the original analysis nodes into native disclosures, reversibly. */
@@ -100,28 +257,53 @@ export function formatBoothChartDates(root, portrait) {
 /** Mount only on the server-selected booth document, never a query-string opt-in. */
 export default async function mountBoothReturn() {
   if (document.querySelector('link[data-booth-report-layout]')) return;
-  const requestMarker = document.querySelector('script[data-booth-mode="request"]');
-  if (requestMarker) {
-    document.documentElement.classList.add('booth-request-pending');
-    window.addEventListener('pagehide', () => clearRequestFields(document));
+  const marker = document.querySelector('script[data-booth-mode]');
+  const presentation = readBoothPresentation(window.location.search);
+  let guard;
+  let response;
+  let context;
+  if (marker) {
+    document.documentElement.classList.add('booth-report-pending');
+    const expiresAt = Number(marker.dataset.boothExpiresAt);
+    guard = createReportGuard(
+      marker,
+      Number.isFinite(expiresAt) ? expiresAt : Date.now(),
+      marker.dataset.boothMode === 'request',
+      presentation,
+      true,
+    );
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      guard.fail(new Error('This booth report has expired. Retry and clear the screen.'));
+      return;
+    }
   }
-  const response = await fetch('/auth/booth/status', { credentials: 'same-origin', cache: 'no-store' });
-  if (!response.ok) {
-    if (requestMarker) throw new Error('This booth request could not be verified. Return to the booth and try again.');
+  try {
+    response = await fetch('/auth/booth/status', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...(marker ? { signal: AbortSignal.timeout(10000) } : {}),
+    });
+    if (!response.ok) throw new Error('This booth report could not be verified. Retry and clear the screen.');
+    context = await response.json();
+  } catch (error) {
+    if (guard) guard.fail(error);
+    else if (response?.ok !== false) throw error;
     return;
   }
-  const context = await response.json();
   const demo = context.state === 'demo' && context.demoId
     && context.selectedPath === `/example-report/${context.demoId}/`;
   const requesting = context.state === 'request' && context.selectedPath === '/request-report';
   if ((!demo && !requesting && context.state !== 'report') || context.selectedPath !== window.location.pathname
     || !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now()) {
-    if (requestMarker) throw new Error('This booth request has expired. Return to the booth to start again.');
+    guard?.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
     return;
   }
-  if (requestMarker && !requesting) throw new Error('This booth request is no longer active. Return to the booth.');
+  if (marker && marker.dataset.boothMode !== context.state) {
+    guard.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
+    return;
+  }
+  if (guard?.interrupted) return;
   if (document.querySelector('link[data-booth-report-layout]')) return;
-  const presentation = readBoothPresentation(window.location.search);
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
   stylesheet.href = '/styles/booth-report.css';
@@ -143,12 +325,11 @@ export default async function mountBoothReturn() {
     } else if (requesting) {
       control.innerHTML = '<a href="/booth?step=demos">Back to industry demos</a><button data-booth-clear type="button">Clear for next visitor</button><p role="status" hidden></p>';
     } else {
-      control.innerHTML = '<a href="/booth?step=finish">Finish reading my report ↗</a><button type="button">Clear for next visitor</button><p role="status" hidden></p>';
+      control.innerHTML = '<a href="/booth?step=finish">Finish reading my report ↗</a><button data-booth-picker type="button" hidden>Choose another report</button><button data-booth-clear type="button">Clear for next visitor</button><small class="booth-download-note">PDFs are available in your emailed report.</small><p role="status" hidden></p>';
     }
     const style = document.createElement('style');
     style.textContent = `
     .booth-report-active body { padding-bottom: calc(var(--booth-original-padding) + var(--booth-return-height)); }
-    .booth-report-clearing body > :not(#booth-return) { display: none !important; }
     #booth-return { position: fixed; inset: auto 0 0; z-index: 100; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; padding: 24px; background: #1d1d1d; color: #fff; font: 700 clamp(20px, 2.6vw, 56px)/1.3 adobe-clean, sans-serif; }
     #booth-return a { display: block; padding: 24px 32px; border-radius: 12px; background: #eb1000; color: #fff; text-decoration: none; }
     #booth-return button { min-height: 64px; border: 0; background: transparent; color: #fff; font: inherit; text-decoration: underline; cursor: pointer; }
@@ -157,6 +338,7 @@ export default async function mountBoothReturn() {
     #booth-return .booth-demo-notice { width: 100%; display: grid; gap: 8px; }
     #booth-return .booth-demo-notice span { font-size: .65em; font-weight: 400; }
     #booth-return .booth-request-action { padding: 24px 32px; border-radius: 12px; background: #3b63fb; text-decoration: none; }
+    #booth-return .booth-download-note { width: 100%; font-size: .65em; font-weight: 400; }
   `;
     document.head.append(style);
     html.style.setProperty('--booth-original-padding', getComputedStyle(document.body).paddingBottom);
@@ -169,14 +351,22 @@ export default async function mountBoothReturn() {
     control.append(status);
   }
   control.querySelector('a').href = withBoothPresentation(demo || requesting ? '/booth?step=demos' : '/booth?step=finish', presentation);
+  restrictBoothLinks(document);
+  if (!existingControl) {
+    guard ||= createReportGuard(control, context.expiresAt, requesting, presentation);
+    if (!guard.activate(context)) return;
+  } else if (guard && !guard.activate(context)) return;
+  const concealedContent = document.getElementById('booth-report-content');
+  if (concealedContent) concealedContent.replaceWith(...concealedContent.childNodes);
   html.classList.add('booth-report-active');
   if (requesting) html.classList.add('booth-request-active');
-  html.classList.remove('booth-request-pending');
+  html.classList.remove('booth-request-pending', 'booth-report-pending');
   const portrait = window.matchMedia(portraitQuery);
   const composition = window.matchMedia(compositionQuery);
   const root = document.querySelector('main') || document.body;
   const layout = createBoothPerformanceLayout(root);
   const reconcile = () => {
+    restrictBoothLinks(document);
     formatBoothChartDates(root, portrait.matches);
     const active = composition.matches && html.classList.contains('booth-report-active')
       && !html.classList.contains('booth-report-clearing');
@@ -184,7 +374,7 @@ export default async function mountBoothReturn() {
     layout(active);
   };
   const charts = new MutationObserver(reconcile);
-  charts.observe(root, { childList: true, subtree: true });
+  charts.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'target', 'download'] });
   charts.observe(html, { attributes: true, attributeFilter: ['class'] });
   portrait.addEventListener('change', reconcile);
   composition.addEventListener('change', reconcile);
@@ -220,52 +410,42 @@ export default async function mountBoothReturn() {
     });
   }
   if (existingControl) return;
-  let idle;
-  let revision = 0;
-  let resetting = false;
-  let pending = Promise.resolve();
-  const clearFields = () => {
-    if (!requesting) return;
-    clearRequestFields(root);
-  };
-  async function reset() {
-    if (resetting) return;
-    resetting = true;
-    clearTimeout(idle);
-    revision += 1;
-    clearFields();
-    html.classList.add('booth-report-clearing');
-    document.documentElement.style.visibility = 'hidden';
-    try {
-      await pending;
-      const result = await fetch('/auth/booth/reset', {
+  (control.querySelector('[data-booth-clear]') || control.querySelector('button')).addEventListener('click', guard.reset);
+  const picker = control.querySelector('[data-booth-picker]');
+  if (picker) {
+    picker.hidden = context.canChooseAnother !== true;
+    picker.addEventListener('click', async () => {
+      if (guard.interrupted || guard.resetting) return;
+      const current = guard.revision;
+      guard.conceal();
+      const transition = fetch('/auth/booth/picker', {
         method: 'POST',
         credentials: 'same-origin',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
+        signal: AbortSignal.timeout(10000),
       });
-      if (!result.ok) throw new Error('Could not clear the booth. Ask the booth team.');
-      window.location.replace(withBoothPresentation('/booth', presentation));
-    } catch (error) {
-      resetting = false;
-      document.documentElement.style.visibility = '';
-      control.querySelector('a').hidden = true;
-      const status = control.querySelector('p');
-      status.textContent = error.message;
-      status.hidden = false;
-    }
+      guard.track(transition);
+      try {
+        const result = await transition;
+        if (!result.ok || (await result.json()).state !== 'picker') {
+          throw new Error('Your reports could not be checked. Retry and clear this screen.');
+        }
+        if (current === guard.revision) {
+          window.location.replace(withBoothPresentation('/booth?step=picker', presentation));
+        }
+      } catch (error) {
+        if (current === guard.revision) guard.fail(error);
+      }
+    });
   }
-  function activity() {
-    clearTimeout(idle);
-    idle = setTimeout(reset, 120000);
-  }
-  (control.querySelector('[data-booth-clear]') || control.querySelector('button')).addEventListener('click', reset);
   if (demo) {
     const requestButton = control.querySelector('.booth-request-action');
     requestButton.addEventListener('click', async () => {
       if (requestButton.disabled || html.classList.contains('booth-report-clearing')) return;
       requestButton.disabled = true;
-      const current = revision;
+      const current = guard.revision;
       const status = control.querySelector('p');
       status.textContent = 'Opening a fresh report request...';
       status.hidden = false;
@@ -275,8 +455,9 @@ export default async function mountBoothReturn() {
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
+        signal: AbortSignal.timeout(10000),
       });
-      pending = transition.then(() => undefined, () => undefined);
+      guard.track(transition);
       try {
         const result = await transition;
         if (!result.ok) throw new Error('The request form could not be opened. Retry or ask the booth team.');
@@ -284,11 +465,11 @@ export default async function mountBoothReturn() {
         if (next.state !== 'request' || next.selectedPath !== '/request-report') {
           throw new Error('The request form could not be opened.');
         }
-        if (current === revision) {
+        if (current === guard.revision) {
           window.location.assign(withBoothPresentation(next.selectedPath, presentation));
         }
       } catch (error) {
-        if (current === revision) {
+        if (current === guard.revision) {
           status.textContent = error.message;
           requestButton.disabled = false;
         }
@@ -300,36 +481,13 @@ export default async function mountBoothReturn() {
       control.querySelector('[data-booth-clear]').textContent = 'Finish and clear this screen';
     });
   }
-  ['pointerdown', 'keydown', ...(requesting ? ['input', 'change'] : [])]
-    .forEach((name) => document.addEventListener(name, activity));
-  window.addEventListener('pagehide', () => {
-    revision += 1;
-    clearFields();
-    clearTimeout(idle);
-    document.documentElement.style.visibility = 'hidden';
-  });
-  window.addEventListener('pageshow', (event) => {
-    if (event.persisted) reset();
-  });
-  setTimeout(reset, Math.max(0, context.expiresAt - Date.now()));
-  activity();
 }
 
 if (window.location.pathname.startsWith('/accounts/')
   || document.querySelector('script[data-booth-mode]')) {
   mountBoothReturn().catch((error) => {
-    if (document.querySelector('script[data-booth-mode="request"]')) {
-      clearRequestFields(document);
-      document.documentElement.classList.remove('booth-request-pending');
-      const root = document.querySelector('main');
-      const notice = document.createElement('p');
-      notice.setAttribute('role', 'alert');
-      notice.textContent = error.message;
-      const back = document.createElement('a');
-      back.href = withBoothPresentation('/booth', readBoothPresentation(window.location.search));
-      back.textContent = 'Return to the booth';
-      root.replaceChildren(notice, back);
-    }
+    const marker = document.querySelector('script[data-booth-mode]');
+    if (marker) guards.get(marker)?.fail(error);
     // eslint-disable-next-line no-console
     console.warn('Booth report controls unavailable.');
   });

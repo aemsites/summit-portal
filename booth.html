@@ -49,7 +49,7 @@
               <p class="form-help" id="email-help">Your business email identifies the reports you can view. This is not a sign-in.</p>
               <p class="notice" id="email-error" role="alert" hidden></p>
               <button class="primary" type="submit" aria-describedby="search-privacy">View my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
-              <p class="privacy-note" id="search-privacy">Adobe records your email and report activity for 90 days to measure booth interest. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
+              <p class="privacy-note" id="search-privacy">Adobe records your email and report activity for 90 days to measure booth interest. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" rel="noopener noreferrer">Privacy Policy</a>.</p>
             </form>
             <div class="entry-alternatives">
               <button class="secondary booth-alternative" data-show-demos type="button">Staff: show an industry demo</button>
@@ -96,6 +96,7 @@
             <div class="finish-step">STEP 03 OF 03</div>
             <button class="primary" id="send-report" type="button">Email my report <img class="send-icon" src="/img/booth/finish-open-in.svg" alt="" width="60" height="60"></button>
             <p class="send-hint">We'll email the link to the business address you used to find your report.</p>
+            <button class="secondary booth-alternative" id="choose-another-report" type="button" hidden>Choose another report</button>
           </div>
           <p class="notice" id="finish-status" role="status" aria-live="polite" hidden></p>
           <div class="finish-guidance" aria-label="Follow-up guidance">
@@ -111,7 +112,7 @@
 
     <footer class="stage-footer">
       <span>Available company reports only. Ask our booth team for help.</span>
-      <button id="staff-exit" class="link-button" type="button">Staff: sign out and leave booth mode</button>
+      <button id="staff-exit" class="link-button" type="button">Staff: sign out this device</button>
     </footer>
   </main>
 

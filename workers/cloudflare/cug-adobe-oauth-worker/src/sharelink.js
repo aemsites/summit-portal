@@ -1,4 +1,4 @@
-import { getSession, createShareLinkToken, staffDomains, validateImsStaffToken } from './session.js';
+import { getSession, createShareLinkToken, staffDomains, validateImsStaffToken, hasBoothBoundary } from './session.js';
 import {
   safeRedirectPath, appendTokenParam, fetchCugMapping, fetchLiveCugGroups, EMAIL_RE, jsonResponse,
   templateForOrg,
@@ -32,6 +32,28 @@ function scopeCoversPath(scope, targetPath) {
   return targetPath === base || targetPath.startsWith(`${base}/`);
 }
 
+async function dispatchReportEmail(email, shareLinkUrl, org, env) {
+  const recipientDomain = email.split('@')[1];
+  // The dedicated sharelink template is not yet provisioned; preserve the
+  // existing magiclink template and 30-day share grant.
+  const templateName = templateForOrg('magiclink', org);
+  log(`sending share link to domain=${recipientDomain} template=${templateName} (interim: magiclink template)`);
+  try {
+    await sendShareLinkConfirm(email, shareLinkUrl, env, templateName);
+    log('share link email dispatched successfully');
+  } catch (err) {
+    logError(`sendShareLinkConfirm failed: ${err.message}`);
+    return jsonResponse({ error: 'Failed to send share link email' }, 502);
+  }
+  try {
+    await sendMagicLinkInternalNotify(email, recipientDomain, org || 'Adobe', env);
+    log('internal notification dispatched');
+  } catch (err) {
+    logError(`sendMagicLinkInternalNotify failed: ${err.message}`);
+  }
+  return jsonResponse({ result: 'sent', link: shareLinkUrl });
+}
+
 /**
  * Handle a staff "share this page" request.
  *
@@ -58,6 +80,7 @@ function scopeCoversPath(scope, targetPath) {
  *     page already permits, and never a staff domain or staff email.
  */
 export async function handleShareLinkRequest(request, env) {
+  if (hasBoothBoundary(request)) return jsonResponse({ error: 'Booth browsers cannot share arbitrary reports' }, 403);
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
@@ -222,35 +245,17 @@ export async function handleShareLinkRequest(request, env) {
   // recipient. Prefer an entry that names an org; fall back to the first.
   const matchedEntry = pageEntries.find((e) => (e.org || '').trim()) || pageEntries[0];
   const org = (matchedEntry.org || '').trim();
-  // INTERIM: the dedicated `expdev_actnow_sharelink` APO template isn't
-  // provisioned in Postoffice yet (sends 404 → 502). Reuse the live
-  // `expdev_actnow_magiclink` template, which takes the same `magic_link` data
-  // key. Switch back to templateForOrg('sharelink', org) once the email team
-  // creates the sharelink template. See PR notes.
-  const templateName = templateForOrg('magiclink', org);
-  log(`sending share link to domain=${recipientDomain} template=${templateName} (interim: magiclink template)`);
+  return dispatchReportEmail(email, shareLinkUrl, org, env);
+}
 
-  try {
-    await sendShareLinkConfirm(email, shareLinkUrl, env, templateName);
-    log('share link email dispatched successfully');
-  } catch (err) {
-    logError(`sendShareLinkConfirm failed: ${err.message}`);
-    return jsonResponse({ error: 'Failed to send share link email' }, 502);
+/** Server-only dispatch. The coordinator supplies freshly authorized, context-bound values. */
+export async function sendAuthorizedBoothReport(email, path, origin, grantGroups, org, env) {
+  if (!EMAIL_RE.test(email) || !safeRedirectPath(path) || !grantGroups?.length
+    || staffDomains(env).has(email.split('@')[1])
+    || !grantGroups.every((group) => matchesCugGroup(group, email))) {
+    return jsonResponse({ error: 'Report recipient is not authorized' }, 403);
   }
-
-  // Internal notify is best-effort — never fail the request on it.
-  const notifyOrg = org || 'Adobe';
-  try {
-    await sendMagicLinkInternalNotify(email, recipientDomain, notifyOrg, env);
-    log('internal notification dispatched');
-  } catch (err) {
-    logError(`sendMagicLinkInternalNotify failed: ${err.message}`);
-  }
-
-  // Return the link itself so the (already-authenticated staff) caller can copy
-  // it and deliver it by another channel — useful when the recipient's mail
-  // gateway quarantines the APO email. This is not a secret leak: the caller
-  // passed both the recipient email and the page, the endpoint is staff-gated
-  // (Gates 1+2 above), and the same token was just emailed to that recipient.
-  return jsonResponse({ result: 'sent', link: shareLinkUrl });
+  const token = await createShareLinkToken(email, env, grantGroups);
+  const link = `${origin}${appendTokenParam(path, token)}`;
+  return dispatchReportEmail(email, link, org, env);
 }

@@ -153,13 +153,13 @@ export async function createSession(env, userInfo, ttl = SESSION_TTL) {
 }
 
 /** Verify the JWT from the cookie. Returns the payload or null. */
-export async function getSession(request, env) {
+async function readSession(request, env) {
   const cookie = request.headers.get('Cookie') || '';
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^\\s;]+)`));
   if (!match) return null;
 
   const payload = await verifyJwt(match[1], env.JWT_SECRET);
-  if (!payload || payload.purpose === 'booth-device') return null;
+  if (!payload || payload.purpose) return null;
 
   // Kill switch: a generic-credential token is only valid while its baked-in
   // epoch matches the current env value. Bumping EVENT_CRED_EPOCH revokes all
@@ -170,6 +170,30 @@ export async function getSession(request, env) {
   }
 
   return payload;
+}
+
+/** Presence, not validity, marks a restricted browser. These are never access grants. */
+export function hasBoothBoundary(request) {
+  return /(?:^|;\s*)booth_(?:kiosk|session|device|context)=/.test(request.headers.get('Cookie') || '');
+}
+
+export async function getSession(request, env) {
+  return hasBoothBoundary(request) ? null : readSession(request, env);
+}
+
+/** Only /booth may migrate an old device+staff credential into the scoped credential. */
+export async function getBoothBootstrapStaff(request, env) {
+  const cookie = request.headers.get('Cookie') || '';
+  if (/(?:^|;\s*)booth_(?:kiosk|session)=/.test(cookie)) return null;
+  const session = await readSession(request, env);
+  return session && isVerifiedMethod(session.method) && isStaffEmail(session.email, env)
+    ? session : null;
+}
+
+export function boothKioskCookie() {
+  // This deliberately outlives staff credentials and survives reset/signout.
+  // Lax preserves the restriction on top-level IMS callback navigations.
+  return 'booth_kiosk=1; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000';
 }
 
 export function sessionCookie(token, maxAge = SESSION_TTL) {
@@ -254,4 +278,60 @@ export async function verifyBoothDeviceToken(token, env) {
     || !Number.isFinite(payload.exp)
     || payload.exp <= Math.floor(Date.now() / 1000)) return null;
   return payload;
+}
+
+export async function boothSessionCookies(session, env) {
+  const binding = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const epoch = String(env.EVENT_CRED_EPOCH ?? '');
+  const { exp } = session;
+  const token = await signJwt({
+    purpose: 'booth-session',
+    email: session.email,
+    binding,
+    exp,
+    epoch,
+  }, env.JWT_SECRET);
+  const maxAge = Math.max(0, exp - Math.floor(Date.now() / 1000));
+  return [
+    `booth_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`,
+    `booth_device=${await createBoothDeviceToken(binding, exp, env)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`,
+    boothKioskCookie(),
+    clearSessionCookie(),
+    clearSignedInMarkerCookie(),
+    'booth_context=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+  ];
+}
+
+export async function getBoothSession(request, env) {
+  const cookie = request.headers.get('Cookie') || '';
+  const token = cookie.match(/(?:^|;\s*)booth_session=([^;\s]+)/)?.[1];
+  const device = cookie.match(/(?:^|;\s*)booth_device=([^;\s]+)/)?.[1];
+  if (!token || !device) return null;
+  const session = await verifyJwt(token, env.JWT_SECRET);
+  const marker = await verifyBoothDeviceToken(device, env);
+  if (session?.purpose !== 'booth-session' || !isStaffEmail(session.email, env)
+    || !Number.isFinite(session.exp) || session.exp <= Math.floor(Date.now() / 1000)
+    || session.epoch !== String(env.EVENT_CRED_EPOCH ?? '')
+    || !marker || marker.exp !== session.exp || marker.binding !== session.binding) return null;
+  return session;
+}
+
+/** A short-lived, server-only capability can revoke a visit, never read or create one. */
+export async function createBoothRevocationToken(id, email, env) {
+  if (!isStaffEmail(email, env)) throw new Error('Staff authentication required');
+  return signJwt({
+    purpose: 'booth-revoke',
+    context: id,
+    email,
+    epoch: String(env.EVENT_CRED_EPOCH ?? ''),
+    exp: Math.floor(Date.now() / 1000) + 30,
+  }, env.JWT_SECRET);
+}
+
+export async function verifyBoothRevocationToken(token, id, env) {
+  if (typeof token !== 'string') return false;
+  const payload = await verifyJwt(token, env.JWT_SECRET);
+  return !!payload && payload.purpose === 'booth-revoke' && payload.context === id
+    && isStaffEmail(payload.email, env) && payload.epoch === String(env.EVENT_CRED_EPOCH ?? '')
+    && Number.isFinite(payload.exp) && payload.exp > Math.floor(Date.now() / 1000);
 }

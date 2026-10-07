@@ -7,7 +7,7 @@ import { handleMagicLinkRequest } from '../src/magiclink.js';
 import { handlePortalRedirect } from '../src/portal.js';
 import { createSession, getSession, verifyShareLink } from '../src/session.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
-import { createMockEnv, createMockBoothStorage, createMockBoothD1 } from './helpers.js';
+import { createMockEnv, createMockBoothStorage, createMockBoothD1, createMockBoothCookie } from './helpers.js';
 import { sendShareLinkConfirm, sendMagicLinkConfirm } from '../src/notification.js';
 
 vi.mock('../src/notification.js', () => ({
@@ -114,7 +114,8 @@ describe('exact-email CUG integration', () => {
       waitUntil: vi.fn(),
     }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
-    let cookie = staffCookie;
+    const scopedCookie = await createMockBoothCookie(env);
+    let cookie = scopedCookie;
     const booth = async (action, body) => {
       const response = await handleBooth(new Request(`https://portal.example/auth/booth/${action}`, {
         method: 'POST',
@@ -122,7 +123,7 @@ describe('exact-email CUG integration', () => {
         body: JSON.stringify(action === 'lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body),
       }), env);
       const context = response.headers.get('Set-Cookie')?.match(/booth_context=[^;]+/)[0];
-      if (context) cookie = `${staffCookie}; ${context}`;
+      if (context) cookie = `${scopedCookie}; ${context}`;
       return response;
     };
     const lookup = await booth('lookup', { email });

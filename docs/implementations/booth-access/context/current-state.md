@@ -1,5 +1,10 @@
 # Current state
 
+Historical pre-booth discovery snapshot; its source line references, seven-day
+share TTL and unrestricted event-browser flow are not the current contract.
+See [target design](target-design.md) and the [implementation README](../README.md)
+for scoped booth authentication and current rollout boundaries.
+
 ## What already works
 
 The portal is an EDS site that runs `scripts/ak.js`; its pages are primarily authored in DA and are **not** stored under a local `content/` directory in this checkout. `scripts/scripts.js:1-4,32-33` loads page areas. The site's Worker at `workers/cloudflare/cug-adobe-oauth-worker/src/index.js:95-161,295-297` owns authentication routes and proxies other requests to the origin before applying CUG access checks.

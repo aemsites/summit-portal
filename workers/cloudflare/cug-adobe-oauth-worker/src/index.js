@@ -17,6 +17,7 @@ import { redirectToLogin, handleCallback } from './oauth.js';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
   signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail, isVerifiedMethod,
+  hasBoothBoundary, boothSessionCookies, boothKioskCookie, isStaffEmail,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { normalizeCugGroup } from './cug-group.js';
@@ -26,8 +27,8 @@ import { handleShareLinkRequest } from './sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
-import { handleBooth, resumeStaffPortal } from './booth.js';
-import { serveBooth, injectBoothReturn, protectBoothDocument } from './booth-shell.js';
+import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
+import { serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset } from './booth-shell.js';
 
 export { BoothCoordinator } from './booth.js';
 
@@ -69,6 +70,12 @@ async function proxyToOrigin(request, env, url) {
 
   url.hostname = env.ORIGIN_HOSTNAME;
   const req = new Request(url, request);
+  if (hasBoothBoundary(request)) {
+    ['if-none-match', 'if-modified-since', 'range', 'if-range'].forEach((header) => req.headers.delete(header));
+    req.headers.delete('Cookie');
+    req.headers.delete('Authorization');
+    req.headers.set('Cache-Control', 'no-cache');
+  }
   req.headers.set('x-forwarded-host', req.headers.get('host'));
   req.headers.set('x-byo-cdn-type', 'cloudflare');
   if (env.PUSH_INVALIDATION !== 'disabled') {
@@ -80,7 +87,9 @@ async function proxyToOrigin(request, env, url) {
 
   let resp = await fetch(req, {
     method: req.method,
-    cf: { cacheEverything: true },
+    redirect: hasBoothBoundary(request) ? 'manual' : 'follow',
+    cf: hasBoothBoundary(request)
+      ? { cacheTtl: 0, cacheEverything: false } : { cacheEverything: true },
   });
   resp = new Response(resp.body, resp);
 
@@ -101,6 +110,8 @@ async function proxyToOrigin(request, env, url) {
 
 const handleRequest = async (request, env) => {
   const url = new URL(request.url);
+  const boothRestriction = await protectBoothDocument(request, env);
+  if (boothRestriction) return boothRestriction;
   if (url.pathname.startsWith('/auth/booth/')) return handleBooth(request, env);
   const boothResponse = await serveBooth(request, env);
   if (boothResponse) return boothResponse;
@@ -131,9 +142,6 @@ const handleRequest = async (request, env) => {
     redirectTo.pathname = `${url.pathname}/`;
     return Response.redirect(redirectTo.href, 308);
   }
-
-  const boothDocument = await protectBoothDocument(request, env);
-  if (boothDocument) return boothDocument;
 
   if (isRUMRequest(url)) {
     if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
@@ -193,6 +201,17 @@ const handleRequest = async (request, env) => {
     }
 
     const ttl = sessionTtlForEmail(result.userInfo.email, env);
+    if (hasBoothBoundary(request)) {
+      if (!isStaffEmail(result.userInfo.email, env)) return new Response('Booth staff authentication required', { status: 403 });
+      const resetFailure = await resetBeforeBoothLogin(request, env, result.userInfo.email);
+      if (resetFailure) return resetFailure;
+      const headers = new Headers({ Location: '/booth', 'Cache-Control': 'private, no-store' });
+      (await boothSessionCookies({
+        email: result.userInfo.email,
+        exp: Math.floor(Date.now() / 1000) + ttl,
+      }, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
+      return new Response(null, { status: 302, headers });
+    }
     const token = await createSession(env, { ...result.userInfo, method: 'oauth' }, ttl);
     const headers = new Headers({ Location: result.originalUrl });
     headers.append('Set-Cookie', sessionCookie(token, ttl));
@@ -202,6 +221,21 @@ const handleRequest = async (request, env) => {
 
   // Logout: clear session cookie and redirect to IMS logout
   if (url.pathname === '/auth/logout') {
+    if (hasBoothBoundary(request)) {
+      if (await boothStaff(request, env)) {
+        const reset = await handleBooth(new Request(new URL('/auth/booth/reset', request.url), {
+          method: 'POST',
+          headers: { Cookie: request.headers.get('Cookie') || '', Origin: url.origin, 'Content-Type': 'application/json' },
+          body: '{}',
+        }), env);
+        if (!reset.ok) return reset;
+      }
+      const headers = new Headers({ Location: '/booth', 'Cache-Control': 'private, no-store' });
+      [clearSessionCookie(), clearSignedInMarkerCookie(), boothKioskCookie(),
+        'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+      ].forEach((cookie) => headers.append('Set-Cookie', cookie));
+      return new Response(null, { status: 302, headers });
+    }
     const imsLogoutUrl = `${env.OAUTH_LOGOUT_URL}?client_id=${env.OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(url.origin + '/')}`;
     const headers = new Headers({ Location: imsLogoutUrl });
     headers.append('Set-Cookie', clearSessionCookie());
@@ -211,6 +245,11 @@ const handleRequest = async (request, env) => {
 
   // Portal redirect: authenticate then redirect based on group mapping
   if (url.pathname === '/auth/portal') {
+    if (hasBoothBoundary(request)) {
+      return await boothStaff(request, env)
+        ? new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } })
+        : redirectToLogin(new URL('/booth', request.url).href, env);
+    }
     const session = await getSession(request, env);
     if (!session) {
       // Preserve the deep link the user was sent to (e.g. a specific insights
@@ -266,7 +305,7 @@ const handleRequest = async (request, env) => {
   }
 
   // RUM and media requests bypass authentication
-  if (isRUMRequest(url) || isMediaRequest(url)) {
+  if (!hasBoothBoundary(request) && (isRUMRequest(url) || isMediaRequest(url))) {
     return proxyToOrigin(request, env, url);
   }
 
@@ -330,20 +369,47 @@ const handleRequest = async (request, env) => {
   }
 
   // All other requests: fetch from origin, then enforce CUG access control
-  const session = await getSession(request, env);
+  let session = await getSession(request, env);
+  if (hasBoothBoundary(request) && !isBoothSharedAsset(url.pathname) && url.pathname !== '/login') {
+    const context = await authorizeBoothContext(request, env);
+    if (!context) return new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } });
+    session = context.state === 'report' ? { email: context.email, groups: context.grantGroups } : null;
+  }
   const originResponse = await proxyToOrigin(request, env, url);
+  if (hasBoothBoundary(request) && originResponse.status >= 300
+    && originResponse.status < 400 && originResponse.status !== 304) {
+    return new Response('This destination is not available on the booth. Return to /booth?recover=1.', {
+      status: 403,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
 
-  const response = await checkCugAccess(originResponse, session, request, env);
+  let response = await checkCugAccess(originResponse, session, request, env);
   // A permitted account document may have been removed after the QR was printed.
   if (session && request.method === 'GET' && response.status === 404
     && originResponse.headers.get('x-aem-cug-required') === 'true'
     && url.pathname.startsWith('/accounts/') && getExtension(url.pathname) === '') {
     return Response.redirect(new URL('/request-report?reason=unavailable', request.url).href, 302);
   }
-  const staffPortal = await resumeStaffPortal(request, response, env);
-  if (staffPortal) return staffPortal;
   const currentBoothDocument = await protectBoothDocument(request, env);
   if (currentBoothDocument) return currentBoothDocument;
+  if (hasBoothBoundary(request)) {
+    response = new Response(response.body, response);
+    const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() || '';
+    const ext = getExtension(url.pathname);
+    const document = ext === '' || ext === 'html';
+    const representationAllowed = document ? type === 'text/html'
+      : ((['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg', 'ico'].includes(ext) && type.startsWith('image/'))
+        || (ext === 'css' && type === 'text/css')
+        || (ext === 'js' && /^(?:text|application)\/(?:x-)?javascript$/.test(type))
+        || (['woff', 'woff2', 'ttf', 'otf'].includes(ext) && /^(?:font\/|application\/(?:font|x-font|octet-stream))/.test(type)));
+    if (response.status === 304 || (response.ok && !representationAllowed)
+      || response.headers.has('Content-Disposition')) {
+      return new Response('Downloads are not available on this booth', { status: 403, headers: { 'Cache-Control': 'private, no-store' } });
+    }
+    if (!response.ok) response = new Response(null, response);
+    response.headers.set('Cache-Control', 'private, no-store');
+  }
   return injectBoothReturn(response, request, env);
 };
 

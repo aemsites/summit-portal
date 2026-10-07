@@ -3,18 +3,22 @@ import {
 } from 'vitest';
 import worker from '../src/index.js';
 import { BoothCoordinator } from '../src/booth.js';
-import { createSession, createBoothDeviceToken, getSession } from '../src/session.js';
+import { createSession, createShareLinkToken, getSession, getBoothSession } from '../src/session.js';
+import { handleCallback } from '../src/oauth.js';
 import { sha256hex } from '../src/stafflogin.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
 import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
 
+vi.mock('../src/oauth.js', async (original) => ({ ...await original(), handleCallback: vi.fn() }));
+
 const selected = '/accounts/e/example/insights/example-com/portal-landing/';
 const other = '/accounts/o/other/insights/other-com/portal-landing/';
 
-describe('booth fresh-document history boundary', () => {
+describe('persistent booth authorization boundary', () => {
   let env;
   let cookies;
   let actor;
+  let data;
 
   async function request(path, body, method, headers = {}) {
     const payload = path === '/auth/booth/lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body;
@@ -37,34 +41,48 @@ describe('booth fresh-document history boundary', () => {
     return response;
   }
 
+  async function start() {
+    await request('/booth');
+    expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' })).status).toBe(200);
+  }
+
   beforeEach(async () => {
     vi.restoreAllMocks();
     resetCugSheetCache();
-    env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1() });
+    env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1(), EVENT_CRED_EPOCH: '1' });
     cookies = new Map([['auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' })]]);
-    actor = new BoothCoordinator({
-      storage: createMockBoothStorage(),
-      waitUntil: vi.fn(),
-    }, env);
+    actor = new BoothCoordinator({ storage: createMockBoothStorage(), waitUntil: vi.fn() }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
+    data = {
+      '/data/insights-list.json': [{ Folder: selected }],
+      '/closed-user-groups-mapping.json': [{ url: '/accounts/e/example**', group: 'example.com' }],
+      '/closed-user-groups.json': [{ url: '/accounts**', 'cug-groups': 'adobe.com,example.com' }],
+    };
     class Rewriter {
-      on() { return this; }
+      on(_selector, handler) {
+        handler.element({
+          prepend: () => {},
+          append: () => {},
+          setAttribute: () => {},
+          getAttribute: () => '',
+        });
+        return this;
+      }
 
       transform(response) { return response; }
     }
     vi.stubGlobal('HTMLRewriter', Rewriter);
+    handleCallback.mockResolvedValue({ userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] }, originalUrl: '/adobe/dashboard' });
     vi.stubGlobal('fetch', vi.fn(async (input) => {
       const { pathname } = new URL(input instanceof Request ? input.url : input);
-      if (pathname === '/data/insights-list.json') {
-        return new Response(JSON.stringify({ data: [{ Folder: selected }] }));
-      }
-      if (pathname === '/closed-user-groups-mapping.json') {
-        return new Response(JSON.stringify({ data: [{ url: '/accounts/e/example**', group: 'example.com' }] }));
-      }
-      if (pathname === '/closed-user-groups.json') {
-        return new Response(JSON.stringify({ data: [{ url: '/accounts**', 'cug-groups': 'adobe.com,example.com' }] }));
-      }
-      return new Response('<html><body>Prepared report</body></html>', { headers: { 'Content-Type': 'text/html', 'x-aem-cug-required': 'true', 'x-aem-cug-groups': 'adobe.com' } });
+      if (data[pathname]) return new Response(JSON.stringify({ data: data[pathname] }));
+      return new Response('<html><head></head><body>Prepared report</body></html>', {
+        headers: {
+          'Content-Type': 'text/html',
+          'x-aem-cug-required': 'true',
+          'x-aem-cug-groups': 'adobe.com',
+        },
+      });
     }));
   });
 
@@ -73,275 +91,332 @@ describe('booth fresh-document history boundary', () => {
     vi.unstubAllGlobals();
   });
 
-  it('opens a company report from the staff dashboard after the browser has used the booth', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const token = cookies.get('auth_token');
-    const dashboard = await request('/adobe/dashboard?tab=febraban-tech');
-    expect(dashboard.status).toBe(200);
-    expect(dashboard.headers.get('Cache-Control')).toBe('private, no-store');
-    expect(cookies.get('auth_token')).toBe(token);
-    expect(cookies.has('booth_device')).toBe(false);
-    expect(cookies.has('booth_context')).toBe(false);
-    expect(await actor.state.storage.get('context')).toBeUndefined();
-    expect([...env.SESSIONS.store.keys()].filter((key) => key.startsWith('booth:'))).toEqual([]);
-    const report = await request(other);
-    expect(report.headers.get('Location')).not.toBe('/booth');
-    expect(report.status).toBe(200);
-    expect(report.headers.get('Location')).toBeNull();
-    expect(await report.text()).toContain('Prepared report');
-    await request('/booth');
-    expect((await request(other)).headers.get('Location')).toBe('/booth');
-  });
-
-  it.each(['/adobe/dashboard/', '/adobe/dashboard.html'])('also restores staff browsing from %s', async (path) => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    expect((await request(path)).status).toBe(200);
-    expect((await request(other)).status).toBe(200);
-  });
-
-  it.each(['entry', 'reset', 'expired'])('leaves %s booth state when staff return to the dashboard', async (state) => {
-    await request('/booth');
-    if (state !== 'entry') await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    if (state === 'reset') await request('/auth/booth/reset', {});
-    if (state === 'expired') {
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(Date.now() + 601000);
-    }
-    expect((await request('/adobe/dashboard')).status).toBe(200);
-    expect(cookies.has('booth_device')).toBe(false);
-    expect((await request(other)).status).toBe(200);
-  });
-
-  it('does not require the coordinator for ordinary staff dashboard browsing without an attendee cookie', async () => {
-    env.BOOTH_COORDINATOR = null;
-    expect((await request('/adobe/dashboard')).status).toBe(200);
-  });
-
-  it('does not end kiosk mode on HEAD, background requests, prefetch or other staff pages', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    await request('/adobe/dashboard', undefined, 'HEAD');
-    await request('/adobe/dashboard', undefined, 'GET', { 'Sec-Fetch-Dest': 'empty' });
-    await request('/adobe/dashboard', undefined, 'GET', { Purpose: 'prefetch' });
-    await request('/adobe/dashboard', undefined, 'GET', { 'Sec-Purpose': 'prefetch' });
-    await request('/adobe/data/');
+  it('replaces the staff token with a separate, epoch-bound scoped credential never returned by getSession', async () => {
+    await start();
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('booth_session')).toBe(true);
     expect(cookies.has('booth_device')).toBe(true);
-    expect((await request(other)).headers.get('Location')).toBe('/booth');
+    expect(cookies.has('booth_kiosk')).toBe(true);
+    const headers = { Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; ') };
+    expect(await getSession(new Request('https://portal.example/', { headers }), env)).toBeNull();
+    expect(await getBoothSession(new Request('https://portal.example/', { headers }), env)).toMatchObject({ epoch: '1', purpose: 'booth-session' });
+    expect(await (await request('/auth/me')).json()).toEqual({ authenticated: false });
   });
 
-  it('keeps kiosk protection when dashboard access is denied', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const origin = fetch.getMockImplementation();
-    resetCugSheetCache();
-    fetch.mockImplementation(async (input) => {
-      const { pathname } = new URL(input instanceof Request ? input.url : input);
-      if (pathname === '/adobe/dashboard') {
-        return new Response('<html><body>Staff dashboard</body></html>', {
-          headers: {
-            'Content-Type': 'text/html',
-            'x-aem-cug-required': 'true',
-            'x-aem-cug-groups': 'different.example',
-          },
-        });
-      }
-      return origin(input);
-    });
-    expect((await request('/adobe/dashboard')).headers.get('Location')).toBe('https://portal.example/403');
-    expect(cookies.has('booth_device')).toBe(true);
-    expect(cookies.has('booth_context')).toBe(true);
+  it('keeps restriction cookies on top-level OAuth callbacks instead of dropping Strict cookies', async () => {
+    const shell = await request('/booth');
+    const markers = shell.headers.getSetCookie().filter((value) => (
+      /^booth_(?:session|device|kiosk)=/.test(value) && !value.includes('Max-Age=0')
+    ));
+    expect(markers).toHaveLength(3);
+    markers.forEach((value) => expect(value).toContain('SameSite=Lax'));
+    const lookup = await request('/auth/booth/lookup', { email: 'visitor@example.com' });
+    expect(lookup.headers.get('Set-Cookie')).toContain('SameSite=Lax');
+    const callback = await request('/auth/callback?code=test&state=test', undefined, 'GET', { 'Sec-Fetch-Site': 'cross-site' });
+    expect(callback.headers.get('Location')).toBe('/booth');
+    expect(cookies.has('auth_token')).toBe(false);
   });
 
-  it('does not clear booth protection for an unauthenticated dashboard request', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    cookies.delete('auth_token');
-    expect((await request('/adobe/dashboard')).headers.get('Location')).toContain('/login');
-    expect(cookies.has('booth_device')).toBe(true);
-    expect(cookies.has('booth_context')).toBe(true);
-  });
-
-  it('ends booth mode on a verified cached dashboard navigation and iframe navigation', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const origin = fetch.getMockImplementation();
-    fetch.mockImplementation(async (input) => {
-      const { pathname } = new URL(input instanceof Request ? input.url : input);
-      if (pathname === '/adobe/dashboard') {
-        return new Response(null, {
-          status: 304,
-          headers: { 'x-aem-cug-required': 'true', 'x-aem-cug-groups': 'adobe.com' },
-        });
-      }
-      return origin(input);
-    });
-    expect((await request('/adobe/dashboard')).status).toBe(304);
-    expect(cookies.has('booth_device')).toBe(false);
-    fetch.mockImplementation(origin);
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    expect((await request('/adobe/dashboard', undefined, 'GET', { 'Sec-Fetch-Dest': 'iframe' })).status).toBe(200);
-    expect(cookies.has('booth_device')).toBe(false);
-  });
-
-  it('does not clear attendee state for a link-borne identity, even with dashboard CUG access', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    cookies.set('auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'sharelink' }));
-    await request('/adobe/dashboard');
-    expect(cookies.has('booth_device')).toBe(true);
-    expect(cookies.has('booth_context')).toBe(true);
-    expect(await actor.state.storage.get('context')).toBeDefined();
-  });
-
-  it('clears stale browser cookies after verified reauthentication without revoking another session context', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
+  it.each(['/adobe/dashboard', '/adobe/dashboard/', '/adobe/dashboard.html', '/adobe/data/'])('never restores broad staff privileges through %s', async (path) => {
+    await start();
     const previous = await actor.state.storage.get('context');
-    cookies.set('auth_token', await createSession(env, { email: 'different@adobe.com', groups: ['adobe.com'], method: 'oauth' }));
-    expect((await request('/adobe/dashboard')).status).toBe(200);
-    expect(cookies.has('booth_device')).toBe(false);
-    expect(cookies.has('booth_context')).toBe(false);
+    const result = await request(path);
+    expect(result.status).toBe(302);
+    expect(result.headers.get('Location')).toBe('/booth');
     expect(await actor.state.storage.get('context')).toEqual(previous);
-    expect((await request(other)).status).toBe(200);
+    expect((await request(other)).status).toBe(302);
+    expect(cookies.has('booth_kiosk')).toBe(true);
   });
 
-  it('fails explicitly without dropping kiosk protection if its attendee context cannot be cleared', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    actor.fetch = async () => { throw new Error('Synthetic unavailable coordinator'); };
-    const dashboard = await request('/adobe/dashboard');
-    expect(dashboard.status).toBe(503);
-    expect(await dashboard.text()).toContain('Booth mode could not be cleared');
-    expect(cookies.has('booth_device')).toBe(true);
-    expect(cookies.has('booth_context')).toBe(true);
-  });
-
-  it('isolates the report redirect to the device marker rather than the dashboard link or attendee cookie', async () => {
-    expect((await request(other)).status).toBe(200);
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    expect((await request(other)).headers.get('Location')).toBe('/booth');
-    const context = cookies.get('booth_context');
-    cookies.delete('booth_context');
-    expect((await request(other)).headers.get('Location')).toBe('/booth');
-    cookies.set('booth_context', context);
-    cookies.delete('booth_device');
-    expect((await request(other)).status).toBe(200);
-  });
-
-  it('blocks a fresh report reload after reset while retaining staff auth and ordinary browsing without a marker', async () => {
-    await request('/booth');
-    expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' })).status).toBe(200);
-    expect((await request(selected)).status).toBe(200);
-    expect((await request('/auth/booth/reset', {})).status).toBe(200);
-    expect(cookies.has('auth_token')).toBe(true);
-    expect(cookies.has('booth_context')).toBe(false);
+  it.each([
+    other, `${other}index.html`, `${other}index.plain.html`, `${other}index.md`,
+    `${other}data.json`, `${other}report.pdf`, `${selected}report.pdf`,
+    `${selected}index.md`, `${selected}index.plain.html`, `${selected}data.json`,
+    '/data/insights-list.json', '/data/account-list.json', '/data/company-list.json',
+    '/closed-user-groups.json', '/closed-user-groups-mapping.json',
+    `${other}media_${'a'.repeat(40)}.png`,
+    '/api/report-requests', '/api/report-requests.csv', '/api/booth-activity',
+    '/api/booth-activity.csv', '/accounts%2fo%2fother/data.json',
+  ])('denies every private representation, index or privileged API: %s', async (path) => {
+    await start();
     fetch.mockClear();
-    const freshBack = await request(selected);
-    expect(freshBack.status).toBe(302);
-    expect(freshBack.headers.get('Location')).toContain('/booth');
-    expect(fetch).not.toHaveBeenCalled();
-    cookies.delete('booth_device');
-    expect((await request(selected)).status).toBe(200);
+    for (const method of ['GET', 'HEAD']) {
+      const result = await request(path, undefined, method, { 'If-None-Match': '"cached"' });
+      expect(result.status).toBe(302);
+      expect(result.headers.get('Location')).toBe('/booth');
+      expect(await result.text()).not.toContain('Prepared report');
+    }
+    expect(fetch.mock.calls.every(([input]) => !new URL(input instanceof Request ? input.url : input).pathname.startsWith('/accounts/'))).toBe(true);
   });
 
-  it('blocks another account, expired attendee context and a different staff session on a marked device', async () => {
-    await request('/booth');
+  it.each(['booth_context', 'booth_device', 'booth_kiosk'])('deleting %s never restores general access', async (name) => {
+    await start();
+    cookies.delete(name);
+    cookies.set('auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' }));
+    expect((await request(other)).status).toBe(302);
+    expect((await request('/adobe/dashboard')).status).toBe(302);
+    if (name !== 'booth_kiosk') expect((await request(selected)).status).toBe(302);
+  });
+
+  it.each(['forged', ''])('fails closed for a malformed device cookie (%s)', async (value) => {
+    await start();
+    cookies.set('booth_device', value);
+    expect((await request(selected)).status).toBe(302);
+    expect((await request('/auth/booth/status')).status).toBe(401);
+    expect((await request('/booth')).headers.get('Location')).toContain('/login');
+  });
+
+  it('keeps restriction through attendee reset, expiry, staff epoch revocation and explicit exit', async () => {
+    await start();
+    expect((await request(selected)).status).toBe(200);
+    await request('/auth/booth/reset', {});
+    expect((await request(selected)).status).toBe(302);
+    expect(cookies.has('booth_session')).toBe(true);
     await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    expect((await request(other)).headers.get('Location')).toContain('/booth');
-    expect((await request(other, undefined, 'HEAD')).headers.get('Location')).toContain('/booth');
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + 601000);
-    expect((await request(selected)).headers.get('Location')).toContain('/booth');
-    cookies.set('auth_token', await createSession(env, { email: 'different@adobe.com', groups: ['adobe.com'], method: 'oauth' }));
-    expect((await request(selected)).headers.get('Location')).toContain('/booth');
-  });
-
-  it('fails closed on coordinator failure and provides an explicit sign-out exit', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const original = actor.fetch.bind(actor);
-    actor.fetch = async () => { throw new Error('Synthetic unavailable coordinator'); };
-    const failure = await request(selected);
-    expect([302, 503]).toContain(failure.status);
-    actor.fetch = original;
+    expect((await request(selected)).status).toBe(302);
+    vi.useRealTimers();
+    env.EVENT_CRED_EPOCH = '2';
+    expect((await request('/auth/booth/status')).status).toBe(401);
+    expect((await request(other)).status).toBe(302);
+    env.EVENT_CRED_EPOCH = '1';
     expect((await request('/auth/booth/exit', {})).status).toBe(200);
+    expect(cookies.has('booth_session')).toBe(false);
+    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect((await request('/adobe/dashboard')).status).toBe(302);
+  });
+
+  it('keeps signout and OAuth/SSO re-login booth-only, ignoring a broad callback destination', async () => {
+    await start();
+    expect((await request('/auth/logout')).headers.get('Location')).toBe('/booth');
+    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect(cookies.has('booth_session')).toBe(false);
+    const portal = await request('/auth/portal?redirect=/adobe/dashboard');
+    expect(portal.headers.get('Location')).toContain('https://ims.example.com/authorize');
+    const callback = await request('/auth/callback?code=test&state=test');
+    expect(callback.headers.get('Location')).toBe('/booth');
     expect(cookies.has('auth_token')).toBe(false);
-    expect(cookies.has('booth_context')).toBe(false);
-    expect(cookies.has('booth_device')).toBe(false);
-    expect((await request(selected)).headers.get('Location')).toContain('/login');
+    expect(cookies.has('booth_session')).toBe(true);
+    expect((await request('/adobe/dashboard')).status).toBe(302);
   });
 
-  it('rejects forged and expired markers, preserves canonicalization and leaves assets alone', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    expect((await request(selected.slice(0, -1))).status).toBe(308);
+  it('serves a static recovery screen, never the selected report, and requires confirmed reset', async () => {
+    await start();
+    const response = await request('/booth?recover=1');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('Reset this booth visit');
+    expect(html).toContain("state!=='entry'");
+    expect(html).not.toContain('/scripts/booth.js');
+    expect((await actor.state.storage.get('context')).selectedPath).toBe(selected);
+    expect((await request('/auth/booth/reset', {})).status).toBe(200);
+    expect((await request(selected)).status).toBe(302);
+  });
+
+  it('retains the context handle until a reset is confirmed by the server', async () => {
+    await start();
+    const context = cookies.get('booth_context');
+    const record = await actor.state.storage.get('context');
+    env.BOOTH_COORDINATOR.get = () => ({ fetch: async () => Response.json({ error: 'Reset unavailable' }, { status: 503 }) });
+    const response = await request('/auth/booth/reset', {});
+    expect(response.status).toBe(503);
+    expect(response.headers.get('Set-Cookie')).not.toContain('Max-Age=0');
+    expect(cookies.get('booth_context')).toBe(context);
+    expect(await actor.state.storage.get('context')).toEqual(record);
+  });
+
+  it('does not expose the server-only authorization RPC via a forged internal flag', async () => {
+    await start();
+    const result = await request('/auth/booth/authorize', undefined, 'GET', { 'X-Booth-Internal': 'true' });
+    expect(result.status).toBe(404);
+    expect(await result.text()).not.toContain('visitor@example.com');
+    expect((await request('/auth/booth/revoke', { token: 'forged' })).status).toBe(404);
+    const direct = await actor.fetch(new Request('https://portal.example/auth/booth/revoke', {
+      method: 'POST',
+      headers: { Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; ') },
+      body: JSON.stringify({ token: 'forged' }),
+    }));
+    expect(direct.status).toBe(403);
+  });
+
+  it.each(['/auth/staff-login', '/auth/callback?code=test&state=test'])('revokes the old attendee before scoped re-login at %s, even with a missing device marker', async (login) => {
+    await start();
+    const staleCookies = [...cookies].map(([key, value]) => `${key}=${value}`).join('; ');
+    cookies.delete('booth_device');
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const response = await request(login, login.startsWith('/auth/staff-login')
+      ? { username: 'operator', password: 'test-only-password' } : undefined);
+    expect([200, 302]).toContain(response.status);
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect((await request(selected, undefined, 'GET', { Cookie: staleCookies })).status).toBe(302);
+  });
+
+  it('keeps generic credential re-login scoped and rejects a cross-origin login', async () => {
+    await start();
+    await request('/auth/logout');
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password' }, undefined, { Origin: 'https://evil.example' })).status).toBe(403);
+    expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password' })).status).toBe(200);
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('booth_session')).toBe(true);
+    expect((await request(other)).status).toBe(302);
+  });
+
+  it('denies generic share, magiclink and token redemption even with forged staff authorization headers', async () => {
+    await start();
+    const token = await createShareLinkToken('operator@adobe.com', env, ['adobe.com']);
+    const share = await request('/auth/sharelink', { email: 'other@customer.example', path: other }, undefined, { Authorization: 'Bearer test-only-token', 'X-Booth-Internal': 'true' });
+    expect(share.status).toBe(403);
+    expect((await request('/auth/magiclink', { email: 'visitor@example.com' })).status).toBe(302);
+    expect((await request(`${selected}?token=${token}`)).status).toBe(302);
+    expect((await request(`/scripts/booth.js?token=${token}`)).status).toBe(302);
+    expect(cookies.has('auth_token')).toBe(false);
+  });
+
+  it('legacy marker+staff auth is restricted, migrates only on /booth and never unlocks dashboard', async () => {
+    cookies.set('booth_device', 'legacy-or-expired');
+    expect((await request('/adobe/dashboard')).status).toBe(302);
+    expect((await request(other)).status).toBe(302);
+    expect((await request('/booth')).status).toBe(200);
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('booth_session')).toBe(true);
+  });
+
+  it('leaves ordinary staff, customer and unmarked public request browsing unchanged', async () => {
+    expect((await request('/adobe/dashboard')).status).toBe(200);
+    expect((await request(other)).status).toBe(200);
+    cookies.set('auth_token', await createSession(env, { email: 'visitor@example.com', groups: ['example.com'], method: 'sharelink' }));
+    expect((await request(selected)).status).toBe(200);
+    expect(cookies.has('booth_kiosk')).toBe(false);
+  });
+
+  it('blocks a stale report when reset or picker transition completes during its origin fetch', async () => {
+    for (const action of ['reset', 'picker']) {
+      await start();
+      const original = fetch.getMockImplementation();
+      fetch.mockImplementation(async (input, options) => {
+        if (input instanceof Request && new URL(input.url).pathname === selected) await request(`/auth/booth/${action}`, {});
+        return original(input, options);
+      });
+      const response = await request(selected);
+      expect(response.status).toBe(302);
+      expect(await response.text()).not.toContain('Prepared report');
+      fetch.mockImplementation(original);
+    }
+  });
+
+  it('rechecks fresh CUG+mapping despite absent private origin headers, cache validators and reset races', async () => {
+    await start();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => {
+      if (input instanceof Request && new URL(input.url).pathname === selected) {
+        expect(input.headers.has('If-None-Match')).toBe(false);
+        expect(input.headers.has('Range')).toBe(false);
+        expect(input.headers.has('Cookie')).toBe(false);
+        expect(input.headers.has('Authorization')).toBe(false);
+        expect(options.cf).toEqual({ cacheTtl: 0, cacheEverything: false });
+        data['/closed-user-groups-mapping.json'] = [{ url: selected, group: 'other.example' }];
+        return new Response('<html><head></head><body>Secret</body></html>', { headers: { 'Content-Type': 'text/html' } });
+      }
+      return original(input, options);
+    });
+    const response = await request(selected, undefined, 'GET', { 'If-None-Match': 'known', Range: 'bytes=0-100' });
+    expect([302, 503]).toContain(response.status);
+    expect(await response.text()).not.toContain('Secret');
+  });
+
+  it('rejects cached 304 and PDF responses even at the selected document URL', async () => {
+    await start();
+    const original = fetch.getMockImplementation();
+    for (const pdf of [false, true]) {
+      fetch.mockImplementation(async (input, options) => (input instanceof Request
+        && new URL(input.url).pathname === selected
+        ? new Response(pdf ? 'PDF bytes' : null, { status: pdf ? 200 : 304, headers: { 'Content-Type': pdf ? 'application/pdf' : 'text/html' } })
+        : original(input, options)));
+      expect((await request(selected)).status).toBe(403);
+    }
+  });
+
+  it.each([
+    [`/media_${'a'.repeat(40)}.png`, 'application/pdf', null, 403],
+    [`${selected}media_${'a'.repeat(40)}.png`, 'application/pdf', null, 403],
+    [`${selected}content/opaque.png`, 'application/pdf', null, 403],
+    [`/media_${'a'.repeat(40)}.png?format=pdf`, 'application/pdf', null, 403],
+    [`/media_${'a'.repeat(40)}.png`, 'image/png', 'inline; filename="report.pdf"', 403],
+    [`/media_${'a'.repeat(40)}.png`, 'image/png', 'attachment; filename="report.pdf"', 403],
+    [`/media_${'a'.repeat(40)}.png`, 'application/octet-stream', null, 403],
+    [`/media_${'a'.repeat(40)}`, 'application/pdf', null, 302],
+    [`/content/${'a'.repeat(40)}`, 'application/pdf', null, 302],
+  ])('denies opaque PDF/native download candidate %s (%s)', async (path, type, disposition, status) => {
+    await start();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => (input instanceof Request
+      && new URL(input.url).pathname === new URL(path, 'https://portal.example').pathname
+      ? new Response('Fixture private PDF bytes', { headers: { 'Content-Type': type, ...(disposition ? { 'Content-Disposition': disposition } : {}) } })
+      : original(input, options)));
+    for (const method of ['GET', 'HEAD']) {
+      const response = await request(path, undefined, method);
+      expect(response.status).toBe(status);
+      expect(await response.text()).not.toContain('Fixture private PDF bytes');
+    }
+  });
+
+  it('preserves ordinary customer PDF access outside the booth boundary', async () => {
+    cookies.set('auth_token', await createSession(env, {
+      email: 'visitor@example.com',
+      groups: ['example.com'],
+      method: 'sharelink',
+    }));
+    const pdf = `${selected}report.pdf`;
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => (input instanceof Request
+      && new URL(input.url).pathname === pdf
+      ? new Response('Fixture private PDF bytes', { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="report.pdf"' } })
+      : original(input, options)));
+    const response = await request(pdf);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/pdf');
+    expect(await response.text()).toBe('Fixture private PDF bytes');
+  });
+
+  it('never forwards an origin redirect to an unguarded report or PDF viewer', async () => {
+    await start();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => (input instanceof Request
+      && new URL(input.url).pathname === selected
+      ? Response.redirect('https://origin.aem.live/accounts/other/report.pdf', 302)
+      : original(input, options)));
+    const response = await request(selected);
+    expect(response.status).toBe(403);
+    expect(response.headers.has('Location')).toBe(false);
+  });
+
+  it('rejects raw JSON disguised as a selected document and narrower private display dependencies', async () => {
+    await start();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => (input instanceof Request
+      && new URL(input.url).pathname === selected
+      ? new Response('{"private":"fixture"}', { headers: { 'Content-Type': 'application/json' } })
+      : original(input, options)));
+    expect((await request(selected)).status).toBe(403);
+    data['/closed-user-groups.json'].push({ url: `${selected}image.png`, 'cug-groups': 'other.example' });
+    expect((await request(`${selected}image.png`)).status).toBe(302);
+  });
+
+  it('allows only selected rendering assets, known public assets and approved demo/request contexts', async () => {
+    await start();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, options) => (input instanceof Request && new URL(input.url).pathname.endsWith('image.png')
+      ? new Response('image', { headers: { 'Content-Type': 'image/png' } }) : original(input, options)));
     expect((await request(`${selected}image.png`)).status).toBe(200);
-    const marker = cookies.get('booth_device');
-    const claims = JSON.parse(Buffer.from(marker.split('.')[1], 'base64url').toString());
-    const session = await getSession(new Request('https://portal.example/', { headers: { Cookie: `auth_token=${cookies.get('auth_token')}` } }), env);
-    expect(claims.exp).toBeLessThanOrEqual(session.exp);
-    expect(JSON.stringify(claims)).not.toContain('@');
-    cookies.set('booth_device', `${marker}forged`);
-    expect((await request(selected)).headers.get('Location')).toContain('/booth');
-    cookies.set('booth_device', await createBoothDeviceToken(await sha256hex(cookies.get('auth_token')), Math.floor(Date.now() / 1000) - 1, env));
-    expect((await request(selected)).headers.get('Location')).toContain('/booth');
-    cookies.set('booth_device', '');
-    expect((await request(selected)).headers.get('Location')).toContain('/booth');
-  });
-
-  it('rechecks context after an in-flight origin fetch so concurrent reset cannot return the report body', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const origin = fetch.getMockImplementation();
-    fetch.mockImplementation(async (input) => {
-      const { pathname } = new URL(input instanceof Request ? input.url : input);
-      if (pathname === selected) await request('/auth/booth/reset', {});
-      return origin(input);
-    });
-    const response = await request(selected);
-    expect(response.status).toBe(302);
-    expect(await response.text()).not.toContain('Prepared report');
-  });
-
-  it('still denies a selected report when its current CUG does not authorize staff', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const origin = fetch.getMockImplementation();
-    fetch.mockImplementation(async (input) => {
-      const { pathname } = new URL(input instanceof Request ? input.url : input);
-      if (pathname === '/closed-user-groups.json') {
-        return new Response(JSON.stringify({ data: [{ url: '/accounts**', 'cug-groups': 'different.example' }] }));
-      }
-      return origin(input);
-    });
-    const response = await request(selected);
-    expect(response.headers.get('Location')).toBe('https://portal.example/403');
-  });
-
-  it('never accepts the signed device marker as an authentication session', async () => {
-    await request('/booth');
-    const session = await getSession(new Request('https://portal.example/', { headers: { Cookie: `auth_token=${cookies.get('booth_device')}` } }), env);
-    expect(session).toBeNull();
-  });
-
-  it('does not return the report if reset happens during the final return-helper context check', async () => {
-    await request('/booth');
-    await request('/auth/booth/lookup', { email: 'visitor@example.com' });
-    const original = actor.fetch.bind(actor);
-    let checks = 0;
-    actor.fetch = async (input) => {
-      if (new URL(input.url).pathname.endsWith('/status')) {
-        checks += 1;
-        if (checks === 3) await request('/auth/booth/reset', {});
-      }
-      return original(input);
-    };
-    const response = await request(selected);
-    expect(response.status).toBe(302);
-    expect(await response.text()).not.toContain('Prepared report');
+    expect((await request(`${other}image.png`)).status).toBe(302);
+    expect((await request('/styles/booth.css')).status).toBe(200);
+    expect((await request('/scripts/booth-report.js')).status).toBe(200);
+    await request('/auth/booth/demo', { id: 'luma' });
+    expect((await request(selected)).status).toBe(302);
+    expect((await request('/example-report/carvelo/')).status).toBe(302);
+    await request('/auth/booth/request', {});
+    expect((await request(selected)).status).toBe(302);
   });
 });
