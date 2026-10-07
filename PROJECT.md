@@ -75,17 +75,21 @@ two-minute inactivity and absolute expiry remove visitor fields. Input/change
 events renew inactivity for virtual keyboards. Failed verification removes the
 form and shows recovery; failed clearing hides visitor content and permits retry.
 
-The combined feature branch also contains the carousel PDF-click fix documented
-below. Local browser checks exercise all ten demos, no-match/outage distinction,
+Merged [#152](https://github.com/aemsites/summit-portal/pull/152) also contains the
+carousel PDF-click fix documented below. Local browser checks exercise all ten demos, no-match/outage distinction,
 fresh form validation/consent, synthetic completion, inactivity/history privacy,
 failed verification and the existing personal report/Finish journey. Form/chooser
 checks cover native portrait, 1080 × 1920 and mobile, plus a keyboard-reduced form.
 Verification passed 388 Worker tests (one existing skip), 212 frontend tests
-and changed-file ESLint/Stylelint. The summit bundle passed a deployment dry run
-only. **This feature is
-not deployed:** merge frontend/form changes and separately deploy the matching
-Worker after approval. Real Turnstile/submission and physical kiosk rehearsal
-remain rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
+and changed-file ESLint/Stylelint. After explicit deployment approval, merged
+main `f9d7c454eb350d36d6de0e7e3605df1bcdb046ce` was deployed on October 7 as
+Worker **`10608171-3483-4835-95ef-4e290b4ac677`**, serving **100%** of traffic.
+Live booth/runtime control modules and portrait form CSS match merged source.
+Anonymous `/booth` still redirects to staff setup; catalogue and status return
+401. Existing KV/D1 bindings, staff epoch, secrets and temporary timing
+diagnostics are unchanged. Close old report documents and reload `/booth` to
+load the new flow. Real Turnstile/submission and physical kiosk rehearsal remain
+rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
 
 ### October 7 approved Figma booth implementation
 
@@ -334,7 +338,7 @@ On insight/Cannes pages, the light **Search performance** block renders the shar
 ### report-carousel
 A tabbed carousel with three persona views — Executive overview, Marketer insights, and IT/Engineering learnings. Each tab contains multiple slides with a "Top insight" callout and an SVG data visualization (column charts, line charts, donut charts, horizontal bars, stacked bars, big figures, metric strips, or recommendation lists). Includes dot navigation, prev/next arrows, and a slide counter. `bigfigure` accepts the documented single pipe-delimited row (`value | unit | label`) as well as the legacy three-`<p>` form — the renderer reads the pipe parts first so the documented form (what the DIH template emits) doesn't drop the unit/context. Slides use `min-height` (not a fixed `height`) so tall content like a 3-item `recommendationlist` grows to fit instead of clipping; on mobile the `.rc-slide-visual` 300px height cap applies only to SVG charts, not to text-content visuals (`recommendationlist`/`metricstrip`), which must grow.
 
-**PDF activation:** Simple Analytics auto-events can decorate the authored PDF link before the carousel initializes, adding an inline `return false` handler. Previously both cloned download buttons inherited that cancellation, then changed to `_blank`; analytics recorded the event but neither native navigation nor its callback opened the PDF. Both clones now preserve the inherited handler as a normal click listener, ignoring its stale return value while retaining tracking and explicit `event.preventDefault()`. PDF URLs, authorization, disabled/unavailable states and new-tab behavior are unchanged. Browser regressions cover both analytics load orders and both buttons; native mouse, Enter and touch activation were confirmed with the actual auto-events script at 2160×3840, including a tracking callback that never completes. The authenticated Amundi production example could not be retested because it redirects to sign-in. This is a local frontend fix, not yet published; it requires the normal PR/code-sync rollout, not a Worker deployment.
+**PDF activation:** Simple Analytics auto-events can decorate the authored PDF link before the carousel initializes, adding an inline `return false` handler. Previously both cloned download buttons inherited that cancellation, then changed to `_blank`; analytics recorded the event but neither native navigation nor its callback opened the PDF. Both clones now preserve the inherited handler as a normal click listener, ignoring its stale return value while retaining tracking and explicit `event.preventDefault()`. PDF URLs, authorization, disabled/unavailable states and new-tab behavior are unchanged. Browser regressions cover both analytics load orders and both buttons; native mouse, Enter and touch activation were confirmed with the actual auto-events script at 2160×3840, including a tracking callback that never completes. The authenticated Amundi production example could not be retested because it redirects to sign-in. This frontend fix was merged in #152; its live module matches merged source after code sync. It does not require a Worker deployment.
 
 ### report-download
 A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count). PDF title text is resolved from the block row markup (including nested links).

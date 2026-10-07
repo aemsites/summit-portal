@@ -115,6 +115,16 @@ Physical device rehearsal and real Turnstile/submission remain separate gates.
 Merge the frontend/form assets and deploy the matching Worker **after approval**;
 this implementation does not automatically deploy production.
 
+**October 7 rollout:** following explicit approval, merged
+[#152](https://github.com/aemsites/summit-portal/pull/152), main
+`f9d7c454eb350d36d6de0e7e3605df1bcdb046ce`, was deployed to `summit-portal` as
+Worker version **`10608171-3483-4835-95ef-4e290b4ac677`** at **100%**.
+Live booth/runtime control modules and portrait form CSS match merged source.
+Anonymous `/booth` retains the staff-login redirect; demo catalogue and status
+retain 401 responses. Existing bindings, secrets, staff epoch and timing
+diagnostics are unchanged. Reload `/booth` and reopen report documents;
+real authenticated submission and final hardware rehearsal remain unverified.
+
 ## Implementation
 
 | Surface | Source |
