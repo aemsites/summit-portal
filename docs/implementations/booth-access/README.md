@@ -78,7 +78,7 @@ context lifetime, concurrency and failure semantics.
 
 `BOOTH_TIMING_ENABLED="true"` adds `Server-Timing` to staff-authorized booth
 API responses. It defaults off; the summit configuration temporarily enables
-it for the next approved Worker rollout. Set it to `"false"` and redeploy
+it in the deployed diagnostic build. Set it to `"false"` and redeploy
 after capturing the slow flow. No new analytics, logging destination, lookup,
 permission cache or background export behavior is introduced.
 

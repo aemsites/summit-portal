@@ -133,7 +133,7 @@ stage-level instrumentation is required before attributing the observed seconds
 or selecting a backend optimization. No authorization freshness, expiry/reset,
 outbox failure behavior or production code was changed during this investigation.
 
-**Follow-up diagnostics and initial loading state (local; awaiting rollout):**
+**Follow-up diagnostics and initial loading state (deployed October 7):**
 the shell now starts with all attendee panels hidden and a visible
 **Checking this booth...** status, including before module execution. Initial
 status selects the authorized screen; failures retain staff/retry recovery
@@ -149,7 +149,14 @@ unavailable, not reported as zero cost. I/O spans may include preceding CPU work
 and parallel/nested spans must not be summed. Local profiling and production
 CPU observations are needed alongside the next HAR. Authorization, serial
 execution, expiry/reset, outbox export and mail/contact behavior remain unchanged.
-No follow-up production deployment or customer action has been performed yet.
+Deployed source commit `3a5dab3` with `--env summit`, version
+`7874a428-b9f9-40b2-83c0-1db759b72cdd`, active at 100%.
+The live booth-script hash matches committed source; anonymous booth access
+still redirects to staff setup, and anonymous status remains 401 with no timing
+header. Previous rollback version: `16ecfbdb-877b-46af-9bf6-21401751509d`.
+The next authenticated HAR is still required to attribute production latency.
+No live customer lookup, email send or contact request was performed during
+rollout verification.
 
 **October 7 design review:** Rosie explicitly selected **Entry 3** in the
 [Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).
