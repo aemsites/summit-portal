@@ -42,7 +42,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/styles/booth.css', '/styles/booth-report.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(500);
@@ -55,7 +55,7 @@ describe('bundled booth shell and exact report injection', () => {
 
   it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
     const images = [
-      'action-arrow.svg', 'entry-webpage-glow.svg', 'entry-webpage.png',
+      'action-arrow.svg', 'finish-open-in.svg', 'entry-webpage-glow.svg', 'entry-webpage.png',
     ];
     for (const name of images) {
       const url = `https://portal.example/img/booth/${name}`;

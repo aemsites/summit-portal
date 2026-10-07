@@ -136,14 +136,14 @@ describe('identified booth activity and anonymous analytics boundary', () => {
   it('sends only fixed anonymous action metadata, never emails, hashes, company, visit, report URL or attendee headers', async () => {
     env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
-    await countBoothActivity(env, 'contact_requested');
+    await countBoothActivity(env, 'report_sent');
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, options] = fetch.mock.calls[0];
     expect(url).toBe('https://queue.simpleanalyticscdn.com/events');
     expect(JSON.parse(options.body)).toEqual({
       type: 'event',
       hostname: 'act.aem.now',
-      event: 'booth_contact_requested',
+      event: 'booth_report_sent',
       path: '/booth',
       ua: 'ServerSide/1.0 (+https://act.aem.now/)',
     });
@@ -154,5 +154,12 @@ describe('identified booth activity and anonymous analytics boundary', () => {
     await countBoothActivity(env, 'search');
     expect(JSON.stringify(logged.mock.calls)).not.toContain('private@example.com');
     expect(JSON.stringify(logged.mock.calls)).toContain('private record retained');
+  });
+
+  it('does not emit retired contact opt-in events, including historical outbox replays', async () => {
+    env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
+    vi.stubGlobal('fetch', vi.fn());
+    await countBoothActivity(env, 'contact_requested');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

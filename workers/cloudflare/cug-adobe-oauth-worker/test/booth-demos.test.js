@@ -55,9 +55,10 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
     expect((await (await request('status')).json()).state).toBe('demo');
     expect(fetch).not.toHaveBeenCalled();
     expect(env.REPORT_REQUESTS.events.size).toBe(0);
-    for (const action of ['send', 'view', 'contact', 'select']) {
+    for (const action of ['send', 'view', 'select']) {
       expect((await request(action, {})).status).toBe(409);
     }
+    expect((await request('contact', {})).status).toBe(404);
   });
 
   it('clears the previous visitor KV before switching to a demo, then opens a fresh public form', async () => {

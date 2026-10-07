@@ -214,7 +214,7 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'contact', 'send', 'reset', 'exit'].includes(action)) {
+  if (!['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
   if (request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
@@ -310,18 +310,15 @@ export class BoothCoordinator {
       const action = new URL(request.url).pathname.split('/').pop();
       const record = await storage.get('context');
       const sent = action === 'send' && record?.delivery === 'sent';
-      const contactRequested = action === 'contact' && record?.contactRequested === true;
       let { message } = error;
       if (sent) message = 'Your report link was emailed. Activity reporting is delayed. Ask the booth team; do not send again.';
       else if (action === 'send' && record?.delivery === 'ready') {
         message = 'Your report has not been sent. Activity reporting is unavailable. Ask the booth team for help.';
       }
-      if (contactRequested) message = 'Your contact request is recorded. Activity reporting is delayed. The booth team can help.';
       return reply({
         error: message,
         activityPending: true,
         sent,
-        contactRequested,
       }, 503);
     }).then((response) => {
       timing.add('booth_actor', timing.now() - startedAt);
@@ -405,6 +402,9 @@ export class BoothCoordinator {
     }
     const binding = await staffBinding(request);
     const action = new URL(request.url).pathname.split('/').pop();
+    if (!['status', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
+      return reply({ error: 'Unknown booth action' }, 404);
+    }
     let record = await storage.get('context');
     if (record && record.binding !== binding) {
       return reply({ error: 'Booth context belongs to another staff session' }, 403);
@@ -524,12 +524,6 @@ export class BoothCoordinator {
         || !data.candidates.some((candidate) => candidate.path === body.path)) {
         return reply({ error: 'Select one of your prepared reports.' }, 400);
       }
-    } else if (action === 'contact') {
-      if (Object.keys(body).some((key) => !['consent', 'noticeVersion'].includes(key))
-        || body.consent !== true || body.noticeVersion !== BOOTH_NOTICE_VERSION
-        || !record.selectedPath) {
-        return reply({ error: 'Confirm that Adobe may contact you about your report.' }, 400);
-      }
     } else if (action === 'view') {
       if (Object.keys(body).some((key) => key !== 'path')
         || body.path !== record.selectedPath || !record.selectedPath) {
@@ -571,13 +565,6 @@ export class BoothCoordinator {
         await this.activity([createBoothActivity('report_viewed', record.key, data.email, authorized)], record, timing);
       } else await this.flushActivity(timing);
       return reply({ viewed: true });
-    }
-    if (action === 'contact') {
-      if (!record.contactRequested) {
-        record.contactRequested = true;
-        await this.activity([createBoothActivity('contact_requested', record.key, data.email, authorized)], record, timing);
-      } else await this.flushActivity(timing);
-      return reply({ contactRequested: true });
     }
     // Persist BEFORE calling APO. A restart or ambiguous upstream failure must never resend.
     record.delivery = 'attempted';

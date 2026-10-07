@@ -65,6 +65,8 @@ export async function storeBoothActivity(env, activity) {
 
 /** Counts only: do not forward even hashed identities, company data or request headers. */
 export async function countBoothActivity(env, kind) {
+  // Historical outbox records remain private, but this retired action is no longer counted.
+  if (kind === 'contact_requested') return;
   if (!env.BOOTH_ANALYTICS_HOSTNAME) return;
   if (env.BOOTH_ANALYTICS_HOSTNAME !== 'act.aem.now' || !KINDS.includes(kind)) {
     logFailure('Invalid anonymous analytics configuration');

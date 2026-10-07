@@ -12,16 +12,55 @@ export default async function verifyBoothDemos(page) {
   const ready = async () => {
     await page.waitForFunction(() => !document.querySelector('#email-form button')?.disabled);
   };
+  const actionProfiles = [];
+  const checkActions = async (selector) => {
+    const sizes = [[2160, 3840, 129, 51], [1080, 1920, 72, 25], [390, 844, 64, 22]];
+    for (const [width, height, minHeight, minFont] of sizes) {
+      await page.setViewportSize({ width, height });
+      const targets = page.locator(selector);
+      const actions = await targets.evaluateAll((buttons) => buttons.map((button) => {
+        const bounds = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return {
+          label: button.textContent,
+          height: bounds.height,
+          width: bounds.width,
+          font: parseFloat(style.fontSize),
+          border: parseFloat(style.borderWidth),
+        };
+      }));
+      check(actions.length >= 2, 'Alternative actions disappeared');
+      check(actions.every((action) => action.height >= minHeight
+        && action.font >= minFont
+        && action.border >= 2), `Alternative actions are too small at ${width}px`);
+      check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Alternative actions overflow');
+      actionProfiles.push({ selector, width, actions });
+    }
+    await page.setViewportSize({ width: 2160, height: 3840 });
+  };
   await page.route('https://act.aem.now/api/report-requests', (route) => route.abort());
   await page.goto(`${root}/content/index?preview=entry`);
   await ready();
-  await page.locator('#registration-email').fill('no-report@example.test');
+  const footer = await page.locator('.stage-footer').textContent();
+  check(!/lorem/i.test(footer), 'Placeholder progress returned');
+  await checkActions('.entry-alternatives button');
+  await page.locator('#registration-email').fill('unmatched@not-a-prepared-company.test');
+  const lookup = page.waitForResponse((response) => response.url().endsWith('/auth/booth/lookup'));
   await page.locator('#email-form button').click();
+  const missing = await lookup;
+  check(
+    missing.status() === 404 && (await missing.json()).code === 'no_report',
+    'An arbitrary unmatched email must return no_report, not open the example report',
+  );
   await page.locator('[data-panel="unavailable"]:not([hidden])').waitFor();
+  check(new URL(page.url()).pathname === '/content/index', 'Unmatched email navigated to a report');
+  check(!await page.locator('[data-panel="demos"]').isVisible(), 'Industry selection opened without a visitor action');
   check(await page.locator('#registration-email').inputValue() === '', 'Missing-report recovery retained email');
+  await checkActions('[data-panel="unavailable"] .booth-alternative');
   await page.getByRole('button', { name: 'Show an industry demo', exact: true }).click();
   await page.locator('#demo-options button').nth(9).waitFor();
   check(await page.locator('#demo-options button').count() === 10, 'Industry catalogue is incomplete');
+  await checkActions('[data-panel="demos"] .booth-alternative');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Industry chooser overflows');
@@ -113,5 +152,5 @@ export default async function verifyBoothDemos(page) {
   await page.goto(`${root}/request-report`);
   await page.getByRole('link', { name: 'Return to the booth', exact: true }).waitFor();
   check(await page.locator('input').count() === 0, 'Failed booth verification left a usable request form');
-  return { demos: demos.length, profiles, checked: 'No-match recovery; all industries; separate demo mode; fresh form; consent and validation; synthetic submission; reset/idle/history privacy; outage distinction. No real submissions.' };
+  return { demos: demos.length, profiles, actionProfiles, checked: 'Touch-sized entry/recovery/list alternatives; no placeholder progress; no-match recovery; all industries; separate demo mode; fresh form; consent and validation; synthetic submission; reset/idle/history privacy; outage distinction. No real submissions.' };
 }

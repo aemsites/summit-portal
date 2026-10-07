@@ -22,8 +22,8 @@ server context. Confirmed large portrait reports also receive the reading layout
 described below; ordinary reports retain their existing layout. It returns to
 `/booth?step=finish`. **Email my report** sends to
 the address stored by lookup; the browser cannot supply another recipient or
-path. **Please contact me** separately records explicit permission for Adobe to
-follow up by email about the report. It does not send mail or schedule a meeting.
+path. **Prefer to meet later?** is static guidance to ask the booth team about a
+follow-up conversation. It does not record consent, send mail or schedule a meeting.
 Reset clears attendee access, not the staff login, non-PII device marker or
 disclosed lead-history records.
 
@@ -251,10 +251,14 @@ the Business email field still identifies CUG-authorized prepared reports, not
 registrants or an on-demand generation request. The picker and help keep that
 contract explicit.
 
-### October 7 fixed Entry 3 / Finish 5
+### October 7 fixed Entry 3 / Finish 6
 
 The approved [Final Design frames](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
-are fixed to **Entry 3 / Finish 5**. Legacy `entry`/`finish` parameters are ignored
+are fixed to **Entry 3 / Finish 6**, with
+[Screen 2_Finish_version 6](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=244-579)
+replacing Finish 5. This iteration is ready for review, not deployed; the last production
+rollout remains Worker `10608171-3483-4835-95ef-4e290b4ac677` with Finish 5.
+Legacy `entry`/`finish` parameters are ignored
 and no longer follow staff setup, the report, Finish or reset. Safe `heading` and
 `brand` cosmetics remain; they never change access or API payloads and never reach
 emailed links. There is no artwork rotation, local-storage preference or
@@ -264,48 +268,65 @@ For local touchscreen review, run `npm run preview:booth` and open
 `http://localhost:3000/`. The actual shell runs inside a 2160 × 3840 CSS iframe,
 with fallback/Figma-reference resolutions and fit, fill-width or 1:1 inspection.
 The surrounding review controls never alter the production shell. All APIs are
-explicit synthetic fixtures: any business email opens the example report,
-email/contact actions only simulate feedback, and no entered email is retained
+explicit synthetic fixtures: only `visitor@example.test` opens the example report;
+other emails show the no-report warning (except the explicit outage fixture),
+email actions only simulate feedback, and no entered email is retained
 or transmitted to a live service. The warning remains visible while interacting.
 Confirm actual CSS viewport, browser zoom/DPR and legibility on event hardware.
 
 Entry uses the fixed website/glow artwork above the rounded white form, positioned
 in native Figma coordinates relative to the 259px header. Finish replaces the
-old tagline/illustration with the visitor's **actual selected report** preview,
-above **Email my report**, as Jose approved. **Talk through your report here**
-is removed; **Prefer to meet later?** remains as one full-width consent panel.
-Blue pill actions and the exported arrow follow the mockups. At 2160 × 2881,
-spacing and type follow Figma's composition; the 2160 × 3840 kiosk adds white
-space rather than stretching the artwork. Below 1000px, the preview hero stacks,
-metrics use two columns and controls remain usable while scrolling.
+old tagline/illustration with three **actual selected report** excerpts above
+**Email my report**: LLM visibility, the hero/four summary metrics, and Your
+briefing's first Executive overview slide. All three remain visible. Horizontal
+swipes, side-preview taps and arrow keys change the foreground section without
+another fetch. The inset report excerpts are inert; vertical scrolling and
+reduced motion are supported. The centered blue email pill uses the exact
+exported Open In icon. **Prefer to meet later?** is a centered gray informational
+card, with no contact button or consent notice, followed by a smaller dark reset
+pill. At 2160 × 2881, spacing and type follow Figma; the 2160 × 3840 kiosk adds
+white space rather than stretching the artwork. Small screens keep the
+three-excerpt composition with full-size touch actions and scrolling.
 
 After full-page report navigation, Finish fetches the exact `selectedPath`
 once with same-origin credentials, `cache: no-store` and rejected redirects.
 The server context is still `report`, so existing exact-path authorization
 applies; no new endpoint, lookup, discovery or generation is needed. Only the
-raw authored `.report-hero.insight` and `.report-stats.dark` content is extracted.
-Sanitized hero content and text-only metric cells feed shared builders with
-typing/metric animations and interaction disabled. Report scripts, controls,
+raw authored `.report-hero.insight`, `.report-stats.dark`,
+`.report-ai-visibility` and `.report-carousel` content is extracted.
+Sanitized content feeds shared static hero/stats, visibility-overview and
+first-briefing builders. Chart labels are escaped and authored chart colors
+constrained to hexadecimal values. Typing/metric animations and inner report
+interaction are disabled. Report scripts, controls,
 footers and analytics are not executed or copied; there is no full-report iframe
 or exported preview image. Ordinary report-builder defaults are unchanged.
 
-The native preview is 1950px wide, with 552.5px hero and 447.65px metric-strip
-minimum heights and 26px corners. Real content can grow without clipping.
+The native montage is 1950 × 725px, starting at y=394 below the 259px header.
+The foreground excerpt is 1411 × 724px; side excerpts use perspective, 80%
+opacity and the reference left blur. Excerpts crop to their frame rather than
+embedding the entire report; overview headings are limited to two lines.
 Unsupported heroes produce an explicit preview error with **Retry preview**;
-missing metrics are identified rather than substituted. Email/contact/reset do
+missing metrics or sections are identified rather than substituted. Email/reset do
 not wait for the preview. Abort/revision guards and expiry checks prevent stale
 responses from reappearing after reset or navigation. Preview HTML is never put
 in local/session storage, and privacy scrubbing clears it alongside attendee
-fields. Hero/stat imports use `?v=booth-preview-1` for cache freshness.
+fields. Shared renderer imports use `?v=booth-preview-6` for cache freshness.
 `test/scripts/booth-preview.test.js` covers extraction and lifecycle;
 `booth-artwork.test.js` covers fixed Entry geometry and native preview CSS scope.
 
-The mock preview toolbar, entry/finish switcher, artificial step badges and
-placeholder **02 LOREM** progress are intentionally not production features.
+The mock preview toolbar, entry/finish switcher and placeholder **02 LOREM**
+footer progress are intentionally not production features. The static
+**STEP 03 OF 03** Finish badge follows Version 6.
+Jose reconfirmed removal of the placeholder footer progress bar. Entry
+demo/request and missing-report/industry-list request/back actions use separate,
+outlined neutral touch buttons: approximately 130px/52px height/type at native
+size, at least 72px/26px at fallback, and 64px/22px on mobile. Desktop has two
+equal action columns; mobile stacks full-width controls with 16px separation.
 Canonical naming, Business email identification and privacy notices remain.
 **Email my report** remains the only email
-dispatch and uses the lookup business address. **Please contact me** is a separate, explicit report-follow-up
-request, not a booking or scheduling claim. The blue pill
+dispatch and uses the lookup business address, not a claimed registration address.
+The retired `/auth/booth/contact` route returns 404 at both the public dispatcher
+and actor; no new contact event or consent is inferred. The dark pill
 **Finish and clear this screen** control invokes the existing server reset only, without
 sending email. Privacy clearing, expiry, recovery and staff-only exit behavior
 are unchanged.
@@ -315,7 +336,7 @@ are unchanged.
 The lead system of record is **first-party D1**, not Simple Analytics. Each
 valid lookup creates a visit ID and records the normalized, attendee-asserted
 business email, even if no authorized report matches or discovery fails.
-Subsequent `report_selected`, `report_viewed`, `contact_requested` and
+Subsequent `report_selected`, `report_viewed` and
 `report_sent` events carry the same visit ID/email and the server-authorized
 report path, label and company. `report_viewed` means the exact selected report's
 browser adapter loaded and acknowledged opening; selection alone never implies
@@ -326,15 +347,19 @@ inbox receipt. Uncertain or rejected sends are not listed as sent.
 The standalone shell displays a compact notice immediately beside **View my
 report**; it discloses identified email/report-activity recording, the purpose
 and **90-day** record lifetime, and links to Adobe's Privacy Policy. It is
-acknowledgement of a notice, not a blanket marketing opt-in. Finish keeps the
-business-address delivery hint; the separate delivery/privacy sentence below
+acknowledgement of a notice, not a blanket marketing opt-in.
+The Entry copy is shortened and uses quieter, high-contrast secondary text
+without hiding the purpose, 90-day retention, no-sales-contact disclosure or
+Privacy Policy link. It fits one line at the native width and wraps on mobile.
+Finish keeps the business-address delivery hint; the separate delivery/privacy sentence below
 **Email my report** was removed at Jose's request. Delivery activity is still recorded.
-The separate **Please contact me** action explains report-related email
-follow-up, record retention and withdrawal through the Privacy Policy. The
-Worker requires the current notice version on lookup and explicit `consent:
-true` plus that version for contact. The recorded event time is the opt-in
-timestamp. Search/view/send events must not be treated as permission for sales
-or general marketing communications.
+The Worker requires the current notice version on lookup. Finish 6 removes the
+separate contact action at Jose's direction. Historical `contact_requested`
+records and pending outbox entries remain retrievable under the existing
+90-day retention policy; original timestamps are not rewritten.
+Search/view/send and static follow-up guidance must not be treated as permission
+for sales or general marketing communications. The public request form retains
+its separate, unchecked consent flow.
 
 Only real Adobe OAuth sessions can retrieve PII. Event/booth credentials,
 Semrush OAuth and magic/share-link sessions are rejected:
@@ -344,7 +369,7 @@ Semrush OAuth and magic/share-link sessions are rejected:
 | All booth activity, correlated by Visit | `/api/booth-activity.csv` |
 | Emails that searched | `/api/booth-activity.csv?kind=search` |
 | Company/report opened by each email | `/api/booth-activity.csv?kind=report_viewed` |
-| Explicit contact requests | `/api/booth-activity.csv?kind=contact_requested` |
+| Historical explicit contact requests | `/api/booth-activity.csv?kind=contact_requested` |
 | Report emails accepted by the mail service | `/api/booth-activity.csv?kind=report_sent` |
 
 These CSVs contain activity rows (repeat visits remain separate), not an
@@ -365,11 +390,12 @@ New search attempts append their emails instead of being lost behind an older
 pending event. A saved selection can be retried for the same report without
 switching reports or duplicating history. It never resends
 email to repair telemetry. Reporting delays explicitly preserve the confirmed
-email/contact outcome; they do not ask the visitor to send again or repeat an
-already recorded contact request. Reset still removes the live attendee context and
+email outcome; they do not ask the visitor to send again. Historical contact
+outbox entries remain private. Reset still removes the live attendee context and
 KV access data. Anonymous Simple Analytics events are only best-effort counts:
 `booth_search`, `booth_report_selected`, `booth_report_viewed`,
-`booth_contact_requested`, `booth_report_sent`. No email, email hash, visit ID,
+`booth_report_sent`. `booth_contact_requested` is no longer emitted, including
+when replaying old outbox events. No email, email hash, visit ID,
 company/report identifiers, attendee IP, browser headers or cosmetics are sent.
 
 **Activation gates:** have Adobe Privacy/Legal review this report-specific notice

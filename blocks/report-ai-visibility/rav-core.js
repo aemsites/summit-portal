@@ -650,3 +650,29 @@ export function parseVisibilityRows(block) {
     cells: [...el.children],
   }));
 }
+
+/** Render the overview only, without report sheets, CTAs or performance-section loading. */
+export function buildVisibilityPreview(block) {
+  const rows = parseVisibilityRows(block);
+  const stats = rows.filter((row) => row.type === 'stats');
+  const panels = rows.filter((row) => ['competitors', 'comparison'].includes(row.type));
+  if (!stats.length && !panels.length) return false;
+  const container = document.createElement('div');
+  container.className = 'rav-container';
+  const head = document.createElement('div');
+  head.className = 'rav-section-head';
+  const title = document.createElement('h3');
+  title.className = 'rav-section-title';
+  title.textContent = 'LLM visibility';
+  head.append(title);
+  container.append(head);
+  if (stats.length) container.append(renderStats(stats));
+  if (panels.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'rav-panels';
+    panels.forEach((row) => wrap.append(renderPanel(row)));
+    container.append(wrap);
+  }
+  block.replaceChildren(container);
+  return true;
+}
