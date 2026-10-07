@@ -33,15 +33,6 @@ const FIELD_VERDICT_LABEL = {
   poor: 'Slow',
 };
 
-function formatPageUrl(href) {
-  try {
-    const u = new URL(href);
-    return u.hostname.replace(/^www\./, '') + (u.pathname === '/' ? '/' : u.pathname);
-  } catch {
-    return href;
-  }
-}
-
 /**
  * Ring-style score meter with numeric label inside (e.g. "42" / "of 100").
  * @param {string} scoreLabel
@@ -355,7 +346,7 @@ function buildCard(data) {
     urlLine.href = pageUrl;
     urlLine.target = '_blank';
     urlLine.rel = 'noopener noreferrer';
-    urlLine.textContent = formatPageUrl(pageUrl);
+    urlLine.textContent = name.querySelector('a').href;
     urlLine.title = pageUrl;
     title.append(urlLine);
   }
