@@ -12,6 +12,7 @@ import {
   storeBoothActivity, countBoothActivity,
 } from './booth-activity.js';
 import createBoothTiming from './booth-timing.js';
+import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
 
 const TTL = 600;
 const COOKIE = 'booth_context';
@@ -213,10 +214,10 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'lookup', 'select', 'view', 'contact', 'send', 'reset', 'exit'].includes(action)) {
+  if (!['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'contact', 'send', 'reset', 'exit'].includes(action)) {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
-  if (request.method !== (action === 'status' ? 'GET' : 'POST')) {
+  if (request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
     return finish(reply({ error: 'Method not allowed' }, 405));
   }
   if (request.method === 'POST' && (request.headers.get('Origin') !== new URL(request.url).origin
@@ -224,6 +225,7 @@ export async function handleBooth(request, env) {
     return finish(reply({ error: 'Same-origin JSON request required' }, 403));
   }
   if (!env.BOOTH_COORDINATOR) return finish(reply({ error: 'Booth service is not configured' }, 503));
+  if (action === 'demos') return finish(reply({ demos: BOOTH_DEMOS }));
   if (action === 'status' && !contextId(request)) return finish(reply({ state: 'entry' }));
   const id = contextId(request) || crypto.randomUUID();
   const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
@@ -347,7 +349,7 @@ export class BoothCoordinator {
     const storage = timing.storage(this.state.storage);
     // Pending lead records survive a privacy reset, but attendee access does not.
     await storage.delete('context');
-    if (record) await timing.measure('booth_kv_delete', () => this.env.SESSIONS.delete(`booth:${record.key}`));
+    if (record?.key) await timing.measure('booth_kv_delete', () => this.env.SESSIONS.delete(`booth:${record.key}`));
     if (await storage.get('activity')) {
       await storage.setAlarm(Date.now() + 60000);
     }
@@ -415,8 +417,43 @@ export class BoothCoordinator {
       await this.clear(record, timing);
       return reply({ state: 'entry' });
     }
-    const data = record ? await timing.measure('booth_kv_read', () => this.env.SESSIONS.get(`booth:${record.key}`, 'json')) : null;
-    if (record && !data) {
+    let body;
+    if (action !== 'status') {
+      try {
+        body = await request.json();
+        if (!body || Array.isArray(body) || typeof body !== 'object') throw new Error('Invalid body');
+      } catch {
+        return reply({ error: 'Invalid JSON body' }, 400);
+      }
+    }
+    if (['demo', 'request'].includes(action)) {
+      const demo = action === 'demo' ? findBoothDemo(body.id) : null;
+      if (Object.keys(body).some((key) => action !== 'demo' || key !== 'id')
+        || (action === 'demo' && !demo)) {
+        return reply({ error: 'Choose one of the available industry demos.' }, 400);
+      }
+      await this.clear(record, timing);
+      record = {
+        mode: action,
+        binding,
+        expiresAt: Date.now() + TTL * 1000,
+        selectedPath: demo?.path || '/request-report',
+        ...(demo ? { demoId: demo.id, industry: demo.industry, company: demo.company } : {}),
+      };
+      await storage.put('context', record);
+      if (!await storage.get('activity')) await storage.setAlarm(record.expiresAt);
+      return reply({ ...record, binding: undefined, state: record.mode });
+    }
+    if (record?.mode) {
+      if (action === 'status') {
+        return reply({ ...record, binding: undefined, state: record.mode });
+      }
+      if (action !== 'lookup') {
+        return reply({ error: 'Demo and request screens cannot send or select a personal report.' }, 409);
+      }
+    }
+    const data = record?.key ? await timing.measure('booth_kv_read', () => this.env.SESSIONS.get(`booth:${record.key}`, 'json')) : null;
+    if (record?.key && !data) {
       await this.clear(record, timing);
       return reply({ error: 'Booth context expired. Start again.' }, 410);
     }
@@ -432,13 +469,6 @@ export class BoothCoordinator {
         delivery: record.delivery,
         expiresAt: record.expiresAt,
       });
-    }
-    let body;
-    try {
-      body = await request.json();
-      if (!body || Array.isArray(body) || typeof body !== 'object') throw new Error('Invalid body');
-    } catch {
-      return reply({ error: 'Invalid JSON body' }, 400);
     }
     if (action === 'lookup') {
       // Clear the previous visitor even if the new lookup fails.
@@ -461,7 +491,7 @@ export class BoothCoordinator {
         return reply({ error: 'Prepared reports cannot be checked right now. Ask the booth team.' }, 502);
       }
       if (!candidates.length) {
-        return reply({ error: 'No prepared report is authorized for this email domain. Ask the booth team.' }, 404);
+        return reply({ code: 'no_report', error: 'No prepared report is authorized for this email domain. Ask the booth team.' }, 404);
       }
       await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${key}`, JSON.stringify({ email, candidates }), { expirationTtl: TTL }));
       record = {

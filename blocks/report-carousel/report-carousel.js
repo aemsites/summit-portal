@@ -1,6 +1,15 @@
 const DEFAULT_COLORS = ['#818cf8', '#fb7185', '#fb923c', '#34d399', '#60a5fa', '#a78bfa'];
 let chartUid = 0;
 
+function cloneDownloadLink(source) {
+  const link = source.cloneNode(true);
+  const onClick = link.onclick;
+  link.removeAttribute('onclick');
+  // Preserve early analytics, but ignore its stale return-false navigation cancellation.
+  if (onClick) link.addEventListener('click', onClick);
+  return link;
+}
+
 function triggerCascade(container) {
   const items = container.querySelectorAll('[data-anim]');
   items.forEach((el) => {
@@ -819,7 +828,7 @@ export default function init(el) {
   tabBar.append(tabsWrap);
 
   if (downloadLink) {
-    const dlBtn = downloadLink.cloneNode(true);
+    const dlBtn = cloneDownloadLink(downloadLink);
     dlBtn.className = 'rc-download-btn';
     if (isReportDisabled) {
       dlBtn.href = '#';
@@ -909,7 +918,7 @@ export default function init(el) {
   counterLeft.className = 'rc-counter-label';
   slideFooter.append(counterLeft);
   if (downloadLink && !isReportDisabled) {
-    const dlBtnFooter = downloadLink.cloneNode(true);
+    const dlBtnFooter = cloneDownloadLink(downloadLink);
     dlBtnFooter.className = 'rc-download-btn rc-download-footer';
     dlBtnFooter.target = '_blank';
     dlBtnFooter.rel = 'noopener noreferrer';

@@ -53,7 +53,8 @@ describe('confirmed booth report portrait layout', () => {
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
     document.querySelector('main')?.remove();
-    document.documentElement.classList.remove('booth-report-active', 'booth-report-composition', 'booth-report-clearing');
+    document.documentElement.style.visibility = '';
+    document.documentElement.classList.remove('booth-report-active', 'booth-report-composition', 'booth-report-clearing', 'booth-request-active');
     TestObserver.instances = [];
     sandbox.restore();
   });
@@ -151,6 +152,69 @@ describe('confirmed booth report portrait layout', () => {
     getComputedStyle(document.querySelector(selector)).fontSize,
   );
   const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
+
+  it('mounts demo controls without a personal Finish or report-view event', async () => {
+    const previous = window.location.href;
+    window.history.replaceState(null, '', '/example-report/luma/');
+    try {
+      await reportFixture();
+      await mount({ state: 'demo', demoId: 'luma', company: 'Luma' });
+      const control = document.getElementById('booth-return');
+      expect(control.textContent).to.include('Not a report for your company');
+      expect(control.textContent).not.to.include('Finish reading my report');
+      expect(control.querySelector('a').getAttribute('href')).to.equal('/booth?step=demos');
+      expect(control.querySelector('.booth-request-action').textContent).to.equal('Request my report');
+      expect(window.fetch.calledOnce).to.equal(true);
+    } finally {
+      window.history.replaceState(null, '', previous);
+    }
+  });
+
+  it('mounts the request profile only with exact server-confirmed request state', async () => {
+    const previous = window.location.href;
+    window.history.replaceState(null, '', '/request-report');
+    try {
+      await reportFixture();
+      await mount({ state: 'request' });
+      expect(document.documentElement.classList.contains('booth-request-active')).to.equal(true);
+      expect(window.fetch.calledOnce).to.equal(true);
+      expect(document.querySelector('#booth-return a').getAttribute('href')).to.equal('/booth?step=demos');
+    } finally {
+      window.history.replaceState(null, '', previous);
+    }
+  });
+
+  it('scrubs request fields immediately and serializes repeated clear actions on failure', async () => {
+    const previous = window.location.href;
+    window.history.replaceState(null, '', '/request-report');
+    try {
+      const main = await reportFixture();
+      const form = document.createElement('form');
+      form.innerHTML = '<input name="email"><input name="consent" type="checkbox">';
+      main.append(form);
+      await mount({ state: 'request' });
+      form.querySelector('[name="email"]').value = 'visitor@example.test';
+      form.querySelector('[name="consent"]').checked = true;
+      let finishReset;
+      window.fetch.onSecondCall().returns(new Promise((resolve) => { finishReset = resolve; }));
+      const clear = document.querySelector('[data-booth-clear]');
+      clear.click();
+      clear.click();
+      expect(form.querySelector('[name="email"]').value).to.equal('');
+      expect(form.querySelector('[name="consent"]').checked).to.equal(false);
+      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+      expect(window.fetch.callCount).to.equal(2);
+      expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/reset');
+      finishReset(new Response('', { status: 503 }));
+      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+      expect(document.querySelector('#booth-return p').textContent).to.include('Could not clear');
+      expect(document.querySelector('#booth-return a').hidden).to.equal(true);
+      expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(true);
+      expect(document.documentElement.style.visibility).to.equal('');
+    } finally {
+      window.history.replaceState(null, '', previous);
+    }
+  });
 
   for (const invalid of [
     { state: 'entry' }, { state: 'picker' }, { expiresAt: 1 },

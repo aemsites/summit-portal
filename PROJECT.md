@@ -39,13 +39,53 @@ The lead-history privacy exclusions apply to the new **server-side action events
 
 **Booth network recovery:** initial status or idle/reset failures keep lookup blocked and display a visible **Retry and clear screen** action. It unlocks Entry only after a confirmed server reset, never a blind local clear. The recovery target is 62px tall on portrait and mobile screens.
 
-**Booth report portrait layout:** `scripts/booth-report.js` loads `styles/booth-report.css` only after staff-authorized status confirms `state: report`, the exact pathname and a finite future expiry. Ordinary reports never opt in through viewport, URL parameters or browser storage. Confirmed insight booth reports at least 1000px wide and 1600px tall with aspect ratio at most 3:4 use a shared column capped at 1920px, fluid 24–40px narrative text, 18–32px captions and 64–96px action targets. Briefing slides stack copy above full-width SVG plots, preserving chart geometry; ISO month ticks split into readable month/year lines with accessible original dates, then restore outside portrait bounds. Touch chart values remain visible without hover. AI panels stack with readable subtitles, platform bars preserve icon/label/bar/value alignment, and comparison tables retain their columns. Performance cards stack without removing details or actions. Smaller/landscape booth reports keep their existing report layout. Feedback/brand controls remain available in document flow rather than overlapping the fixed Finish bar, whose measured height reserves bottom space. The report helper and stylesheet are both Worker-bundled: matching Worker assets must be deployed separately after review; a frontend merge alone does not update the deployed booth. CSS viewport/DPR and standing-distance legibility still require actual hardware rehearsal.
+**Booth report portrait layout:** `scripts/booth-report.js` loads `styles/booth-report.css` only after staff-authorized status confirms an active report, approved industry demo or request mode, the exact pathname and a finite future expiry. Ordinary reports never opt in through viewport, URL parameters or browser storage. Confirmed insight booth reports at least 1000px wide and 1600px tall with aspect ratio at most 3:4 use a shared column capped at 1920px, fluid 24–40px narrative text, 18–32px captions and 64–96px action targets. Briefing slides stack copy above full-width SVG plots, preserving chart geometry; ISO month ticks split into readable month/year lines with accessible original dates, then restore outside portrait bounds. Touch chart values remain visible without hover. AI panels stack with readable subtitles, platform bars preserve icon/label/bar/value alignment, and comparison tables retain their columns. Performance cards stack without removing details or actions. Smaller/landscape booth reports keep their existing report layout. Feedback/brand controls remain available in document flow rather than overlapping the fixed Finish bar, whose measured height reserves bottom space. The report helper and stylesheet are both Worker-bundled: matching Worker assets must be deployed separately after review; a frontend merge alone does not update the deployed booth. CSS viewport/DPR and standing-distance legibility still require actual hardware rehearsal.
 
 **Exact 9:16 composition:** within the same trusted booth context and minimum dimensions, only an exact 9:16 CSS viewport adds `html.booth-report-composition`. It keeps the Adobe fonts/colors, authored narratives, chart data and section order while arranging AI comparisons side by side and findings in an unboxed asymmetric grid, with all AI prose visible. Performance uses two columns (four pages in a 2×2 overview), keeping the original field/lab verdict, score, all three metric values and thresholds visible. Native 2160 × 3840 uses 36px prose, 56px section titles, 48px card titles and 96px primary targets; 1080 × 1920 uses 24px prose and 64px targets, with metric thresholds on a second row below 1600px width. Native **Read analysis** disclosures move, rather than copy, the original summary, recommendation, URL and verification nodes; leaving the exact ratio or clearing booth mode restores their original positions and listeners. Later decoration shares the existing chart observer, with no additional reset/expiry timers. Nearby ratios, the previous broader portrait chart/date/touch behavior and ordinary reports retain their existing layout.
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
 **Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-activity-1` adapter URL, solely for cache versioning. Only the report adapter and its stylesheet receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+
+### Industry demo fallback and fresh booth requests
+
+Entry now offers quiet **Staff: show an industry demo** and **Request my report**
+actions. A genuine lookup 404 with `code: no_report` offers a demo, a report request
+or another email; lookup outages remain explicit failures, not false no-matches.
+The industry chooser exposes all ten approved companies from the single Worker
+catalogue in `src/booth-demos.js` and opens their existing public example reports.
+
+Demo/request contexts are separate, staff-bound, ten-minute modes with no visitor
+email, candidate list or delivery state. Switching modes clears previous visitor
+access while preserving existing identified lookup history and its outbox retry.
+Demos have persistent **Example report** labeling, **Change industry**,
+**Request my report** and **Clear** controls, never a personal Finish/email action
+or personal report-view event. Public documents receive these controls only on
+the exact selected path of a live, initialized booth device. Ordinary public
+visitors and protected customer report authorization remain unchanged.
+
+Requests open the existing `/request-report` in the same tab, without email,
+company or consent prefill. The confirmed kiosk profile uses a single-column
+form: native 2160 × 3840 fields have 64px text and 128px touch targets;
+1080px-wide fields retain 32px text and 76px targets even with a reduced keyboard
+viewport. The existing endpoint, Turnstile, required fields, optional details,
+idempotency and explicit sales-contact consent remain. A successful submission
+offers **Finish and clear this screen**; reset, pagehide/history recovery,
+two-minute inactivity and absolute expiry remove visitor fields. Input/change
+events renew inactivity for virtual keyboards. Failed verification removes the
+form and shows recovery; failed clearing hides visitor content and permits retry.
+
+The combined feature branch also contains the carousel PDF-click fix documented
+below. Local browser checks exercise all ten demos, no-match/outage distinction,
+fresh form validation/consent, synthetic completion, inactivity/history privacy,
+failed verification and the existing personal report/Finish journey. Form/chooser
+checks cover native portrait, 1080 × 1920 and mobile, plus a keyboard-reduced form.
+Verification passed 388 Worker tests (one existing skip), 212 frontend tests
+and changed-file ESLint/Stylelint. The summit bundle passed a deployment dry run
+only. **This feature is
+not deployed:** merge frontend/form changes and separately deploy the matching
+Worker after approval. Real Turnstile/submission and physical kiosk rehearsal
+remain rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
 
 ### October 7 approved Figma booth implementation
 
@@ -242,7 +282,13 @@ the frame's visual scale, never its CSS viewport. Entry/Finish controls switch
 between the two fixed screens. Explicit local fixtures enable example-report navigation,
 send/contact feedback and reset without real email, lead recording or staff
 authentication; entered emails are not retained. The selected synthetic report and
-Finish preview share the same authored hero/metrics. Browser flow checks cover
+Finish preview share the same authored hero/metrics. Use
+`no-report@example.test` to exercise missing-report recovery and
+`service-error@example.test` for an outage; any other synthetic email opens the
+prepared-report fixture. All ten demo routes reuse synthetic report content with
+the chosen company label. The request fixture uses the real decorator and
+portrait styles with fake Turnstile and a locally intercepted success response,
+never a real lead submission. Browser flow checks cover
 one lookup followed by the report document and one preview document request,
 consent/delivery/reset failures and privacy clearing. Render checks cover
 2160 × 2881, 2160 × 3840, 1080 × 1920 and 390 × 844 without horizontal overflow;
@@ -287,6 +333,8 @@ On insight/Cannes pages, the light **Search performance** block renders the shar
 
 ### report-carousel
 A tabbed carousel with three persona views — Executive overview, Marketer insights, and IT/Engineering learnings. Each tab contains multiple slides with a "Top insight" callout and an SVG data visualization (column charts, line charts, donut charts, horizontal bars, stacked bars, big figures, metric strips, or recommendation lists). Includes dot navigation, prev/next arrows, and a slide counter. `bigfigure` accepts the documented single pipe-delimited row (`value | unit | label`) as well as the legacy three-`<p>` form — the renderer reads the pipe parts first so the documented form (what the DIH template emits) doesn't drop the unit/context. Slides use `min-height` (not a fixed `height`) so tall content like a 3-item `recommendationlist` grows to fit instead of clipping; on mobile the `.rc-slide-visual` 300px height cap applies only to SVG charts, not to text-content visuals (`recommendationlist`/`metricstrip`), which must grow.
+
+**PDF activation:** Simple Analytics auto-events can decorate the authored PDF link before the carousel initializes, adding an inline `return false` handler. Previously both cloned download buttons inherited that cancellation, then changed to `_blank`; analytics recorded the event but neither native navigation nor its callback opened the PDF. Both clones now preserve the inherited handler as a normal click listener, ignoring its stale return value while retaining tracking and explicit `event.preventDefault()`. PDF URLs, authorization, disabled/unavailable states and new-tab behavior are unchanged. Browser regressions cover both analytics load orders and both buttons; native mouse, Enter and touch activation were confirmed with the actual auto-events script at 2160×3840, including a tracking callback that never completes. The authenticated Amundi production example could not be retested because it redirects to sign-in. This is a local frontend fix, not yet published; it requires the normal PR/code-sync rollout, not a Worker deployment.
 
 ### report-download
 A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count). PDF title text is resolved from the block row markup (including nested links).

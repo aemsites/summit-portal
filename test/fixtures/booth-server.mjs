@@ -1,8 +1,10 @@
 // Local-only fixtures. APIs remain unavailable unless --preview is explicitly enabled.
+/* eslint-disable import/no-relative-packages */
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { BOOTH_DEMOS, findBoothDemo } from '../../workers/cloudflare/cug-adobe-oauth-worker/src/booth-demos.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const preview = process.argv.includes('--preview');
@@ -53,13 +55,54 @@ createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'lookup', 'select', 'view', 'send', 'contact', 'reset'];
-    if (!known.includes(action) || request.method !== (action === 'status' ? 'GET' : 'POST')) {
+    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'contact', 'reset'];
+    if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
       return;
     }
+    let body = {};
+    if (request.method === 'POST') {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      try {
+        body = JSON.parse(Buffer.concat(chunks).toString());
+      } catch {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Invalid fixture JSON."}');
+        return;
+      }
+    }
+    if (action === 'demos') {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ demos: BOOTH_DEMOS }));
+      return;
+    }
+    if (action === 'lookup' && ['no-report@example.test', 'service-error@example.test'].includes(body.email)) {
+      Object.keys(context).forEach((key) => { delete context[key]; });
+      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+      const missing = body.email === 'no-report@example.test';
+      response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
+        : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
+      return;
+    }
     if (action === 'lookup' || action === 'select') fixtureReport(context);
+    if (action === 'demo' || action === 'request') {
+      const demo = findBoothDemo(body.id);
+      if (action === 'demo' && !demo) {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Choose an available industry demo."}');
+        return;
+      }
+      Object.keys(context).forEach((key) => { delete context[key]; });
+      Object.assign(context, {
+        state: action,
+        selectedPath: demo?.path || '/request-report',
+        expiresAt: Date.now() + 600000,
+        ...(demo ? { demoId: demo.id, company: demo.company, industry: demo.industry } : {}),
+      });
+    }
     if (action === 'reset') {
       Object.keys(context).forEach((key) => { delete context[key]; });
       Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
@@ -80,6 +123,20 @@ createServer(async (request, response) => {
     response.end('{"error":"Test server has no live booth APIs. Tests must explicitly intercept requests."}');
     return;
   }
+  if (preview && path.startsWith('/example-report/')) {
+    const demo = BOOTH_DEMOS.find((item) => item.path === path);
+    if (!demo) {
+      response.writeHead(404);
+      response.end('Unknown local demo fixture.');
+      return;
+    }
+    const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    response.end(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`)
+      .replace('src="/scripts/booth-report.js"', 'data-booth-mode="demo" src="/scripts/booth-report.js"'));
+    return;
+  }
+  if (preview && path === '/request-report') path = '/test/fixtures/booth-preview-request.html';
   if (path.startsWith('/accounts/')) {
     if (preview) {
       const context = fixtureContext(request, response);

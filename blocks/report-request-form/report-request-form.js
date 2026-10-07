@@ -80,7 +80,8 @@ function createField(spec, prefix) {
   input.name = spec.key;
   input.type = spec.type || 'text';
   input.dataset.label = spec.label;
-  input.autocomplete = spec.autocomplete;
+  input.autocomplete = document.querySelector('script[data-booth-mode="request"]')
+    ? 'off' : spec.autocomplete;
   if (spec.inputmode) input.inputMode = spec.inputmode;
   if (spec.required) input.required = true;
   if (spec.key === 'website') input.pattern = '.*\\..*';
@@ -160,6 +161,7 @@ function successView(form) {
   if (shell) shell.replaceChildren(success);
   else form.replaceWith(success);
   success.focus();
+  document.dispatchEvent(new Event('booth-request-complete'));
 }
 
 function buildPayload(form, turnstileToken) {

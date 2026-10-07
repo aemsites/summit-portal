@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="turnstile-sitekey" content="test-only-site-key">
+  <title>Local fixture · Request a Digital Opportunity Report</title>
+  <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/blocks/report-request-form/report-request-form.css">
+  <script type="module" data-booth-mode="request" src="/scripts/booth-report.js"></script>
+</head>
+<body>
+  <main>
+    <div class="section"><div class="block-content"><div class="report-request-form"></div></div></div>
+  </main>
+  <script type="module">
+    import init from '/blocks/report-request-form/report-request-form.js';
+    let verified;
+    window.turnstile = {
+      render: (_holder, options) => { verified = options.callback; return 'local-fixture'; },
+      execute: () => verified('local-fixture-token'),
+      reset: () => {},
+    };
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (url, options) => {
+      if (url === 'https://act.aem.now/api/report-requests') {
+        return Promise.resolve(new Response('{"requestId":"local-fixture-only"}', {
+          status: 201, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      return originalFetch(url, options);
+    };
+    init(document.querySelector('.report-request-form'));
+  </script>
+</body>
+</html>
