@@ -179,7 +179,7 @@ scope and exact/glob tie behavior, not authorization caching or weaker
 revalidation. No additional runtime change or deployment has been made from
 this capture.
 
-**October 7 request-local CUG optimization (implemented locally, not deployed):**
+**October 7 request-local CUG optimization:**
 booth discovery now builds a prefix `Map` once from each fresh CUG snapshot and
 looks up only the current report path's prefixes. Longest scope, authored
 exact/glob tie order, duplicate precedence and narrower restrictions remain
@@ -197,9 +197,8 @@ sheet at 2,337ms before versus 30ms after this change; 1,000/4,000-row cases fal
 from 41/386ms to 9/18ms. A separate local 10,000-rule measurement builds the index
 in 1.15ms with approximately 838KiB additional retained heap. These are synthetic
 Node measurements, not production guarantees. Changed-file ESLint and the
-summit deployment dry-run pass. Production remains on diagnostic version
-`7874a428-b9f9-40b2-83c0-1db759b72cdd`; rollout and a new live HAR are separate
-gates, and Finish queue attribution remains unresolved.
+summit deployment dry-run pass. The production rollout is recorded below;
+a new live HAR is still needed, and Finish queue attribution remains unresolved.
 
 The same synthetic harness also runs the real handler/coordinator flow against
 10,000-row sheets: lookup 24ms, selection 25ms and status below 1ms, each within
@@ -208,6 +207,20 @@ authorized; these numbers do not include real edge transport or service latency.
 An isolated-browser synthetic Entry -> report -> Finish check at 2160 x 3840
 also passes, with the native preview visible and no horizontal overflow. This
 UI fixture does not execute the production Worker or measure its latency.
+
+**Production indexed-matching rollout, October 7:** deployed merged main
+`78c4bd1` ([#151](https://github.com/aemsites/summit-portal/pull/151)) with
+`--env summit`, version `4a6291d9-6437-46c3-9e89-9eca1ee8f906`, at
+`https://act.aem.now`. The deployment is active at 100%; the live bundled
+booth-script hash matches merged source. Anonymous `/booth` redirects to staff
+login and `/auth/booth/status` remains 401 without diagnostic headers.
+Bindings, staff epoch, hourly purge and activity-export behavior are unchanged.
+Timing diagnostics remain enabled for the before/after HAR comparison; disable
+them and redeploy once those captures are complete. No real customer lookup,
+email send or contact request was performed during rollout verification.
+Immediate rollback version: `7874a428-b9f9-40b2-83c0-1db759b72cdd`.
+Reload the live booth and capture lookup, selection, report viewing and Finish
+with Preserve log; local timing improvements do not establish live latency.
 
 **October 7 design review:** Rosie explicitly selected **Entry 3** in the
 [Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).
