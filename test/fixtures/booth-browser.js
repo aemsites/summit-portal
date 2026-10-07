@@ -1,5 +1,5 @@
 /** Explicit test-only network fixtures; never imported by runtime code. */
-export default async function verifyBooth(page) {
+export default async function verifyBooth(page, root = 'http://localhost:3000') {
   const path = '/accounts/e/example/insights/example-com/portal-landing/';
   const other = '/accounts/e/example/insights/example-org/portal-landing/';
   let state = { state: 'entry' };
@@ -12,7 +12,7 @@ export default async function verifyBooth(page) {
     if (!condition) throw new Error(message);
   };
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  const reportHTML = await (await page.request.get('http://localhost:3000/test/fixtures/booth-preview-report.html')).text();
+  const reportHTML = await (await page.request.get(`${root}/test/fixtures/booth-preview-report.html`)).text();
   await page.route('**/accounts/**', async (route) => {
     reportRequests += 1;
     const selected = new URL(route.request().url()).pathname;
@@ -20,7 +20,12 @@ export default async function verifyBooth(page) {
       await route.fulfill({ status: 302, headers: { Location: '/booth' } });
       return;
     }
-    await route.fulfill({ contentType: 'text/html', body: reportHTML });
+    const marked = reportHTML.replace('<html lang="en">', '<html lang="en" class="booth-report-pending">')
+      .replace('<head>', '<head><style>.booth-report-pending body > :not(#booth-return,#booth-recovery){display:none!important}</style>')
+      .replace(/(<body[^>]*>)/, '$1<div id="booth-report-content" hidden>')
+      .replace('</body>', '</div></body>')
+      .replace('src="/scripts/booth-report.js"', `data-booth-mode="report" data-booth-expires-at="${state.expiresAt}" src="/scripts/booth-report.js"`);
+    await route.fulfill({ contentType: 'text/html', body: marked });
   });
   await page.route('**/auth/booth/**', async (route) => {
     const action = new URL(route.request().url()).pathname.split('/').pop();
@@ -60,7 +65,7 @@ export default async function verifyBooth(page) {
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(result) });
   });
   await page.setViewportSize({ width: 2160, height: 3840 });
-  await page.goto('http://localhost:3000/content/index');
+  await page.goto(`${root}/content/index`);
   await page.locator('#email-form button').waitFor();
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   const entry = await page.evaluate(() => ({
@@ -187,14 +192,14 @@ export default async function verifyBooth(page) {
   await page.locator('#booth-return p:not([hidden])').waitFor();
   check(!await page.locator('main').isVisible(), 'Reset failure must not reveal old report content');
   await page.unroute('**/auth/booth/reset');
-  await page.getByRole('button', { name: 'Clear for next visitor' }).click();
+  await page.getByRole('button', { name: 'Retry and clear screen' }).click();
   await page.waitForURL('**/booth');
   await page.goBack();
   await page.waitForURL('**/booth');
   check(await page.locator('#registration-email').inputValue() === '', 'Back navigation resurrected attendee');
 
   multiple = false;
-  await page.goto('http://localhost:3000/content/index?entry=3&finish=2');
+  await page.goto(`${root}/content/index?entry=3&finish=2`);
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   await page.locator('#registration-email').fill('visitor@example.com');
   await page.locator('#email-form button').click();

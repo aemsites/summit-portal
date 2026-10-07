@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BoothCoordinator, handleBooth, discoverReports } from '../src/booth.js';
 import { createSession } from '../src/session.js';
-import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
-import { handleShareLinkRequest } from '../src/sharelink.js';
+import { createMockEnv, createMockBoothD1, createMockBoothStorage, createMockBoothCookie } from './helpers.js';
+import { sendAuthorizedBoothReport } from '../src/sharelink.js';
 import * as cugsheet from '../src/cugsheet.js';
 import { createBoothActivity } from '../src/booth-activity.js';
 
-vi.mock('../src/sharelink.js', () => ({ handleShareLinkRequest: vi.fn() }));
+vi.mock('../src/sharelink.js', () => ({ sendAuthorizedBoothReport: vi.fn() }));
 
 const path = '/accounts/e/example/insights/example-com/portal-landing/';
 const second = '/accounts/e/example/insights/example-org/portal-landing/';
@@ -41,15 +41,15 @@ describe('booth isolated context', () => {
     });
     const response = await handleBooth(req, env);
     const id = response.headers.get('Set-Cookie')?.match(/booth_context=([^;]+)/)?.[1];
-    if (id) cookie = `${cookie.split(';')[0]}; booth_context=${id}`;
+    if (id) cookie = `${cookie.replace(/;\s*booth_context=[^;]+/, '')}; booth_context=${id}`;
     return response;
   }
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1() });
-    cookie = `auth_token=${await createSession(env, { email: 'operator@adobe.com', method: 'staff', gen_epoch: '1' })}`;
     env.EVENT_CRED_EPOCH = '1';
+    cookie = await createMockBoothCookie(env);
     data = fixtures();
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       const rows = data[new URL(url).pathname];
@@ -59,7 +59,7 @@ describe('booth isolated context', () => {
     state = { storage: createMockBoothStorage(), waitUntil: vi.fn() };
     actor = new BoothCoordinator(state, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
-    vi.mocked(handleShareLinkRequest).mockReset().mockResolvedValue(new Response('{"result":"sent"}'));
+    vi.mocked(sendAuthorizedBoothReport).mockReset().mockResolvedValue(new Response('{"result":"sent"}'));
   });
 
   it('staff-gates every route, rejects customer and unverified staff sessions', async () => {
@@ -88,7 +88,7 @@ describe('booth isolated context', () => {
     expect(result.selectedPath).toBe(path);
     expect(result.candidates).toEqual([]);
     expect(JSON.stringify(result)).not.toContain('visitor@');
-    expect(response.headers.get('Set-Cookie')).toMatch(/HttpOnly; Secure; SameSite=Strict/);
+    expect(response.headers.get('Set-Cookie')).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...env.SESSIONS.store.values()].join()).toContain('visitor@example.com');
   });
@@ -121,10 +121,10 @@ describe('booth isolated context', () => {
     const status = await request('status');
     const statusTiming = status.headers.get('Server-Timing');
     expect(statusTiming).toContain('booth_kv_read;dur=');
-    expect(statusTiming).not.toContain('booth_index');
+    expect(statusTiming).toContain('booth_index');
     expect(statusTiming).not.toContain('booth_d1');
     expect((await status.json()).state).toBe('report');
-    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch).toHaveBeenCalledTimes(9);
     [lookupTiming, selection.headers.get('Server-Timing'), statusTiming].forEach((header) => {
       expect(header).not.toContain('visitor');
       expect(header).not.toContain('example');
@@ -180,7 +180,7 @@ describe('booth isolated context', () => {
     const header = statusResponse.headers.get('Server-Timing');
     expect(header).toContain('booth_queue;dur=75.0');
     expect(header).toContain('booth_actor;dur=0.0');
-    expect(header).not.toContain('booth_index');
+    expect(header).toContain('booth_index');
     expect(header).not.toContain('booth_d1');
     expect((await statusResponse.json()).selectedPath).toBe(path);
   });
@@ -383,7 +383,7 @@ describe('booth isolated context', () => {
     data['/closed-user-groups.json'] = [];
     expect((await request('select', { path: second })).status).toBe(403);
     expect((await request('status')).status).toBe(200);
-    expect(await (await request('status')).json()).toEqual({ state: 'entry' });
+    expect(await (await request('status')).json()).toEqual({ state: 'entry', canChooseAnother: false });
   });
 
   it('sends only context email/path and serializes duplicate requests across actor restart', async () => {
@@ -391,28 +391,124 @@ describe('booth isolated context', () => {
     expect((await request('send', { email: 'other@example.com', path: second })).status).toBe(400);
     const results = await Promise.all([request('send', {}), request('send', {})]);
     expect(results.map((response) => response.status)).toEqual([200, 200]);
-    expect(handleShareLinkRequest).toHaveBeenCalledTimes(1);
-    expect(await handleShareLinkRequest.mock.calls[0][0].json()).toEqual({ email: 'visitor@example.com', path, mode: 'email' });
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(1);
+    expect(sendAuthorizedBoothReport.mock.calls[0].slice(0, 5)).toEqual(['visitor@example.com', path, 'https://portal.example', ['example.com'], 'Adobe']);
     actor = new BoothCoordinator(state, env);
     expect((await request('send', {})).status).toBe(200);
-    expect(handleShareLinkRequest).toHaveBeenCalledTimes(1);
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('switches through an authorized picker without new identity, expiry, duplicate sends or views', async () => {
+    data['/data/insights-list.json'].push({ Folder: second, Report: 'Example.org' });
+    const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+    expect(lookup.canChooseAnother).toBe(true);
+    await request('select', { path });
+    await request('view', { path });
+    await request('send', {});
+    await request('select', { path });
+    await request('send', {});
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(1);
+    const picker = await (await request('picker', {})).json();
+    expect(picker).toMatchObject({ state: 'picker', expiresAt: lookup.expiresAt, canChooseAnother: true });
+    expect(picker.candidates).toHaveLength(2);
+    expect((await request('send', {})).status).toBe(400);
+    const selection = await (await request('select', { path: second })).json();
+    expect(selection).toMatchObject({ state: 'report', candidates: [], expiresAt: lookup.expiresAt, canChooseAnother: true });
+    await request('view', { path: second });
+    await request('send', {});
+    actor = new BoothCoordinator(state, env);
+    await request('picker', {});
+    await request('select', { path });
+    await request('view', { path });
+    expect((await (await request('status')).json()).sent).toBe(true);
+    await request('send', {});
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(2);
+    expect(sendAuthorizedBoothReport.mock.calls.map((args) => args.slice(0, 2))).toEqual([
+      ['visitor@example.com', path], ['visitor@example.com', second],
+    ]);
+    const events = [...env.REPORT_REQUESTS.events.values()];
+    expect(events.filter((event) => event.kind === 'search')).toHaveLength(1);
+    expect(events.filter((event) => event.kind === 'report_viewed')).toHaveLength(2);
+    expect(events.filter((event) => event.kind === 'report_sent')).toHaveLength(2);
+    expect(events.some((event) => event.kind === 'contact_requested')).toBe(false);
+    await request('reset', {});
+    expect((await request('select', { path: second })).status).toBe(410);
+    expect(env.SESSIONS.store.size).toBe(0);
+  });
+
+  it('keeps uncertain delivery nonretryable per report across switches and restarts', async () => {
+    data['/data/insights-list.json'].push({ Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    await request('select', { path });
+    sendAuthorizedBoothReport.mockResolvedValueOnce(new Response(null, { status: 502 }));
+    expect((await request('send', {})).status).toBe(502);
+    await request('picker', {});
+    await request('select', { path: second });
+    expect((await request('send', {})).status).toBe(200);
+    await request('picker', {});
+    actor = new BoothCoordinator(state, env);
+    await request('select', { path });
+    expect((await request('send', {})).status).toBe(409);
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(2);
+  });
+
+  it('rechecks narrower CUG and mapping when returning to picker and selecting again', async () => {
+    data['/data/insights-list.json'].push({ Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    await request('select', { path });
+    expect((await request('picker', { path: second })).status).toBe(400);
+    data['/closed-user-groups-mapping.json'].push({ url: second, group: 'different.example' });
+    const picker = await (await request('picker', {})).json();
+    expect(picker.candidates.map((candidate) => candidate.path)).toEqual([path]);
+    expect(picker.canChooseAnother).toBe(false);
+    expect((await request('select', { path: second })).status).toBe(400);
+    data['/closed-user-groups.json'].push({ url: path, 'cug-groups': 'different.example' });
+    expect((await request('select', { path })).status).toBe(403);
+  });
+
+  it('can discard a revoked selection and choose a different still-authorized original candidate', async () => {
+    data['/data/insights-list.json'].push({ Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    await request('select', { path });
+    data['/closed-user-groups.json'].push({ url: path, 'cug-groups': 'other.example' });
+    const picker = await (await request('picker', {})).json();
+    expect(picker.state).toBe('picker');
+    expect(picker.candidates.map((candidate) => candidate.path)).toEqual([second]);
+    expect((await request('select', { path: second })).status).toBe(200);
+    expect((await request('select', { path })).status).toBe(400);
+  });
+
+  it('never renews the attendee deadline on picker and fails if discovery crosses expiry', async () => {
+    data['/data/insights-list.json'].push({ Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    await request('select', { path });
+    const originalFetch = fetch.getMockImplementation();
+    const deadline = (await state.storage.get('context')).expiresAt;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    fetch.mockImplementation(async (...args) => {
+      vi.setSystemTime(deadline + 1);
+      return originalFetch(...args);
+    });
+    expect((await request('picker', {})).status).toBe(410);
+    expect(await state.storage.get('context')).toBeUndefined();
+    vi.useRealTimers();
   });
 
   it('does not claim success or retry after uncertain upstream delivery', async () => {
     await request('lookup', { email: 'visitor@example.com' });
-    vi.mocked(handleShareLinkRequest).mockResolvedValue(new Response('{"error":"upstream"}', { status: 502 }));
+    vi.mocked(sendAuthorizedBoothReport).mockResolvedValue(new Response('{"error":"upstream"}', { status: 502 }));
     expect((await request('send', {})).status).toBe(502);
     expect((await request('send', {})).status).toBe(409);
     expect((await (await request('status')).json()).sent).toBe(false);
     actor = new BoothCoordinator(state, env);
     expect((await request('send', {})).status).toBe(409);
-    expect(handleShareLinkRequest).toHaveBeenCalledTimes(1);
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(1);
   });
 
   it('rejects expiry, revoked staff epoch, cross-session use and permission revocation', async () => {
     await request('lookup', { email: 'visitor@example.com' });
     const original = cookie;
-    cookie = `auth_token=${await createSession(env, { email: 'other@adobe.com', method: 'oauth' })}`;
+    cookie = `${await createMockBoothCookie(env, 'other@adobe.com')}; ${original.match(/booth_context=[^;]+/)[0]}`;
     expect((await request('send', {})).status).toBe(403);
     cookie = original;
     env.EVENT_CRED_EPOCH = '2';
@@ -434,7 +530,7 @@ describe('booth isolated context', () => {
     const response = await request('reset', {});
     expect(response.headers.get('Set-Cookie')).not.toContain('auth_token');
     expect(env.SESSIONS.store.size).toBe(0);
-    expect(await (await request('status')).json()).toEqual({ state: 'entry' });
+    expect(await (await request('status')).json()).toEqual({ state: 'entry', canChooseAnother: false });
     expect((await request('send', {})).status).toBe(410);
   });
 
@@ -496,7 +592,7 @@ describe('booth isolated context', () => {
       body: JSON.stringify({ consent: true, noticeVersion: 'booth-privacy-v1' }),
     }));
     expect(response.status).toBe(404);
-    expect(handleShareLinkRequest).not.toHaveBeenCalled();
+    expect(sendAuthorizedBoothReport).not.toHaveBeenCalled();
     expect([...env.REPORT_REQUESTS.events.values()].some((event) => event.kind === 'contact_requested')).toBe(false);
   });
 
@@ -522,12 +618,12 @@ describe('booth isolated context', () => {
     await actor.alarm();
     expect(await state.storage.get('activity')).toBeUndefined();
     expect([...db.events.values()].filter((event) => event.kind === 'report_sent')).toHaveLength(1);
-    expect(handleShareLinkRequest).toHaveBeenCalledTimes(1);
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(1);
   });
 
   it('never records uncertain or rejected mail as sent', async () => {
     await request('lookup', { email: 'visitor@example.com' });
-    vi.mocked(handleShareLinkRequest).mockResolvedValue(new Response(null, { status: 502 }));
+    vi.mocked(sendAuthorizedBoothReport).mockResolvedValue(new Response(null, { status: 502 }));
     await request('send', {});
     expect([...env.REPORT_REQUESTS.events.values()].some((event) => event.kind === 'report_sent')).toBe(false);
     expect((await request('send', {})).status).toBe(409);
@@ -546,7 +642,7 @@ describe('booth isolated context', () => {
     env.REPORT_REQUESTS = db;
     await actor.alarm();
     expect([...db.events.values()].filter((event) => event.kind === 'contact_requested')).toHaveLength(1);
-    expect(handleShareLinkRequest).not.toHaveBeenCalled();
+    expect(sendAuthorizedBoothReport).not.toHaveBeenCalled();
     data['/closed-user-groups.json'] = [];
     expect((await request('view', { path })).status).toBe(403);
     expect([...db.events.values()].some((event) => event.kind === 'report_viewed')).toBe(false);
@@ -608,7 +704,7 @@ describe('booth isolated context', () => {
     const send = await request('send', {});
     expect(send.status).toBe(503);
     expect((await send.json()).error).toContain('has not been sent');
-    expect(handleShareLinkRequest).not.toHaveBeenCalled();
+    expect(sendAuthorizedBoothReport).not.toHaveBeenCalled();
     env.REPORT_REQUESTS = db;
     await actor.alarm();
     expect([...db.events.values()].map((event) => event.kind)).toEqual(['search', 'report_selected', 'report_viewed', 'contact_requested']);

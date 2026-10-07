@@ -1,9 +1,8 @@
 /** Run against the explicitly enabled, local-only touchscreen fixture server. */
-export default async function verifyBoothDemos(page) {
+export default async function verifyBoothDemos(page, root = 'http://localhost:3000') {
   const check = (condition, message) => {
     if (!condition) throw new Error(message);
   };
-  const root = 'http://localhost:3000';
   await page.clock.install();
   const personalActions = [];
   page.on('request', (request) => {
@@ -150,7 +149,8 @@ export default async function verifyBoothDemos(page) {
     { status: 503, contentType: 'application/json', body: '{"error":"Test verification outage"}' },
   ));
   await page.goto(`${root}/request-report`);
-  await page.getByRole('link', { name: 'Return to the booth', exact: true }).waitFor();
-  check(await page.locator('input').count() === 0, 'Failed booth verification left a usable request form');
+  await page.getByRole('button', { name: 'Retry and clear screen', exact: true }).waitFor();
+  check(!await page.locator('main').isVisible(), 'Failed booth verification left a usable request form');
+  check(await page.locator('[name="email"]').inputValue() === '', 'Failed verification retained request fields');
   return { demos: demos.length, profiles, actionProfiles, checked: 'Touch-sized entry/recovery/list alternatives; no placeholder progress; no-match recovery; all industries; separate demo mode; fresh form; consent and validation; synthetic submission; reset/idle/history privacy; outage distinction. No real submissions.' };
 }

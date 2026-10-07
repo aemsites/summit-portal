@@ -22,7 +22,7 @@ export function withBoothPresentation(path, presentation) {
   const [pathname, query] = path.split('?');
   const params = new URLSearchParams();
   const step = new URLSearchParams(query).get('step');
-  if (pathname === '/booth' && ['finish', 'demos'].includes(step)) {
+  if (pathname === '/booth' && ['finish', 'demos', 'picker'].includes(step)) {
     params.set('step', step);
   }
   if (presentation.heading) params.set('heading', presentation.heading);

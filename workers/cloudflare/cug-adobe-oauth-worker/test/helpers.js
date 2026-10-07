@@ -1,6 +1,13 @@
 /**
  * Shared test helpers: mock KV store and mock environment.
  */
+import { boothSessionCookies } from '../src/session.js';
+
+export async function createMockBoothCookie(env, email = 'operator@adobe.com', ttl = 14400) {
+  const exp = Math.floor(Date.now() / 1000) + ttl;
+  const cookies = await boothSessionCookies({ email, exp }, env);
+  return cookies.filter((cookie) => !/Max-Age=0(?:;|$)/.test(cookie)).map((cookie) => cookie.split(';')[0]).join('; ');
+}
 
 export function createMockKV() {
   const store = new Map();

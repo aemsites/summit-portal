@@ -10,6 +10,11 @@ const root = resolve(import.meta.dirname, '../..');
 const preview = process.argv.includes('--preview');
 const fixtures = new Map();
 const reportPath = '/accounts/e/example/insights/example-com/portal-landing/';
+const otherReportPath = '/accounts/e/example/insights/example-org/portal-landing/';
+const candidates = [
+  { path: reportPath, label: 'Example.com' },
+  { path: otherReportPath, label: 'Example.org' },
+];
 const types = {
   '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
 };
@@ -27,15 +32,26 @@ function fixtureContext(request, response) {
   return context;
 }
 
-function fixtureReport(context) {
+function fixtureReport(context, path = reportPath) {
+  const outcome = context.reports?.[path] || { delivery: 'ready', sent: false };
   Object.assign(context, {
     state: 'report',
-    selectedPath: reportPath,
-    delivery: 'ready',
-    sent: false,
+    selectedPath: path,
+    ...outcome,
+    canChooseAnother: context.candidates?.length > 1,
     contactRequested: false,
-    expiresAt: Date.now() + 600000,
   });
+}
+
+function markedDocument(html, context) {
+  return html.replace('<html lang="en">', '<html lang="en" class="booth-report-pending">')
+    .replace('<head>', '<head><style>:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery,#booth-return){display:none!important} #booth-recovery[hidden]{display:none!important}</style>')
+    .replace(
+      /(?:data-booth-mode="request"\s+)?src="\/scripts\/booth-report\.js"/,
+      `data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js"`,
+    )
+    .replace(/(<body[^>]*>)/, '$1<div id="booth-report-content" hidden>')
+    .replace('</body>', '</div><aside id="booth-recovery"><p role="alert">Checking this booth report...</p><button type="button" data-booth-recover>Retry and clear screen</button></aside></body>');
 }
 
 createServer(async (request, response) => {
@@ -55,7 +71,7 @@ createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset'];
+    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'];
     if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -85,7 +101,7 @@ createServer(async (request, response) => {
         return;
       }
       const email = body.email.trim().toLowerCase();
-      if (email !== 'visitor@example.test') {
+      if (!['visitor@example.test', 'multi@example.test'].includes(email)) {
         Object.keys(context).forEach((key) => { delete context[key]; });
         Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
         const missing = email !== 'service-error@example.test';
@@ -94,8 +110,28 @@ createServer(async (request, response) => {
           : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
         return;
       }
+      Object.keys(context).forEach((key) => { delete context[key]; });
+      Object.assign(context, {
+        state: 'picker',
+        candidates: email === 'multi@example.test' ? candidates : candidates.slice(0, 1),
+        reports: {},
+        expiresAt: Date.now() + 600000,
+      });
+      if (context.candidates.length === 1) fixtureReport(context);
     }
-    if (action === 'lookup' || action === 'select') fixtureReport(context);
+    if (action === 'picker' || action === 'select') {
+      if (!context.candidates?.length
+        || (action === 'select' && !context.candidates.some((candidate) => candidate.path === body.path))) {
+        response.writeHead(403, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Choose an authorized local fixture report."}');
+        return;
+      }
+      if (action === 'select') fixtureReport(context, body.path);
+      else {
+        context.state = 'picker';
+        delete context.selectedPath;
+      }
+    }
     if (action === 'demo' || action === 'request') {
       const demo = findBoothDemo(body.id);
       if (action === 'demo' && !demo) {
@@ -111,7 +147,7 @@ createServer(async (request, response) => {
         ...(demo ? { demoId: demo.id, company: demo.company, industry: demo.industry } : {}),
       });
     }
-    if (action === 'reset') {
+    if (['reset', 'exit'].includes(action)) {
       Object.keys(context).forEach((key) => { delete context[key]; });
       Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
     }
@@ -120,7 +156,12 @@ createServer(async (request, response) => {
       response.end('{"error":"Open the example report first. This is a local fixture."}');
       return;
     }
-    if (action === 'send') context.sent = true;
+    if (action === 'send') {
+      context.sent = true;
+      context.delivery = 'sent';
+      context.reports ||= {};
+      context.reports[context.selectedPath] = { sent: true, delivery: 'sent' };
+    }
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify(context));
     return;
@@ -139,11 +180,17 @@ createServer(async (request, response) => {
     }
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    response.end(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`)
-      .replace('src="/scripts/booth-report.js"', 'data-booth-mode="demo" src="/scripts/booth-report.js"'));
+    const context = fixtureContext(request, response);
+    response.end(markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context));
     return;
   }
-  if (preview && path === '/request-report') path = '/test/fixtures/booth-preview-request.html';
+  if (preview && path === '/request-report') {
+    const context = fixtureContext(request, response);
+    const html = await readFile(resolve(root, 'test/fixtures/booth-preview-request.html'), 'utf8');
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    response.end(markedDocument(html, context));
+    return;
+  }
   if (path.startsWith('/accounts/')) {
     if (preview) {
       const context = fixtureContext(request, response);
@@ -154,7 +201,9 @@ createServer(async (request, response) => {
       }
     }
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    response.end(await readFile(resolve(root, 'test/fixtures/booth-preview-report.html')));
+    const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
+    const context = preview ? fixtureContext(request, response) : null;
+    response.end(context ? markedDocument(html, context) : html);
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);
@@ -171,7 +220,7 @@ createServer(async (request, response) => {
     response.writeHead(404);
     response.end();
   }
-}).listen(3000, '127.0.0.1', () => {
+}).listen(Number(process.env.PORT || 3000), '127.0.0.1', () => {
   process.stdout.write(preview
     ? 'LOCAL FIXTURES ONLY: http://localhost:3000/ — no real email, auth, or lead recording.\n'
     : 'Test-only booth fixture server: http://localhost:3000/content/index\n');

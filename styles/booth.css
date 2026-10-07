@@ -287,6 +287,10 @@
     white-space: nowrap;
   }
 
+  .finish-content #choose-another-report {
+    margin-top: 16px;
+  }
+
   .send-icon {
     width: 27px;
     height: 27px;

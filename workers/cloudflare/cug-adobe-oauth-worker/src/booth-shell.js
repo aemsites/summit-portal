@@ -19,7 +19,13 @@ import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
 import webpage from '../../../../img/booth/entry-webpage.png';
-import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
+import { boothStaff, authorizeBoothContext } from './booth.js';
+import {
+  hasBoothBoundary,
+  getBoothBootstrapStaff,
+  boothSessionCookies,
+  clearSessionCookie,
+} from './session.js';
 import { findBoothDemo } from './booth-demos.js';
 
 const assets = new Map([
@@ -47,10 +53,42 @@ function returnToBooth() {
   return new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } });
 }
 
-function isAccountDocument(request) {
-  const { pathname } = new URL(request.url);
-  return ['GET', 'HEAD'].includes(request.method) && pathname.startsWith('/accounts/')
-    && (!pathname.split('/').pop().includes('.') || /\.html?$/i.test(pathname));
+function isSharedAsset(path) {
+  return assets.has(path)
+    || /^\/(?:scripts|styles|blocks)\/[a-zA-Z0-9_./-]+\.(?:js|css)$/.test(path)
+    || /^\/fonts\/[a-zA-Z0-9_./-]+\.(?:woff2?|otf|ttf)$/.test(path)
+    || /^\/(?:icons|img)\/[a-zA-Z0-9_./-]+\.(?:svg|png|jpe?g|webp|gif|avif)$/.test(path)
+    || ['/favicon.ico', '/nav', '/nav.plain.html', '/footer', '/footer.plain.html'].includes(path);
+}
+
+function allowedContextPath(path, context) {
+  if (!context) return false;
+  const selected = context.selectedPath;
+  if (context.state === 'request') return path === '/request-report';
+  if (!['report', 'demo'].includes(context.state) || !selected) return false;
+  if (context.state === 'demo' && findBoothDemo(context.demoId)?.path !== selected) return false;
+  if (path === selected) return true;
+  if (path === selected.replace(/\/$/, '')) return true;
+  // Only display dependencies, never HTML/JSON/Markdown/CSV/PDF/export variants.
+  return path.startsWith(selected)
+    && /^[a-zA-Z0-9_/-]+\.(?:png|jpe?g|webp|gif|avif|svg|css|js)$/.test(path.slice(selected.length));
+}
+
+export function isBoothSharedAsset(path) {
+  return isSharedAsset(path);
+}
+
+function recoveryPage(headers) {
+  return new Response(`<!doctype html><html><head><title>Booth recovery</title></head><body>
+<main><h1>Reset this booth visit</h1><p>No company content is shown here.</p>
+<button id="reset" type="button">Clear visit and return to entry</button><p id="result" role="status"></p>
+<noscript>Ask staff to enable JavaScript and reset this visit. Do not reopen the report.</noscript></main>
+<script>document.getElementById('reset').onclick=async function(){this.disabled=true;try{
+const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin'});
+if(!r.ok||(await r.json()).state!=='entry')throw Error();
+location.replace('/booth');
+}catch{document.getElementById('result').textContent='Reset could not be confirmed. Ask staff for help.';this.disabled=false;}};</script>
+</body></html>`, { headers });
 }
 
 export async function serveBooth(request, env) {
@@ -66,7 +104,14 @@ export async function serveBooth(request, env) {
   }
   if (pathname !== '/booth') return null;
   if (request.method !== 'GET') return new Response(null, { status: 405 });
-  const session = await boothStaff(request, env);
+  const scoped = await boothStaff(request, env);
+  const session = scoped || await getBoothBootstrapStaff(request, env);
+  const headers = new Headers({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'private, no-store',
+    'Referrer-Policy': 'no-referrer',
+    'X-Robots-Tag': 'noindex, nofollow',
+  });
   if (!session) {
     const setup = new URL('/booth', request.url);
     const params = new URL(request.url).searchParams;
@@ -82,69 +127,102 @@ export async function serveBooth(request, env) {
       // eslint-disable-next-line no-console
       console.warn('[booth] Ignored invalid presentation parameters on staff login redirect');
     }
+    if (new URL(request.url).searchParams.has('recover')) {
+      return recoveryPage(headers);
+    }
     const redirect = encodeURIComponent(`${setup.pathname}${setup.search}`);
     return new Response(null, { status: 302, headers: { Location: `/login?staff&redirect=${redirect}`, 'Cache-Control': 'private, no-store' } });
   }
-  const headers = new Headers({
-    'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': 'private, no-store',
-    'Referrer-Policy': 'no-referrer',
-    'X-Robots-Tag': 'noindex, nofollow',
-  });
-  headers.append('Set-Cookie', await boothDeviceCookie(request, session, env));
-  if (hasBoothDevice(request) && !await boothDeviceAuthorized(request, env)) {
-    headers.append('Set-Cookie', 'booth_context=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
-  }
+  if (!scoped) {
+    (await boothSessionCookies(session, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
+  } else headers.append('Set-Cookie', clearSessionCookie());
+  if (new URL(request.url).searchParams.has('recover')) return recoveryPage(headers);
   return new Response(shell, { headers });
 }
 
-/** Constrain fresh account documents on an explicitly initialized booth device. */
+/** Central kiosk allowlist, before ANY private representation or privileged route. */
 export async function protectBoothDocument(request, env) {
-  const { pathname } = new URL(request.url);
-  if (!hasBoothDevice(request) || !isAccountDocument(request)) return null;
-  if (!await boothDeviceAuthorized(request, env)) return returnToBooth();
-  try {
-    const status = await handleBooth(new Request(new URL('/auth/booth/status', request.url), { headers: { Cookie: request.headers.get('Cookie') } }), env);
-    if (!status.ok) throw new Error('Booth status unavailable');
-    const context = await status.json();
-    if (context.state !== 'report' || context.selectedPath !== pathname
-      || !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now()) {
-      return returnToBooth();
+  if (!hasBoothBoundary(request)) return null;
+  const url = new URL(request.url);
+  const { pathname } = url;
+  if (url.searchParams.has('token') || pathname.includes('%') || pathname.includes('\\')) return returnToBooth();
+  if (['/booth', '/login', '/auth/logout', '/auth/me', '/auth/portal', '/auth/callback', '/auth/staff-login'].includes(pathname)
+    || pathname.startsWith('/auth/booth/')) return null;
+  if (pathname === '/api/report-requests' && request.method === 'POST') {
+    if (!await boothStaff(request, env)) return returnToBooth();
+    try {
+      const context = await authorizeBoothContext(request, env);
+      return context?.state === 'request' ? null : returnToBooth();
+    } catch {
+      return new Response('Booth state unavailable', { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
     }
-    return null;
+  }
+  if (pathname === '/auth/sharelink') {
+    return new Response('Booth browsers cannot share arbitrary reports', {
+      status: 403,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
+  if (!['GET', 'HEAD'].includes(request.method)) return returnToBooth();
+  if (isSharedAsset(pathname)) return null;
+  if (!await boothStaff(request, env)) return returnToBooth();
+  try {
+    const context = await authorizeBoothContext(request, env);
+    // Hashed EDS media is a public rendering dependency, not a document/index.
+    const media = /^\/media_[0-9a-f]{40,}[/a-zA-Z0-9_-]*\.(?:png|jpe?g|webp|gif|avif|svg)$/.test(pathname);
+    if (context?.state === 'report' && context.resourceAuthorized !== true) return returnToBooth();
+    return allowedContextPath(pathname, context) || (media && context) ? null : returnToBooth();
   } catch {
     // eslint-disable-next-line no-console
-    console.error('[booth] Account document state check unavailable');
+    console.error('[booth] Request authorization unavailable');
     return new Response('Booth state cannot be checked. Return to /booth or ask staff.', { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
   }
 }
 
 export async function injectBoothReturn(response, request, env) {
-  if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html')) return response;
-  const protectedDevice = hasBoothDevice(request) && isAccountDocument(request);
-  if (!request.headers.get('Cookie')?.includes('booth_context=')
-    || !await boothStaff(request, env)) {
-    return protectedDevice ? returnToBooth() : response;
-  }
-  const status = await handleBooth(new Request(new URL('/auth/booth/status', request.url), { headers: { Cookie: request.headers.get('Cookie') } }), env);
-  if (!status.ok) return protectedDevice ? returnToBooth() : response;
-  const context = await status.json();
-  const publicBoothPage = (context.state === 'demo'
-    && findBoothDemo(context.demoId)?.path === context.selectedPath)
-    || (context.state === 'request' && context.selectedPath === '/request-report');
-  if (!isAccountDocument(request) && !publicBoothPage) return response;
-  if (publicBoothPage && !await boothDeviceAuthorized(request, env)) return response;
-  const expiredContext = !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now();
-  if (context.selectedPath !== new URL(request.url).pathname
-    || ((protectedDevice || publicBoothPage) && expiredContext)) {
-    return protectedDevice ? returnToBooth() : response;
-  }
+  if (!hasBoothBoundary(request) || !response.ok || !response.headers.get('Content-Type')?.includes('text/html')) return response;
+  if (isSharedAsset(new URL(request.url).pathname) || new URL(request.url).pathname === '/login') return response;
+  const context = await authorizeBoothContext(request, env);
+  if (!context || !allowedContextPath(new URL(request.url).pathname, context)
+    || context.selectedPath !== new URL(request.url).pathname) return returnToBooth();
+  if (request.method === 'HEAD') return new Response(null, response);
   const privateResponse = new Response(response.body, response);
   privateResponse.headers.set('Cache-Control', 'private, no-store');
-  return new HTMLRewriter().on('body', {
+  const marked = { html: false, head: false, body: false };
+  const transformed = new HTMLRewriter().on('html', {
     element(element) {
-      const mode = publicBoothPage ? ` data-booth-mode="${context.state}"` : '';
-      element.append(`<script type="module"${mode} src="/scripts/booth-report.js?v=booth-activity-1"></script>`, { html: true });
+      marked.html = true;
+      element.setAttribute('class', `${element.getAttribute('class') || ''} booth-report-pending`.trim());
     },
-  }).transform(privateResponse);
+  }).on('head', {
+    element(element) {
+      marked.head = true;
+      element.prepend(`<style id="booth-report-concealment">
+html.booth-report-pending body > :not(#booth-return):not(#booth-recovery):not(noscript),
+html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(noscript) { display: none !important; }
+html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
+html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
+html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
+</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-activity-1"></script>`, { html: true });
+    },
+  }).on('body', {
+    element(element) {
+      marked.body = true;
+      element.prepend('<aside id="booth-recovery">Your report is concealed while access is checked. <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
+      element.append('</div>', { html: true });
+    },
+  })
+    .transform(privateResponse);
+  // Do not stream any company bytes until the early concealment really exists.
+  const html = await transformed.text();
+  if (!Object.values(marked).every(Boolean)) {
+    return new Response('This report cannot be safely displayed. Return to /booth?recover=1 and ask staff.', {
+      status: 503,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
+  const current = await authorizeBoothContext(request, env);
+  if (!current || current.state !== context.state || current.selectedPath !== context.selectedPath
+    || current.expiresAt !== context.expiresAt) return returnToBooth();
+  return new Response(html, transformed);
 }
