@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Test fixture prepared report</title>
+  <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
+  <link rel="stylesheet" href="/styles/booth.css">
+  <style>main { min-height: 12000px; } .finish-preview { max-width: 1200px; margin: 0 auto; }</style>
+  <script type="module" src="/scripts/booth-report.js"></script>
+</head>
+<body class="booth">
+  <main>
+    <div class="finish-preview">
+      <div class="report-hero insight">
+        <div>
+          <div>
+            <h1>Example prepared report — test fixture</h1>
+            <p>Digital Opportunity Report</p>
+            <p><a href="https://example.com/">example.com</a></p>
+            <p>Measured: October 2026</p>
+          </div>
+          <div><picture><img src="/img/booth/entry-webpage.png" alt="Example report illustration"></picture></div>
+        </div>
+      </div>
+      <div class="report-stats dark">
+        <div><div>AI Visibility</div><div>61/100</div><div>Up 8 points</div><div>positive</div><div>Example visibility across the tracked category prompts.</div><div>speedometer</div></div>
+        <div><div>Organic Growth</div><div>73/100</div><div>Growing demand</div><div>positive</div><div>Example organic demand and growth opportunities.</div><div>speedometer</div></div>
+        <div><div>Site Performance</div><div>34/100</div><div>Clear headroom</div><div>warning</div><div>Example site performance has room for improvement.</div><div>speedometer</div></div>
+        <div><div>AI Visibility Trend</div><div>+8</div><div>vs. previous measurement (pts)</div><div>positive</div><div>The example score increased from 53 to 61.</div><div></div></div>
+      </div>
+    </div>
+    <p>LOCAL FIXTURE ONLY. No real customer report, email delivery, or contact request.</p>
+  </main>
+  <script type="module">
+    import { buildInsightHero } from '/blocks/report-hero/report-hero.js';
+    import { buildDarkStats } from '/blocks/report-stats/report-stats.js';
+    const hero = document.querySelector('.report-hero');
+    buildInsightHero(hero, [...hero.children]);
+    hero.querySelector('.rh-insight-bg-svg').remove();
+    const stats = document.querySelector('.report-stats');
+    buildDarkStats(stats, [...stats.children], { interactive: false, animate: false });
+  </script>
+</body>
+</html>

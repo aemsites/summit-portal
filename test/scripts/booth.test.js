@@ -166,8 +166,9 @@ describe('booth runtime boundary', () => {
         expiresAt: Date.now() + 600000,
       }),
     });
-    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ sent: true }) });
-    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    fetchStub.withArgs('/auth/booth/send').resolves({ ok: true, json: async () => ({ sent: true }) });
+    fetchStub.withArgs('/auth/booth/reset').resolves({ ok: true, json: async () => ({ state: 'entry' }) });
     try {
       mountBooth(root);
       await clock.tickAsync(0);
@@ -176,30 +177,36 @@ describe('booth runtime boundary', () => {
       expect(root.querySelector('.brand span').textContent).to.equal('Amplify your brand visibility');
       expect(root.getElementById('stage').dataset.brand).to.equal('semrush');
       expect(finish.querySelector('.finish-intro')).to.equal(null);
-      expect(root.getElementById(finish.getAttribute('aria-labelledby')).textContent).to.equal('Your report');
+      expect(root.getElementById(finish.getAttribute('aria-labelledby')).textContent).to.equal('Email your report');
+      expect(finish.textContent).not.to.include('Talk through your report here');
+      expect(finish.querySelector('#send-privacy')).to.equal(null);
+      expect(root.getElementById('send-report').hasAttribute('aria-describedby')).to.equal(false);
+      expect(finish.querySelector('.finish-artwork')).to.equal(null);
+      expect(finish.querySelector('#report-preview').compareDocumentPosition(root.getElementById('send-report'))).to.equal(Node.DOCUMENT_POSITION_FOLLOWING);
       expect(root.getElementById('request-contact').textContent).to.equal('Please contact me');
       expect(root.getElementById('contact-privacy').textContent).to.include('contact you by email about this report');
-      expect(fetchStub.calledOnce).to.equal(true);
+      expect(fetchStub.callCount).to.equal(2);
       root.getElementById('send-report').click();
       await clock.tickAsync(0);
-      expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/send');
-      expect(fetchStub.secondCall.args[1].body).to.equal('{}');
+      expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/send');
+      expect(fetchStub.thirdCall.args[1].body).to.equal('{}');
       expect(root.getElementById('finish-status').textContent).to.include('was emailed');
       const reset = finish.querySelector('[data-reset]');
-      expect(reset.textContent).to.equal('Finish');
+      expect(reset.textContent).to.equal('Finish and clear this screen');
       expect(reset.classList.contains('secondary')).to.equal(true);
       reset.click();
       await clock.tickAsync(0);
-      expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
+      expect(fetchStub.getCall(3).args[0]).to.equal('/auth/booth/reset');
       expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
       expect(window.location.pathname + window.location.search).to.equal('/booth?heading=Amplify+your+brand+visibility&brand=semrush');
-      expect(fetchStub.callCount).to.equal(3);
+      expect(fetchStub.callCount).to.equal(4);
+      expect(root.getElementById('report-preview').textContent).to.equal('');
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }
   });
 
-  it('places compact privacy notices at search and both Finish decisions, with independent explicit contact consent', async () => {
+  it('preserves search and contact privacy notices, with independent explicit contact consent', async () => {
     const root = await productionFixture();
     const previousUrl = window.location.href;
     window.history.replaceState(null, '', '/booth?step=finish');
@@ -209,11 +216,11 @@ describe('booth runtime boundary', () => {
       ok: true,
       json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
     });
-    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ contactRequested: true }) });
+    fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    fetchStub.withArgs('/auth/booth/contact').resolves({ ok: true, json: async () => ({ contactRequested: true }) });
     try {
       expect(root.getElementById('search-privacy').textContent).to.include('90 days');
       expect(root.getElementById('search-privacy').textContent).to.include('does not request sales contact');
-      expect(root.getElementById('send-privacy').textContent).to.include('not a request for sales contact');
       ['search-privacy', 'contact-privacy'].forEach((id) => {
         expect(root.getElementById(id).querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
       });
@@ -221,13 +228,13 @@ describe('booth runtime boundary', () => {
       await clock.tickAsync(0);
       root.getElementById('request-contact').click();
       await clock.tickAsync(0);
-      expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/contact');
-      expect(JSON.parse(fetchStub.secondCall.args[1].body)).to.deep.equal({ consent: true, noticeVersion: 'booth-privacy-v1' });
+      expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/contact');
+      expect(JSON.parse(fetchStub.thirdCall.args[1].body)).to.deep.equal({ consent: true, noticeVersion: 'booth-privacy-v1' });
       expect(root.getElementById('contact-status').textContent).to.include('Your request is recorded');
       expect(root.getElementById('request-contact').disabled).to.equal(true);
       expect(root.getElementById('send-report').disabled).to.equal(false);
       root.getElementById('request-contact').click();
-      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.callCount).to.equal(3);
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }
@@ -243,7 +250,8 @@ describe('booth runtime boundary', () => {
       ok: true,
       json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
     });
-    fetchStub.onSecondCall().resolves({
+    fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    fetchStub.withArgs('/auth/booth/contact').resolves({
       ok: false,
       status: 503,
       json: async () => ({

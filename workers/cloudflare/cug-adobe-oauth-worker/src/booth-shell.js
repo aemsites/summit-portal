@@ -4,16 +4,28 @@ import shell from '../../../../booth.html';
 import runtime from '../../../../scripts/booth.js';
 import report from '../../../../scripts/booth-report.js';
 import presentation from '../../../../scripts/booth-presentation.js';
+import preview from '../../../../scripts/booth-preview.js';
+import hero from '../../../../blocks/report-hero/report-hero.js';
+import stats from '../../../../blocks/report-stats/report-stats.js';
 import css from '../../../../styles/booth.css';
 import reportCss from '../../../../styles/booth-report.css';
+import arrow from '../../../../img/booth/action-arrow.svg';
+import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
+import webpage from '../../../../img/booth/entry-webpage.png';
 import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
 
 const assets = new Map([
   ['/scripts/booth.js', [runtime, 'text/javascript']],
   ['/scripts/booth-report.js', [report, 'text/javascript']],
   ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
+  ['/scripts/booth-preview.js', [preview, 'text/javascript']],
+  ['/blocks/report-hero/report-hero.js', [hero, 'text/javascript']],
+  ['/blocks/report-stats/report-stats.js', [stats, 'text/javascript']],
   ['/styles/booth.css', [css, 'text/css']],
   ['/styles/booth-report.css', [reportCss, 'text/css']],
+  ['/img/booth/action-arrow.svg', [arrow, 'image/svg+xml']],
+  ['/img/booth/entry-webpage-glow.svg', [webpageGlow, 'image/svg+xml']],
+  ['/img/booth/entry-webpage.png', [webpage, 'image/png']],
 ]);
 
 function returnToBooth() {

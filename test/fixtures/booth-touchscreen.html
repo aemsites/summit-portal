@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
+  <title>Booth touchscreen · Local review</title>
+  <style>
+    :root { font-family: "adobe-clean", sans-serif; color: #f5f5f5; background: #171717; }
+    * { box-sizing: border-box; }
+    body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; margin: 0; }
+    header, footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 24px; }
+    header { border-bottom: 1px solid #555; }
+    footer { justify-content: space-between; border-top: 1px solid #555; font-size: 14px; }
+    header strong { margin-right: auto; font-size: 20px; }
+    label { display: flex; align-items: center; gap: 8px; }
+    button, select { min-height: 40px; border: 1px solid #888; border-radius: 4px; padding: 8px 12px; background: #292929; color: inherit; font: inherit; }
+    button { cursor: pointer; }
+    button[aria-pressed="true"] { background: #f5f5f5; color: #171717; }
+    :is(button, select):focus-visible { outline: 3px solid #e60000; outline-offset: 3px; }
+    main { display: grid; min-height: 0; overflow: auto; place-items: center; padding: 16px; }
+    main[data-mode="width"] { place-items: start center; }
+    main[data-mode="native"] { place-items: start; }
+    .frame { position: relative; flex: none; background: #fff; }
+    iframe { position: absolute; inset: 0 auto auto 0; display: block; border: 0; transform-origin: top left; }
+    .warning { color: #ffbd69; }
+  </style>
+  <script type="module" src="/test/fixtures/booth-touchscreen.js"></script>
+</head>
+<body>
+  <header>
+    <strong>Booth touchscreen review</strong>
+    <label>Viewport
+      <select id="resolution">
+        <option value="2160x3840">2160 × 3840 · event target</option>
+        <option value="1080x1920">1080 × 1920 · fallback</option>
+        <option value="2160x2881">2160 × 2881 · Figma reference</option>
+      </select>
+    </label>
+    <span>Entry 3 · Finish 5 · Actual report preview</span>
+    <button type="button" id="show-entry" aria-pressed="true">Entry screen</button>
+    <button type="button" id="show-finish" aria-pressed="false">Finish screen</button>
+    <label>View
+      <select id="mode">
+        <option value="fit">Fit whole screen</option>
+        <option value="width">Fill width · scroll</option>
+        <option value="native">1:1 · scroll both axes</option>
+      </select>
+    </label>
+  </header>
+  <main id="viewport" data-mode="fit">
+    <div class="frame" id="frame">
+      <iframe id="preview" title="Actual booth UI with local-only fixture actions"></iframe>
+    </div>
+  </main>
+  <footer>
+    <span id="size-label" role="status">Loading 2160 × 3840 viewport…</span>
+    <span class="warning">LOCAL FIXTURES: no real email or lead recording. Confirm CSS viewport and browser zoom on the event device.</span>
+  </footer>
+</body>
+</html>

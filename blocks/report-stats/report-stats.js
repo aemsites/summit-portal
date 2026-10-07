@@ -124,7 +124,8 @@ function makeSpeedometer(ratio, label) {
   const fillD = speedometerFillPathD(pct);
   const needle = speedometerNeedleTip(pct);
 
-  const ariaLabel = label || `Score ${Math.round(pct * 100)} out of 100`;
+  const ariaLabel = (label || `Score ${Math.round(pct * 100)} out of 100`)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
   return `<svg width="72" height="44" viewBox="0 0 72 44" role="img" aria-label="${ariaLabel}" class="rs-speedometer">
     <title>${ariaLabel}</title>
@@ -388,7 +389,7 @@ function attachDarkSheet(el) {
   });
 }
 
-function buildDarkStats(el, rows) {
+export function buildDarkStats(el, rows, { interactive = true, animate = true } = {}) {
   const strip = document.createElement('div');
   strip.className = 'rs-dark-strip';
 
@@ -460,22 +461,24 @@ function buildDarkStats(el, rows) {
 
     // On mobile (<1000px) the card acts as a button that opens a bottom sheet
     // with the KPI description. Keep content identical for desktop.
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-expanded', 'false');
-    card.dataset.sheetLabel = label;
-    card.dataset.sheetValue = value;
-    card.dataset.sheetBadgeLabel = badgeLabel;
-    card.dataset.sheetBadgeStatus = statusKey;
-    card.dataset.sheetDesc = desc;
+    if (interactive) {
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-expanded', 'false');
+      card.dataset.sheetLabel = label;
+      card.dataset.sheetValue = value;
+      card.dataset.sheetBadgeLabel = badgeLabel;
+      card.dataset.sheetBadgeStatus = statusKey;
+      card.dataset.sheetDesc = desc;
+    } else badgeEl.removeAttribute('role');
 
     strip.append(card);
   });
 
   el.textContent = '';
   el.append(strip);
-  attachDarkSheet(el);
-  animateDarkStats(strip);
+  if (interactive) attachDarkSheet(el);
+  if (animate) animateDarkStats(strip);
 }
 
 /**

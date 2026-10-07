@@ -7,13 +7,21 @@ export default defineConfig({
     name: 'booth-text-assets',
     enforce: 'pre',
     resolveId(source, importer) {
+      if (importer?.endsWith('/src/booth-shell.js') && /\/img\/booth\/[^/]+\.(png|jpg|svg)$/.test(source)) {
+        const type = source.endsWith('.svg') ? 'text' : 'data';
+        return `${resolve(dirname(importer), source)}.booth-${type}`;
+      }
       if (importer?.endsWith('/src/booth-shell.js')
-        && /\/(?:booth\.html|scripts\/booth(?:-report|-presentation)?\.js|styles\/booth(?:-report)?\.css)$/.test(source)) {
+        && /\/(?:booth\.html|scripts\/booth(?:-report|-presentation|-preview)?\.js|styles\/booth(?:-report)?\.css|blocks\/report-(hero|stats)\/report-(hero|stats)\.js)$/.test(source)) {
         return `${resolve(dirname(importer), source)}.booth-text`;
       }
       return null;
     },
     load(id) {
+      if (id.endsWith('.booth-data')) {
+        const bytes = readFileSync(id.slice(0, -11));
+        return `export default new Uint8Array(${JSON.stringify([...bytes])}).buffer`;
+      }
       if (id.endsWith('.booth-text')) {
         return `export default ${JSON.stringify(readFileSync(id.slice(0, -11), 'utf8'))}`;
       }

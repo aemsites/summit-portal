@@ -7,12 +7,13 @@
   <meta name="referrer" content="no-referrer">
   <title>Digital Opportunity Report / booth</title>
   <link rel="icon" href="/img/icons/adobe-logo.svg">
+  <link rel="stylesheet" href="https://use.typekit.net/hah7vzn.css">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
   <link rel="stylesheet" href="/styles/booth.css">
   <script type="module" src="/scripts/booth.js"></script>
 </head>
 <body class="booth">
-  <main class="stage" id="stage" data-brand="adobe" data-notice-version="booth-privacy-v1">
+  <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="5" data-notice-version="booth-privacy-v1">
     <header class="stage-header">
       <div class="brand">
         <img class="brand-icon" src="/img/icons/adobe-logo.svg" alt="Adobe" width="32" height="32">
@@ -47,7 +48,7 @@
                 placeholder="name@company.com" required aria-describedby="email-help search-privacy email-error">
               <p class="form-help" id="email-help">Your business email identifies the reports you can view. This is not a sign-in.</p>
               <p class="notice" id="email-error" role="alert" hidden></p>
-              <button class="primary" type="submit" aria-describedby="search-privacy">View my report <span class="arrow" aria-hidden="true">↗</span></button>
+              <button class="primary" type="submit" aria-describedby="search-privacy">View my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
               <p class="privacy-note" id="search-privacy">By searching, you acknowledge that Adobe records your business email and report activity for 90 days to measure interest in this booth experience. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Adobe Privacy Policy</a>.</p>
             </form>
           </div>
@@ -63,26 +64,23 @@
       </section>
       <section class="panel" data-panel="finish" aria-labelledby="finish-heading" hidden>
         <div class="finish-content">
-          <h2 id="finish-heading">Your report</h2>
+          <h2 id="finish-heading">Email your report</h2>
+          <div class="finish-preview" id="report-preview" aria-label="Preview of your report" aria-busy="false"></div>
+          <button class="link-button" id="preview-retry" type="button" hidden>Retry preview</button>
           <div class="finish-actions">
-            <button class="primary" id="send-report" type="button" aria-describedby="send-privacy">Email my report <span class="arrow" aria-hidden="true">↗</span></button>
+            <button class="primary" id="send-report" type="button">Email my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
             <p class="send-hint">We'll email the link to the business address you used to find your report.</p>
-            <p class="privacy-note" id="send-privacy">This sends your report link only, not a request for sales contact. Adobe records this delivery action for 90 days.</p>
           </div>
           <p class="notice" id="finish-status" role="status" aria-live="polite" hidden></p>
-          <div class="finish-guidance" aria-label="Continue the conversation at the booth">
+          <div class="finish-guidance" aria-label="Request a follow-up conversation">
             <div>
-              <h3>Talk through your report here</h3>
-              <p>Ask the booth team to introduce you to an Adobe specialist.</p>
-            </div>
-            <div>
-              <h3>Want to discuss your report?</h3>
+              <h3>Prefer to meet later?</h3>
               <button class="secondary" id="request-contact" type="button" aria-describedby="contact-privacy">Please contact me</button>
               <p class="privacy-note" id="contact-privacy">By selecting “Please contact me”, you ask Adobe to contact you by email about this report. We record your request and report details for 90 days. See the <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Adobe Privacy Policy</a> for your rights and how to withdraw consent.</p>
               <p class="notice" id="contact-status" role="status" aria-live="polite" hidden></p>
             </div>
           </div>
-          <button class="secondary" data-reset type="button">Finish</button>
+          <button class="secondary" data-reset type="button">Finish and clear this screen</button>
         </div>
       </section>
     </div>
