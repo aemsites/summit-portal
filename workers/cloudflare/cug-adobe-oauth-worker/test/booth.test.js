@@ -91,6 +91,134 @@ describe('booth isolated context', () => {
     expect([...env.SESSIONS.store.values()].join()).toContain('visitor@example.com');
   });
 
+  it('exposes opt-in, identity-free stage timings without changing fresh revalidation', async () => {
+    env.BOOTH_TIMING_ENABLED = 'true';
+    data['/data/insights-list.json'].push({ Folder: second, Report: 'example.org' });
+    const lookup = await request('lookup', { email: 'visitor@example.com' });
+    const lookupTiming = lookup.headers.get('Server-Timing');
+    expect(lookupTiming).toContain('booth_total;dur=');
+    expect(lookupTiming).toContain('booth_auth;dur=');
+    expect(lookupTiming).toContain('booth_rpc;dur=');
+    expect(lookupTiming).toContain('booth_queue;dur=');
+    expect(lookupTiming).toContain('booth_actor;dur=');
+    expect(lookupTiming).toContain('booth_storage;dur=');
+    expect(lookupTiming).toContain('booth_d1;dur=');
+    expect(lookupTiming).toContain('booth_match;desc="CPU timing unavailable"');
+    ['index', 'cugs', 'mapping'].forEach((name) => {
+      expect(lookupTiming).toContain(`booth_${name}_fetch;dur=`);
+      expect(lookupTiming).toContain(`booth_${name}_body;dur=`);
+      expect(lookupTiming).toContain(`booth_${name}_rows;desc=`);
+    });
+    expect((await lookup.json()).state).toBe('picker');
+    expect(fetch).toHaveBeenCalledTimes(3);
+    const selection = await request('select', { path });
+    expect(selection.headers.get('Server-Timing')).toContain('booth_kv_read;dur=');
+    expect(selection.headers.get('Server-Timing')).toContain('booth_d1;dur=');
+    expect((await selection.json()).selectedPath).toBe(path);
+    expect(fetch).toHaveBeenCalledTimes(6);
+    const status = await request('status');
+    const statusTiming = status.headers.get('Server-Timing');
+    expect(statusTiming).toContain('booth_kv_read;dur=');
+    expect(statusTiming).not.toContain('booth_index');
+    expect(statusTiming).not.toContain('booth_d1');
+    expect((await status.json()).state).toBe('report');
+    expect(fetch).toHaveBeenCalledTimes(6);
+    [lookupTiming, selection.headers.get('Server-Timing'), statusTiming].forEach((header) => {
+      expect(header).not.toContain('visitor');
+      expect(header).not.toContain('example');
+      expect(header).not.toContain('/accounts');
+      header.split(', ').forEach((metric) => {
+        expect(metric).toMatch(/^booth_[a-z0-9_]+;(dur=\d+\.\d|desc="(\d+ rows|CPU timing unavailable)")$/);
+      });
+    });
+  });
+
+  it('keeps timings disabled by default and absent for unauthenticated requests', async () => {
+    expect((await request('lookup', { email: 'visitor@example.com' })).headers.get('Server-Timing')).toBeNull();
+    env.BOOTH_TIMING_ENABLED = 'true';
+    const unauthorized = await request('status', undefined, { Cookie: '' });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get('Server-Timing')).toBeNull();
+  });
+
+  it('measures queue wait without attributing another request work to status', async () => {
+    env.BOOTH_TIMING_ENABLED = 'true';
+    data['/data/insights-list.json'].push({ Folder: second, Report: 'example.org' });
+    await request('lookup', { email: 'visitor@example.com' });
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    let releaseIndex;
+    let indexStarted;
+    let statusQueued;
+    const gate = new Promise((resolve) => { releaseIndex = resolve; });
+    const discoveryStarted = new Promise((resolve) => { indexStarted = resolve; });
+    const queued = new Promise((resolve) => { statusQueued = resolve; });
+    const serve = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (url, options) => {
+      if (new URL(url).pathname === '/data/insights-list.json') {
+        indexStarted();
+        await gate;
+      }
+      return serve(url, options);
+    });
+    const actorFetch = actor.fetch.bind(actor);
+    vi.spyOn(actor, 'fetch').mockImplementation((req) => {
+      const response = actorFetch(req);
+      if (new URL(req.url).pathname.endsWith('/status')) statusQueued();
+      return response;
+    });
+    const selecting = request('select', { path });
+    await discoveryStarted;
+    const status = request('status');
+    await queued;
+    now = 75;
+    releaseIndex();
+    const [selectionResponse, statusResponse] = await Promise.all([selecting, status]);
+    expect(selectionResponse.headers.get('Server-Timing')).toContain('booth_index_fetch;dur=75.0');
+    const header = statusResponse.headers.get('Server-Timing');
+    expect(header).toContain('booth_queue;dur=75.0');
+    expect(header).toContain('booth_actor;dur=0.0');
+    expect(header).not.toContain('booth_index');
+    expect(header).not.toContain('booth_d1');
+    expect((await statusResponse.json()).selectedPath).toBe(path);
+  });
+
+  it('measures D1 export while retaining the durable activity and response', async () => {
+    env.BOOTH_TIMING_ENABLED = 'true';
+    data['/data/insights-list.json'].push({ Folder: second, Report: 'example.org' });
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const prepare = env.REPORT_REQUESTS.prepare.bind(env.REPORT_REQUESTS);
+    vi.spyOn(env.REPORT_REQUESTS, 'prepare').mockImplementation((sql) => ({
+      bind: (...params) => {
+        const statement = prepare(sql).bind(...params);
+        return {
+          ...statement,
+          run: async () => {
+            now += 43;
+            return statement.run();
+          },
+        };
+      },
+    }));
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    expect(response.headers.get('Server-Timing')).toContain('booth_d1;dur=43.0');
+    expect(response.headers.get('Server-Timing')).toContain('booth_total;dur=43.0');
+    expect((await response.json()).state).toBe('picker');
+    expect(env.REPORT_REQUESTS.events.size).toBe(1);
+    expect(await state.storage.get('activity')).toBeUndefined();
+  });
+
+  it('retains diagnostic stages and existing fail-closed responses on discovery failure', async () => {
+    env.BOOTH_TIMING_ENABLED = 'true';
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 503 }));
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe('Prepared reports cannot be checked right now. Ask the booth team.');
+    expect(response.headers.get('Server-Timing')).toContain('booth_index_fetch;dur=');
+    expect(response.headers.get('Server-Timing')).not.toContain('booth_match');
+  });
+
   it('filters unauthorized aliases before latest and prefers authorized portal landings', async () => {
     data['/data/insights-list.json'].push(
       { Folder: '/accounts/u/unrelated/insights/example-com/portal-landing/', Created: '2.10.2026' },

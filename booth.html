@@ -13,7 +13,7 @@
   <script type="module" src="/scripts/booth.js"></script>
 </head>
 <body class="booth">
-  <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="5" data-notice-version="booth-privacy-v1">
+  <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="5" data-notice-version="booth-privacy-v1" aria-busy="true">
     <header class="stage-header">
       <div class="brand">
         <img class="brand-icon" src="/img/icons/adobe-logo.svg" alt="Adobe" width="32" height="32">
@@ -27,10 +27,10 @@
     </header>
 
     <div class="stage-main">
-      <p id="booth-status" class="notice" role="status" aria-live="polite"></p>
+      <p id="booth-status" class="notice" role="status" aria-live="polite">Checking this booth...</p>
       <a id="staff-login" class="primary" href="/login?staff&amp;redirect=%2Fbooth" hidden>Staff: set up this device</a>
       <button id="booth-retry" class="link-button" data-reset type="button" hidden>Retry and clear screen</button>
-      <section class="panel" data-panel="welcome" aria-labelledby="welcome-heading">
+      <section class="panel" data-panel="welcome" aria-labelledby="welcome-heading" hidden>
         <div class="welcome-layout">
           <div class="welcome-intro">
             <div class="eyebrow">Digital Opportunity Report</div>

@@ -87,6 +87,9 @@ EVENT_CRED_EPOCH = "1"
 # Aggregate counts only; identified booth activity stays in REPORT_REQUESTS.
 BOOTH_ANALYTICS_HOSTNAME = "act.aem.now"
 
+# Temporary staff-only latency diagnostics; disable after the production capture.
+BOOTH_TIMING_ENABLED = "true"
+
 [env.summit.triggers]
 crons = ["0 * * * *"]
 

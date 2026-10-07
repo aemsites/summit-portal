@@ -97,6 +97,60 @@ The Worker bundles only the arrow, website illustration and website glow from
 updated Worker separately; local implementation does not imply deployment or
 real email delivery. The legacy review/export prototype is unchanged.
 
+**Production Worker rollout, October 7:** deployed merged main `0386931`
+([#150](https://github.com/aemsites/summit-portal/pull/150)) to `summit-portal`
+with `--env summit`, version `16ecfbdb-877b-46af-9bf6-21401751509d`, at
+`https://act.aem.now`. The deployment is active at 100%; live preview-module,
+stylesheet and both shared-renderer hashes match merged source. Anonymous
+`/booth` still redirects to staff login and `/auth/booth/status` returns 401.
+Existing D1 migrations are current; KV/D1 bindings, staff epoch and hourly purge
+remain unchanged. Full Worker regression: 333 passed, one existing skip.
+No customer lookup, report send or contact request was performed during rollout.
+Previous rollback version: `8983a8ec-97ff-4de9-a59c-f1560839a046`.
+Reload the live booth and reopen reports; already-open documents do not hot-reload.
+
+**October 7 production latency investigation (not a runtime fix):** the supplied
+multi-report HAR measures lookup at 11.730s, select at 9.157s and Finish status at
+5.055s, almost entirely waiting for server responses. The report document and
+Finish preview take 163ms and 168ms respectively. There is no HTTP redirect to
+Entry on the Finish transition. A local delayed-status reproduction confirms
+that the default visible Welcome panel remains onscreen until initial status
+selects Finish; a neutral initial checking state is needed, without displaying
+unverified attendee content.
+
+Lookup and selection each freshly fetch all three private datasets; these
+fetches already run in parallel. Both also await identified D1 activity export
+after persisting the Durable Object outbox. Staff JWT verification is local;
+anonymous analytics runs through `waitUntil`, not the response-critical promise.
+Synthetic real-handler probes independently confirm origin/D1 delay propagation,
+status's KV-read dependency and status queuing behind an in-flight report-view
+action. The HAR does not contain that view request, so this queue mechanism is
+not yet proven to explain its specific slow status response. Discovery also
+rescans CUG entries per report: synthetic 4,000/10,000-row datasets take roughly
+0.4s/2.3s locally with no injected network delay, not measured production CPU time.
+Production queue, storage, dataset-fetch and matching timings remain unknown;
+stage-level instrumentation is required before attributing the observed seconds
+or selecting a backend optimization. No authorization freshness, expiry/reset,
+outbox failure behavior or production code was changed during this investigation.
+
+**Follow-up diagnostics and initial loading state (local; awaiting rollout):**
+the shell now starts with all attendee panels hidden and a visible
+**Checking this booth...** status, including before module execution. Initial
+status selects the authorized screen; failures retain staff/retry recovery
+without exposing an unverified Finish. The Worker adds request-local
+`Server-Timing` for staff verification, coordinator round trip/application queue,
+actor execution/storage, KV, per-dataset fetch/body reads and D1 export.
+Fixed labels and numeric dataset row counts contain no emails, report paths,
+cookies or identifiers; 401 responses omit diagnostics. The
+`BOOTH_TIMING_ENABLED` flag defaults off and is temporarily enabled in the summit
+deployment configuration, to be disabled after the production capture.
+Cloudflare clocks only advance on I/O: CPU matching is explicitly labelled
+unavailable, not reported as zero cost. I/O spans may include preceding CPU work,
+and parallel/nested spans must not be summed. Local profiling and production
+CPU observations are needed alongside the next HAR. Authorization, serial
+execution, expiry/reset, outbox export and mail/contact behavior remain unchanged.
+No follow-up production deployment or customer action has been performed yet.
+
 **October 7 design review:** Rosie explicitly selected **Entry 3** in the
 [Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).
 Its hero and form are unchanged from the October 6 native Figma reference;
