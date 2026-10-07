@@ -71,7 +71,7 @@ export function resetCugSheetCache() {
 
 /**
  * Turn raw sheet rows into match entries, most specific first.
- * Exported for tests; `matchSheetGroups` is the only consumer.
+ * Equal-length prefixes retain their authored order.
  */
 export function parseCugSheetRows(rows) {
   const entries = [];
@@ -104,6 +104,32 @@ export function matchSheetGroups(entries, path) {
     (e) => (e.glob ? clean.startsWith(e.prefix) : clean === e.prefix),
   );
   return match ? match.groups : null;
+}
+
+/** Index already specificity-sorted entries for repeated, request-local matching. */
+export function compileSheetGroups(entries) {
+  const rules = new Map();
+  let maxPrefixLength = 0;
+  for (const { prefix, glob, groups } of entries || []) {
+    let rule = rules.get(prefix);
+    if (!rule) {
+      rule = { first: groups, glob: null };
+      rules.set(prefix, rule);
+      maxPrefixLength = Math.max(maxPrefixLength, prefix.length);
+    }
+    if (glob && !rule.glob) rule.glob = groups;
+  }
+  return (path) => {
+    if (!path) return null;
+    const clean = path.split('?')[0];
+    for (let length = Math.min(clean.length, maxPrefixLength); length >= 0; length -= 1) {
+      const rule = rules.get(clean.slice(0, length));
+      // At the full path, both exact and glob rules match; the first authored tie wins.
+      const groups = length === clean.length ? rule?.first : rule?.glob;
+      if (groups) return groups;
+    }
+    return null;
+  };
 }
 
 /** Fetch the sheet from the origin, following pagination if it ever appears. */

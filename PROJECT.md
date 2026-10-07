@@ -154,9 +154,60 @@ Deployed source commit `3a5dab3` with `--env summit`, version
 The live booth-script hash matches committed source; anonymous booth access
 still redirects to staff setup, and anonymous status remains 401 with no timing
 header. Previous rollback version: `16ecfbdb-877b-46af-9bf6-21401751509d`.
-The next authenticated HAR is still required to attribute production latency.
+The follow-up authenticated HAR is analyzed below; direct production CPU timing
+remains unavailable.
 No live customer lookup, email send or contact request was performed during
 rollout verification.
+
+**Second production HAR, October 7:** the instrumented multi-report flow measures
+lookup at 6.482s, selection at 4.796s and Finish status at 2.842s. Fresh dataset
+response-header fetches take 15-79ms each, with body spans of 4-16ms; KV reads
+take 5-6ms. The snapshots contain 9,989 index rows, 9,258 CUG rows and 10,281
+mapping rows. Lookup's first I/O after matching is labelled KV write (5.486s);
+selection's first I/O after matching is labelled D1 export (4.394s). Because
+the runtime clock is frozen during matching, those figures cannot be treated
+as isolated KV/D1 service latency. Local CPU profiling of the real discovery
+code with synthetic 10,000-row sheets measures 2.423s and identifies the linear
+`matchSheetGroups` search as the dominant CPU hotspot. Repeated report-by-rule
+scanning is the leading explanation; production CPU time is not directly measured.
+Finish's actor execution is only 6ms versus a 2.781s round trip. Its reported
+application queue span (3.886s) exceeds that round trip and is not a literal
+elapsed duration; runtime-clock limitations prevent precise queue attribution.
+The HAR again lacks a view POST, so the blocking operation remains unconfirmed.
+The proposed fix is a per-fresh-snapshot CUG lookup index preserving longest
+scope and exact/glob tie behavior, not authorization caching or weaker
+revalidation. No additional runtime change or deployment has been made from
+this capture.
+
+**October 7 request-local CUG optimization (implemented locally, not deployed):**
+booth discovery now builds a prefix `Map` once from each fresh CUG snapshot and
+looks up only the current report path's prefixes. Longest scope, authored
+exact/glob tie order, duplicate precedence and narrower restrictions remain
+equivalent to the unchanged linear matcher. Fresh parallel dataset loading,
+independent mapping checks, authorized alias selection, coordinator serialization
+and awaited activity export are unchanged; there is no cross-request permission
+cache or Entry preloading. Ordinary report CUG matching is untouched.
+
+The real lookup/selection regression failed before the fix with 500,500 rule-prefix reads
+for 1,000 reports/rules (budget: 2,000), then passed with the index. Matcher
+equivalence includes 2,600 seeded path checks and explicit edge cases; fresh
+revocation/regrant and the full Worker suite pass (366 tests, one existing skip).
+The unchanged synthetic, no-network discovery harness measures 10,000 rows per
+sheet at 2,337ms before versus 30ms after this change; 1,000/4,000-row cases fall
+from 41/386ms to 9/18ms. A separate local 10,000-rule measurement builds the index
+in 1.15ms with approximately 838KiB additional retained heap. These are synthetic
+Node measurements, not production guarantees. Changed-file ESLint and the
+summit deployment dry-run pass. Production remains on diagnostic version
+`7874a428-b9f9-40b2-83c0-1db759b72cdd`; rollout and a new live HAR are separate
+gates, and Finish queue attribution remains unresolved.
+
+The same synthetic harness also runs the real handler/coordinator flow against
+10,000-row sheets: lookup 24ms, selection 25ms and status below 1ms, each within
+a local-only 1s diagnostic budget. All I/O is mocked and only three reports are
+authorized; these numbers do not include real edge transport or service latency.
+An isolated-browser synthetic Entry -> report -> Finish check at 2160 x 3840
+also passes, with the native preview visible and no horizontal overflow. This
+UI fixture does not execute the production Worker or measure its latency.
 
 **October 7 design review:** Rosie explicitly selected **Entry 3** in the
 [Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).

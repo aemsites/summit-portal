@@ -3,6 +3,7 @@ import { BoothCoordinator, handleBooth, discoverReports } from '../src/booth.js'
 import { createSession } from '../src/session.js';
 import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
 import { handleShareLinkRequest } from '../src/sharelink.js';
+import * as cugsheet from '../src/cugsheet.js';
 
 vi.mock('../src/sharelink.js', () => ({ handleShareLinkRequest: vi.fn() }));
 
@@ -228,6 +229,58 @@ describe('booth isolated context', () => {
     expect(await discoverReports('visitor@example.com', env)).toEqual([{ path, label: 'Example — example.com', company: 'Example' }]);
     expect(await discoverReports('operator@adobe.com', env)).toEqual([]);
     expect(await discoverReports('nobody@unknown.example', env)).toEqual([]);
+  });
+
+  it('does not repeatedly read the whole CUG rule list during large lookup and selection', async () => {
+    const size = 1000;
+    const report = (i) => `/accounts/e/company-${i}/insights/site-${i}/portal-landing/`;
+    data['/data/insights-list.json'] = Array.from({ length: size }, (_, i) => ({ Folder: report(i), Customers: `Company ${i}`, Report: `Site ${i}` }));
+    data['/closed-user-groups.json'] = Array.from({ length: size }, (_, i) => ({
+      url: `/accounts/e/company-${i}**`,
+      'cug-groups': i < 3 ? 'example.com' : `company-${i}.test`,
+    }));
+    data['/closed-user-groups-mapping.json'] = Array.from({ length: size }, (_, i) => ({
+      url: `/accounts/e/company-${i}/*`,
+      group: i < 3 ? 'example.com' : `company-${i}.test`,
+    }));
+    let prefixReads = 0;
+    const parse = cugsheet.parseCugSheetRows;
+    vi.spyOn(cugsheet, 'parseCugSheetRows').mockImplementation((rows) => parse(rows).map((entry) => {
+      const { prefix } = entry;
+      return {
+        ...entry,
+        get prefix() {
+          prefixReads += 1;
+          return prefix;
+        },
+      };
+    }));
+
+    const response = await request('lookup', { email: 'visitor@example.com' });
+    const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.candidates.map((candidate) => candidate.path)).toEqual([
+      report(0), report(1), report(2),
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(prefixReads).toBeLessThanOrEqual(size * 2);
+    const selection = await request('select', { path: report(0) });
+    expect(selection.status).toBe(200);
+    expect((await selection.json()).selectedPath).toBe(report(0));
+    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(prefixReads).toBeLessThanOrEqual(size * 4);
+  });
+
+  it('rebuilds matching from fresh sheets after narrower revocation and regrant', async () => {
+    expect((await discoverReports('visitor@example.com', env)).map((candidate) => candidate.path))
+      .toEqual([path]);
+    const narrower = { url: path, 'cug-groups': 'other.example' };
+    data['/closed-user-groups.json'].push(narrower);
+    expect(await discoverReports('visitor@example.com', env)).toEqual([]);
+    narrower['cug-groups'] = 'visitor@example.com';
+    expect((await discoverReports('visitor@example.com', env)).map((candidate) => candidate.path))
+      .toEqual([path]);
+    expect(fetch).toHaveBeenCalledTimes(9);
   });
 
   it('orders DIH and ISO Created dates consistently among authorized aliases', async () => {

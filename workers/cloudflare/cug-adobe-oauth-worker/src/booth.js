@@ -3,7 +3,7 @@ import {
   clearSessionCookie, clearSignedInMarkerCookie,
 } from './session.js';
 import { EMAIL_RE, jsonResponse } from './magiclink.js';
-import { parseCugSheetRows, matchSheetGroups } from './cugsheet.js';
+import { parseCugSheetRows, compileSheetGroups } from './cugsheet.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { sha256hex } from './stafflogin.js';
 import { matchesCugGroup, normalizeCugGroup } from './cug-group.js';
@@ -171,12 +171,12 @@ export async function discoverReports(email, env, timing = createBoothTiming()) 
     sheet('/closed-user-groups-mapping.json', env, timing),
   ]);
   return timing.sync('booth_match', () => {
-    const groups = parseCugSheetRows(cugs);
+    const matchGroups = compileSheetGroups(parseCugSheetRows(cugs));
     const websites = new Map();
     for (const row of index) {
       const path = reportPath(row.Folder);
 
-      if (!path || !matchSheetGroups(groups, path)?.some((group) => matchesCugGroup(group, email))
+      if (!path || !matchGroups(path)?.some((group) => matchesCugGroup(group, email))
         || !mappingAllows(mapping, path, email)) {
         // eslint-disable-next-line no-continue
         continue;

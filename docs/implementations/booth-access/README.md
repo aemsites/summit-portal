@@ -74,12 +74,36 @@ submits anonymous action counts separately, never the identified lead data.
 See [target design / API contract](context/target-design.md) for authorization,
 context lifetime, concurrency and failure semantics.
 
+## Request-local CUG index
+
+Booth discovery compiles the freshly fetched CUG rules into a prefix `Map`
+through `compileSheetGroups` in `src/cugsheet.js`. For each report, it checks
+that path's prefixes from longest to shortest instead of scanning every rule.
+The index is built once per discovery and discarded afterward; it is not
+shared between requests, stored on the coordinator or populated on Entry.
+Lookup, selection and later actions that revalidate access still fetch all
+three complete private datasets in parallel.
+
+Matching retains the existing most-specific scope, authored order for
+equal-length exact/glob ties, first duplicate rule, literal trailing-star
+prefix semantics, case sensitivity and query stripping. Blank-group rows are
+still filtered by the existing parser. A narrower restriction cannot fall
+back to a broader grant. The independent mapping check and authorization
+filtering before canonical/latest report selection are unchanged. Ordinary
+report CUG matching and its existing cache are untouched.
+
+The discovery regression exercises the real lookup handler and bounds rule
+prefix reads independently of wall-clock timing. Matcher tests compare against
+the unchanged linear matcher, including seeded overlapping scopes, and fresh
+snapshot tests cover narrower revocation and regrant. Synthetic local timing
+does not establish production latency or resolve the separate Finish wait.
+
 ## Temporary latency diagnostics
 
 `BOOTH_TIMING_ENABLED="true"` adds `Server-Timing` to staff-authorized booth
 API responses. It defaults off; the summit configuration temporarily enables
 it in the deployed diagnostic build. Set it to `"false"` and redeploy
-after capturing the slow flow. No new analytics, logging destination, lookup,
+once the before/after flow captures are complete. No new analytics, logging destination, lookup,
 permission cache or background export behavior is introduced.
 
 | Metric | Boundary |
