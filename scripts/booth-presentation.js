@@ -17,12 +17,13 @@ export function readBoothPresentation(search = '') {
   };
 }
 
-/** Keep only presentation settings and the explicitly requested Finish step. */
+/** Keep only presentation settings and explicitly supported booth screens. */
 export function withBoothPresentation(path, presentation) {
   const [pathname, query] = path.split('?');
   const params = new URLSearchParams();
-  if (pathname === '/booth' && new URLSearchParams(query).get('step') === 'finish') {
-    params.set('step', 'finish');
+  const step = new URLSearchParams(query).get('step');
+  if (pathname === '/booth' && ['finish', 'demos'].includes(step)) {
+    params.set('step', step);
   }
   if (presentation.heading) params.set('heading', presentation.heading);
   if (presentation.brand === 'semrush') params.set('brand', 'semrush');

@@ -55,6 +55,21 @@ describe('report-request-form', () => {
     expect(block.textContent).to.not.include('event code');
   });
 
+  it('starts a booth request fresh without URL prefill, saved autofill or checked consent', () => {
+    window.history.replaceState(null, '', '/request-report?email=previous@example.com&company=Previous&consent=true');
+    const marker = document.createElement('script');
+    marker.dataset.boothMode = 'request';
+    document.head.append(marker);
+    const block = makeBlock();
+    init(block);
+    ['fullName', 'email', 'company', 'website'].forEach((name) => {
+      const input = block.querySelector(`[name="${name}"]`);
+      expect(input.value).to.equal('');
+      expect(input.autocomplete).to.equal('off');
+    });
+    expect(block.querySelector('[name="consent"]').checked).to.equal(false);
+  });
+
   it('shows field-level validation and a summary before submission', () => {
     const block = makeBlock();
     init(block);

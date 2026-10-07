@@ -316,6 +316,150 @@
   outline: none;
 }
 
+html.booth-request-pending .report-request-form {
+  visibility: hidden;
+}
+
+html.booth-request-active .report-request-form .rrf-example {
+  display: none;
+}
+
+@media (width >= 1000px) {
+  html.booth-request-active main > .section:has(.report-request-form) {
+    width: 100%;
+    max-width: 1920px;
+    margin-inline: auto;
+  }
+
+  html.booth-request-active .section > .block-content:has(.report-request-form) {
+    max-width: none;
+  }
+
+  html.booth-request-active .report-request-form {
+    width: 100%;
+    max-width: 1800px;
+    margin-inline: auto;
+  }
+
+  html.booth-request-active .report-request-form .rrf-shell {
+    display: block;
+    min-height: 0;
+    padding: clamp(48px, 5vw, 108px);
+  }
+
+  html.booth-request-active .report-request-form h1 {
+    max-width: 20ch;
+    font-size: clamp(64px, 4.63vw, 100px);
+    line-height: 1.1;
+  }
+
+  html.booth-request-active .report-request-form .rrf-kicker {
+    margin-bottom: 32px;
+    font-size: clamp(20px, 1.481vw, 32px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-intro {
+    max-width: 48ch;
+    margin-block: 32px 64px;
+    font-size: clamp(26px, 1.944vw, 42px);
+  }
+
+  html.booth-request-active .report-request-form-form {
+    width: 100%;
+    max-width: none;
+  }
+
+  html.booth-request-active .report-request-form .rrf-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html.booth-request-active .report-request-form .rrf-field {
+    margin-bottom: clamp(28px, 2.037vw, 44px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-field label {
+    margin-bottom: 16px;
+    font-size: clamp(24px, 1.852vw, 40px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-field input {
+    min-height: clamp(76px, 5.926vw, 128px);
+    border-width: 2px;
+    border-radius: 16px;
+    padding-inline: 28px;
+    font-size: clamp(32px, 2.963vw, 64px);
+  }
+
+  html.booth-request-active .report-request-form :is(
+    .rrf-field-error, .rrf-error-summary, .rrf-submit-status,
+    .rrf-success li span, .rrf-success h3
+  ) {
+    font-size: clamp(22px, 1.481vw, 32px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-optional summary {
+    min-height: 96px;
+    gap: 24px;
+    font-size: clamp(26px, 1.852vw, 40px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-optional summary::before {
+    width: 32px;
+    height: 32px;
+    background-size: 16px 2px, 2px 16px;
+  }
+
+  html.booth-request-active .report-request-form .rrf-consent {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 24px;
+    margin-block: 48px;
+    font-size: clamp(24px, 1.667vw, 36px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-consent input {
+    width: 48px;
+    height: 48px;
+  }
+
+  html.booth-request-active .report-request-form .rrf-consent-error {
+    font-size: inherit;
+  }
+
+  html.booth-request-active .report-request-form .rrf-action button {
+    width: 100%;
+    min-height: 128px;
+    border-radius: 100px;
+    background: #3b63fb;
+    font-size: clamp(32px, 2.407vw, 52px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-success {
+    max-width: none;
+    padding: 0;
+    background: none;
+  }
+
+  html.booth-request-active .report-request-form .rrf-success h2 {
+    font-size: clamp(64px, 4.63vw, 100px);
+    white-space: normal;
+  }
+
+  html.booth-request-active .report-request-form .rrf-success > p {
+    max-width: 48ch;
+    font-size: clamp(26px, 1.944vw, 42px);
+  }
+
+  html.booth-request-active .report-request-form .rrf-success li {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 24px;
+    padding-block: 32px;
+  }
+
+  html.booth-request-active .report-request-form :is(.rrf-success strong, .rrf-success li::before) {
+    font-size: clamp(26px, 1.852vw, 40px);
+  }
+}
+
 .report-request-form .rrf-success-hero {
   position: relative;
   padding: 0 0 31px;

@@ -109,6 +109,60 @@ describe('booth runtime boundary', () => {
     return root;
   }
 
+  it('offers explicit demo/request recovery only for a confirmed no-report lookup', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: false, status: 404, json: async () => ({ code: 'no_report', error: 'No report' }) });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('registration-email').value = 'no-report@example.test';
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(0);
+    expect(root.querySelector('[data-panel="unavailable"]').hidden).to.equal(false);
+    expect(root.getElementById('registration-email').value).to.equal('');
+    expect(root.querySelector('[data-panel="unavailable"] [data-show-demos]')).to.exist;
+    expect(root.querySelector('[data-panel="unavailable"] [data-request-report]')).to.exist;
+  });
+
+  it('does not describe a lookup outage as a missing report', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: false, status: 502, json: async () => ({ error: 'Lookup unavailable' }) });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(0);
+    expect(root.querySelector('[data-panel="unavailable"]').hidden).to.equal(true);
+    expect(root.getElementById('email-error').textContent).to.equal('Lookup unavailable');
+  });
+
+  it('clears attendee UI and server state before rendering safe industry choices', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onThirdCall().resolves({
+      ok: true,
+      json: async () => ({ demos: [{ id: 'luma', industry: 'Retail / apparel', company: '<img src=x> Luma' }] }),
+    });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('registration-email').value = 'previous@example.com';
+    root.querySelector('[data-show-demos]').click();
+    await clock.tickAsync(0);
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+    expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/demos');
+    expect(root.getElementById('registration-email').value).to.equal('');
+    expect(root.getElementById('demo-options').querySelector('img')).to.equal(null);
+    expect(root.getElementById('demo-options').textContent).to.include('Retail / apparel');
+    expect(root.querySelector('[data-panel="demos"]').hidden).to.equal(false);
+  });
+
   it('hides attendee panels before scripts load and while Finish status is pending', async () => {
     const root = await productionFixture();
     const previousUrl = window.location.href;

@@ -51,10 +51,35 @@
               <button class="primary" type="submit" aria-describedby="search-privacy">View my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
               <p class="privacy-note" id="search-privacy">By searching, you acknowledge that Adobe records your business email and report activity for 90 days to measure interest in this booth experience. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Adobe Privacy Policy</a>.</p>
             </form>
+            <div class="entry-alternatives">
+              <button class="link-button" data-show-demos type="button">Staff: show an industry demo</button>
+              <button class="link-button" data-request-report type="button">Request my report</button>
+            </div>
           </div>
         </div>
       </section>
 
+      <section class="panel recovery-panel" data-panel="unavailable" aria-labelledby="unavailable-heading" hidden>
+        <div class="eyebrow">Digital Opportunity Report</div>
+        <h2 id="unavailable-heading" tabindex="-1">We don't have a report available for your email yet.</h2>
+        <p class="lead">Explore an example from your industry with our booth team, or request a report for your company.</p>
+        <div class="recovery-actions">
+          <button class="primary" data-show-demos type="button">Show an industry demo</button>
+          <button class="secondary" data-request-report type="button">Request my report</button>
+          <button class="link-button" data-reset type="button">Try another email</button>
+        </div>
+      </section>
+      <section class="panel recovery-panel" data-panel="demos" aria-labelledby="demos-heading" hidden>
+        <div class="eyebrow">Example reports</div>
+        <h2 id="demos-heading" tabindex="-1">Choose an industry.</h2>
+        <p class="lead">These are demo companies, not a report for your company.</p>
+        <div id="demo-options" class="demo-options"></div>
+        <p id="demo-status" class="notice" role="status" aria-live="polite" hidden></p>
+        <div class="recovery-actions">
+          <button class="link-button" data-request-report type="button">Request my report instead</button>
+          <button class="link-button" data-reset type="button">Back to email lookup</button>
+        </div>
+      </section>
       <section class="panel welcome-entry" data-panel="picker" aria-labelledby="picker-heading" hidden>
         <h2 id="picker-heading">Choose your report.</h2>
         <p class="lead">Several customized company reports are authorized for your business email.</p>

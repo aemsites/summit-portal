@@ -13,6 +13,7 @@ export async function boothRequest(action, body) {
   if (!response.ok) {
     const error = new Error(result.error || 'Booth service unavailable. Ask the booth team.');
     error.status = response.status;
+    error.code = result.code;
     error.contactRequested = result.contactRequested === true;
     throw error;
   }
@@ -63,6 +64,8 @@ export function mountBooth(root = document) {
     email.value = '';
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'contact-status', 'booth-status'].forEach((id) => notice(id, ''));
+    root.getElementById('demo-options')?.replaceChildren();
+    if (root.getElementById('demo-status')) notice('demo-status', '');
     send.disabled = false;
     contact.disabled = false;
     retry.hidden = true;
@@ -109,6 +112,11 @@ export function mountBooth(root = document) {
     }
   }
 
+  function activity() {
+    clearTimeout(idle);
+    idle = setTimeout(reset, 120000);
+  }
+
   function schedule(result) {
     clearTimeout(expiry);
     if (result.expiresAt) expiry = setTimeout(reset, Math.max(0, result.expiresAt - Date.now()));
@@ -116,6 +124,10 @@ export function mountBooth(root = document) {
 
   function apply(result, finishing = false) {
     schedule(result);
+    if (['demo', 'request'].includes(result.state)) {
+      window.location.assign(withBoothPresentation(result.selectedPath, presentation));
+      return;
+    }
     if (result.selectedPath && !finishing) {
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
@@ -162,6 +174,78 @@ export function mountBooth(root = document) {
     } else show('welcome');
   }
 
+  async function openRequest() {
+    if (busy || resetting || !ready) return;
+    busy = true;
+    const current = revision;
+    email.value = '';
+    notice('booth-status', 'Opening a fresh report request...');
+    try {
+      const result = await perform('request', {});
+      if (result.state !== 'request') throw new Error('The report request could not be opened.');
+      if (current === revision) apply(result);
+    } catch (error) {
+      if (current === revision) notice('booth-status', error.message);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function showDemos() {
+    if (busy || resetting || !ready) return;
+    busy = true;
+    const current = revision;
+    scrub();
+    show('demos');
+    notice('demo-status', 'Loading industry demos...');
+    try {
+      const cleared = await perform('reset', {});
+      if (cleared.state !== 'entry') throw new Error('The previous visitor could not be cleared.');
+      const result = await perform('demos');
+      if (current !== revision) return;
+      if (!Array.isArray(result.demos) || !result.demos.length) throw new Error('Industry demos are unavailable. Ask the booth team.');
+      const options = root.getElementById('demo-options');
+      result.demos.forEach((demo) => {
+        const button = root.createElement('button');
+        button.type = 'button';
+        button.className = 'demo-option';
+        const industry = root.createElement('strong');
+        industry.textContent = demo.industry;
+        const company = root.createElement('span');
+        company.textContent = demo.company;
+        button.append(industry, company);
+        button.addEventListener('click', async () => {
+          if (busy || resetting || !ready) return;
+          busy = true;
+          const selecting = revision;
+          button.disabled = true;
+          notice('demo-status', 'Opening this example report...');
+          try {
+            const selected = await perform('demo', { id: demo.id });
+            if (selected.state !== 'demo') throw new Error('The example report could not be opened.');
+            if (selecting === revision) apply(selected);
+          } catch (error) {
+            if (selecting === revision) notice('demo-status', error.message);
+            button.disabled = false;
+          } finally {
+            busy = false;
+          }
+        });
+        options.append(button);
+      });
+      notice('demo-status', '');
+      root.getElementById('demos-heading').focus();
+    } catch (error) {
+      if (current === revision) notice('demo-status', error.message);
+    } finally {
+      busy = false;
+      activity();
+    }
+  }
+
+  root.querySelectorAll('[data-show-demos]').forEach((button) => button.addEventListener('click', showDemos));
+  root.querySelectorAll('[data-request-report]').forEach((button) => button.addEventListener('click', openRequest));
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (busy || resetting || !ready) return;
@@ -176,7 +260,12 @@ export function mountBooth(root = document) {
       if (current === revision) apply(result);
     } catch (error) {
       email.value = '';
-      if (current === revision) notice('email-error', error.message);
+      if (current === revision) {
+        if (error.code === 'no_report') {
+          show('unavailable');
+          root.getElementById('unavailable-heading').focus();
+        } else notice('email-error', error.message);
+      }
     } finally {
       button.disabled = resetting || !ready;
       busy = false;
@@ -222,10 +311,6 @@ export function mountBooth(root = document) {
 
   root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
   root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
-  const activity = () => {
-    clearTimeout(idle);
-    idle = setTimeout(reset, 120000);
-  };
   ['pointerdown', 'keydown'].forEach((name) => root.addEventListener(name, activity));
   window.addEventListener('pagehide', () => {
     revision += 1;
@@ -245,11 +330,13 @@ export function mountBooth(root = document) {
   perform('status').then((result) => {
     if (initialRevision !== revision) return;
     const finishing = new URL(window.location.href).searchParams.get('step') === 'finish';
-    apply(result, finishing);
+    const demos = new URL(window.location.href).searchParams.get('step') === 'demos';
+    if (!demos) apply(result, finishing);
     ready = true;
     stage.setAttribute('aria-busy', 'false');
     status.hidden = true;
     form.querySelector('button').disabled = false;
+    if (demos) showDemos();
   }).catch((error) => {
     if (initialRevision !== revision) return;
     recovery(error);

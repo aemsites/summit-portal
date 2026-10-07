@@ -44,6 +44,77 @@ an exact-email entry does not permit neighboring addresses at that domain.
 CUGs are not registration lists. Staff identities never discover every company.
 Addresses without an authored customer CUG permission do not qualify.
 
+## Industry demo and report request recovery
+
+Entry includes a staff demo shortcut and a fresh report-request action. A
+confirmed no-match (`404`, `code: no_report`) offers **Show an industry demo**,
+**Request my report** and **Try another email**. Service outages remain errors.
+The industry chooser uses the authoritative `src/booth-demos.js` catalogue:
+
+| Industry | Company / existing public report |
+|---|---|
+| Automotive | [Carvelo](https://act.aem.now/example-report/carvelo/) |
+| Consumer goods / coffee | [Frescopa](https://act.aem.now/example-report/frescopa/) |
+| Financial services | [SecurFinancial](https://act.aem.now/example-report/securfinancial/) |
+| Food & grocery | [Halliby](https://act.aem.now/example-report/halliby/) |
+| Healthcare / health insurance | [We.Healthcare](https://act.aem.now/example-report/we-healthcare/) |
+| Media & publishing | [Binji / Exp News](https://act.aem.now/example-report/binji/) |
+| Professional services | [Bodea](https://act.aem.now/example-report/bodea/) |
+| Retail / apparel | [Luma](https://act.aem.now/example-report/luma/) |
+| Telecommunications | [CitiSignal](https://act.aem.now/example-report/citisignal/) |
+| Travel / aviation | [WKND Fly](https://act.aem.now/example-report/wknd-fly/) |
+
+`GET /auth/booth/demos` returns staff-only, no-store catalogue data without
+creating a visitor context. `POST /auth/booth/demo` accepts only `{id}` for an
+approved company; `POST /auth/booth/request` accepts only `{}`. Both mutations
+require existing same-origin JSON/staff authorization. They clear previous
+attendee access and store a separate, staff-bound, ten-minute mode, without
+email, candidates, delivery state, permission discovery or new identified booth
+events. Prior lookup history remains subject to its existing retention policy;
+pending activity keeps its existing retry alarm. Demo/request states reject
+personal selection/view/send/contact actions. Customer authorization is unchanged.
+
+An initialized staff booth device receives controls only on its exact, live
+selected public document. Demos keep **Example report** labeling and offer
+**Request my report**, **Change industry** and **Clear for next visitor** rather
+than personal Finish/email actions. Requests open the existing `/request-report`
+in the same tab, without URL prefill or inferred consent. Public visitors do not
+receive the kiosk profile merely through viewport size or query parameters.
+
+Confirmed booth requests use a larger single-column form. At 2160 × 3840,
+inputs are 128px high with 64px text; at 1080px width they remain at least
+76px high with 32px text, including a keyboard-reduced viewport. Existing
+Turnstile, honeypot, native/server validation, idempotency, optional fields and
+explicit sales-contact consent remain. Submission uses the existing request
+endpoint, not report generation. Success exposes **Finish and clear this screen**.
+Reset and pagehide scrub fields/consent; history restoration clears context.
+Two-minute inactivity and absolute expiry also clear the screen. Virtual-keyboard
+input/change events count as activity. Failed verification removes the form;
+reset failures hide visitor content and expose recovery instead of pretending
+clear succeeded.
+
+### Local fallback review and rollout
+
+Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
+2160 × 3840 review frame, or `/content/index` for the direct shell.
+`no-report@example.test` produces a true no-match;
+`service-error@example.test` produces an outage. Other synthetic emails use
+the prepared-report fixture. Ten local demo paths share synthetic report
+content with the selected company label. The request fixture uses the real form
+decorator/styles but fake Turnstile and an intercepted success response:
+**no real report request, email or lead is submitted**.
+
+`test/fixtures/booth-demo-browser.js` exports the real-browser fallback verifier;
+`booth-browser.js` covers the existing personal journey. Worker regressions
+cover all catalogue choices, identity isolation, payload/origin/staff gates,
+expiry/binding, preserved activity retries and public document injection.
+Frontend checks cover missing-report recovery, safe labels, form freshness,
+failed/repeated clearing and the combined carousel PDF fix. Full suites,
+changed-file ESLint/Stylelint and a summit deployment dry run are required.
+Physical device rehearsal and real Turnstile/submission remain separate gates.
+Merge the frontend/form assets and deploy the matching Worker **after approval**;
+this implementation does not automatically deploy production.
+
 ## Implementation
 
 | Surface | Source |

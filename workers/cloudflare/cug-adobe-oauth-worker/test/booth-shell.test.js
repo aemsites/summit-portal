@@ -7,7 +7,8 @@ import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
 import { createMockEnv } from './helpers.js';
-import { createSession } from '../src/session.js';
+import { createSession, getSession } from '../src/session.js';
+import { boothDeviceCookie } from '../src/booth.js';
 
 describe('bundled booth shell and exact report injection', () => {
   let env;
@@ -160,6 +161,43 @@ describe('bundled booth shell and exact report injection', () => {
     await injectBoothReturn(content(), new Request(`https://portal.example${selectedPath}`), env);
     expect(transform).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
+  });
+
+  it('adds demo/request controls only on an exact, live, explicitly initialized booth device', async () => {
+    const append = vi.fn();
+    function PublicRewriter() {
+      this.on = (_selector, handler) => {
+        handler.element({ append });
+        return { transform: (response) => response };
+      };
+    }
+    vi.stubGlobal('HTMLRewriter', PublicRewriter);
+    try {
+      const staffRequest = new Request('https://portal.example/booth', { headers: { Cookie: cookie } });
+      const session = await getSession(staffRequest, env);
+      const device = await boothDeviceCookie(staffRequest, session, env);
+      const withDevice = `${cookie}; ${device.split(';')[0]}`;
+      let context;
+      env.BOOTH_COORDINATOR.get = () => ({ fetch: async () => new Response(JSON.stringify(context), { headers: { 'Content-Type': 'application/json' } }) });
+      const content = () => new Response('<main>Public page</main>', { headers: { 'Content-Type': 'text/html' } });
+      for (const mode of ['demo', 'request']) {
+        const path = mode === 'demo' ? '/example-report/luma/' : '/request-report';
+        context = { state: mode, selectedPath: path, demoId: 'luma', expiresAt: Date.now() + 600000 };
+        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: cookie } }), env);
+        expect(append).not.toHaveBeenCalled();
+        const enhanced = await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withDevice } }), env);
+        expect(append.mock.calls[0][0]).toContain(`data-booth-mode="${mode}"`);
+        expect(enhanced.headers.get('Cache-Control')).toBe('private, no-store');
+        append.mockClear();
+        await injectBoothReturn(content(), new Request('https://portal.example/example-report/carvelo/', { headers: { Cookie: withDevice } }), env);
+        expect(append).not.toHaveBeenCalled();
+        context.expiresAt = 1;
+        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withDevice } }), env);
+        expect(append).not.toHaveBeenCalled();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

@@ -13,6 +13,7 @@ import arrow from '../../../../img/booth/action-arrow.svg';
 import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
 import webpage from '../../../../img/booth/entry-webpage.png';
 import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
+import { findBoothDemo } from './booth-demos.js';
 
 const assets = new Map([
   ['/scripts/booth.js', [runtime, 'text/javascript']],
@@ -114,16 +115,22 @@ export async function injectBoothReturn(response, request, env) {
   const status = await handleBooth(new Request(new URL('/auth/booth/status', request.url), { headers: { Cookie: request.headers.get('Cookie') } }), env);
   if (!status.ok) return protectedDevice ? returnToBooth() : response;
   const context = await status.json();
+  const publicBoothPage = (context.state === 'demo'
+    && findBoothDemo(context.demoId)?.path === context.selectedPath)
+    || (context.state === 'request' && context.selectedPath === '/request-report');
+  if (!isAccountDocument(request) && !publicBoothPage) return response;
+  if (publicBoothPage && !await boothDeviceAuthorized(request, env)) return response;
   const expiredContext = !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now();
   if (context.selectedPath !== new URL(request.url).pathname
-    || (protectedDevice && expiredContext)) {
+    || ((protectedDevice || publicBoothPage) && expiredContext)) {
     return protectedDevice ? returnToBooth() : response;
   }
   const privateResponse = new Response(response.body, response);
   privateResponse.headers.set('Cache-Control', 'private, no-store');
   return new HTMLRewriter().on('body', {
     element(element) {
-      element.append('<script type="module" src="/scripts/booth-report.js?v=booth-activity-1"></script>', { html: true });
+      const mode = publicBoothPage ? ` data-booth-mode="${context.state}"` : '';
+      element.append(`<script type="module"${mode} src="/scripts/booth-report.js?v=booth-activity-1"></script>`, { html: true });
     },
   }).transform(privateResponse);
 }
