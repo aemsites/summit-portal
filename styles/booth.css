@@ -1,5 +1,6 @@
 @import url("../blocks/report-carousel/report-carousel.css");
 @import url("../blocks/report-ai-visibility/report-ai-visibility.css");
+@import url("./booth-keyboard.css");
 
 .booth {
   color-scheme: light;

@@ -1,4 +1,6 @@
 /* Only the authorized, exact selected report receives this class. */
+@import url("./booth-keyboard.css");
+
 html.booth-report-active {
   scroll-padding-bottom: calc(var(--booth-return-height) + 24px);
 }

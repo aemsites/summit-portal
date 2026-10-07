@@ -1,9 +1,11 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
+import { mountBoothKeyboard } from './booth-keyboard.js';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
 
 function clearRequestFields(root) {
+  if (root.contains(document.activeElement)) document.activeElement.blur();
   root.querySelectorAll('form').forEach((form) => form.reset());
   root.querySelectorAll('input, textarea').forEach((input) => {
     if (['checkbox', 'radio'].includes(input.type)) input.checked = false;
@@ -203,6 +205,25 @@ export default async function mountBoothReturn() {
   const reserveSpace = () => html.style.setProperty('--booth-return-height', `${control.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveSpace).observe(control);
   reserveSpace();
+  const keyboard = requesting ? mountBoothKeyboard(document, control) : null;
+  if (keyboard) stylesheet.addEventListener('load', keyboard.update);
+  if (!requesting) {
+    const containNavigation = (event) => {
+      if (!html.classList.contains('booth-report-active')) return;
+      const link = event.target.closest?.('a[href]');
+      if (!link || control.contains(link)) return;
+      if (link.getAttribute('href').trim().startsWith('#')
+        && !link.hasAttribute('download') && (!link.target || link.target === '_self')
+        && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+        && event.type !== 'auxclick') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const status = control.querySelector('p');
+      status.textContent = 'Links and downloads stay closed on this shared screen. Ask the booth team to help you open them on your own device.';
+      status.hidden = false;
+    };
+    ['click', 'auxclick'].forEach((name) => document.body.addEventListener(name, containNavigation, true));
+  }
   if (!demo && !requesting) {
     fetch('/auth/booth/view', {
       method: 'POST',
@@ -227,6 +248,7 @@ export default async function mountBoothReturn() {
   const clearFields = () => {
     if (!requesting) return;
     clearRequestFields(root);
+    keyboard.clear();
   };
   async function reset() {
     if (resetting) return;

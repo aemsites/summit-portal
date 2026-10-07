@@ -21,7 +21,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: this branch bundles fixed **Entry 3 / Finish 6** (production still Finish 5), `booth.html`, four `scripts/booth*.js` modules, scoped booth CSS, shared hero/stat/briefing/visibility renderers, their styles and Entry/action artwork. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. Finish re-fetches that exact document once for three swipeable section excerpts above **Email my report**, without another lookup or generation. Entry uses 68px input text and approximately 134px primary actions at 2160px width, with keyboard/reduced-motion support. The event-neutral header is **Adobe Brand Visibility**, with accessible Adobe attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and `brand=adobe|semrush` remain cosmetic only; legacy `entry`/`finish` settings are ignored. Safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Mock controls, decorative motion and placeholder footer progress are omitted; Version 6 includes its static Finish step badge. Follow-up guidance is informational, without contact consent or analytics. Entry privacy notices remain; **Finish and clear this screen** only resets. See the current Figma iteration below and `docs/implementations/booth-access/README.md` for separate activation gates.
+- `/booth` — **reusable booth prototype**: the Worker bundles fixed **Entry 3 / Finish 6**, `booth.html`, five `scripts/booth*.js` modules, scoped booth CSS, shared hero/stat/briefing/visibility renderers, their styles and Entry/action artwork. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. Finish re-fetches that exact document once for three swipeable section excerpts above **Email my report**, without another lookup or generation. Entry uses 68px input text and approximately 134px primary actions at 2160px width, with keyboard/reduced-motion support. The event-neutral header is **Adobe Brand Visibility**, with accessible Adobe attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and `brand=adobe|semrush` remain cosmetic only; legacy `entry`/`finish` settings are ignored. Safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Mock controls, decorative motion and placeholder footer progress are omitted; Version 6 includes its static Finish step badge. Follow-up guidance is informational, without contact consent or analytics. Entry privacy notices remain; **Finish and clear this screen** only resets. See the current Figma iteration below and `docs/implementations/booth-access/README.md` for separate activation gates.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
 **Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a staff-bound, ten-minute HttpOnly context. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records attempts before APO; uncertain delivery is explicit and non-retryable. Reset clears attendee access but retains staff/device mode and the separately disclosed lead history. The signed non-PII `booth_device` marker binds to staff JWT/expiry and requires the exact live selected context before fetching/returning account documents, including reset races. Fresh report navigation and browser Back after reset return to Entry. Explicit staff exit clears booth mode and signs out. Unmarked ordinary staff and CUG redemption remain unchanged; the device marker is never an authentication credential. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; this scoped boundary is not a complete device privacy guarantee.
@@ -45,7 +45,56 @@ The lead-history privacy exclusions apply to the new **server-side action events
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-activity-1` adapter URL, solely for cache versioning. Only the report adapter and its stylesheet receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-activity-1` adapter URL, solely for cache versioning. The Entry shell versions its JS/CSS with `?v=booth-touchscreen-1`. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+
+### Touchscreen keyboard and navigation hardening
+
+`scripts/booth-keyboard.js` and `styles/booth-keyboard.css` are shared by the
+standalone Entry shell and exact server-verified booth requests. Focused editable
+fields and their labels are scrolled into the usable viewport after layout or
+visual-viewport resize, visual panning and supported VirtualKeyboard geometry
+events. Bottom controls move above reported occlusion; the page gains enough
+scroll room to reach optional fields, consent and Submit. No browser keyboard
+overlay policy is forced. When a touch keyboard supplies neither geometry nor
+viewport reduction, a conservative half-screen editing reserve provides scroll
+room; this is a fallback assumption, not native keyboard detection. Blur,
+checkbox focus and pagehide release the reserve; reset blurs the field.
+Pinch zoom retains native panning. Ordinary pages never mount this helper.
+
+Entry now counts `input` and `change` as activity, matching request forms, so
+virtual-keyboard typing without key/pointer events renews the two-minute idle
+timer. Absolute context expiry is unchanged. Within confirmed personal/demo
+report documents, taps, modified clicks and auxiliary clicks on external links,
+other pages, mail links, new-tab links and downloads are prevented with a visible
+booth status message. Same-page fragment navigation, disclosures, carousel
+controls and the separate Finish/demo/reset bar remain available. Ordinary
+reports and Entry/request Privacy Policy links retain their existing behavior.
+This is not OS/browser kiosk lockdown; long-press menus, browser chrome and
+privacy-policy navigation still need managed-device policy.
+
+`test/fixtures/booth-keyboard-browser.js` checks exact focused-field visibility,
+consent/Submit scroll reachability, resize cases at native/fallback portrait
+sizes, an 820px unreported overlay stress model, blur cleanup and input-only
+idle renewal against local synthetic fixtures in a `hasTouch: true` browser
+context. `test/fixtures/booth-report-browser.js` additionally exercises an
+existing authenticated customer report with local branch assets, touch
+tabs/disclosures, link/download containment and a Finish montage fetched from
+that same real report. The isolated test intercepts booth state/shell and all
+mutations, including view/reset; it never performs a customer lookup or sends
+email. Credentials and customer report contents are not stored in fixtures.
+Geometry/pinch/lifecycle unit tests supplement this; none emulates the
+native OS keyboard. Confirm the real CSS viewport, scaling and keyboard height
+on the 2160 × 3840 physical display. Keyboards taller than the fallback reserve
+require reported geometry, content-resize configuration or device-specific
+adjustment. **These fixes require the matching Worker asset deployment after
+approval; a branch push does not update production.**
+
+Focused validation covers 83 frontend tests, 20 Worker shell/asset tests,
+Entry/report/demo/request browser journeys, all ten public reports and an
+existing protected customer report at native/fallback portrait sizes, plus a
+Worker deployment dry run. Changed-file ESLint/Stylelint pass. Repository-wide
+lint still fails in unchanged source, tools and vendored skills; those
+pre-existing issues are outside this fix.
 
 **Ordinary report native portrait display:** at exactly **2160 × 3840 CSS pixels**, insight reports now enlarge the existing composition by **1.6×**: the 1200px shared column renders at **1920px**, with proportional text, charts and controls. The viewport-wide Cannes stripe compensates for CSS zoom to avoid horizontal overflow. Nearby dimensions, 1080 × 1920, mobile and landscape remain unchanged. Authorized booth reports retain their existing large-format profile without double scaling. This is viewport-specific frontend styling, not an access-mode change; actual hardware CSS viewport/DPR still needs confirmation.
 
