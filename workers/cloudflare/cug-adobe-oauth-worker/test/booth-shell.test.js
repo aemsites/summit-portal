@@ -30,6 +30,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
+    expect(html).toContain('/scripts/booth.js?v=booth-touchscreen-1');
+    expect(html).toContain('/styles/booth.css?v=booth-touchscreen-1');
     expect(html).toContain('Adobe Brand Visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -41,7 +43,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(500);
@@ -79,13 +81,13 @@ describe('bundled booth shell and exact report injection', () => {
     }
   });
 
-  it('revalidates only the report adapter/assets and serves its versioned URL', async () => {
-    for (const path of ['/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css']) {
+  it('revalidates changed booth assets and serves their versioned URLs', async () => {
+    for (const path of ['/scripts/booth.js?v=booth-touchscreen-1', '/styles/booth.css?v=booth-touchscreen-1', '/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
     }
-    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth.js'), env);
+    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth-preview.js'), env);
     expect(unchanged.headers.has('Cache-Control')).toBe(false);
   });
 

@@ -99,6 +99,45 @@ input/change events count as activity. Failed verification removes the form;
 reset failures hide visitor content and expose recovery instead of pretending
 clear succeeded.
 
+### Touchscreen keyboard and link behavior
+
+Entry and verified requests share `scripts/booth-keyboard.js` and
+`styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
+and supported keyboard geometry; reported overlays lift the control bar and add
+scroll space for consent and Submit. An unreported touch overlay gets a
+half-screen editing reserve, released on blur. Entry `input`/`change` now renew
+its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
+fields. The security report guard also synchronously clears request keyboard
+space during recovery, including failed server resets, without adding another
+reset lifecycle or extending attendee expiry. Pinch zoom and the browser's
+overlay policy are unchanged.
+
+Personal/demo report documents block links and downloads that could leave the
+shared screen, including new tabs and footer links, with a visible status
+message. In-page fragments and Finish/demo/reset controls still work. Ordinary
+reports and Entry/request Privacy Policy links are unchanged. Managed kiosk
+policy must still contain browser chrome, long-press menus and policy links.
+
+Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
+`hasTouch: true` context against the local fixture server. It checks focused
+fields after viewport shrink, optional fields/consent/Submit above an 820px
+overlay model, blur cleanup and input-only idle renewal. These are stress
+models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
+CSS viewport/DPR, keyboard height and policy links before device release.
+Keyboards larger than the fallback reserve require reported geometry or
+content-resize/device configuration. Merge and deploy the matching Worker
+assets only after approval; this branch push is not a production rollout.
+
+`test/fixtures/booth-report-browser.js` checks an existing protected customer
+report in a dedicated, authenticated staff touch context without booth cookies.
+Pass its real report URL and the local asset-server URL; customer HTML is read
+from the authenticated origin, not substituted with demo content. Branch
+assets, booth state/shell and view/reset responses are intercepted. It checks
+native/fallback bounds, touch tabs/disclosures, link/download containment,
+the same report's real Finish preview and empty Entry after reset. No lookup,
+email or production booth mutation is performed; never put credentials or
+customer report content in test files.
+
 ### Local fallback review and rollout
 
 Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
@@ -140,12 +179,13 @@ real authenticated submission and final hardware rehearsal remain unverified.
 | Actual selected-report preview | `scripts/booth-preview.js`, shared insight-hero/dark-stat builders |
 | Cosmetic header/partner settings | `scripts/booth-presentation.js`, shared by Entry and the report control |
 | Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
+| Booth keyboard viewport/scroll handling | `scripts/booth-keyboard.js`, `styles/booth-keyboard.css`, Entry and verified requests only |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text/Data-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 | Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
 
-Wrangler bundles the **single source** shell, two stylesheets, four booth scripts
+Wrangler bundles the **single source** shell, three stylesheets, five booth scripts
 and the shared hero/stat renderer modules, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
 The fixed Entry 3 design bundles only the arrow, website/glow illustration assets
@@ -471,8 +511,9 @@ all three metric values and thresholds. Exact-ratio widths below 1600px place
 thresholds on a second row rather than squeezing the metric columns.
 
 Each performance card has a native **Read analysis** disclosure containing the
-original summary, recommendation, URL and verification nodes, not rewritten
-or cloned content. When activation moves a focused analysis descendant, only
+original summary, recommendation and verification nodes, not rewritten
+or cloned content. Tested-page URLs remain visible below their page titles.
+When activation moves a focused analysis descendant, only
 that card's disclosure opens and the exact element is refocused after attachment.
 Without analysis focus, all disclosures remain closed for the default overview.
 Leaving the exact ratio, or clearing booth mode, restores the original DOM
@@ -489,8 +530,9 @@ the original ISO ticks. Touch taps reuse existing chart hit testing and keep
 the value readout visible without hover. Outside the exact composition, AI panels
 stack with readable subtitles;
 platform bars retain icon/label/bar/value alignment, and comparison tables retain
-their columns. Details, tabs, carousel arrows/dots and ordinary links
-remain available. Booth-only PDF/download controls are hidden and disabled,
+their columns. Details, tabs, carousel arrows/dots, same-page fragments and booth
+controls remain available; other report links cannot leave the shared screen.
+Booth-only PDF/download controls are hidden and disabled,
 including late decoration and opaque PDF links in report-download blocks;
 attendees use their emailed report for PDFs on their own devices. Ordinary
 staff/customer report downloads are unchanged. Booth links/forms stay in one tab.
@@ -499,9 +541,9 @@ booth context rather than overlapping Finish. The existing ResizeObserver
 reserves the measured Finish bar height, including wrapping and viewport changes.
 
 Both the helper and its new stylesheet are exact Worker-bundled assets. The
-Worker injection and shared lazy import use the same `?v=portrait-2` adapter URL
+Worker injection and shared lazy import use the same `?v=booth-activity-1` adapter URL
 to avoid a previously cached unversioned module; this is cache versioning, not
-a layout opt-in. Only the report adapter and its stylesheet receive `no-cache`
+a layout opt-in. Entry, report-adapter and keyboard JS/CSS receive `no-cache`
 revalidation. After fresh authorization the adapter can upgrade an older Finish
 control without duplicating its reset timers or counting bottom padding twice.
 Review and deploy the matching Worker bundle separately from the frontend merge.

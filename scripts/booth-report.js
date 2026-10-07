@@ -1,10 +1,12 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
+import { mountBoothKeyboard } from './booth-keyboard.js';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
 const guards = new WeakMap();
 
 function clearRequestFields(root) {
+  if (root.contains(document.activeElement)) document.activeElement.blur();
   root.querySelectorAll('form').forEach((form) => form.reset());
   root.querySelectorAll('input, textarea').forEach((input) => {
     if (['checkbox', 'radio'].includes(input.type)) input.checked = false;
@@ -42,6 +44,7 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
   let resetting = false;
   let interrupted = false;
   let pending = Promise.resolve();
+  let keyboard;
   if (!document.querySelector('style[data-booth-report-safety]')) {
     const style = document.createElement('style');
     style.dataset.boothReportSafety = 'true';
@@ -65,7 +68,10 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
   const hide = () => {
     interrupted = true;
     html.classList.add('booth-report-clearing');
-    if (requesting) clearRequestFields(document);
+    if (requesting) {
+      clearRequestFields(document);
+      keyboard?.clear();
+    }
     const control = document.getElementById('booth-return');
     control?.querySelectorAll('a, button:not([data-booth-clear])').forEach((action) => { action.hidden = true; });
   };
@@ -122,6 +128,7 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
     get revision() { return revision; },
     get interrupted() { return interrupted; },
     get resetting() { return resetting; },
+    attachKeyboard(controller) { keyboard = controller; },
     track(operation) { pending = operation.then(() => undefined, () => undefined); },
     conceal() { hide(); },
     activate(context) {
@@ -194,7 +201,7 @@ export function createBoothPerformanceLayout(root) {
       if (cards.has(card)) return;
       const body = card.querySelector('.rsc-body');
       const name = card.querySelector('.rsc-page-name')?.textContent;
-      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
       if (!body || !name || !nodes.length) return;
       const focused = document.activeElement;
       const restoreFocus = nodes.some((node) => node.contains(focused));
@@ -393,6 +400,28 @@ export default async function mountBoothReturn() {
   const reserveSpace = () => html.style.setProperty('--booth-return-height', `${control.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveSpace).observe(control);
   reserveSpace();
+  const keyboard = requesting ? mountBoothKeyboard(document, control) : null;
+  if (keyboard) {
+    guard?.attachKeyboard(keyboard);
+    stylesheet.addEventListener('load', keyboard.update);
+  }
+  if (!requesting) {
+    const containNavigation = (event) => {
+      if (!html.classList.contains('booth-report-active')) return;
+      const link = event.target.closest?.('a[href]');
+      if (!link || control.contains(link)) return;
+      if (link.getAttribute('href').trim().startsWith('#')
+        && !link.hasAttribute('download') && (!link.target || link.target === '_self')
+        && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+        && event.type !== 'auxclick') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const status = control.querySelector('p');
+      status.textContent = 'Links and downloads stay closed on this shared screen. Ask the booth team to help you open them on your own device.';
+      status.hidden = false;
+    };
+    ['click', 'auxclick'].forEach((name) => document.body.addEventListener(name, containNavigation, true));
+  }
   if (!demo && !requesting) {
     fetch('/auth/booth/view', {
       method: 'POST',

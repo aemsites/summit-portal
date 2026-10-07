@@ -46,10 +46,15 @@ describe('confirmed booth report portrait layout', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     timers = sandbox.spy(window, 'setTimeout');
+    sandbox.spy(document.body, 'addEventListener');
   });
 
   afterEach(() => {
     timers.getCalls().forEach((call) => window.clearTimeout(call.returnValue));
+    document.body.addEventListener.getCalls().forEach(({ args }) => (
+      document.body.removeEventListener(...args)
+    ));
+    document.querySelector('#booth-test-footer')?.remove();
     document.querySelector('#booth-return')?.remove();
     document.querySelector('#booth-recovery')?.remove();
     document.querySelector('style[data-booth-report-safety]')?.remove();
@@ -173,6 +178,56 @@ describe('confirmed booth report portrait layout', () => {
     } finally {
       window.history.replaceState(null, '', previous);
     }
+  });
+
+  it('contains report links and downloads while preserving same-page navigation and booth controls', async () => {
+    const main = await reportFixture();
+    await mount();
+    main.insertAdjacentHTML('beforeend', `<a href="https://business.adobe.com/">Product</a>
+      <a href="/report.pdf" target="_blank" download>Download</a>
+      <a href="mailto:team@example.test">Contact</a>
+      <a href="#analysis">Analysis</a>
+      <div id="analysis"></div>`);
+    const links = [...main.querySelectorAll('a')].slice(-4);
+    const footer = document.createElement('footer');
+    footer.id = 'booth-test-footer';
+    footer.innerHTML = '<a href="https://example.com/footer">Footer link</a>';
+    document.body.append(footer);
+    const activation = sandbox.spy((event) => event.preventDefault());
+    links.forEach((link) => link.addEventListener('click', activation));
+    links.slice(0, 3).forEach((link) => {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.called).to.equal(false);
+    const footerClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+    footer.querySelector('a').addEventListener('click', activation);
+    footer.querySelector('a').dispatchEvent(footerClick);
+    expect(footerClick.defaultPrevented).to.equal(true);
+    expect(activation.called).to.equal(false);
+    expect(document.querySelector('#booth-return p').hidden).to.equal(false);
+    expect(document.querySelector('#booth-return p').textContent).to.include('shared screen');
+    const fragment = new MouseEvent('click', { bubbles: true, cancelable: true });
+    links[3].addEventListener('click', (event) => event.preventDefault());
+    links[3].dispatchEvent(fragment);
+    expect(activation.calledOnce).to.equal(true);
+    [
+      new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: true }),
+    ].forEach((event) => {
+      links[3].dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.calledOnce).to.equal(true);
+    const control = document.querySelector('#booth-return a');
+    const finish = new MouseEvent('click', { bubbles: true, cancelable: true });
+    control.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    control.dispatchEvent(finish);
+    expect(control.getAttribute('href')).to.equal('/booth?step=finish');
   });
 
   it('mounts the request profile only with exact server-confirmed request state', async () => {
@@ -315,12 +370,14 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('leaves large ordinary portrait reports unchanged, even if the stylesheet is cached', async () => {
+  it('uses the ordinary exact-resolution profile without cached booth styling', async () => {
     await setViewport({ width: 2160, height: 3840 });
     await reportFixture();
     await mount();
     document.documentElement.classList.remove('booth-report-active');
     expect(font('.rc-desc')).to.equal(18);
+    expect(rect('main > .section').width).to.equal(1920);
+    await setViewport({ width: 2160, height: 3841 });
     expect(rect('main > .section').width).to.equal(1200);
   });
 
@@ -444,7 +501,7 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('keeps the complete long URL visible and accessible inside native analysis', async () => {
+  it('keeps the complete long URL visible outside closed native analysis', async () => {
     await setViewport({ width: 1080, height: 1920 });
     await reportFixture();
     const url = document.querySelector('.rsc-page-url');
@@ -452,8 +509,10 @@ describe('confirmed booth report portrait layout', () => {
     url.textContent = text;
     url.href = `https://${text}`;
     await mount();
-    const details = url.closest('details');
-    details.open = true;
+    const details = url.closest('.rsc-card').querySelector('details');
+    expect(url.closest('details')).to.equal(null);
+    expect(details.open).to.equal(false);
+    expect(url.getBoundingClientRect().height).to.be.greaterThan(0);
     expect(getComputedStyle(url).whiteSpace).to.equal('normal');
     expect(url.scrollWidth).to.be.at.most(url.clientWidth + 1);
     expect(url.textContent).to.equal(text);
@@ -466,7 +525,7 @@ describe('confirmed booth report portrait layout', () => {
     const layout = createBoothPerformanceLayout(main);
     const card = main.querySelector('.rsc-card');
     const before = card.innerHTML;
-    const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+    const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
     const click = sandbox.spy();
     nodes[0].addEventListener('click', click);
     for (let cycle = 0; cycle < 3; cycle += 1) {
@@ -480,7 +539,7 @@ describe('confirmed booth report portrait layout', () => {
       expect(details.open).to.equal(true);
       layout(false);
       expect(card.innerHTML).to.equal(before);
-      expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+      expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
         .to.deep.equal(nodes);
     }
     nodes[0].dispatchEvent(new Event('click'));
@@ -516,7 +575,7 @@ describe('confirmed booth report portrait layout', () => {
       first.parentElement.append(card);
       await mount();
       const before = card.innerHTML;
-      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
       const focused = card.querySelector(selector);
       const click = sandbox.spy((event) => event.preventDefault());
       focused.addEventListener('click', click);
@@ -528,8 +587,8 @@ describe('confirmed booth report portrait layout', () => {
         await setViewport({ width: 2160, height: 3840 });
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
-        const details = focused.closest('.booth-score-analysis');
-        expect(details.open).to.equal(true);
+        const details = card.querySelector('.booth-score-analysis');
+        expect(details.open).to.equal(selector === '.rsc-verify-link');
         expect(first.querySelector('.booth-score-analysis').open).to.equal(false);
         expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
@@ -537,10 +596,15 @@ describe('confirmed booth report portrait layout', () => {
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
         expect(card.innerHTML).to.equal(before);
-        expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+        expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
           .to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
       }
+      const event = new Event('click', { cancelable: true });
+      focused.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+      expect(click.callCount).to.equal(0);
+      document.documentElement.classList.remove('booth-report-active');
       focused.dispatchEvent(new Event('click', { cancelable: true }));
       expect(click.callCount).to.equal(1);
     });
@@ -603,8 +667,37 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.querySelector('#booth-report-content')).to.equal(null);
     expect(document.querySelector('body > #booth-return')).not.to.equal(null);
     expect(getComputedStyle(main).display).not.to.equal('none');
+    document.documentElement.classList.remove('booth-report-active');
     action.dispatchEvent(new Event('click', { cancelable: true }));
     expect(click.calledOnce).to.equal(true);
+  });
+
+  it('clears request keyboard space immediately even when the secure reset fails', async () => {
+    const previous = window.location.href;
+    window.history.replaceState(null, '', '/request-report');
+    try {
+      const main = await reportFixture();
+      main.insertAdjacentHTML('beforeend', '<form><input type="email" value="visitor@example.test"></form>');
+      markReport().dataset.boothMode = 'request';
+      await mount({ state: 'request' });
+      const input = main.querySelector('input');
+      input.focus();
+      const html = document.documentElement;
+      html.classList.add('booth-keyboard-active');
+      html.style.setProperty('--booth-keyboard-inset', '400px');
+      window.fetch.onSecondCall().resolves(new Response(null, { status: 503 }));
+      document.querySelector('[data-booth-clear]').click();
+      expect(input.value).to.equal('');
+      expect(document.activeElement).not.to.equal(input);
+      expect(html.classList.contains('booth-keyboard-active')).to.equal(false);
+      expect(html.style.getPropertyValue('--booth-keyboard-inset')).to.equal('');
+      expect(main.getClientRects()).to.have.length(0);
+      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+      expect(document.querySelector('#booth-recovery').hidden).to.equal(false);
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+    } finally {
+      window.history.replaceState(null, '', previous);
+    }
   });
 
   it('keeps the server concealment wrapper intact when verification fails', async () => {

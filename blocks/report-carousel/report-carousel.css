@@ -120,7 +120,7 @@
   padding: 0;
   display: grid;
   min-height: 450px;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   user-select: none;
 }
 

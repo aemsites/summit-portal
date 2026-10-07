@@ -5,6 +5,7 @@ import runtime from '../../../../scripts/booth.js';
 import report from '../../../../scripts/booth-report.js';
 import presentation from '../../../../scripts/booth-presentation.js';
 import preview from '../../../../scripts/booth-preview.js';
+import keyboard from '../../../../scripts/booth-keyboard.js';
 import hero from '../../../../blocks/report-hero/report-hero.js';
 import stats from '../../../../blocks/report-stats/report-stats.js';
 import carousel from '../../../../blocks/report-carousel/report-carousel.js';
@@ -13,6 +14,7 @@ import carouselCss from '../../../../blocks/report-carousel/report-carousel.css'
 import visibilityCss from '../../../../blocks/report-ai-visibility/report-ai-visibility.css';
 import css from '../../../../styles/booth.css';
 import reportCss from '../../../../styles/booth-report.css';
+import keyboardCss from '../../../../styles/booth-keyboard.css';
 import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
@@ -31,6 +33,7 @@ const assets = new Map([
   ['/scripts/booth-report.js', [report, 'text/javascript']],
   ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
   ['/scripts/booth-preview.js', [preview, 'text/javascript']],
+  ['/scripts/booth-keyboard.js', [keyboard, 'text/javascript']],
   ['/blocks/report-hero/report-hero.js', [hero, 'text/javascript']],
   ['/blocks/report-stats/report-stats.js', [stats, 'text/javascript']],
   ['/blocks/report-carousel/report-carousel.js', [carousel, 'text/javascript']],
@@ -39,6 +42,7 @@ const assets = new Map([
   ['/blocks/report-ai-visibility/report-ai-visibility.css', [visibilityCss, 'text/css']],
   ['/styles/booth.css', [css, 'text/css']],
   ['/styles/booth-report.css', [reportCss, 'text/css']],
+  ['/styles/booth-keyboard.css', [keyboardCss, 'text/css']],
   ['/img/booth/action-arrow.svg', [arrow, 'image/svg+xml']],
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/entry-webpage-glow.svg', [webpageGlow, 'image/svg+xml']],
@@ -93,7 +97,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (pathname === '/scripts/booth-report.js' || pathname === '/styles/booth-report.css') {
+    if (['/scripts/booth.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });

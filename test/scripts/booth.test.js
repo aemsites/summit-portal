@@ -102,6 +102,51 @@ describe('booth runtime boundary', () => {
     expect(root.getElementById('booth-status').textContent).to.equal('');
   });
 
+  it('counts virtual-keyboard input and change as Entry activity without key or pointer events', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').callsFake(async () => (
+      { ok: true, json: async () => ({ state: 'entry' }) }
+    ));
+    mountBooth(root);
+    await clock.tickAsync(110000);
+    const email = root.getElementById('registration-email');
+    email.value = 'still-typing@example.test';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await clock.tickAsync(11000);
+    expect(email.value).to.equal('still-typing@example.test');
+    email.dispatchEvent(new Event('change', { bubbles: true }));
+    await clock.tickAsync(110000);
+    expect(email.value).to.equal('still-typing@example.test');
+    expect(fetchStub.calledOnce).to.equal(true);
+    await clock.tickAsync(10001);
+    expect(email.value).to.equal('');
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+  });
+
+  it('retains absolute expiry even when virtual-keyboard activity keeps renewing idle time', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url) => (
+      {
+        ok: true,
+        json: async () => (url.endsWith('/status')
+          ? { state: 'picker', candidates: [], expiresAt: 180000 }
+          : { state: 'entry' }),
+      }
+    ));
+    mountBooth(root);
+    await clock.tickAsync(110000);
+    const email = root.getElementById('registration-email');
+    email.value = 'active@example.test';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await clock.tickAsync(50000);
+    email.dispatchEvent(new Event('change', { bubbles: true }));
+    await clock.tickAsync(20001);
+    expect(email.value).to.equal('');
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+  });
+
   async function productionFixture() {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const root = new DOMParser().parseFromString(await response.text(), 'text/html');
