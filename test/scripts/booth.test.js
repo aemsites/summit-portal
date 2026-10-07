@@ -54,7 +54,7 @@ describe('booth runtime boundary', () => {
       </form><p id="email-error"></p></section>
       <section data-panel="picker" hidden><div id="report-options"></div><p id="picker-status"></p></section>
       <section data-panel="finish" hidden><button id="send-report"></button><p id="finish-status"></p>
-        <button id="request-contact"></button><p id="contact-status"></p></section>
+        </section>
       <button id="staff-exit"></button>
     </main>`;
     sandbox.stub(window, 'addEventListener');
@@ -275,8 +275,8 @@ describe('booth runtime boundary', () => {
       expect(root.getElementById('send-report').hasAttribute('aria-describedby')).to.equal(false);
       expect(finish.querySelector('.finish-artwork')).to.equal(null);
       expect(finish.querySelector('#report-preview').compareDocumentPosition(root.getElementById('send-report'))).to.equal(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(root.getElementById('request-contact').textContent).to.equal('Please contact me');
-      expect(root.getElementById('contact-privacy').textContent).to.include('contact you by email about this report');
+      expect(root.querySelector('#request-contact, #contact-privacy, #contact-status')).to.equal(null);
+      expect(root.querySelector('.finish-guidance').textContent).to.include('Ask the team about a follow-up conversation.');
       expect(fetchStub.callCount).to.equal(2);
       root.getElementById('send-report').click();
       await clock.tickAsync(0);
@@ -298,7 +298,7 @@ describe('booth runtime boundary', () => {
     }
   });
 
-  it('preserves search and contact privacy notices, with independent explicit contact consent', async () => {
+  it('preserves the search privacy notice but never treats follow-up guidance as consent', async () => {
     const root = await productionFixture();
     const previousUrl = window.location.href;
     window.history.replaceState(null, '', '/booth?step=finish');
@@ -309,30 +309,23 @@ describe('booth runtime boundary', () => {
       json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
     });
     fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
-    fetchStub.withArgs('/auth/booth/contact').resolves({ ok: true, json: async () => ({ contactRequested: true }) });
     try {
       expect(root.getElementById('search-privacy').textContent).to.include('90 days');
       expect(root.getElementById('search-privacy').textContent).to.include('does not request sales contact');
-      ['search-privacy', 'contact-privacy'].forEach((id) => {
-        expect(root.getElementById(id).querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
-      });
+      expect(root.getElementById('search-privacy').querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
       mountBooth(root);
       await clock.tickAsync(0);
-      root.getElementById('request-contact').click();
+      root.querySelector('.finish-guidance').click();
       await clock.tickAsync(0);
-      expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/contact');
-      expect(JSON.parse(fetchStub.thirdCall.args[1].body)).to.deep.equal({ consent: true, noticeVersion: 'booth-privacy-v1' });
-      expect(root.getElementById('contact-status').textContent).to.include('Your request is recorded');
-      expect(root.getElementById('request-contact').disabled).to.equal(true);
+      expect(fetchStub.callCount).to.equal(2);
+      expect(root.querySelector('.finish-guidance button, .finish-guidance a')).to.equal(null);
       expect(root.getElementById('send-report').disabled).to.equal(false);
-      root.getElementById('request-contact').click();
-      expect(fetchStub.callCount).to.equal(3);
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }
   });
 
-  it('keeps a confirmed contact request disabled when export reporting is delayed', async () => {
+  it('does not restore retired contact controls for historical contact requests or reporting delays', async () => {
     const root = await productionFixture();
     const previousUrl = window.location.href;
     window.history.replaceState(null, '', '/booth?step=finish');
@@ -340,26 +333,15 @@ describe('booth runtime boundary', () => {
     const fetchStub = sandbox.stub(window, 'fetch');
     fetchStub.onFirstCall().resolves({
       ok: true,
-      json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000 }),
+      json: async () => ({ state: 'report', selectedPath: '/accounts/e/example/insights/example-com/portal-landing/', expiresAt: Date.now() + 600000, contactRequested: true, activityPending: true }),
     });
     fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
-    fetchStub.withArgs('/auth/booth/contact').resolves({
-      ok: false,
-      status: 503,
-      json: async () => ({
-        error: 'Your contact request is recorded. Activity reporting is delayed. The booth team can help.',
-        contactRequested: true,
-        activityPending: true,
-      }),
-    });
     try {
       mountBooth(root);
       await clock.tickAsync(0);
-      root.getElementById('request-contact').click();
-      await clock.tickAsync(0);
-      expect(root.getElementById('contact-status').textContent).to.include('recorded');
-      expect(root.getElementById('contact-status').textContent).to.include('reporting is delayed');
-      expect(root.getElementById('request-contact').disabled).to.equal(true);
+      expect(root.querySelector('#request-contact, #contact-status, #contact-privacy')).to.equal(null);
+      expect(root.getElementById('finish-status').textContent).to.include('reporting is delayed');
+      expect(fetchStub.callCount).to.equal(2);
       expect(root.getElementById('send-report').disabled).to.equal(false);
     } finally {
       window.history.replaceState(null, '', previousUrl);

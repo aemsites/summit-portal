@@ -58,9 +58,46 @@ describe('Figma booth artwork', () => {
     expect(frame.contentWindow.getComputedStyle(hero).backgroundImage).to.equal('none');
   });
 
-  it('scopes the native Finish 5 preview to the booth without requiring a second booth ancestor', () => {
+  it('keeps real entry and recovery actions large, separated and responsive without placeholder progress', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    expect(source.body.textContent).not.to.match(/lorem/i);
+    const groups = [
+      '.entry-alternatives',
+      '[data-panel="demos"] .recovery-actions',
+      '[data-panel="unavailable"] .recovery-actions',
+    ];
+    const actions = groups.map((selector) => source.querySelector(selector).cloneNode(true));
+    stage.replaceChildren(...actions);
+    const { contentWindow } = frame;
+    for (const [width, minHeight, minFont] of [[2160, 129, 51], [1080, 72, 25], [390, 64, 22]]) {
+      frame.style.width = `${width}px`;
+      // Let the iframe viewport and its responsive rules settle.
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      stage.querySelectorAll('.booth-alternative').forEach((button) => {
+        const style = contentWindow.getComputedStyle(button);
+        expect(button.getBoundingClientRect().height).to.be.at.least(minHeight);
+        expect(parseFloat(style.fontSize)).to.be.at.least(minFont);
+        expect(parseFloat(style.borderWidth)).to.be.at.least(2);
+        expect(style.textDecorationLine).to.equal('none');
+      });
+      stage.querySelectorAll('.entry-alternatives, .recovery-actions').forEach((group) => {
+        expect(parseFloat(contentWindow.getComputedStyle(group).gap)).to.be.at.least(16);
+        const columns = contentWindow.getComputedStyle(group).gridTemplateColumns.split(' ');
+        expect(columns).to.have.length(width >= 1000 ? 2 : 1);
+      });
+      expect(frame.contentDocument.documentElement.scrollWidth).to.be.at.most(width);
+    }
+  });
+
+  it('scopes the native Finish 6 montage and report excerpt to the booth', () => {
     stage.insertAdjacentHTML('beforeend', `<section class="finish-content">
       <div class="finish-preview">
+        <div class="preview-montage">
+        <div class="preview-card" data-position="left"><div class="preview-surface"></div></div>
+        <div class="preview-card" data-position="center"><div class="preview-surface">
         <div class="report-hero insight">
           <div class="rh-insight-text"><h3>Your report</h3></div>
           <div class="rh-insight-image"></div>
@@ -68,6 +105,9 @@ describe('Figma booth artwork', () => {
         <div class="report-stats dark"><div class="rs-dark-strip">
           ${Array.from({ length: 4 }, () => '<div class="rs-dark-card">Metric</div>').join('')}
         </div></div>
+        </div></div>
+        <div class="preview-card" data-position="right"><div class="preview-surface"></div></div>
+        </div>
       </div>
     </section>`);
     const preview = stage.querySelector('.finish-preview');
@@ -78,9 +118,27 @@ describe('Figma booth artwork', () => {
     expect(style(reportHero).gridTemplateColumns.split(' ')).to.have.length(2);
     expect(style(stats).gridTemplateColumns.split(' ')).to.have.length(4);
     close(preview.getBoundingClientRect().width, 1950);
-    close(reportHero.getBoundingClientRect().height, 552.5);
-    close(stats.getBoundingClientRect().height, 447.65);
-    close(preview.getBoundingClientRect().height, 1000.15);
-    close(style(preview.querySelector('h3')).fontSize, 73.125);
+    close(preview.getBoundingClientRect().height, 725);
+    close(preview.querySelector('[data-position="center"]').getBoundingClientRect().width, 1411.094);
+    const scale = 1411.094 / 1950;
+    close(reportHero.getBoundingClientRect().height, 552.5 * scale);
+    close(stats.getBoundingClientRect().height, 447.65 * scale);
+    close(style(preview.querySelector('h3')).fontSize, 73.125 * scale);
+  });
+
+  it('keeps the complete privacy disclosure visible on one native line without clipping', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stage.replaceChildren(source.querySelector('.welcome-entry').cloneNode(true));
+    const notice = stage.querySelector('#search-privacy');
+    const style = frame.contentWindow.getComputedStyle(notice);
+    expect(notice.textContent).to.include('Adobe records your email and report activity');
+    expect(notice.textContent).to.include('90 days to measure booth interest');
+    expect(notice.textContent).to.include('does not request sales contact');
+    expect(notice.querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
+    expect(notice.getBoundingClientRect().height).to.be.at.most(parseFloat(style.lineHeight) + 1);
+    expect(style.overflow).to.equal('visible');
+    expect(parseFloat(style.fontSize)).to.be.at.least(19.9);
+    expect(style.color).to.equal('rgb(91, 91, 91)');
   });
 });

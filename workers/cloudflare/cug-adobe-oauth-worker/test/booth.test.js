@@ -4,6 +4,7 @@ import { createSession } from '../src/session.js';
 import { createMockEnv, createMockBoothD1, createMockBoothStorage } from './helpers.js';
 import { handleShareLinkRequest } from '../src/sharelink.js';
 import * as cugsheet from '../src/cugsheet.js';
+import { createBoothActivity } from '../src/booth-activity.js';
 
 vi.mock('../src/sharelink.js', () => ({ handleShareLinkRequest: vi.fn() }));
 
@@ -437,19 +438,19 @@ describe('booth isolated context', () => {
     expect((await request('send', {})).status).toBe(410);
   });
 
-  it('correlates search, selected company, opened report, contact opt-in and send by the asserted email', async () => {
+  it('correlates search, selected company, opened report and send without a contact opt-in', async () => {
     await request('lookup', { email: ' VISITOR@Example.COM ' });
     expect((await request('view', { path })).status).toBe(200);
-    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(200);
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
     expect((await request('send', {})).status).toBe(200);
     const events = [...env.REPORT_REQUESTS.events.values()];
-    expect(events.map((event) => event.kind)).toEqual(['search', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent']);
+    expect(events.map((event) => event.kind)).toEqual(['search', 'report_selected', 'report_viewed', 'report_sent']);
     expect(new Set(events.map((event) => event.flow_id)).size).toBe(1);
     expect(events.every((event) => event.email === 'visitor@example.com')).toBe(true);
     expect(events.slice(1).every((event) => event.report_path === path && event.company === 'Example')).toBe(true);
     expect(events.every((event) => event.notice_version === 'booth-privacy-v1')).toBe(true);
     await request('reset', {});
-    expect(env.REPORT_REQUESTS.events.size).toBe(5);
+    expect(env.REPORT_REQUESTS.events.size).toBe(4);
     await request('lookup', { email: 'next@example.com' });
     const flows = [...env.REPORT_REQUESTS.events.values()].map((event) => event.flow_id);
     expect(new Set(flows).size).toBe(2);
@@ -467,24 +468,36 @@ describe('booth isolated context', () => {
 
   it('does not infer contact consent from searching, viewing or emailing and refuses recipient overrides', async () => {
     await request('lookup', { email: 'visitor@example.com' });
-    expect((await request('contact', {})).status).toBe(400);
-    expect((await request('contact', { consent: false, noticeVersion: 'booth-privacy-v1' })).status).toBe(400);
-    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1', email: 'other@example.com' })).status).toBe(400);
+    expect((await request('contact', {})).status).toBe(404);
+    expect((await request('contact', { consent: false, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1', email: 'other@example.com' })).status).toBe(404);
     expect((await request('view', { path: second })).status).toBe(400);
     await request('send', {});
     expect([...env.REPORT_REQUESTS.events.values()].some((event) => event.kind === 'contact_requested')).toBe(false);
     expect([...env.REPORT_REQUESTS.events.values()].some((event) => event.kind === 'report_viewed')).toBe(false);
   });
 
-  it('deduplicates repeated view and contact requests through actor restarts', async () => {
+  it('deduplicates repeated views and rejects the retired contact route through actor restarts', async () => {
     await request('lookup', { email: 'visitor@example.com' });
     await request('view', { path });
-    await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' });
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
     actor = new BoothCoordinator(state, env);
     await request('view', { path });
-    await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' });
-    expect(env.REPORT_REQUESTS.events.size).toBe(4);
-    expect((await (await request('status')).json()).contactRequested).toBe(true);
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
+    expect(env.REPORT_REQUESTS.events.size).toBe(3);
+    expect((await (await request('status')).json()).contactRequested).toBe(false);
+  });
+
+  it('rejects a direct retired contact actor call without dispatching email', async () => {
+    await request('lookup', { email: 'visitor@example.com' });
+    const response = await actor.fetch(new Request('https://portal.example/auth/booth/contact', {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consent: true, noticeVersion: 'booth-privacy-v1' }),
+    }));
+    expect(response.status).toBe(404);
+    expect(handleShareLinkRequest).not.toHaveBeenCalled();
+    expect([...env.REPORT_REQUESTS.events.values()].some((event) => event.kind === 'contact_requested')).toBe(false);
   });
 
   it('durably queues a successful send during a D1 outage, preserves it through reset and retries without resending', async () => {
@@ -520,17 +533,15 @@ describe('booth isolated context', () => {
     expect((await request('send', {})).status).toBe(409);
   });
 
-  it('preserves explicit contact consent during an outage and blocks stale or revoked actions', async () => {
+  it('preserves historical contact records during an outage without re-enabling the action', async () => {
     await request('lookup', { email: 'visitor@example.com' });
     const db = env.REPORT_REQUESTS;
     env.REPORT_REQUESTS = undefined;
-    const contact = await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' });
-    expect(contact.status).toBe(503);
-    expect(await contact.json()).toMatchObject({
-      contactRequested: true,
-      activityPending: true,
-      error: 'Your contact request is recorded. Activity reporting is delayed. The booth team can help.',
-    });
+    const record = await state.storage.get('context');
+    record.contactRequested = true;
+    await state.storage.put('context', record);
+    await state.storage.put('activity', [createBoothActivity('contact_requested', record.key, 'visitor@example.com', { path, company: 'Example' })]);
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
     expect((await (await request('status')).json())).toMatchObject({ contactRequested: true, activityPending: true });
     env.REPORT_REQUESTS = db;
     await actor.alarm();
@@ -583,14 +594,16 @@ describe('booth isolated context', () => {
     expect((await (await request('status')).json()).selectedPath).toBe(path);
   });
 
-  it('retains contact consent behind an earlier queued view and never dispatches mail during its reporting failure', async () => {
+  it('retains historical contact events behind an earlier queued view without dispatching mail', async () => {
     await request('lookup', { email: 'visitor@example.com' });
     const db = env.REPORT_REQUESTS;
     env.REPORT_REQUESTS = undefined;
     expect((await request('view', { path })).status).toBe(503);
-    const contact = await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' });
-    expect(contact.status).toBe(503);
-    expect((await contact.json()).contactRequested).toBe(true);
+    const record = await state.storage.get('context');
+    const pending = await state.storage.get('activity');
+    pending.push(createBoothActivity('contact_requested', record.key, 'visitor@example.com', { path, company: 'Example' }));
+    await state.storage.put('activity', pending);
+    expect((await request('contact', { consent: true, noticeVersion: 'booth-privacy-v1' })).status).toBe(404);
     expect((await state.storage.get('activity')).map((event) => event.kind)).toEqual(['report_viewed', 'contact_requested']);
     const send = await request('send', {});
     expect(send.status).toBe(503);

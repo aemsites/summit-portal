@@ -55,7 +55,7 @@ createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'contact', 'reset'];
+    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset'];
     if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -78,14 +78,22 @@ createServer(async (request, response) => {
       response.end(JSON.stringify({ demos: BOOTH_DEMOS }));
       return;
     }
-    if (action === 'lookup' && ['no-report@example.test', 'service-error@example.test'].includes(body.email)) {
-      Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
-      const missing = body.email === 'no-report@example.test';
-      response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
-        : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
-      return;
+    if (action === 'lookup') {
+      if (typeof body.email !== 'string' || !body.email.trim()) {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Enter an email for the local fixture."}');
+        return;
+      }
+      const email = body.email.trim().toLowerCase();
+      if (email !== 'visitor@example.test') {
+        Object.keys(context).forEach((key) => { delete context[key]; });
+        Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+        const missing = email !== 'service-error@example.test';
+        response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
+          : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
+        return;
+      }
     }
     if (action === 'lookup' || action === 'select') fixtureReport(context);
     if (action === 'demo' || action === 'request') {
@@ -107,13 +115,12 @@ createServer(async (request, response) => {
       Object.keys(context).forEach((key) => { delete context[key]; });
       Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
     }
-    if (['send', 'contact', 'view'].includes(action) && context.state !== 'report') {
+    if (['send', 'view'].includes(action) && context.state !== 'report') {
       response.writeHead(409, { 'Content-Type': 'application/json' });
       response.end('{"error":"Open the example report first. This is a local fixture."}');
       return;
     }
     if (action === 'send') context.sent = true;
-    if (action === 'contact') context.contactRequested = true;
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify(context));
     return;

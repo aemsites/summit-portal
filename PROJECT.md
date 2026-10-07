@@ -21,12 +21,12 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker serves fixed **Entry 3 / Finish 5** from bundled `booth.html`, four `scripts/booth*.js` modules, scoped `styles/booth.css` and `styles/booth-report.css`, shared hero/stat renderers and three Entry/action artwork assets. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. Finish re-fetches that exact selected document to show its actual hero and metrics above **Email my report**, without another lookup or report generation. Entry uses 68px input text and approximately 134px primary actions at 2160px width, with keyboard/reduced-motion support. The default shared header is the event-neutral **Adobe Brand Visibility**, with accessible Adobe logo attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and `brand=adobe|semrush` remain cosmetic only; legacy `entry`/`finish` settings are ignored and no longer propagated. Safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Mock preview controls, decorative motion, artificial step counters and the talk-through guidance section are omitted. Separate contact consent and privacy notices remain; **Finish and clear this screen** only resets. See the Figma redesign section below and `docs/implementations/booth-access/README.md` for scope and separate activation gates.
+- `/booth` — **reusable booth prototype**: this branch bundles fixed **Entry 3 / Finish 6** (production still Finish 5), `booth.html`, four `scripts/booth*.js` modules, scoped booth CSS, shared hero/stat/briefing/visibility renderers, their styles and Entry/action artwork. No DA page/content imports are required. Staff sets up through `/login?staff&redirect=%2Fbooth`; asserted business email matches an existing **exact-email or domain CUG**, not a registered attendee or authenticated customer. Fresh private report index + most-specific CUG and mapping permissions determine prepared account insight candidates; authorized aliases are filtered before choosing the latest/portal landing. One report opens directly; several websites require an explicit picker. No event binding, private roster, arbitrary search or new access grant. A fixed Finish control appears only on the exact server-selected report; report content and ordinary layouts are preserved, with the confirmed portrait booth reading profile described below. Finish re-fetches that exact document once for three swipeable section excerpts above **Email my report**, without another lookup or generation. Entry uses 68px input text and approximately 134px primary actions at 2160px width, with keyboard/reduced-motion support. The event-neutral header is **Adobe Brand Visibility**, with accessible Adobe attribution. Optional `heading` (1–80 Unicode code points of plain text, excluding markup/control/format characters) and `brand=adobe|semrush` remain cosmetic only; legacy `entry`/`finish` settings are ignored. Safe settings follow canonical report/Finish/reset URLs, never API bodies, access permissions or emailed links. Entry offers a "customized report" without implying on-demand generation. Mock controls, decorative motion and placeholder footer progress are omitted; Version 6 includes its static Finish step badge. Follow-up guidance is informational, without contact consent or analytics. Entry privacy notices remain; **Finish and clear this screen** only resets. See the current Figma iteration below and `docs/implementations/booth-access/README.md` for separate activation gates.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
-**Booth Finish UX decision:** **Email my report** sends only the report link. The separate **Please contact me** button records an explicit request for Adobe to follow up by email about that report; it neither sends the report nor books a meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a staff-bound, ten-minute HttpOnly context. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records attempts before APO; uncertain delivery is explicit and non-retryable. Reset clears attendee access but retains staff/device mode and the separately disclosed lead history. The signed non-PII `booth_device` marker binds to staff JWT/expiry and requires the exact live selected context before fetching/returning account documents, including reset races. Fresh report navigation and browser Back after reset return to Entry. Explicit staff exit clears booth mode and signs out. Unmarked ordinary staff and CUG redemption remain unchanged; the device marker is never an authentication credential. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; this scoped boundary is not a complete device privacy guarantee.
+**Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a staff-bound, ten-minute HttpOnly context. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records attempts before APO; uncertain delivery is explicit and non-retryable. Reset clears attendee access but retains staff/device mode and the separately disclosed lead history. The signed non-PII `booth_device` marker binds to staff JWT/expiry and requires the exact live selected context before fetching/returning account documents, including reset races. Fresh report navigation and browser Back after reset return to Entry. Explicit staff exit clears booth mode and signs out. Unmarked ordinary staff and CUG redemption remain unchanged; the device marker is never an authentication credential. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; this scoped boundary is not a complete device privacy guarantee.
 
-**Identified booth lead history:** a first-party D1 ledger correlates the asserted business email and visit ID with valid searches (including no-match/service failures), authorized company/report selection, browser-confirmed report opening, explicit contact opt-in and mail-service-accepted report sends. Selected does not mean opened; opened does not prove reading, identity or physical attendance. Adobe OAuth staff can retrieve paginated JSON or complete action-filtered CSV at `/api/booth-activity` and `/api/booth-activity.csv`; booth credentials, partner OAuth and link-borne logins cannot retrieve emails. Records expire after **90 days**, are immediately excluded from retrieval at expiry, and are purged hourly. A Durable Object outbox retries D1 outages without resending mail or exposing a previous attendee after reset. Simple Analytics receives only best-effort action counts, not email addresses, hashes, visit IDs, company names, report URLs or attendee headers. Compact point-of-action notices link to Adobe's Privacy Policy; notice version and opt-in timestamp are recorded. Privacy/Legal review, the D1 migration, Worker/asset rollout and backup-retention review remain activation gates; the text is not a legal waiver or blanket marketing consent. See [booth access](docs/implementations/booth-access/README.md#identified-booth-leads-and-privacy-notices).
+**Identified booth lead history:** a first-party D1 ledger correlates the asserted business email and visit ID with valid searches (including no-match/service failures), authorized company/report selection, browser-confirmed report opening and mail-service-accepted report sends. Historical contact opt-ins remain privately retrievable; Finish 6 records no new contact event and suppresses anonymous contact counts, including outbox replay. Selected does not mean opened; opened does not prove reading, identity or physical attendance. Adobe OAuth staff can retrieve paginated JSON or complete action-filtered CSV at `/api/booth-activity` and `/api/booth-activity.csv`; booth credentials, partner OAuth and link-borne logins cannot retrieve emails. Records expire after **90 days**, are immediately excluded from retrieval at expiry, and are purged hourly. A Durable Object outbox retries D1 outages without resending mail or exposing a previous attendee after reset. Simple Analytics receives only best-effort action counts, not email addresses, hashes, visit IDs, company names, report URLs or attendee headers. Compact point-of-action notices link to Adobe's Privacy Policy; lookup notice version and historical opt-in timestamps are retained. Privacy/Legal review, the D1 migration, Worker/asset rollout and backup-retention review remain activation gates; the text is not a legal waiver or blanket marketing consent. See [booth access](docs/implementations/booth-access/README.md#identified-booth-leads-and-privacy-notices).
 
 **Returning to the staff portal:** successful, CUG-authorized dashboard navigation by verified staff ends booth mode without signing staff out. The Worker clears the owned attendee context and expires both booth cookies, so dashboard company links open their reports normally rather than inheriting kiosk restrictions. Dashboard HEAD requests, background fetches, prefetch, denied access and link-borne identities do not trigger the transition. An unavailable context coordinator returns an explicit recovery error instead of dropping kiosk protection. Reauthenticated staff can discard stale cookies without revoking another session's private context; the scoped report-history boundary remains active until staff deliberately return to the dashboard or sign out.
 
@@ -75,21 +75,78 @@ two-minute inactivity and absolute expiry remove visitor fields. Input/change
 events renew inactivity for virtual keyboards. Failed verification removes the
 form and shows recovery; failed clearing hides visitor content and permits retry.
 
-The combined feature branch also contains the carousel PDF-click fix documented
-below. Local browser checks exercise all ten demos, no-match/outage distinction,
+Merged [#152](https://github.com/aemsites/summit-portal/pull/152) also contains the
+carousel PDF-click fix documented below. Local browser checks exercise all ten demos, no-match/outage distinction,
 fresh form validation/consent, synthetic completion, inactivity/history privacy,
 failed verification and the existing personal report/Finish journey. Form/chooser
 checks cover native portrait, 1080 × 1920 and mobile, plus a keyboard-reduced form.
 Verification passed 388 Worker tests (one existing skip), 212 frontend tests
-and changed-file ESLint/Stylelint. The summit bundle passed a deployment dry run
-only. **This feature is
-not deployed:** merge frontend/form changes and separately deploy the matching
-Worker after approval. Real Turnstile/submission and physical kiosk rehearsal
-remain rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
+and changed-file ESLint/Stylelint. After explicit deployment approval, merged
+main `f9d7c454eb350d36d6de0e7e3605df1bcdb046ce` was deployed on October 7 as
+Worker **`10608171-3483-4835-95ef-4e290b4ac677`**, serving **100%** of traffic.
+Live booth/runtime control modules and portrait form CSS match merged source.
+Anonymous `/booth` still redirects to staff setup; catalogue and status return
+401. Existing KV/D1 bindings, staff epoch, secrets and temporary timing
+diagnostics are unchanged. Close old report documents and reload `/booth` to
+load the new flow. Real Turnstile/submission and physical kiosk rehearsal remain
+rollout gates. See [booth access](docs/implementations/booth-access/README.md#industry-demo-and-report-request-recovery).
 
-### October 7 approved Figma booth implementation
+### October 7 Finish 6 iteration (pending production deployment)
 
-The booth shell implements the designer's
+**Touchscreen follow-up:** Jose confirmed that the placeholder three-part
+footer progress bar should stay removed. The real Finish step badge remains.
+Entry demo/request and recovery/list request/back actions are now separate
+outlined neutral buttons, not small underlined links. Native targets are
+approximately **130px high with 52px type**, fallback targets at least **72px
+with 26px type**, and mobile targets at least **64px with 22px type**.
+Two equal columns on desktop become a full-width stack on mobile; visible
+spacing, focus rings and a neutral hover state distinguish each action while
+keeping report lookup primary. Actions and consent behavior are unchanged.
+
+**Entry review corrections:** the privacy notice is shortened and visually
+quieter, while preserving Adobe's email/activity recording, booth-measurement
+purpose, 90-day retention, no implied sales-contact request and Privacy Policy
+link. It remains visible beside the lookup action and accessible to assistive
+technology. The local fixture no longer opens a sample report for every email:
+only `visitor@example.test` matches, any other email produces the no-report
+warning, and `service-error@example.test` still simulates an outage.
+Industry selection remains explicit after the warning; no demo opens
+automatically. This changes local fixtures, not production CUG matching.
+
+The current branch replaces Finish 5 with
+[Screen 2_Finish_version 6](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=244-579).
+Its **1950 × 725px** montage shows the selected report's LLM visibility
+(visibility/citations, Competitive landscape and Platform visibility), hero
+plus four summary metrics, and first Your briefing / Executive overview slide.
+All three excerpts remain visible; horizontal swipes, side taps and keyboard
+navigation rotate the foreground without another request. Static shared
+builders reuse real report content, not the Figma sample images. Inner report
+controls are inert, chart labels are escaped, and reduced motion is supported.
+The front excerpt is **1411 × 724px**, with fixed framing and a two-line overview
+heading. Missing sections have explicit messages; unsupported heroes retain
+retry. The single authorized no-store fetch, expiry/abort/revision guards and
+reset/pagehide privacy clearing remain.
+
+Version 6 centers the **STEP 03 OF 03** badge and blue **Email my report** pill,
+uses the exact exported Open In icon, then a gray **Prefer to meet later?**
+informational panel and smaller dark reset pill. At Jose's direction there is
+**no Please contact me action or contact-interest Simple Analytics event**.
+The retired contact route returns 404, including direct actor calls.
+Historical first-party contact records/outbox entries remain private and retain
+their original 90-day lifetime; replay no longer sends anonymous contact counts.
+Search/view/email do not imply contact consent. The separate public request-form
+consent behavior is unchanged. Mock toolbar and placeholder footer progress
+remain omitted; the static Finish step badge now follows the approved design.
+
+Entry 3 is unchanged. The exact-dimension local reviewer at
+`http://localhost:3000/` includes native **2160 × 3840**, reference **2160 × 2881**
+and fallback **1080 × 1920** sizes. Production still runs Finish 5 on Worker
+`10608171-3483-4835-95ef-4e290b4ac677`; the Finish 6 branch is ready for review,
+with production deployment still pending. See [current booth flow](docs/implementations/booth-access/README.md#october-7-fixed-entry-3--finish-6).
+
+### October 7 initial approved Figma booth implementation (historical Finish 5)
+
+The initial booth rollout implemented the designer's
 [Final Design](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
 as fixed [Entry 3](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=92-648)
 and [Finish 5](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=209-2214).
@@ -334,7 +391,7 @@ On insight/Cannes pages, the light **Search performance** block renders the shar
 ### report-carousel
 A tabbed carousel with three persona views — Executive overview, Marketer insights, and IT/Engineering learnings. Each tab contains multiple slides with a "Top insight" callout and an SVG data visualization (column charts, line charts, donut charts, horizontal bars, stacked bars, big figures, metric strips, or recommendation lists). Includes dot navigation, prev/next arrows, and a slide counter. `bigfigure` accepts the documented single pipe-delimited row (`value | unit | label`) as well as the legacy three-`<p>` form — the renderer reads the pipe parts first so the documented form (what the DIH template emits) doesn't drop the unit/context. Slides use `min-height` (not a fixed `height`) so tall content like a 3-item `recommendationlist` grows to fit instead of clipping; on mobile the `.rc-slide-visual` 300px height cap applies only to SVG charts, not to text-content visuals (`recommendationlist`/`metricstrip`), which must grow.
 
-**PDF activation:** Simple Analytics auto-events can decorate the authored PDF link before the carousel initializes, adding an inline `return false` handler. Previously both cloned download buttons inherited that cancellation, then changed to `_blank`; analytics recorded the event but neither native navigation nor its callback opened the PDF. Both clones now preserve the inherited handler as a normal click listener, ignoring its stale return value while retaining tracking and explicit `event.preventDefault()`. PDF URLs, authorization, disabled/unavailable states and new-tab behavior are unchanged. Browser regressions cover both analytics load orders and both buttons; native mouse, Enter and touch activation were confirmed with the actual auto-events script at 2160×3840, including a tracking callback that never completes. The authenticated Amundi production example could not be retested because it redirects to sign-in. This is a local frontend fix, not yet published; it requires the normal PR/code-sync rollout, not a Worker deployment.
+**PDF activation:** Simple Analytics auto-events can decorate the authored PDF link before the carousel initializes, adding an inline `return false` handler. Previously both cloned download buttons inherited that cancellation, then changed to `_blank`; analytics recorded the event but neither native navigation nor its callback opened the PDF. Both clones now preserve the inherited handler as a normal click listener, ignoring its stale return value while retaining tracking and explicit `event.preventDefault()`. PDF URLs, authorization, disabled/unavailable states and new-tab behavior are unchanged. Browser regressions cover both analytics load orders and both buttons; native mouse, Enter and touch activation were confirmed with the actual auto-events script at 2160×3840, including a tracking callback that never completes. The authenticated Amundi production example could not be retested because it redirects to sign-in. This frontend fix was merged in #152; its live module matches merged source after code sync. It does not require a Worker deployment.
 
 ### report-download
 A split layout with a heading, description, and download CTA on the left, and an interactive PDF card preview on the right. The card has a red patterned background, the report title, and hover effects. Shows metadata (last updated date, page count). PDF title text is resolved from the block row markup (including nested links).

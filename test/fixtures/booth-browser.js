@@ -52,9 +52,7 @@ export default async function verifyBooth(page) {
         result = { sent: true };
       }
     } else if (action === 'contact') {
-      check(JSON.parse(route.request().postData()).consent === true, 'Contact requires explicit consent');
-      state.contactRequested = true;
-      result = { contactRequested: true };
+      throw new Error('Retired contact action must not be requested');
     } else if (action === 'reset') {
       state = { state: 'entry' };
       result = state;
@@ -85,7 +83,7 @@ export default async function verifyBooth(page) {
   await page.getByRole('link', { name: 'Finish reading my report' }).click();
   await page.waitForURL('**/booth?step=finish');
   await page.locator('[data-panel="finish"]:not([hidden])').waitFor();
-  await page.locator('#report-preview h3').waitFor();
+  await page.locator('#report-preview .rh-insight-text h3').waitFor();
   check(lookups === 1 && reportRequests === 2, 'Finish must fetch the selected report without another lookup');
   check(await page.locator('#report-preview .rs-dark-value').first().textContent() === '61/100', 'Finish preview must use actual report scores');
   check(await page.getByRole('heading', { name: 'Talk through your report here' }).count() === 0, 'Removed guidance section returned');
@@ -94,14 +92,31 @@ export default async function verifyBooth(page) {
     guidance: document.querySelector('.finish-guidance').getBoundingClientRect().height,
     action: document.querySelector('#send-report').getBoundingClientRect().height,
   }));
-  check(!finish.overflow && finish.guidance >= 262 && finish.action >= 129, 'Figma portrait Finish sizing changed');
+  check(!finish.overflow && finish.guidance >= 261 && finish.action >= 130, 'Figma portrait Finish sizing changed');
   await page.getByRole('button', { name: 'Email my report' }).click();
   await page.waitForFunction(() => document.querySelector('#finish-status').textContent.includes('was emailed'));
   check(calls === 1 && await page.locator('#send-report').isDisabled(), 'Duplicate send UI protection failed');
   check(!state.contactRequested, 'Report email must not imply sales consent');
-  await page.getByRole('button', { name: 'Please contact me' }).click();
-  await page.waitForFunction(() => document.querySelector('#contact-status').textContent.includes('recorded'));
-  check(state.contactRequested && await page.locator('#request-contact').isDisabled(), 'Explicit contact request failed');
+  check(await page.locator('#request-contact, #contact-status, #contact-privacy').count() === 0, 'Retired contact controls returned');
+  check(await page.locator('.preview-card').count() === 3, 'Finish requires all three selected-report previews');
+  await page.locator('.preview-montage').focus();
+  await page.keyboard.press('ArrowRight');
+  check(await page.locator('.preview-card[data-position="center"]').getAttribute('data-section') === 'briefing', 'Preview keyboard rotation failed');
+  await page.waitForTimeout(400);
+  const side = await page.locator('.preview-card[data-position="right"]').boundingBox();
+  await page.mouse.click(side.x + side.width - 30, side.y + (side.height / 2));
+  check(await page.locator('.preview-card[data-position="center"]').getAttribute('data-section') === 'visibility', 'Side preview tap failed');
+  const touch = await page.context().newCDPSession(page);
+  for (const section of ['overview', 'briefing', 'visibility']) {
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 1080, y: 650 }] });
+    for (let i = 1; i <= 5; i += 1) {
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 1080 - (i * 60), y: 650 }] });
+    }
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    check(await page.locator('.preview-card[data-position="center"]').getAttribute('data-section') === section, 'Touch swipe/wrap failed');
+  }
+  await touch.detach();
+  check(lookups === 1 && reportRequests === 2, 'Preview rotation fetched the report again');
   await page.getByRole('button', { name: 'Finish and clear this screen' }).click();
   await page.waitForURL('**/booth');
   check(await page.locator('#registration-email').inputValue() === '', 'Reset leaked email');
@@ -187,10 +202,10 @@ export default async function verifyBooth(page) {
   await page.getByRole('link', { name: 'Finish reading my report' }).click();
   await page.waitForURL('**/booth?step=finish');
   await page.locator('[data-panel="finish"]:not([hidden])').waitFor();
-  check(await page.locator('#stage').getAttribute('data-finish') === '5', 'Legacy query changed fixed Finish 5');
+  check(await page.locator('#stage').getAttribute('data-finish') === '6', 'Legacy query changed fixed Finish 6');
   await page.getByRole('button', { name: 'Finish and clear this screen' }).click();
   await page.waitForURL('**/booth');
   check(await page.locator('#stage').getAttribute('data-entry') === '3'
     && await page.locator('#registration-email').inputValue() === '', 'Reset lost variant or leaked email');
-  return { entry, finish, mobile, checked: 'Fixed Entry 3 → direct report → native Finish 5 preview without another lookup → send/contact → reset; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage; ignored legacy variants. All emails are synthetic fixtures, no live email sent.' };
+  return { entry, finish, mobile, checked: 'Fixed Entry 3 → direct report → native Finish 6 previews without another lookup → send → reset; static follow-up guidance; preview rotation; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage; ignored legacy variants. All emails are synthetic fixtures, no live email sent.' };
 }

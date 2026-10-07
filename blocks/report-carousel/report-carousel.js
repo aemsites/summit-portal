@@ -1,6 +1,11 @@
 const DEFAULT_COLORS = ['#818cf8', '#fb7185', '#fb923c', '#34d399', '#60a5fa', '#a78bfa'];
 let chartUid = 0;
 
+function htmlText(value) {
+  const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value).replace(/[&<>"']/g, (character) => entities[character]);
+}
+
 function cloneDownloadLink(source) {
   const link = source.cloneNode(true);
   const onClick = link.onclick;
@@ -45,8 +50,8 @@ function parsePair(line) {
         if (parts[3] && Number.isNaN(parseFloat(parts[3]))) return parts[3];
         return '';
       })(),
-      color: parts.find((p) => p.startsWith('#')) || null,
-      color2: parts.filter((p) => p.startsWith('#'))[1] || null,
+      color: parts.find((p) => /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i.test(p)) || null,
+      color2: parts.filter((p) => /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i.test(p))[1] || null,
       extra: parts[4] || '',
       raw: parts,
     };
@@ -151,15 +156,15 @@ function renderColumnChart(chartData) {
     const words = d.label.split(' ');
     const labelY = padTop + chartH + 16;
     const labelHtml = words.length > 2
-      ? `<text x="${x + barW / 2}" y="${labelY}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${words.slice(0, 2).join(' ')}</text>
-         <text x="${x + barW / 2}" y="${labelY + 13}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${words.slice(2).join(' ')}</text>`
-      : `<text x="${x + barW / 2}" y="${labelY}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${d.label}</text>`;
+      ? `<text x="${x + barW / 2}" y="${labelY}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${htmlText(words.slice(0, 2).join(' '))}</text>
+         <text x="${x + barW / 2}" y="${labelY + 13}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${htmlText(words.slice(2).join(' '))}</text>`
+      : `<text x="${x + barW / 2}" y="${labelY}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${htmlText(d.label)}</text>`;
     const r = Math.min(4, barW / 2);
     const barPath = `M ${x} ${padTop + chartH} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + barW - r} ${y} Q ${x + barW} ${y} ${x + barW} ${y + r} L ${x + barW} ${padTop + chartH} Z`;
     const baseline = padTop + chartH;
     return `
       <g data-anim="rc-anim-bar" style="transform-origin:${x + barW / 2}px ${baseline}px;opacity:0">
-        <path class="rc-chart-hover" d="${barPath}" fill="url(#${uid}g${i})"><title>${d.label}: ${d.value}</title></path>
+        <path class="rc-chart-hover" d="${barPath}" fill="url(#${uid}g${i})"><title>${htmlText(d.label)}: ${d.value}</title></path>
         <text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">${d.value}</text>
       </g>
       ${labelHtml}`;
@@ -249,7 +254,7 @@ function renderLineChart(chartData) {
 
   // Month labels only (vertical lines shown on hover)
   const gridLines = '';
-  const monthLabels = pts.map((p) => `<text x="${p.x}" y="${H - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${p.label}</text>`).join('');
+  const monthLabels = pts.map((p) => `<text x="${p.x}" y="${H - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${htmlText(p.label)}</text>`).join('');
 
   // Horizontal axis ticks (zero-based, nice round numbers)
   const hLines = Array.from({ length: actualTicks + 1 }, (_, i) => {
@@ -433,7 +438,7 @@ function renderDonutChart(chartData) {
     const glowId = `${uid}w${i}`;
     const arcPath = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${innerR} ${innerR} 0 ${large} 0 ${xi1} ${yi1} Z`;
     return {
-      path: `<path class="rc-donut-seg" data-anim="rc-anim-donut-seg" style="transform-origin:${cx}px ${cy}px;opacity:0" data-label="${d.label}" data-value="${d.value}%" d="${arcPath}" fill="url(#${gradId})" stroke="url(#${glowId})" stroke-width="1.5" stroke-linejoin="round"/>`,
+      path: `<path class="rc-donut-seg" data-anim="rc-anim-donut-seg" style="transform-origin:${cx}px ${cy}px;opacity:0" data-label="${htmlText(d.label)}" data-value="${d.value}%" d="${arcPath}" fill="url(#${gradId})" stroke="url(#${glowId})" stroke-width="1.5" stroke-linejoin="round"/>`,
       grad: `<radialGradient id="${gradId}" cx="30%" cy="30%" r="70%"><stop offset="0%" stop-color="${fill}" stop-opacity="1"/><stop offset="100%" stop-color="${fill}" stop-opacity="0.82"/></radialGradient>
         <linearGradient id="${glowId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.25"/><stop offset="100%" stop-color="#fff" stop-opacity="0.05"/></linearGradient>`,
     };
@@ -443,7 +448,7 @@ function renderDonutChart(chartData) {
   const gradsHtml = arcs.map((a) => a.grad).join('');
 
   const centerHtml = centerValue
-    ? `<text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="28" font-weight="800" fill="currentColor" data-anim="rc-anim-fade-in" style="opacity:0">${centerValue}</text>`
+    ? `<text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="28" font-weight="800" fill="currentColor" data-anim="rc-anim-fade-in" style="opacity:0">${htmlText(centerValue)}</text>`
     : '';
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -530,8 +535,8 @@ function renderHorizontalBars(chartData) {
     const y = padTop + barPad + i * (barH + barGap);
     const r = Math.min(8, barH / 2);
     const barPath = `M ${chartL} ${y} L ${chartL + barW - r} ${y} Q ${chartL + barW} ${y} ${chartL + barW} ${y + r} L ${chartL + barW} ${y + barH - r} Q ${chartL + barW} ${y + barH} ${chartL + barW - r} ${y + barH} L ${chartL} ${y + barH} Z`;
-    return `<text x="${labelW}" y="${y + barH / 2 + 4}" text-anchor="end" font-size="11" font-weight="700" fill="currentColor">${d.label}</text>
-      <g data-anim="rc-anim-hbar" style="transform-origin:${chartL}px ${y + barH / 2}px;opacity:0"><path class="rc-hbar-path" d="${barPath}" fill="url(#${uid}g${i})" data-label="${d.label}" data-value="${d.value}${suffix}"><title>${d.label}: ${d.value}${suffix}</title></path></g>`;
+    return `<text x="${labelW}" y="${y + barH / 2 + 4}" text-anchor="end" font-size="11" font-weight="700" fill="currentColor">${htmlText(d.label)}</text>
+      <g data-anim="rc-anim-hbar" style="transform-origin:${chartL}px ${y + barH / 2}px;opacity:0"><path class="rc-hbar-path" d="${barPath}" fill="url(#${uid}g${i})" data-label="${htmlText(d.label)}" data-value="${d.value}${htmlText(suffix)}"><title>${htmlText(d.label)}: ${d.value}${htmlText(suffix)}</title></path></g>`;
   }).join('');
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -578,9 +583,9 @@ function renderBigFigure(chartData) {
   const wrap = document.createElement('div');
   wrap.className = 'rc-bigfigure';
   wrap.innerHTML = `
-    <div class="rc-bigfigure-value" data-anim="rc-anim-bigfig" style="opacity:0">${val}</div>
-    ${unit ? `<div class="rc-bigfigure-unit" data-anim="rc-anim-fade-in" style="opacity:0">${unit}</div>` : ''}
-    ${ctx ? `<div class="rc-bigfigure-ctx" data-anim="rc-anim-fade-in" style="opacity:0">${ctx}</div>` : ''}`;
+    <div class="rc-bigfigure-value" data-anim="rc-anim-bigfig" style="opacity:0">${htmlText(val)}</div>
+    ${unit ? `<div class="rc-bigfigure-unit" data-anim="rc-anim-fade-in" style="opacity:0">${htmlText(unit)}</div>` : ''}
+    ${ctx ? `<div class="rc-bigfigure-ctx" data-anim="rc-anim-fade-in" style="opacity:0">${htmlText(ctx)}</div>` : ''}`;
   return wrap;
 }
 
@@ -599,9 +604,9 @@ function renderMetricStrip(chartData) {
     const header = document.createElement('div');
     header.className = 'rc-metric-strip-row rc-ms-header';
     header.innerHTML = `
-      <div class="rc-ms-label">${h[1] || ''}</div>
-      <div class="rc-ms-value">${h[2] || ''}</div>
-      ${h[3] ? `<div class="rc-ms-note">${h[3]}</div>` : ''}`;
+      <div class="rc-ms-label">${htmlText(h[1] || '')}</div>
+      <div class="rc-ms-value">${htmlText(h[2] || '')}</div>
+      ${h[3] ? `<div class="rc-ms-note">${htmlText(h[3])}</div>` : ''}`;
     wrap.append(header);
     dataItems = items.slice(1);
   }
@@ -613,9 +618,9 @@ function renderMetricStrip(chartData) {
     row.style.opacity = '0';
     const note = d.raw?.[2] || '';
     row.innerHTML = `
-      <div class="rc-ms-label">${d.label}</div>
-      <div class="rc-ms-value">${d.raw?.[1] || d.value || ''}</div>
-      ${note ? `<div class="rc-ms-note">${note}</div>` : ''}`;
+      <div class="rc-ms-label">${htmlText(d.label)}</div>
+      <div class="rc-ms-value">${htmlText(d.raw?.[1] || d.value || '')}</div>
+      ${note ? `<div class="rc-ms-note">${htmlText(note)}</div>` : ''}`;
     wrap.append(row);
   });
   return wrap;
@@ -644,8 +649,8 @@ function renderRecommendationList(chartData) {
     card.innerHTML = `
       <div class="rc-rec-icon">${icon}</div>
       <div class="rc-rec-body">
-        <div class="rc-rec-title">${d.label}</div>
-        ${detail ? `<div class="rc-rec-detail">${detail}</div>` : ''}
+        <div class="rc-rec-title">${htmlText(d.label)}</div>
+        ${detail ? `<div class="rc-rec-detail">${htmlText(detail)}</div>` : ''}
       </div>`;
     wrap.append(card);
   });
@@ -740,9 +745,9 @@ function buildSlideEl(slide) {
   return slideEl;
 }
 
-export default function init(el) {
+function parseCarouselRows(el) {
   const rows = [...el.querySelectorAll(':scope > div')];
-  if (!rows.length) return;
+  if (!rows.length) return null;
 
   // First row = tabs (3 cells for tab labels, optional 4th for download link)
   const tabRow = rows[0];
@@ -750,10 +755,6 @@ export default function init(el) {
   const tabLabels = tabCells.slice(0, 3).map((c) => c.textContent.trim()).filter(Boolean);
   const downloadCell = tabCells[3];
   const downloadLink = downloadCell?.querySelector('a');
-
-  const reportState = (document.querySelector('meta[name="report-download-state"]')?.getAttribute('content') || '').trim().toLowerCase();
-  const isReportDisabled = reportState === 'disabled' || reportState === 'unavailable';
-  const disabledMessage = 'Report unavailable — insufficient data quality to meet our bar.';
 
   // Parse slide rows (row 1 onward)
   // A row with a single cell whose text matches a tab label is a separator → advances the tab.
@@ -800,6 +801,38 @@ export default function init(el) {
     slides.push(slide);
     tabSlides[currentTabIdx].push(slide);
   });
+
+  return { tabLabels, downloadLink, slides, tabSlides };
+}
+
+/** Read-only first briefing slide; no downloads, listeners or animation timers. */
+export function buildBriefingPreview(el) {
+  const parsed = parseCarouselRows(el);
+  const slide = parsed?.tabSlides[0]?.[0];
+  if (!slide) return false;
+  const tabs = document.createElement('div');
+  tabs.className = 'rc-tab-bar';
+  const labels = document.createElement('div');
+  labels.className = 'rc-tabs';
+  parsed.tabLabels.forEach((label, index) => {
+    const tab = document.createElement('span');
+    tab.className = `rc-tab${index === 0 ? ' active' : ''}`;
+    tab.textContent = label;
+    labels.append(tab);
+  });
+  tabs.append(labels);
+  el.replaceChildren(tabs, buildSlideEl(slide).cloneNode(true));
+  el.querySelectorAll('[data-anim]').forEach((item) => { item.style.opacity = '1'; });
+  return true;
+}
+
+export default function init(el) {
+  const parsed = parseCarouselRows(el);
+  if (!parsed) return;
+  const { tabLabels, downloadLink, slides, tabSlides } = parsed;
+  const reportState = (document.querySelector('meta[name="report-download-state"]')?.getAttribute('content') || '').trim().toLowerCase();
+  const isReportDisabled = reportState === 'disabled' || reportState === 'unavailable';
+  const disabledMessage = 'Report unavailable — insufficient data quality to meet our bar.';
 
   // Current state
   let currentTab = 0;

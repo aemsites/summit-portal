@@ -13,7 +13,7 @@ export function readBoothPresentation(search = '') {
     heading: validHeading ? heading : '',
     brand,
     entry: '3',
-    finish: '5',
+    finish: '6',
   };
 }
 
@@ -35,7 +35,7 @@ export function applyBoothPresentation(root, presentation) {
   const stage = root.getElementById('stage');
   stage.dataset.brand = presentation.brand;
   stage.dataset.entry = '3';
-  stage.dataset.finish = '5';
+  stage.dataset.finish = '6';
   const heading = root.querySelector('.brand span');
   if (heading) heading.textContent = presentation.heading || defaultHeading;
   const login = root.getElementById('staff-login');

@@ -7,9 +7,14 @@ import presentation from '../../../../scripts/booth-presentation.js';
 import preview from '../../../../scripts/booth-preview.js';
 import hero from '../../../../blocks/report-hero/report-hero.js';
 import stats from '../../../../blocks/report-stats/report-stats.js';
+import carousel from '../../../../blocks/report-carousel/report-carousel.js';
+import visibility from '../../../../blocks/report-ai-visibility/rav-core.js';
+import carouselCss from '../../../../blocks/report-carousel/report-carousel.css';
+import visibilityCss from '../../../../blocks/report-ai-visibility/report-ai-visibility.css';
 import css from '../../../../styles/booth.css';
 import reportCss from '../../../../styles/booth-report.css';
 import arrow from '../../../../img/booth/action-arrow.svg';
+import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
 import webpage from '../../../../img/booth/entry-webpage.png';
 import { boothStaff, handleBooth, hasBoothDevice, boothDeviceAuthorized, boothDeviceCookie } from './booth.js';
@@ -22,9 +27,14 @@ const assets = new Map([
   ['/scripts/booth-preview.js', [preview, 'text/javascript']],
   ['/blocks/report-hero/report-hero.js', [hero, 'text/javascript']],
   ['/blocks/report-stats/report-stats.js', [stats, 'text/javascript']],
+  ['/blocks/report-carousel/report-carousel.js', [carousel, 'text/javascript']],
+  ['/blocks/report-ai-visibility/rav-core.js', [visibility, 'text/javascript']],
+  ['/blocks/report-carousel/report-carousel.css', [carouselCss, 'text/css']],
+  ['/blocks/report-ai-visibility/report-ai-visibility.css', [visibilityCss, 'text/css']],
   ['/styles/booth.css', [css, 'text/css']],
   ['/styles/booth-report.css', [reportCss, 'text/css']],
   ['/img/booth/action-arrow.svg', [arrow, 'image/svg+xml']],
+  ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/entry-webpage-glow.svg', [webpageGlow, 'image/svg+xml']],
   ['/img/booth/entry-webpage.png', [webpage, 'image/png']],
 ]);

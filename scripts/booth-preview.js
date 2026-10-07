@@ -1,4 +1,4 @@
-const contentTags = new Set(['DIV', 'SPAN', 'P', 'H1', 'H2', 'STRONG', 'EM', 'B', 'I', 'BR', 'A', 'PICTURE', 'IMG']);
+const contentTags = new Set(['DIV', 'SPAN', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'STRONG', 'EM', 'SMALL', 'B', 'I', 'BR', 'A', 'PICTURE', 'IMG', 'UL', 'OL', 'LI']);
 
 function contentURL(value, base) {
   if (!value) return null;
@@ -32,6 +32,82 @@ function copyContent(node, base, doc) {
   return copy;
 }
 
+function previewCard(name, section, children, doc) {
+  const card = doc.createElement('div');
+  card.className = 'preview-card';
+  card.dataset.section = section;
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', name);
+  const surface = doc.createElement('div');
+  surface.className = 'preview-surface';
+  surface.inert = true;
+  surface.append(...children);
+  card.append(surface);
+  return card;
+}
+
+function unavailable(section, doc) {
+  const message = doc.createElement('p');
+  message.className = 'preview-message';
+  message.textContent = `${section} is unavailable in this preview.`;
+  return message;
+}
+
+export function mountPreviewCarousel(montage) {
+  const cards = [...montage.querySelectorAll('.preview-card')];
+  const announcement = montage.querySelector('.preview-announcement');
+  let center = 1;
+  let gesture;
+  let swiped = false;
+  function select(index) {
+    center = (index + cards.length) % cards.length;
+    cards.forEach((card, i) => {
+      const offset = (i - center + cards.length) % cards.length;
+      card.dataset.position = ['center', 'right', 'left'][offset];
+    });
+    announcement.textContent = `${cards[center].getAttribute('aria-label')} in the center. Swipe horizontally, tap a side preview, or use the left and right arrow keys to change sections.`;
+  }
+  montage.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === 'Home') select(0);
+    else if (event.key === 'End') select(cards.length - 1);
+    else select(center + (event.key === 'ArrowRight' ? 1 : -1));
+  });
+  montage.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    swiped = false;
+    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, card: event.target.closest('.preview-card') };
+    montage.setPointerCapture(event.pointerId);
+  });
+  montage.addEventListener('pointerup', (event) => {
+    if (!gesture || gesture.id !== event.pointerId) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    const { card } = gesture;
+    gesture = null;
+    if (Math.hypot(dx, dy) < 10 && card) {
+      select(cards.indexOf(card));
+      swiped = true;
+      return;
+    }
+    if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    swiped = true;
+    select(center + (dx < 0 ? 1 : -1));
+  });
+  montage.addEventListener('pointercancel', () => { gesture = null; });
+  montage.addEventListener('lostpointercapture', () => { gesture = null; });
+  montage.addEventListener('click', (event) => {
+    if (swiped) {
+      swiped = false;
+      return;
+    }
+    const card = event.target.closest('.preview-card');
+    if (card) select(cards.indexOf(card));
+  });
+  select(center);
+}
+
 export async function renderBoothPreview(html, path, doc = document) {
   const base = new URL(path, window.location.origin);
   const source = new DOMParser().parseFromString(html, 'text/html');
@@ -39,9 +115,13 @@ export async function renderBoothPreview(html, path, doc = document) {
   if (!authoredHero?.querySelector(':scope > div > div :is(h1, h2)')) {
     throw new Error('This report does not contain a supported preview hero.');
   }
-  const [{ buildInsightHero }, { buildDarkStats }] = await Promise.all([
-    import('../blocks/report-hero/report-hero.js?v=booth-preview-1'),
-    import('../blocks/report-stats/report-stats.js?v=booth-preview-1'),
+  const [
+    { buildInsightHero }, { buildDarkStats }, { buildBriefingPreview }, { buildVisibilityPreview },
+  ] = await Promise.all([
+    import('../blocks/report-hero/report-hero.js?v=booth-preview-6'),
+    import('../blocks/report-stats/report-stats.js?v=booth-preview-6'),
+    import('../blocks/report-carousel/report-carousel.js?v=booth-preview-6'),
+    import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-6'),
   ]);
   const hero = copyContent(authoredHero, base, doc);
   hero.className = 'report-hero insight';
@@ -88,7 +168,45 @@ export async function renderBoothPreview(html, path, doc = document) {
     message.textContent = 'Report metrics are unavailable in this preview.';
     stats.append(message);
   }
-  return [hero, stats];
+  const authoredVisibility = source.querySelector('main .report-ai-visibility');
+  const visibility = authoredVisibility ? copyContent(authoredVisibility, base, doc) : doc.createElement('div');
+  visibility.className = 'report-ai-visibility';
+  if (!buildVisibilityPreview(visibility)) visibility.replaceChildren(unavailable('LLM visibility', doc));
+
+  const authoredBriefing = source.querySelector('main .report-carousel');
+  const briefing = authoredBriefing ? copyContent(authoredBriefing, base, doc) : doc.createElement('div');
+  briefing.className = 'report-carousel';
+  if (!buildBriefingPreview(briefing)) briefing.replaceChildren(unavailable('Your briefing', doc));
+  const briefingTitle = doc.createElement('h3');
+  briefingTitle.className = 'preview-section-title';
+  briefingTitle.textContent = 'Your briefing';
+  briefing.prepend(briefingTitle);
+  [visibility, briefing].forEach((block) => {
+    block.querySelectorAll('a').forEach((anchor) => {
+      const text = doc.createElement('span');
+      text.append(...anchor.childNodes);
+      anchor.replaceWith(text);
+    });
+  });
+
+  const montage = doc.createElement('div');
+  montage.className = 'preview-montage';
+  montage.tabIndex = 0;
+  montage.setAttribute('role', 'group');
+  montage.setAttribute('aria-roledescription', 'carousel');
+  montage.setAttribute('aria-label', 'Three sections of your selected report');
+  const announcement = doc.createElement('p');
+  announcement.className = 'preview-announcement';
+  announcement.setAttribute('role', 'status');
+  announcement.setAttribute('aria-live', 'polite');
+  montage.append(
+    previewCard('LLM visibility', 'visibility', [visibility], doc),
+    previewCard('Report overview and summary metrics', 'overview', [hero, stats], doc),
+    previewCard('Your briefing', 'briefing', [briefing], doc),
+    announcement,
+  );
+  mountPreviewCarousel(montage);
+  return [montage];
 }
 
 export function createBoothPreview(target, retry) {

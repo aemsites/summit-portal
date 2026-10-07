@@ -5,9 +5,9 @@ describe('cosmetic booth presentation', () => {
   const canonicalReport = '/accounts/e/example/insights/example-com/portal-landing/';
 
   it('defaults to neutral Adobe identity and ignores unknown event/access parameters', () => {
-    expect(readBoothPresentation()).to.deep.equal({ heading: '', brand: 'adobe', entry: '3', finish: '5' });
+    expect(readBoothPresentation()).to.deep.equal({ heading: '', brand: 'adobe', entry: '3', finish: '6' });
     const presentation = readBoothPresentation('?event=amplify&email=visitor@example.com&portrait=true&selectedPath=/other/');
-    expect(presentation).to.deep.equal({ heading: '', brand: 'adobe', entry: '3', finish: '5' });
+    expect(presentation).to.deep.equal({ heading: '', brand: 'adobe', entry: '3', finish: '6' });
     expect(withBoothPresentation('/booth', presentation)).to.equal('/booth');
     expect(withBoothPresentation(canonicalReport, presentation)).to.equal(canonicalReport);
   });
@@ -34,12 +34,12 @@ describe('cosmetic booth presentation', () => {
     });
   });
 
-  it('always uses Entry 3 and Finish 5 and drops obsolete screen-selection parameters', () => {
+  it('always uses Entry 3 and Finish 6 and drops obsolete screen-selection parameters', () => {
     ['2', '3', '4', '6'].forEach((entry) => {
       ['2', '3', '4'].forEach((finish) => {
         const presentation = readBoothPresentation(`?entry=${entry}&finish=${finish}`);
         expect(presentation.entry).to.equal('3');
-        expect(presentation.finish).to.equal('5');
+        expect(presentation.finish).to.equal('6');
         [canonicalReport, '/booth', '/booth?step=finish'].forEach((path) => {
           expect(readBoothPresentation(withBoothPresentation(path, presentation).split('?')[1]))
             .to.deep.equal(presentation);
@@ -58,7 +58,7 @@ describe('cosmetic booth presentation', () => {
     root.body.innerHTML = '<main id="stage"></main>';
     applyBoothPresentation(root, readBoothPresentation('?entry=3&finish=3'));
     expect(root.getElementById('stage').dataset.entry).to.equal('3');
-    expect(root.getElementById('stage').dataset.finish).to.equal('5');
+    expect(root.getElementById('stage').dataset.finish).to.equal('6');
   });
   it('preserves only safe cosmetics through canonical report, Finish and reset URLs', () => {
     const presentation = readBoothPresentation('?heading=Amplify%20your%20brand%20visibility&brand=semrush&email=visitor@example.com&redirect=https://example.com');

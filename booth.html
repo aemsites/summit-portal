@@ -13,7 +13,7 @@
   <script type="module" src="/scripts/booth.js"></script>
 </head>
 <body class="booth">
-  <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="5" data-notice-version="booth-privacy-v1" aria-busy="true">
+  <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="6" data-notice-version="booth-privacy-v1" aria-busy="true">
     <header class="stage-header">
       <div class="brand">
         <img class="brand-icon" src="/img/icons/adobe-logo.svg" alt="Adobe" width="32" height="32">
@@ -49,11 +49,11 @@
               <p class="form-help" id="email-help">Your business email identifies the reports you can view. This is not a sign-in.</p>
               <p class="notice" id="email-error" role="alert" hidden></p>
               <button class="primary" type="submit" aria-describedby="search-privacy">View my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
-              <p class="privacy-note" id="search-privacy">By searching, you acknowledge that Adobe records your business email and report activity for 90 days to measure interest in this booth experience. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Adobe Privacy Policy</a>.</p>
+              <p class="privacy-note" id="search-privacy">Adobe records your email and report activity for 90 days to measure booth interest. Searching does not request sales contact. <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
             </form>
             <div class="entry-alternatives">
-              <button class="link-button" data-show-demos type="button">Staff: show an industry demo</button>
-              <button class="link-button" data-request-report type="button">Request my report</button>
+              <button class="secondary booth-alternative" data-show-demos type="button">Staff: show an industry demo</button>
+              <button class="secondary booth-alternative" data-request-report type="button">Request my report</button>
             </div>
           </div>
         </div>
@@ -65,8 +65,8 @@
         <p class="lead">Explore an example from your industry with our booth team, or request a report for your company.</p>
         <div class="recovery-actions">
           <button class="primary" data-show-demos type="button">Show an industry demo</button>
-          <button class="secondary" data-request-report type="button">Request my report</button>
-          <button class="link-button" data-reset type="button">Try another email</button>
+          <button class="secondary booth-alternative" data-request-report type="button">Request my report</button>
+          <button class="secondary booth-alternative" data-reset type="button">Try another email</button>
         </div>
       </section>
       <section class="panel recovery-panel" data-panel="demos" aria-labelledby="demos-heading" hidden>
@@ -76,8 +76,8 @@
         <div id="demo-options" class="demo-options"></div>
         <p id="demo-status" class="notice" role="status" aria-live="polite" hidden></p>
         <div class="recovery-actions">
-          <button class="link-button" data-request-report type="button">Request my report instead</button>
-          <button class="link-button" data-reset type="button">Back to email lookup</button>
+          <button class="secondary booth-alternative" data-request-report type="button">Request my report instead</button>
+          <button class="secondary booth-alternative" data-reset type="button">Back to email lookup</button>
         </div>
       </section>
       <section class="panel welcome-entry" data-panel="picker" aria-labelledby="picker-heading" hidden>
@@ -93,19 +93,18 @@
           <div class="finish-preview" id="report-preview" aria-label="Preview of your report" aria-busy="false"></div>
           <button class="link-button" id="preview-retry" type="button" hidden>Retry preview</button>
           <div class="finish-actions">
-            <button class="primary" id="send-report" type="button">Email my report <img class="arrow" src="/img/booth/action-arrow.svg" alt="" width="64" height="64"></button>
+            <div class="finish-step">STEP 03 OF 03</div>
+            <button class="primary" id="send-report" type="button">Email my report <img class="send-icon" src="/img/booth/finish-open-in.svg" alt="" width="60" height="60"></button>
             <p class="send-hint">We'll email the link to the business address you used to find your report.</p>
           </div>
           <p class="notice" id="finish-status" role="status" aria-live="polite" hidden></p>
-          <div class="finish-guidance" aria-label="Request a follow-up conversation">
+          <div class="finish-guidance" aria-label="Follow-up guidance">
             <div>
               <h3>Prefer to meet later?</h3>
-              <button class="secondary" id="request-contact" type="button" aria-describedby="contact-privacy">Please contact me</button>
-              <p class="privacy-note" id="contact-privacy">By selecting “Please contact me”, you ask Adobe to contact you by email about this report. We record your request and report details for 90 days. See the <a href="https://www.adobe.com/privacy/policy.html" target="_blank" rel="noopener noreferrer">Adobe Privacy Policy</a> for your rights and how to withdraw consent.</p>
-              <p class="notice" id="contact-status" role="status" aria-live="polite" hidden></p>
+              <p>Ask the team about a follow-up conversation.</p>
             </div>
           </div>
-          <button class="secondary" data-reset type="button">Finish and clear this screen</button>
+          <button class="secondary finish-clear" data-reset type="button">Finish and clear this screen</button>
         </div>
       </section>
     </div>

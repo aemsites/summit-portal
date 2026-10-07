@@ -14,7 +14,6 @@ export async function boothRequest(action, body) {
     const error = new Error(result.error || 'Booth service unavailable. Ask the booth team.');
     error.status = response.status;
     error.code = result.code;
-    error.contactRequested = result.contactRequested === true;
     throw error;
   }
   return result;
@@ -30,7 +29,6 @@ export function mountBooth(root = document) {
   const email = root.getElementById('registration-email');
   const form = root.getElementById('email-form');
   const send = root.getElementById('send-report');
-  const contact = root.getElementById('request-contact');
   const status = root.getElementById('booth-status');
   const retry = root.getElementById('booth-retry');
   const previewTarget = root.getElementById('report-preview');
@@ -63,11 +61,10 @@ export function mountBooth(root = document) {
     preview?.clear();
     email.value = '';
     root.getElementById('report-options').replaceChildren();
-    ['email-error', 'picker-status', 'finish-status', 'contact-status', 'booth-status'].forEach((id) => notice(id, ''));
+    ['email-error', 'picker-status', 'finish-status', 'booth-status'].forEach((id) => notice(id, ''));
     root.getElementById('demo-options')?.replaceChildren();
     if (root.getElementById('demo-status')) notice('demo-status', '');
     send.disabled = false;
-    contact.disabled = false;
     retry.hidden = true;
     root.getElementById('staff-login').hidden = true;
     clearTimeout(expiry);
@@ -136,8 +133,6 @@ export function mountBooth(root = document) {
       show('finish');
       preview?.load(result);
       send.disabled = result.sent || result.delivery === 'attempted';
-      contact.disabled = result.contactRequested === true;
-      notice('contact-status', result.contactRequested ? 'Your request is recorded. Adobe can contact you about this report.' : '');
       let message = '';
       if (result.sent) message = 'Your report link was emailed. Check your inbox.';
       else if (result.delivery === 'attempted') message = 'Delivery could not be confirmed. Ask the booth team before sending again.';
@@ -284,26 +279,6 @@ export function mountBooth(root = document) {
     } catch (error) {
       if (current === revision) notice('finish-status', error.message);
       // Unknown delivery is not retryable: the server may have contacted the mail service.
-    } finally {
-      busy = false;
-    }
-  });
-
-  contact.addEventListener('click', async () => {
-    if (busy || resetting || !ready || contact.disabled) return;
-    busy = true;
-    contact.disabled = true;
-    const current = revision;
-    notice('contact-status', 'Recording your contact request...');
-    try {
-      const result = await perform('contact', { consent: true, noticeVersion: stage.dataset.noticeVersion });
-      if (!result.contactRequested) throw new Error('Your contact request could not be confirmed. Please try again.');
-      if (current === revision) notice('contact-status', 'Your request is recorded. Adobe can contact you about this report.');
-    } catch (error) {
-      if (current === revision) {
-        notice('contact-status', error.message);
-        contact.disabled = error.contactRequested === true;
-      }
     } finally {
       busy = false;
     }
