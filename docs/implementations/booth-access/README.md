@@ -74,7 +74,82 @@ submits anonymous action counts separately, never the identified lead data.
 See [target design / API contract](context/target-design.md) for authorization,
 context lifetime, concurrency and failure semantics.
 
+## Request-local CUG index
+
+Booth discovery compiles the freshly fetched CUG rules into a prefix `Map`
+through `compileSheetGroups` in `src/cugsheet.js`. For each report, it checks
+that path's prefixes from longest to shortest instead of scanning every rule.
+The index is built once per discovery and discarded afterward; it is not
+shared between requests, stored on the coordinator or populated on Entry.
+Lookup, selection and later actions that revalidate access still fetch all
+three complete private datasets in parallel.
+
+Matching retains the existing most-specific scope, authored order for
+equal-length exact/glob ties, first duplicate rule, literal trailing-star
+prefix semantics, case sensitivity and query stripping. Blank-group rows are
+still filtered by the existing parser. A narrower restriction cannot fall
+back to a broader grant. The independent mapping check and authorization
+filtering before canonical/latest report selection are unchanged. Ordinary
+report CUG matching and its existing cache are untouched.
+
+The discovery regression exercises the real lookup handler and bounds rule
+prefix reads independently of wall-clock timing. Matcher tests compare against
+the unchanged linear matcher, including seeded overlapping scopes, and fresh
+snapshot tests cover narrower revocation and regrant. Synthetic local timing
+does not establish production latency or resolve the separate Finish wait.
+
+## Temporary latency diagnostics
+
+`BOOTH_TIMING_ENABLED="true"` adds `Server-Timing` to staff-authorized booth
+API responses. It defaults off; the summit configuration temporarily enables
+it in the deployed diagnostic build. Set it to `"false"` and redeploy
+once the before/after flow captures are complete. No new analytics, logging destination, lookup,
+permission cache or background export behavior is introduced.
+
+| Metric | Boundary |
+|---|---|
+| `booth_total`, `booth_auth` | Worker handler and local staff verification |
+| `booth_rpc` | Entire coordinator round trip, including dispatch/transport |
+| `booth_queue`, `booth_actor` | Application queue wait and execution after admission |
+| `booth_actor_auth`, `booth_storage` | Actor staff checks and cumulative Durable Object storage operations |
+| `booth_kv_read`, `booth_kv_write`, `booth_kv_delete` | Transient visitor context in KV |
+| `booth_{index,cugs,mapping}_fetch` | Cumulative time to obtain dataset response headers, across pages |
+| `booth_{index,cugs,mapping}_body` | Dataset body consumption and JSON decoding |
+| `booth_{index,cugs,mapping}_rows` | Complete dataset row count, supplied as a description, not a duration |
+| `booth_d1` | Awaited identified activity export, including retries of pending outbox records |
+| `booth_match` | Explicit CPU-timing-unavailable marker |
+
+Labels are fixed and row counts are integers. Headers contain no asserted email,
+account/report path, context ID, cookies, credentials or upstream error text.
+401 responses omit diagnostics. Each request has its own measurements, including
+when queued behind another request. Failed stages retain their timings without
+changing the original error or fail-closed response.
+
+**Clock limitation:** [Cloudflare production clocks advance only on I/O](https://developers.cloudflare.com/workers/runtime-apis/performance/).
+They cannot measure CPU-only matching; that stage is explicitly labelled
+unavailable rather than assigned a zero duration. CPU work can also appear in
+the following I/O span. These are runtime-clock boundaries, not proof that the
+named external service consumed all that time. Use local CPU profiling and
+Workers CPU observations alongside the recorded row counts. Parallel and nested
+spans overlap and must not be added together. `booth_rpc` minus the actor queue
+and execution spans can help identify dispatch/transport delay outside the
+application queue, but is not a precise network measurement.
+
+After rollout, reload `/booth`, enable **Preserve log** in browser Network tools,
+and capture lookup, selection, report viewing and return to Finish. Do not click
+email or contact merely to profile the opening flow. Include response headers
+in the next HAR and remove cookies/Authorization before sharing; HAR bodies
+may still contain private email/report metadata. Existing pages do not
+hot-reload the Worker-bundled scripts.
+
 ## Entry and Finish feedback
+
+The actual shell initially hides Entry, picker and Finish, even before scripts
+execute, and displays **Checking this booth...**. Only the staff-authorized
+status response selects a screen. Returning to Finish therefore does not briefly
+display Entry while status is pending. An unavailable status retains the
+existing explicit retry/clear or staff-login recovery; the URL alone never
+authorizes a Finish screen or report preview.
 
 The canonical report name is **Digital Opportunity Report**, as defined in the
 [domain glossary](../../../CONTEXT.md). Use that exact name for the booth

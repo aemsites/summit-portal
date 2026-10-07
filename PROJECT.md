@@ -97,6 +97,118 @@ The Worker bundles only the arrow, website illustration and website glow from
 updated Worker separately; local implementation does not imply deployment or
 real email delivery. The legacy review/export prototype is unchanged.
 
+**Production Worker rollout, October 7:** deployed merged main `0386931`
+([#150](https://github.com/aemsites/summit-portal/pull/150)) to `summit-portal`
+with `--env summit`, version `16ecfbdb-877b-46af-9bf6-21401751509d`, at
+`https://act.aem.now`. The deployment is active at 100%; live preview-module,
+stylesheet and both shared-renderer hashes match merged source. Anonymous
+`/booth` still redirects to staff login and `/auth/booth/status` returns 401.
+Existing D1 migrations are current; KV/D1 bindings, staff epoch and hourly purge
+remain unchanged. Full Worker regression: 333 passed, one existing skip.
+No customer lookup, report send or contact request was performed during rollout.
+Previous rollback version: `8983a8ec-97ff-4de9-a59c-f1560839a046`.
+Reload the live booth and reopen reports; already-open documents do not hot-reload.
+
+**October 7 production latency investigation (not a runtime fix):** the supplied
+multi-report HAR measures lookup at 11.730s, select at 9.157s and Finish status at
+5.055s, almost entirely waiting for server responses. The report document and
+Finish preview take 163ms and 168ms respectively. There is no HTTP redirect to
+Entry on the Finish transition. A local delayed-status reproduction confirms
+that the default visible Welcome panel remains onscreen until initial status
+selects Finish; a neutral initial checking state is needed, without displaying
+unverified attendee content.
+
+Lookup and selection each freshly fetch all three private datasets; these
+fetches already run in parallel. Both also await identified D1 activity export
+after persisting the Durable Object outbox. Staff JWT verification is local;
+anonymous analytics runs through `waitUntil`, not the response-critical promise.
+Synthetic real-handler probes independently confirm origin/D1 delay propagation,
+status's KV-read dependency and status queuing behind an in-flight report-view
+action. The HAR does not contain that view request, so this queue mechanism is
+not yet proven to explain its specific slow status response. Discovery also
+rescans CUG entries per report: synthetic 4,000/10,000-row datasets take roughly
+0.4s/2.3s locally with no injected network delay, not measured production CPU time.
+Production queue, storage, dataset-fetch and matching timings remain unknown;
+stage-level instrumentation is required before attributing the observed seconds
+or selecting a backend optimization. No authorization freshness, expiry/reset,
+outbox failure behavior or production code was changed during this investigation.
+
+**Follow-up diagnostics and initial loading state (deployed October 7):**
+the shell now starts with all attendee panels hidden and a visible
+**Checking this booth...** status, including before module execution. Initial
+status selects the authorized screen; failures retain staff/retry recovery
+without exposing an unverified Finish. The Worker adds request-local
+`Server-Timing` for staff verification, coordinator round trip/application queue,
+actor execution/storage, KV, per-dataset fetch/body reads and D1 export.
+Fixed labels and numeric dataset row counts contain no emails, report paths,
+cookies or identifiers; 401 responses omit diagnostics. The
+`BOOTH_TIMING_ENABLED` flag defaults off and is temporarily enabled in the summit
+deployment configuration, to be disabled after the production capture.
+Cloudflare clocks only advance on I/O: CPU matching is explicitly labelled
+unavailable, not reported as zero cost. I/O spans may include preceding CPU work,
+and parallel/nested spans must not be summed. Local profiling and production
+CPU observations are needed alongside the next HAR. Authorization, serial
+execution, expiry/reset, outbox export and mail/contact behavior remain unchanged.
+Deployed source commit `3a5dab3` with `--env summit`, version
+`7874a428-b9f9-40b2-83c0-1db759b72cdd`, active at 100%.
+The live booth-script hash matches committed source; anonymous booth access
+still redirects to staff setup, and anonymous status remains 401 with no timing
+header. Previous rollback version: `16ecfbdb-877b-46af-9bf6-21401751509d`.
+The follow-up authenticated HAR is analyzed below; direct production CPU timing
+remains unavailable.
+No live customer lookup, email send or contact request was performed during
+rollout verification.
+
+**Second production HAR, October 7:** the instrumented multi-report flow measures
+lookup at 6.482s, selection at 4.796s and Finish status at 2.842s. Fresh dataset
+response-header fetches take 15-79ms each, with body spans of 4-16ms; KV reads
+take 5-6ms. The snapshots contain 9,989 index rows, 9,258 CUG rows and 10,281
+mapping rows. Lookup's first I/O after matching is labelled KV write (5.486s);
+selection's first I/O after matching is labelled D1 export (4.394s). Because
+the runtime clock is frozen during matching, those figures cannot be treated
+as isolated KV/D1 service latency. Local CPU profiling of the real discovery
+code with synthetic 10,000-row sheets measures 2.423s and identifies the linear
+`matchSheetGroups` search as the dominant CPU hotspot. Repeated report-by-rule
+scanning is the leading explanation; production CPU time is not directly measured.
+Finish's actor execution is only 6ms versus a 2.781s round trip. Its reported
+application queue span (3.886s) exceeds that round trip and is not a literal
+elapsed duration; runtime-clock limitations prevent precise queue attribution.
+The HAR again lacks a view POST, so the blocking operation remains unconfirmed.
+The proposed fix is a per-fresh-snapshot CUG lookup index preserving longest
+scope and exact/glob tie behavior, not authorization caching or weaker
+revalidation. No additional runtime change or deployment has been made from
+this capture.
+
+**October 7 request-local CUG optimization (implemented locally, not deployed):**
+booth discovery now builds a prefix `Map` once from each fresh CUG snapshot and
+looks up only the current report path's prefixes. Longest scope, authored
+exact/glob tie order, duplicate precedence and narrower restrictions remain
+equivalent to the unchanged linear matcher. Fresh parallel dataset loading,
+independent mapping checks, authorized alias selection, coordinator serialization
+and awaited activity export are unchanged; there is no cross-request permission
+cache or Entry preloading. Ordinary report CUG matching is untouched.
+
+The real lookup/selection regression failed before the fix with 500,500 rule-prefix reads
+for 1,000 reports/rules (budget: 2,000), then passed with the index. Matcher
+equivalence includes 2,600 seeded path checks and explicit edge cases; fresh
+revocation/regrant and the full Worker suite pass (366 tests, one existing skip).
+The unchanged synthetic, no-network discovery harness measures 10,000 rows per
+sheet at 2,337ms before versus 30ms after this change; 1,000/4,000-row cases fall
+from 41/386ms to 9/18ms. A separate local 10,000-rule measurement builds the index
+in 1.15ms with approximately 838KiB additional retained heap. These are synthetic
+Node measurements, not production guarantees. Changed-file ESLint and the
+summit deployment dry-run pass. Production remains on diagnostic version
+`7874a428-b9f9-40b2-83c0-1db759b72cdd`; rollout and a new live HAR are separate
+gates, and Finish queue attribution remains unresolved.
+
+The same synthetic harness also runs the real handler/coordinator flow against
+10,000-row sheets: lookup 24ms, selection 25ms and status below 1ms, each within
+a local-only 1s diagnostic budget. All I/O is mocked and only three reports are
+authorized; these numbers do not include real edge transport or service latency.
+An isolated-browser synthetic Entry -> report -> Finish check at 2160 x 3840
+also passes, with the native preview visible and no horizontal overflow. This
+UI fixture does not execute the production Worker or measure its latency.
+
 **October 7 design review:** Rosie explicitly selected **Entry 3** in the
 [Figma comment notification](https://outlook.office365.com/owa/?ItemID=AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AkZKfnox9bkCk%2FxUI0FD3PwAHB%2B1wJwAA&exvsurl=1&viewmodel=ReadMessageItem).
 Its hero and form are unchanged from the October 6 native Figma reference;

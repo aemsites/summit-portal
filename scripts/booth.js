@@ -75,6 +75,7 @@ export function mountBooth(root = document) {
   function recovery(error) {
     ready = false;
     stage.hidden = false;
+    stage.setAttribute('aria-busy', 'false');
     form.querySelector('button').disabled = true;
     notice('booth-status', error.message);
     retry.hidden = error.status === 401;
@@ -98,6 +99,7 @@ export function mountBooth(root = document) {
       }
       window.history.replaceState(null, '', withBoothPresentation('/booth', presentation));
       stage.hidden = false;
+      stage.setAttribute('aria-busy', 'false');
       ready = true;
       form.querySelector('button').disabled = false;
     } catch (error) {
@@ -236,12 +238,16 @@ export function mountBooth(root = document) {
   });
   window.addEventListener('popstate', () => reset());
   form.querySelector('button').disabled = true;
+  show(null);
+  stage.setAttribute('aria-busy', 'true');
+  notice('booth-status', 'Checking this booth...');
   const initialRevision = revision;
   perform('status').then((result) => {
     if (initialRevision !== revision) return;
     const finishing = new URL(window.location.href).searchParams.get('step') === 'finish';
     apply(result, finishing);
     ready = true;
+    stage.setAttribute('aria-busy', 'false');
     status.hidden = true;
     form.querySelector('button').disabled = false;
   }).catch((error) => {

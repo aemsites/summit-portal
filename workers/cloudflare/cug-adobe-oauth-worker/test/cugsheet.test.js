@@ -1,9 +1,5 @@
-import {
-  describe, it, expect, vi, beforeEach,
-} from 'vitest';
-import {
-  cugSheetGroups, parseCugSheetRows, matchSheetGroups, resetCugSheetCache,
-} from '../src/cugsheet.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { cugSheetGroups, parseCugSheetRows, matchSheetGroups, compileSheetGroups, resetCugSheetCache } from '../src/cugsheet.js';
 import { createMockEnv } from './helpers.js';
 
 // A miniature of the real sheet: global guards, the catch-all `/accounts**`
@@ -97,6 +93,76 @@ describe('cugsheet', () => {
       expect(await cugSheetGroups('/', env)).toBeNull();
       // …and the sheet is not even fetched for them.
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('compiled matching', () => {
+    it.each([
+      ['glob before exact at the same prefix', ['/a*', '/a'], '/a'],
+      ['exact before glob at the same prefix', ['/a', '/a*'], '/a'],
+      ['glob still covers descendants after an exact tie', ['/a', '/a*'], '/a/b'],
+      ['duplicate globs retain first rule', ['/a**', '/a*'], '/a/b'],
+      ['duplicate exact paths retain first rule', ['/a', '/a'], '/a'],
+      ['narrow scope shadows broader scope', ['/a*', '/a/b*'], '/a/b/c'],
+      ['exact rule does not shadow descendants', ['/a*', '/a/b'], '/a/b/c'],
+      ['wildcards have no slash-boundary requirement', ['/a*'], '/abc'],
+      ['interior stars remain literal', ['/a*b*'], '/a*b/c'],
+      ['interior stars are not patterns', ['/a*b*'], '/axb/c'],
+      ['case-sensitive paths', ['/Case*'], '/case/a'],
+      ['encoded paths are not decoded', ['/a%2Fb*'], '/a/b'],
+      ['trailing slash is significant', ['/a/'], '/a'],
+      ['query string is ignored', ['/a/b', '/a*'], '/a/b?token=test'],
+      ['root glob', ['/**'], '/public'],
+      ['long unrelated rule', [`/${'a'.repeat(1000)}*`, '/b*'], '/b/c'],
+      ['no matching rule', ['/a*'], '/public'],
+      ['empty path', ['/a*'], ''],
+      ['missing path', ['/a*'], null],
+    ])('agrees with the linear matcher: %s', (name, urls, path) => {
+      const entries = parseCugSheetRows(urls.map((url, i) => ({ url, 'cug-groups': `group-${i}.test` })));
+      expect(compileSheetGroups(entries)(path)).toEqual(matchSheetGroups(entries, path));
+    });
+
+    it('retains blank-row filtering and normalized groups without mutating entries', () => {
+      const entries = parseCugSheetRows([
+        { url: '/a*', 'cug-groups': ' Foo.COM , Visitor@Example.COM ' },
+        { url: '/a/b*', 'cug-groups': ' , ' },
+        { url: 'not-a-path', 'cug-groups': 'other.test' },
+      ]);
+      entries.forEach((entry) => {
+        Object.freeze(entry.groups);
+        Object.freeze(entry);
+      });
+      Object.freeze(entries);
+      expect(compileSheetGroups(entries)('/a/b/c')).toEqual(['foo.com', 'visitor@example.com']);
+      expect(compileSheetGroups([])('/a')).toBeNull();
+      expect(compileSheetGroups(null)('/a')).toBeNull();
+    });
+
+    it('matches the linear oracle across seeded overlapping rule sets', () => {
+      let seed = 20261007;
+      const pick = (size) => {
+        seed = (seed * 16807) % 2147483647;
+        return seed % size;
+      };
+      const prefixes = [
+        '/', '/a', '/ab', '/a/', '/a/b', '/a/b/c', '/a%2Fb', '/Case',
+        '/case', '/x*literal', '/__proto__', '/toString', '/\u00e9',
+      ];
+      for (let dataset = 0; dataset < 40; dataset += 1) {
+        const rows = Array.from({ length: 80 }, (_, i) => ({
+          url: `${prefixes[pick(prefixes.length)]}${['', '*', '**', '***'][pick(4)]}`,
+          'cug-groups': pick(5) === 0 ? '' : `group-${i}.test, visitor-${pick(5)}@example.com`,
+        }));
+        const entries = parseCugSheetRows(rows);
+        const match = compileSheetGroups(entries);
+        for (const prefix of prefixes) {
+          for (const suffix of ['', '/child', 'sibling', '?token=test', '/child?token=test']) {
+            const path = `${prefix}${suffix}`;
+            expect(match(path), `dataset ${dataset}, path ${path}`)
+              .toEqual(matchSheetGroups(entries, path));
+          }
+        }
+      }
     });
   });
 

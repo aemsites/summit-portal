@@ -109,6 +109,44 @@ describe('booth runtime boundary', () => {
     return root;
   }
 
+  it('hides attendee panels before scripts load and while Finish status is pending', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    const panels = [...root.querySelectorAll('[data-panel]')];
+    expect(panels.every((panel) => panel.hidden)).to.equal(true);
+    expect(root.getElementById('booth-status').textContent).to.include('Checking this booth');
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    let resolveStatus;
+    const pending = new Promise((resolve) => { resolveStatus = resolve; });
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/booth/status').returns(pending);
+    fetchStub.withArgs('/accounts/e/example/insights/example-com/portal-landing/').callsFake(async () => new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(5000);
+      expect(panels.every((panel) => panel.hidden)).to.equal(true);
+      expect(root.getElementById('booth-status').hidden).to.equal(false);
+      expect(root.getElementById('stage').getAttribute('aria-busy')).to.equal('true');
+      expect(fetchStub.callCount).to.equal(1);
+      resolveStatus({
+        ok: true,
+        json: async () => ({
+          state: 'report',
+          selectedPath: '/accounts/e/example/insights/example-com/portal-landing/',
+          expiresAt: Date.now() + 600000,
+        }),
+      });
+      await clock.tickAsync(0);
+      expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(true);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(false);
+      expect(root.getElementById('stage').getAttribute('aria-busy')).to.equal('false');
+      expect(root.getElementById('booth-status').hidden).to.equal(true);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
   it('retains approved copy, accessible attribution and accurate business-email lookup without review chrome', async () => {
     const root = await productionFixture();
     expect(root.querySelector('.brand span').textContent).to.equal('Adobe Brand Visibility');
