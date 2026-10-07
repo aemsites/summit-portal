@@ -37,7 +37,7 @@ export function createBoothPerformanceLayout(root) {
       if (cards.has(card)) return;
       const body = card.querySelector('.rsc-body');
       const name = card.querySelector('.rsc-page-name')?.textContent;
-      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
       if (!body || !name || !nodes.length) return;
       const focused = document.activeElement;
       const restoreFocus = nodes.some((node) => node.contains(focused));

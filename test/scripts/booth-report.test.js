@@ -310,12 +310,14 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('leaves large ordinary portrait reports unchanged, even if the stylesheet is cached', async () => {
+  it('uses the ordinary exact-resolution profile without cached booth styling', async () => {
     await setViewport({ width: 2160, height: 3840 });
     await reportFixture();
     await mount();
     document.documentElement.classList.remove('booth-report-active');
     expect(font('.rc-desc')).to.equal(18);
+    expect(rect('main > .section').width).to.equal(1920);
+    await setViewport({ width: 2160, height: 3841 });
     expect(rect('main > .section').width).to.equal(1200);
   });
 
@@ -438,7 +440,7 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('keeps the complete long URL visible and accessible inside native analysis', async () => {
+  it('keeps the complete long URL visible outside closed native analysis', async () => {
     await setViewport({ width: 1080, height: 1920 });
     await reportFixture();
     const url = document.querySelector('.rsc-page-url');
@@ -446,8 +448,10 @@ describe('confirmed booth report portrait layout', () => {
     url.textContent = text;
     url.href = `https://${text}`;
     await mount();
-    const details = url.closest('details');
-    details.open = true;
+    const details = url.closest('.rsc-card').querySelector('details');
+    expect(url.closest('details')).to.equal(null);
+    expect(details.open).to.equal(false);
+    expect(url.getBoundingClientRect().height).to.be.greaterThan(0);
     expect(getComputedStyle(url).whiteSpace).to.equal('normal');
     expect(url.scrollWidth).to.be.at.most(url.clientWidth + 1);
     expect(url.textContent).to.equal(text);
@@ -460,7 +464,7 @@ describe('confirmed booth report portrait layout', () => {
     const layout = createBoothPerformanceLayout(main);
     const card = main.querySelector('.rsc-card');
     const before = card.innerHTML;
-    const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+    const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
     const click = sandbox.spy();
     nodes[0].addEventListener('click', click);
     for (let cycle = 0; cycle < 3; cycle += 1) {
@@ -474,7 +478,7 @@ describe('confirmed booth report portrait layout', () => {
       expect(details.open).to.equal(true);
       layout(false);
       expect(card.innerHTML).to.equal(before);
-      expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+      expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
         .to.deep.equal(nodes);
     }
     nodes[0].dispatchEvent(new Event('click'));
@@ -510,7 +514,7 @@ describe('confirmed booth report portrait layout', () => {
       first.parentElement.append(card);
       await mount();
       const before = card.innerHTML;
-      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
       const focused = card.querySelector(selector);
       const click = sandbox.spy((event) => event.preventDefault());
       focused.addEventListener('click', click);
@@ -522,8 +526,8 @@ describe('confirmed booth report portrait layout', () => {
         await setViewport({ width: 2160, height: 3840 });
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
-        const details = focused.closest('.booth-score-analysis');
-        expect(details.open).to.equal(true);
+        const details = card.querySelector('.booth-score-analysis');
+        expect(details.open).to.equal(selector === '.rsc-verify-link');
         expect(first.querySelector('.booth-score-analysis').open).to.equal(false);
         expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
@@ -531,7 +535,7 @@ describe('confirmed booth report portrait layout', () => {
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
         expect(card.innerHTML).to.equal(before);
-        expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+        expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
           .to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
       }
