@@ -93,6 +93,42 @@ input/change events count as activity. Failed verification removes the form;
 reset failures hide visitor content and expose recovery instead of pretending
 clear succeeded.
 
+### Touchscreen keyboard and link behavior
+
+Entry and verified requests share `scripts/booth-keyboard.js` and
+`styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
+and supported keyboard geometry; reported overlays lift the control bar and add
+scroll space for consent and Submit. An unreported touch overlay gets a
+half-screen editing reserve, released on blur. Entry `input`/`change` now renew
+its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
+fields. Pinch zoom and the browser's overlay policy are unchanged.
+
+Personal/demo report documents block links and downloads that could leave the
+shared screen, including new tabs and footer links, with a visible status
+message. In-page fragments and Finish/demo/reset controls still work. Ordinary
+reports and Entry/request Privacy Policy links are unchanged. Managed kiosk
+policy must still contain browser chrome, long-press menus and policy links.
+
+Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
+`hasTouch: true` context against the local fixture server. It checks focused
+fields after viewport shrink, optional fields/consent/Submit above an 820px
+overlay model, blur cleanup and input-only idle renewal. These are stress
+models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
+CSS viewport/DPR, keyboard height and policy links before device release.
+Keyboards larger than the fallback reserve require reported geometry or
+content-resize/device configuration. Merge and deploy the matching Worker
+assets only after approval; this branch push is not a production rollout.
+
+`test/fixtures/booth-report-browser.js` checks an existing protected customer
+report in a dedicated, authenticated staff touch context without booth cookies.
+Pass its real report URL and the local asset-server URL; customer HTML is read
+from the authenticated origin, not substituted with demo content. Branch
+assets, booth state/shell and view/reset responses are intercepted. It checks
+native/fallback bounds, touch tabs/disclosures, link/download containment,
+the same report's real Finish preview and empty Entry after reset. No lookup,
+email or production booth mutation is performed; never put credentials or
+customer report content in test files.
+
 ### Local fallback review and rollout
 
 Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
@@ -134,12 +170,13 @@ real authenticated submission and final hardware rehearsal remain unverified.
 | Actual selected-report preview | `scripts/booth-preview.js`, shared insight-hero/dark-stat builders |
 | Cosmetic header/partner settings | `scripts/booth-presentation.js`, shared by Entry and the report control |
 | Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
+| Booth keyboard viewport/scroll handling | `scripts/booth-keyboard.js`, `styles/booth-keyboard.css`, Entry and verified requests only |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text/Data-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 | Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
 
-Wrangler bundles the **single source** shell, two stylesheets, four booth scripts
+Wrangler bundles the **single source** shell, three stylesheets, five booth scripts
 and the shared hero/stat renderer modules, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
 The fixed Entry 3 design bundles only the arrow, website/glow illustration assets

@@ -45,10 +45,15 @@ describe('confirmed booth report portrait layout', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     timers = sandbox.spy(window, 'setTimeout');
+    sandbox.spy(document.body, 'addEventListener');
   });
 
   afterEach(() => {
     timers.getCalls().forEach((call) => window.clearTimeout(call.returnValue));
+    document.body.addEventListener.getCalls().forEach(({ args }) => (
+      document.body.removeEventListener(...args)
+    ));
+    document.querySelector('#booth-test-footer')?.remove();
     document.querySelector('#booth-return')?.remove();
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
@@ -168,6 +173,56 @@ describe('confirmed booth report portrait layout', () => {
     } finally {
       window.history.replaceState(null, '', previous);
     }
+  });
+
+  it('contains report links and downloads while preserving same-page navigation and booth controls', async () => {
+    const main = await reportFixture();
+    await mount();
+    main.insertAdjacentHTML('beforeend', `<a href="https://business.adobe.com/">Product</a>
+      <a href="/report.pdf" target="_blank" download>Download</a>
+      <a href="mailto:team@example.test">Contact</a>
+      <a href="#analysis">Analysis</a>
+      <div id="analysis"></div>`);
+    const links = [...main.querySelectorAll('a')].slice(-4);
+    const footer = document.createElement('footer');
+    footer.id = 'booth-test-footer';
+    footer.innerHTML = '<a href="https://example.com/footer">Footer link</a>';
+    document.body.append(footer);
+    const activation = sandbox.spy((event) => event.preventDefault());
+    links.forEach((link) => link.addEventListener('click', activation));
+    links.slice(0, 3).forEach((link) => {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.called).to.equal(false);
+    const footerClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+    footer.querySelector('a').addEventListener('click', activation);
+    footer.querySelector('a').dispatchEvent(footerClick);
+    expect(footerClick.defaultPrevented).to.equal(true);
+    expect(activation.called).to.equal(false);
+    expect(document.querySelector('#booth-return p').hidden).to.equal(false);
+    expect(document.querySelector('#booth-return p').textContent).to.include('shared screen');
+    const fragment = new MouseEvent('click', { bubbles: true, cancelable: true });
+    links[3].addEventListener('click', (event) => event.preventDefault());
+    links[3].dispatchEvent(fragment);
+    expect(activation.calledOnce).to.equal(true);
+    [
+      new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: true }),
+    ].forEach((event) => {
+      links[3].dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.calledOnce).to.equal(true);
+    const control = document.querySelector('#booth-return a');
+    const finish = new MouseEvent('click', { bubbles: true, cancelable: true });
+    control.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    control.dispatchEvent(finish);
+    expect(control.getAttribute('href')).to.equal('/booth?step=finish');
   });
 
   it('mounts the request profile only with exact server-confirmed request state', async () => {
@@ -535,6 +590,11 @@ describe('confirmed booth report portrait layout', () => {
           .to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
       }
+      const event = new Event('click', { cancelable: true });
+      focused.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+      expect(click.callCount).to.equal(0);
+      document.documentElement.classList.remove('booth-report-active');
       focused.dispatchEvent(new Event('click', { cancelable: true }));
       expect(click.callCount).to.equal(1);
     });

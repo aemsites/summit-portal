@@ -1,5 +1,6 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
+import { mountBoothKeyboard } from './booth-keyboard.js';
 
 export async function boothRequest(action, body) {
   const response = await fetch(`/auth/booth/${action}`, {
@@ -33,6 +34,7 @@ export function mountBooth(root = document) {
   const retry = root.getElementById('booth-retry');
   const previewTarget = root.getElementById('report-preview');
   const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
+  const keyboard = mountBoothKeyboard(root);
   let ready = false;
   let busy = false;
   let idle;
@@ -59,6 +61,8 @@ export function mountBooth(root = document) {
 
   function scrub() {
     preview?.clear();
+    email.blur();
+    keyboard.clear();
     email.value = '';
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'booth-status'].forEach((id) => notice(id, ''));
@@ -173,6 +177,7 @@ export function mountBooth(root = document) {
     if (busy || resetting || !ready) return;
     busy = true;
     const current = revision;
+    email.blur();
     email.value = '';
     notice('booth-status', 'Opening a fresh report request...');
     try {
@@ -247,6 +252,7 @@ export function mountBooth(root = document) {
     busy = true;
     const current = revision;
     const button = form.querySelector('button');
+    email.blur();
     button.disabled = true;
     notice('email-error', '');
     try {
@@ -286,7 +292,7 @@ export function mountBooth(root = document) {
 
   root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
   root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
-  ['pointerdown', 'keydown'].forEach((name) => root.addEventListener(name, activity));
+  ['pointerdown', 'keydown', 'input', 'change'].forEach((name) => root.addEventListener(name, activity));
   window.addEventListener('pagehide', () => {
     revision += 1;
     ready = false;

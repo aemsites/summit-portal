@@ -1,0 +1,19 @@
+/* Mounted only by the booth shell or an exact, verified booth document. */
+html.booth-keyboard-active,
+html.booth-keyboard-active.booth-report-active {
+  scroll-behavior: auto;
+  scroll-padding-top: 24px;
+  scroll-padding-bottom: calc(var(--booth-keyboard-inset) + var(--booth-return-height, 0px) + 24px);
+}
+
+html.booth-keyboard-active body.booth {
+  padding-bottom: var(--booth-keyboard-inset);
+}
+
+html.booth-keyboard-active.booth-report-active body {
+  padding-bottom: calc(var(--booth-original-padding) + var(--booth-return-height) + var(--booth-keyboard-inset));
+}
+
+html.booth-keyboard-active #booth-return {
+  bottom: var(--booth-keyboard-inset);
+}
