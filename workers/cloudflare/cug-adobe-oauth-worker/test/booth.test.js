@@ -63,7 +63,7 @@ describe('booth isolated context', () => {
   });
 
   it('staff-gates every route, rejects customer and unverified staff sessions', async () => {
-    for (const action of ['status', 'lookup', 'select', 'view', 'contact', 'send', 'reset']) {
+    for (const action of ['status', 'lookup', 'select', 'view', 'contact', 'send', 'reset', 'activity']) {
       expect((await request(action, action === 'status' ? undefined : {}, { Cookie: '' })).status).toBe(401);
     }
     cookie = `auth_token=${await createSession(env, { email: 'operator@adobe.com', method: 'sharelink' })}`;
@@ -91,6 +91,109 @@ describe('booth isolated context', () => {
     expect(response.headers.get('Set-Cookie')).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...env.SESSIONS.store.values()].join()).toContain('visitor@example.com');
+  });
+
+  it('uses a fifteen-minute inactivity expiry and refreshes KV, cookies and alarm only for visitor input', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const started = Date.now();
+      const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+      expect(lookup.expiresAt).toBe(started + 900000);
+      const record = await state.storage.get('context');
+      const put = vi.spyOn(env.SESSIONS, 'put');
+      const alarm = vi.spyOn(state.storage, 'setAlarm');
+      vi.setSystemTime(started + 840000);
+      const response = await request('activity', { idleMs: 2000 });
+      const renewed = await response.json();
+      expect(renewed).toEqual({ expiresAt: started + 1738000 });
+      expect(response.headers.get('Set-Cookie')).toContain('Max-Age=900');
+      expect(response.headers.get('Set-Cookie')).not.toContain('booth_session');
+      expect(put).toHaveBeenCalledWith(`booth:${record.key}`, expect.any(String), { expirationTtl: 898 });
+      expect(alarm).toHaveBeenLastCalledWith(renewed.expiresAt);
+      expect(await state.storage.get('context')).toMatchObject({ key: record.key, selectedPath: path, expiresAt: renewed.expiresAt });
+      vi.setSystemTime(started + 1000000);
+      actor = new BoothCoordinator(state, env);
+      expect((await (await request('status')).json()).expiresAt).toBe(renewed.expiresAt);
+      vi.setSystemTime(renewed.expiresAt);
+      expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+      expect(await state.storage.get('context')).toBeUndefined();
+      expect(env.SESSIONS.store.size).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not renew access for background status, asset authorization, picker or duplicate view requests', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+      vi.setSystemTime(Date.now() + 300000);
+      await request('status');
+      await actor.fetch(new Request('https://portal.example/auth/booth/authorize', { headers: { Cookie: cookie } }));
+      await request('view', { path });
+      await request('picker', {});
+      expect((await state.storage.get('context')).expiresAt).toBe(lookup.expiresAt);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('respects the KV minimum retention without extending the inactivity deadline', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+      const record = await state.storage.get('context');
+      const put = vi.spyOn(env.SESSIONS, 'put');
+      vi.setSystemTime(lookup.expiresAt - 1000);
+      const response = await request('activity', { idleMs: 899500 });
+      expect(await response.json()).toEqual({ expiresAt: lookup.expiresAt });
+      expect(put).toHaveBeenLastCalledWith(`booth:${record.key}`, expect.any(String), { expirationTtl: 60 });
+      vi.setSystemTime(lookup.expiresAt);
+      expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+      expect(env.SESSIONS.store.size).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects malformed activity, wrong devices, revoked staff and revoked report permissions', async () => {
+    expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+    await request('lookup', { email: 'visitor@example.com' });
+    for (const body of [{}, { idleMs: -1 }, { idleMs: 900000 }, { idleMs: '0' }, { idleMs: 0.5 }, { idleMs: 0, path }]) {
+      expect((await request('activity', body)).status).toBe(400);
+    }
+    expect((await request('activity', { idleMs: 0 }, { Origin: 'https://other.example' })).status).toBe(403);
+    const original = cookie;
+    cookie = `${await createMockBoothCookie(env, 'other@adobe.com')}; ${original.match(/booth_context=[^;]+/)[0]}`;
+    expect((await request('activity', { idleMs: 0 })).status).toBe(403);
+    cookie = original;
+    env.EVENT_CRED_EPOCH = '2';
+    expect((await request('activity', { idleMs: 0 })).status).toBe(401);
+    env.EVENT_CRED_EPOCH = '1';
+    data['/closed-user-groups.json'] = [];
+    expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+    expect(env.SESSIONS.store.size).toBe(0);
+  });
+
+  it('renews demo and no-match visits without generating additional lead events', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const lookup = await request('lookup', { email: 'visitor@unknown.example' });
+      expect(lookup.status).toBe(404);
+      expect(await lookup.json()).toMatchObject({ code: 'no_report', expiresAt: (await state.storage.get('context')).expiresAt });
+      const events = env.REPORT_REQUESTS.events.size;
+      const initial = (await state.storage.get('context')).expiresAt;
+      vi.setSystemTime(Date.now() + 300000);
+      expect((await (await request('activity', { idleMs: 0 })).json()).expiresAt).toBe(initial + 300000);
+      const demo = await (await request('demo', { id: 'luma' })).json();
+      vi.setSystemTime(Date.now() + 600000);
+      expect((await (await request('activity', { idleMs: 1000 })).json()).expiresAt).toBe(demo.expiresAt + 599000);
+      expect(env.REPORT_REQUESTS.events.size).toBe(events + 1);
+      await request('reset', {});
+      expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('exposes opt-in, identity-free stage timings without changing fresh revalidation', async () => {

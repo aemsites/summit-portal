@@ -6,6 +6,7 @@ import report from '../../../../scripts/booth-report.js';
 import presentation from '../../../../scripts/booth-presentation.js';
 import preview from '../../../../scripts/booth-preview.js';
 import keyboard from '../../../../scripts/booth-keyboard.js';
+import sessionRuntime from '../../../../scripts/booth-session.js';
 import hero from '../../../../blocks/report-hero/report-hero.js';
 import stats from '../../../../blocks/report-stats/report-stats.js';
 import carousel from '../../../../blocks/report-carousel/report-carousel.js';
@@ -45,6 +46,7 @@ const assets = new Map([
   ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
   ['/scripts/booth-preview.js', [preview, 'text/javascript']],
   ['/scripts/booth-keyboard.js', [keyboard, 'text/javascript']],
+  ['/scripts/booth-session.js', [sessionRuntime, 'text/javascript']],
   ['/blocks/report-hero/report-hero.js', [hero, 'text/javascript']],
   ['/blocks/report-stats/report-stats.js', [stats, 'text/javascript']],
   ['/blocks/report-carousel/report-carousel.js', [carousel, 'text/javascript']],
@@ -118,7 +120,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css'].includes(pathname)) {
+    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });

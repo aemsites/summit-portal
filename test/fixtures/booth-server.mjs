@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { BOOTH_DEMOS, findBoothDemo } from '../../workers/cloudflare/cug-adobe-oauth-worker/src/booth-demos.js';
+import { BOOTH_INACTIVITY_MS } from '../../scripts/booth-session.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const preview = process.argv.includes('--preview');
@@ -26,9 +27,9 @@ function fixtureContext(request, response) {
   const cookie = request.headers.cookie?.match(/(?:^|;\s*)booth_preview=([\w-]+)/)?.[1];
   if (fixtures.has(cookie)) return fixtures.get(cookie);
   const key = randomUUID();
-  const context = { state: 'entry', expiresAt: Date.now() + 600000 };
+  const context = { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS };
   fixtures.set(key, context);
-  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=600`);
+  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
   return context;
 }
 
@@ -63,7 +64,7 @@ createServer(async (request, response) => {
     if (url.searchParams.get('preview') === 'finish') fixtureReport(context);
     if (url.searchParams.get('preview') === 'entry') {
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
     }
   }
   if (preview && path === '/') path = '/test/fixtures/booth-touchscreen.html';
@@ -71,7 +72,7 @@ createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'];
+    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'];
     if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -104,9 +105,9 @@ createServer(async (request, response) => {
       if (!['visitor@example.test', 'multi@example.test'].includes(email)) {
         Object.keys(context).forEach((key) => { delete context[key]; });
         const missing = email !== 'service-error@example.test';
-        Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + 600000 });
+        Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
         response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
+        response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.', expiresAt: context.expiresAt }
           : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
         return;
       }
@@ -115,7 +116,7 @@ createServer(async (request, response) => {
         state: 'picker',
         candidates: email === 'multi@example.test' ? candidates : candidates.slice(0, 1),
         reports: {},
-        expiresAt: Date.now() + 600000,
+        expiresAt: Date.now() + BOOTH_INACTIVITY_MS,
       });
       if (context.candidates.length === 1) fixtureReport(context);
     }
@@ -135,7 +136,7 @@ createServer(async (request, response) => {
     if (action === 'demo-picker') {
       const unmatched = context.unmatched === true;
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'unavailable', unmatched, expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'unavailable', unmatched, expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ ...context, state: 'demos' }));
       return;
@@ -153,13 +154,28 @@ createServer(async (request, response) => {
         state: action,
         selectedPath: demo.path,
         unmatched,
-        expiresAt: Date.now() + 600000,
+        expiresAt: Date.now() + BOOTH_INACTIVITY_MS,
         ...(demo ? { demoId: demo.id, company: demo.company, industry: demo.industry } : {}),
       });
     }
     if (['reset', 'exit'].includes(action)) {
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
+    }
+    if (action === 'activity') {
+      if (context.state === 'entry' || !Number.isInteger(body.idleMs)
+        || body.idleMs < 0 || body.idleMs >= BOOTH_INACTIVITY_MS) {
+        response.writeHead(410, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Local fixture visit expired."}');
+        return;
+      }
+      const expiresAt = Date.now() + BOOTH_INACTIVITY_MS - body.idleMs;
+      context.expiresAt = Math.max(context.expiresAt, expiresAt);
+      const key = request.headers.cookie.match(/booth_preview=([\w-]+)/)[1];
+      response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ expiresAt: context.expiresAt }));
+      return;
     }
     if ((action === 'send' && context.state !== 'report')
       || (action === 'view' && !['demo', 'report'].includes(context.state))) {
@@ -174,7 +190,8 @@ createServer(async (request, response) => {
       context.reports[context.selectedPath] = { sent: true, delivery: 'sent' };
     }
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify(context));
+    response.end(JSON.stringify(context.state === 'entry'
+      ? { state: 'entry', canChooseAnother: false } : context));
     return;
   }
   if (path.startsWith('/auth/')) {

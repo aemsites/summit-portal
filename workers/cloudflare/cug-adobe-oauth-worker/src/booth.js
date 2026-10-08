@@ -14,7 +14,7 @@ import {
 import createBoothTiming from './booth-timing.js';
 import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
 
-const TTL = 600;
+const TTL = 15 * 60;
 const COOKIE = 'booth_context';
 const ASSET_HEADERS = {
   'Cache-Control': 'private, no-store',
@@ -226,7 +226,7 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'authorize'].includes(action)
+  if (!['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
     || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
@@ -390,6 +390,19 @@ export class BoothCoordinator {
     await this.flushActivity(timing);
   }
 
+  async renew(record, data, activityAt, timing) {
+    const storage = timing.storage(this.state.storage);
+    record.expiresAt = Math.max(record.expiresAt, activityAt + TTL * 1000);
+    if (record.key) {
+      // KV requires at least 60 seconds; the Durable Object still enforces the exact deadline.
+      const expirationTtl = Math.max(60, Math.ceil((record.expiresAt - Date.now()) / 1000));
+      await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${record.key}`, JSON.stringify(data), { expirationTtl }));
+    }
+    await storage.put('context', record);
+    if (!await storage.get('activity')) await storage.setAlarm(record.expiresAt);
+    return reply({ expiresAt: record.expiresAt });
+  }
+
   async handle(request, timing = createBoothTiming()) {
     const storage = timing.storage(this.state.storage);
     const action = new URL(request.url).pathname.split('/').pop();
@@ -411,7 +424,7 @@ export class BoothCoordinator {
       return reply({ error: 'Staff authentication required' }, 401);
     }
     const binding = await staffBinding(request, this.env);
-    if (!['status', 'authorize', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
+    if (!['status', 'authorize', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     let record = await storage.get('context');
@@ -431,6 +444,7 @@ export class BoothCoordinator {
       return reply({ state: 'entry' });
     }
     let body;
+    let activityAt;
     if (!['status', 'authorize'].includes(action)) {
       try {
         body = await request.json();
@@ -438,6 +452,14 @@ export class BoothCoordinator {
       } catch {
         return reply({ error: 'Invalid JSON body' }, 400);
       }
+    }
+    if (action === 'activity') {
+      if (Object.keys(body).some((key) => key !== 'idleMs')
+        || !Number.isInteger(body.idleMs) || body.idleMs < 0 || body.idleMs >= TTL * 1000) {
+        return reply({ error: 'Invalid booth activity request' }, 400);
+      }
+      if (!record) return reply({ error: 'Booth visit expired. Start again.' }, 410);
+      activityAt = Date.now() - body.idleMs;
     }
     if (action === 'demo-picker') {
       if (Object.keys(body).length) return reply({ error: 'Invalid industry chooser request' }, 400);
@@ -479,6 +501,7 @@ export class BoothCoordinator {
       });
     }
     if (record?.mode) {
+      if (action === 'activity') return this.renew(record, null, activityAt, timing);
       if (['status', 'authorize'].includes(action)) {
         return reply({
           selectedPath: record.selectedPath,
@@ -509,7 +532,7 @@ export class BoothCoordinator {
       await this.clear(record, timing);
       return reply({ error: 'Booth context expired. Start again.' }, 410);
     }
-    if (['status', 'authorize', 'picker'].includes(action)) {
+    if (['status', 'authorize', 'picker', 'activity'].includes(action)) {
       if (!record) {
         return action === 'picker' ? reply({ error: 'Booth context expired. Start again.' }, 410)
           : reply({ state: 'entry', canChooseAnother: false });
@@ -533,6 +556,7 @@ export class BoothCoordinator {
         await this.clear(record, timing);
         return reply({ error: 'Report access expired or is no longer authorized. Start again.' }, 410);
       }
+      if (action === 'activity') return this.renew(record, data, activityAt, timing);
       if (action === 'picker') {
         record.reports ||= {};
         if (record.selectedPath) {
@@ -599,7 +623,7 @@ export class BoothCoordinator {
           expiresAt: Date.now() + TTL * 1000,
         };
         await this.activity([createBoothActivity('no_report', key, email)], record, timing);
-        return reply({ code: 'no_report', error: 'No prepared report is authorized for this email domain. Ask the booth team.' }, 404);
+        return reply({ code: 'no_report', error: 'No prepared report is authorized for this email domain. Ask the booth team.', expiresAt: record.expiresAt }, 404);
       }
       await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${key}`, JSON.stringify({ email, candidates }), { expirationTtl: TTL }));
       record = {

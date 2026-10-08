@@ -44,7 +44,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(500);
@@ -93,7 +93,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-industry-figma-1', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-industry-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-industry-figma-1', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-industry-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
