@@ -24,8 +24,8 @@ server context. Confirmed large portrait reports also receive the reading layout
 described below; ordinary reports retain their existing layout. It returns to
 `/booth?step=finish`. **Email my report** sends to
 the address stored by lookup; the browser cannot supply another recipient or
-path. **Prefer to meet later?** is static guidance to ask the booth team about a
-follow-up conversation. It does not record consent, send mail or schedule a meeting.
+path. The final design pairs this with an outlined **Finish and clear this screen**
+button; there is no meeting/contact action or implied sales consent.
 Reset clears attendee access, not the scoped booth login, persistent kiosk
 boundary or disclosed lead-history records. **Choose another report** on a
 report or Finish returns to the same authorized picker without another email
@@ -50,11 +50,32 @@ an exact-email entry does not permit neighboring addresses at that domain.
 CUGs are not registration lists. Staff identities never discover every company.
 Addresses without an authored customer CUG permission do not qualify.
 
+## Final Figma screens (October 8, not deployed)
+
+The final Entry and Finish 6 frames are `312:388` and `244:579` in
+[Adobe Brand Visibility UI](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI).
+Both references are 2160 × 2881; the event target remains 2160 × 3840.
+Entry uses the exported Adobe wordmark, **Amplify your brand visibility**, the new
+website/glow illustration, **Registration email**, final form spacing and the
+quiet, dark **Industry demos** pill added for staff. Finish keeps the live
+three-section montage, places Email/outlined Clear side by side, and uses the
+registration-address delivery hint. The footer shows **Enter email / View report /
+Save and share**; active/completed stages are red. No placeholder or static step
+badge remains. Smaller screens keep a mobile-first layout and touch-sized actions.
+
+This branch needs review, D1 migration `0003_booth_demo_activity.sql`, and a
+separately approved Worker deployment. It does not change production by itself.
+The migration extends allowed activity kinds while preserving historical data
+and indexes. Entry and both adapter loading paths use `?v=booth-final-figma-1`.
+
 ## Industry demo and report request recovery
 
-Entry includes a staff demo shortcut and a fresh report-request action. A
+Entry includes a staff demo shortcut, but **no report-request action**. A
 confirmed no-match (`404`, `code: no_report`) offers **Show an industry demo**,
-**Request my report** and **Try another email**. Service outages remain errors.
+and **Try another email**, not automatic navigation. The chooser explains:
+**We don't have a report available for your email yet. Explore an example from
+your industry with our booth team.** Direct staff visits omit this no-match copy.
+Service outages remain errors, not missing reports.
 The industry chooser uses the authoritative `src/booth-demos.js` catalogue:
 
 | Industry | Company / existing public report |
@@ -72,56 +93,53 @@ The industry chooser uses the authoritative `src/booth-demos.js` catalogue:
 
 `GET /auth/booth/demos` returns staff-only, no-store catalogue data without
 creating a visitor context. `POST /auth/booth/demo` accepts only `{id}` for an
-approved company; `POST /auth/booth/request` accepts only `{}`. Both mutations
-require existing same-origin JSON/staff authorization. They clear previous
-attendee access and store a separate, staff-bound, ten-minute mode, without
-email, candidates, delivery state, permission discovery or new identified booth
-events. Prior lookup history remains subject to its existing retention policy;
-pending activity keeps its existing retry alarm. Demo/request states reject
-personal selection/view/send/contact actions. Customer authorization is unchanged.
+approved company. `POST /auth/booth/demo-picker` accepts only `{}` and explicitly
+enters the chooser without losing an unmatched visit's private correlation.
+Mutations require existing same-origin JSON/scoped booth authorization and clear
+personal report access. An unmatched search records `no_report`; selecting an
+industry records `demo_selected`; the exact-path report adapter records
+`demo_viewed` once per demo/visit. They share the original Visit and normalized
+email only inside the private coordinator/D1 ledger. Public status responses
+contain no email, Visit or binding. A direct staff demo has no inferred email.
+Expiry, reset, a new lookup and operator binding prevent cross-visitor reuse.
+Outbox retries do not regrant access or send email. Demo mode rejects personal
+selection/send/contact actions. Customer authorization is unchanged.
 
 An initialized staff booth device receives controls only on its exact, live
 selected public document. Demos keep **Example report** labeling and offer
-**Request my report**, **Change industry** and **Clear for next visitor** rather
-than personal Finish/email actions. Requests open the existing `/request-report`
-in the same tab, without URL prefill or inferred consent. Public visitors do not
+**Change industry** and **Clear for next visitor** rather
+than personal Finish/email/request actions. Public visitors do not
 receive the kiosk profile merely through viewport size or query parameters.
 
-Confirmed booth requests use a larger single-column form. At 2160 × 3840,
-inputs are 128px high with 64px text; at 1080px width they remain at least
-76px high with 32px text, including a keyboard-reduced viewport. Existing
-Turnstile, honeypot, native/server validation, idempotency, optional fields and
-explicit sales-contact consent remain. Submission uses the existing request
-endpoint, not report generation. Success exposes **Finish and clear this screen**.
-Reset and pagehide scrub fields/consent; history restoration clears context.
-Two-minute inactivity and absolute expiry also clear the screen. Virtual-keyboard
-input/change events count as activity. Failed verification removes the form;
-reset failures hide visitor content and expose recovery instead of pretending
-clear succeeded.
+`POST /auth/booth/request` is retired (404), historical request contexts are
+cleared, and kiosk `/request-report` documents/submissions return to `/booth`.
+The public form, Turnstile, validation, idempotency and explicit consent remain
+available outside booth mode. Recording an unavailable report and demo viewing
+is **not** a request submission or sales-contact opt-in.
 
 ### Touchscreen keyboard and link behavior
 
-Entry and verified requests share `scripts/booth-keyboard.js` and
+Entry uses `scripts/booth-keyboard.js` and
 `styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
 and supported keyboard geometry; reported overlays lift the control bar and add
-scroll space for consent and Submit. An unreported touch overlay gets a
+scroll space for the focused email and action. An unreported touch overlay gets a
 half-screen editing reserve, released on blur. Entry `input`/`change` now renew
 its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
-fields. The security report guard also synchronously clears request keyboard
-space during recovery, including failed server resets, without adding another
-reset lifecycle or extending attendee expiry. Pinch zoom and the browser's
+fields. The security report guard also scrubs visitor fields during recovery,
+including historical request documents, without extending attendee expiry. Pinch zoom and the browser's
 overlay policy are unchanged.
 
 Personal/demo report documents block links and downloads that could leave the
 shared screen, including new tabs and footer links, with a visible status
 message. In-page fragments and Finish/demo/reset controls still work. Ordinary
-reports and Entry/request Privacy Policy links are unchanged. Managed kiosk
+reports and Entry Privacy Policy links are unchanged. Managed kiosk
 policy must still contain browser chrome, long-press menus and policy links.
 
 Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
 `hasTouch: true` context against the local fixture server. It checks focused
-fields after viewport shrink, optional fields/consent/Submit above an 820px
-overlay model, blur cleanup and input-only idle renewal. These are stress
+fields after viewport shrink, an 820px overlay model, blur cleanup and input-only
+idle renewal. Its historical request-form checks are not part of the retired
+booth journey. These are stress
 models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
 CSS viewport/DPR, keyboard height and policy links before device release.
 Keyboards larger than the fallback reserve require reported geometry or
@@ -144,10 +162,11 @@ Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
 2160 × 3840 review frame, or `/content/index` for the direct shell.
 `no-report@example.test` produces a true no-match;
 `service-error@example.test` produces an outage. Other synthetic emails use
-the prepared-report fixture. Ten local demo paths share synthetic report
-content with the selected company label. The request fixture uses the real form
-decorator/styles but fake Turnstile and an intercepted success response:
-**no real report request, email or lead is submitted**.
+the prepared-report fixture; arbitrary unmatched domains also return no-report.
+Ten local demo paths share synthetic report content with the selected company
+label. The demo verifier checks all industries, no-match messaging, no request
+actions, view tracking, idle/history clearing and visible verification failures.
+**No real report request, email or lead is submitted.**
 
 `test/fixtures/booth-demo-browser.js` exports the real-browser fallback verifier;
 `booth-browser.js` covers the existing personal journey. Worker regressions
@@ -302,8 +321,14 @@ contract explicit.
 The approved [Final Design frames](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)
 are fixed to **Entry 3 / Finish 6**, with
 [Screen 2_Finish_version 6](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=244-579)
-replacing Finish 5. This iteration is ready for review, not deployed; the last production
-rollout remains Worker `10608171-3483-4835-95ef-4e290b4ac677` with Finish 5.
+replacing Finish 5. Following explicit approval, merged
+[#153](https://github.com/aemsites/summit-portal/pull/153), main `b53db04`,
+was deployed on October 7 at 15:31 UTC as Worker
+**`baeeaccd-e9b2-4a4e-bdb4-5068491316cb`** at **100%**.
+Live runtime, preview renderers, styles and icon match merged source; anonymous
+staff-login and API access gates remain unchanged. Reload `/booth` and reopen
+the report to receive the new version. Authenticated email delivery and
+physical kiosk rehearsal remain unverified.
 Legacy `entry`/`finish` parameters are ignored
 and no longer follow staff setup, the report, Finish or reset. Safe `heading` and
 `brand` cosmetics remain; they never change access or API payloads and never reach
@@ -414,6 +439,9 @@ Semrush OAuth and magic/share-link sessions are rejected:
 |---|---|
 | All booth activity, correlated by Visit | `/api/booth-activity.csv` |
 | Emails that searched | `/api/booth-activity.csv?kind=search` |
+| Emails without an available report | `/api/booth-activity.csv?kind=no_report` |
+| Industry demo selected by each unmatched email | `/api/booth-activity.csv?kind=demo_selected` |
+| Industry demo actually opened by each unmatched email | `/api/booth-activity.csv?kind=demo_viewed` |
 | Company/report opened by each email | `/api/booth-activity.csv?kind=report_viewed` |
 | Historical explicit contact requests | `/api/booth-activity.csv?kind=contact_requested` |
 | Report emails accepted by the mail service | `/api/booth-activity.csv?kind=report_sent` |
@@ -440,7 +468,9 @@ email outcome; they do not ask the visitor to send again. Historical contact
 outbox entries remain private. Reset still removes the live attendee context and
 KV access data. Anonymous Simple Analytics events are only best-effort counts:
 `booth_search`, `booth_report_selected`, `booth_report_viewed`,
-`booth_report_sent`. `booth_contact_requested` is no longer emitted, including
+`booth_report_sent`, `booth_no_report`, `booth_demo_selected` and
+`booth_demo_viewed`. The latter two count correlated unmatched visits, not
+unidentified direct staff demos. `booth_contact_requested` is no longer emitted, including
 when replaying old outbox events. No email, email hash, visit ID,
 company/report identifiers, attendee IP, browser headers or cosmetics are sent.
 
@@ -449,7 +479,8 @@ and contact permission, purpose/lawful basis, geographic requirements and the
 rights/withdrawal process. Confirm Cloudflare backup/PITR retention and handling
 of exported copies; the 90-day automatic purge covers operational booth
 records, not somebody's downloaded CSV or all platform backups. Do not claim
-legal approval from this implementation. Apply D1 migration `0002_booth_activity.sql`
+legal approval from this implementation. Apply D1 migrations `0002_booth_activity.sql`
+and `0003_booth_demo_activity.sql` (only unapplied migrations)
 before separately approved Worker deployment, then roll out the matching
 shared adapter and reset/reload existing kiosk tabs so the current notice is
 shown. Do not enable the new UI without persistence and the scheduled purge.

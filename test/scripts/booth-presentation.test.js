@@ -81,7 +81,7 @@ describe('cosmetic booth presentation', () => {
     expect(login.pathname).to.equal('/login');
     expect(login.searchParams.get('redirect')).to.equal('/booth?heading=Amplify+your+brand+visibility&brand=semrush');
     applyBoothPresentation(root, readBoothPresentation('?heading=%3Cimg%20src=x%20onerror=alert(1)%3E&brand=evil'));
-    expect(root.querySelector('.brand span').textContent).to.equal('Adobe Brand Visibility');
+    expect(root.querySelector('.brand span').textContent).to.equal('Amplify your brand visibility');
     expect(root.querySelector('.brand span').children.length).to.equal(0);
     expect(root.getElementById('stage').dataset.brand).to.equal('adobe');
     expect(root.getElementById('staff-login').getAttribute('href')).to.equal('/login?staff&redirect=%2Fbooth');

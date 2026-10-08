@@ -1,11 +1,10 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
-import { mountBoothKeyboard } from './booth-keyboard.js';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
 const guards = new WeakMap();
 
-function clearRequestFields(root) {
+function clearVisitorFields(root) {
   if (root.contains(document.activeElement)) document.activeElement.blur();
   root.querySelectorAll('form').forEach((form) => form.reset());
   root.querySelectorAll('input, textarea').forEach((input) => {
@@ -35,7 +34,7 @@ export function restrictBoothLinks(root) {
   root.querySelectorAll('form[target]').forEach((form) => form.removeAttribute('target'));
 }
 
-function createReportGuard(key, expiresAt, requesting, presentation, pendingVerification = false) {
+function createReportGuard(key, expiresAt, presentation, pendingVerification = false) {
   if (guards.has(key)) return guards.get(key);
   const html = document.documentElement;
   let idle;
@@ -44,7 +43,6 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
   let resetting = false;
   let interrupted = false;
   let pending = Promise.resolve();
-  let keyboard;
   if (!document.querySelector('style[data-booth-report-safety]')) {
     const style = document.createElement('style');
     style.dataset.boothReportSafety = 'true';
@@ -68,10 +66,7 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
   const hide = () => {
     interrupted = true;
     html.classList.add('booth-report-clearing');
-    if (requesting) {
-      clearRequestFields(document);
-      keyboard?.clear();
-    }
+    clearVisitorFields(document);
     const control = document.getElementById('booth-return');
     control?.querySelectorAll('a, button:not([data-booth-clear])').forEach((action) => { action.hidden = true; });
   };
@@ -128,7 +123,6 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
     get revision() { return revision; },
     get interrupted() { return interrupted; },
     get resetting() { return resetting; },
-    attachKeyboard(controller) { keyboard = controller; },
     track(operation) { pending = operation.then(() => undefined, () => undefined); },
     conceal() { hide(); },
     activate(context) {
@@ -147,7 +141,7 @@ function createReportGuard(key, expiresAt, requesting, presentation, pendingVeri
   };
   guards.set(key, guard);
   recoveryButton.addEventListener('click', reset);
-  ['pointerdown', 'keydown', ...(requesting ? ['input', 'change'] : [])]
+  ['pointerdown', 'keydown', 'input', 'change']
     .forEach((name) => document.addEventListener(name, activity));
   document.addEventListener('click', (event) => {
     const link = event.target.closest?.('a');
@@ -275,7 +269,6 @@ export default async function mountBoothReturn() {
     guard = createReportGuard(
       marker,
       Number.isFinite(expiresAt) ? expiresAt : Date.now(),
-      marker.dataset.boothMode === 'request',
       presentation,
       true,
     );
@@ -299,8 +292,7 @@ export default async function mountBoothReturn() {
   }
   const demo = context.state === 'demo' && context.demoId
     && context.selectedPath === `/example-report/${context.demoId}/`;
-  const requesting = context.state === 'request' && context.selectedPath === '/request-report';
-  if ((!demo && !requesting && context.state !== 'report') || context.selectedPath !== window.location.pathname
+  if ((!demo && context.state !== 'report') || context.selectedPath !== window.location.pathname
     || !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now()) {
     guard?.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
     return;
@@ -327,10 +319,8 @@ export default async function mountBoothReturn() {
     control.id = 'booth-return';
     control.setAttribute('aria-label', 'Booth report controls');
     if (demo) {
-      control.innerHTML = '<div class="booth-demo-notice"><strong>Example report</strong><span>Not a report for your company.</span></div><button class="booth-request-action" type="button">Request my report</button><a href="/booth?step=demos">Change industry</a><button data-booth-clear type="button">Clear for next visitor</button><p role="status" hidden></p>';
+      control.innerHTML = '<div class="booth-demo-notice"><strong>Example report</strong><span>Not a report for your company.</span></div><a href="/booth?step=demos">Change industry</a><button data-booth-clear type="button">Clear for next visitor</button><p role="status" hidden></p>';
       control.querySelector('strong').textContent = `${context.company} · Example report`;
-    } else if (requesting) {
-      control.innerHTML = '<a href="/booth?step=demos">Back to industry demos</a><button data-booth-clear type="button">Clear for next visitor</button><p role="status" hidden></p>';
     } else {
       control.innerHTML = '<a href="/booth?step=finish">Finish reading my report ↗</a><button data-booth-picker type="button" hidden>Choose another report</button><button data-booth-clear type="button">Clear for next visitor</button><small class="booth-download-note">PDFs are available in your emailed report.</small><p role="status" hidden></p>';
     }
@@ -344,7 +334,6 @@ export default async function mountBoothReturn() {
     #booth-return p { width: 100%; margin: 0; }
     #booth-return .booth-demo-notice { width: 100%; display: grid; gap: 8px; }
     #booth-return .booth-demo-notice span { font-size: .65em; font-weight: 400; }
-    #booth-return .booth-request-action { padding: 24px 32px; border-radius: 12px; background: #3b63fb; text-decoration: none; }
     #booth-return .booth-download-note { width: 100%; font-size: .65em; font-weight: 400; }
   `;
     document.head.append(style);
@@ -357,16 +346,15 @@ export default async function mountBoothReturn() {
     status.hidden = true;
     control.append(status);
   }
-  control.querySelector('a').href = withBoothPresentation(demo || requesting ? '/booth?step=demos' : '/booth?step=finish', presentation);
+  control.querySelector('a').href = withBoothPresentation(demo ? '/booth?step=demos' : '/booth?step=finish', presentation);
   restrictBoothLinks(document);
   if (!existingControl) {
-    guard ||= createReportGuard(control, context.expiresAt, requesting, presentation);
+    guard ||= createReportGuard(control, context.expiresAt, presentation);
     if (!guard.activate(context)) return;
   } else if (guard && !guard.activate(context)) return;
   const concealedContent = document.getElementById('booth-report-content');
   if (concealedContent) concealedContent.replaceWith(...concealedContent.childNodes);
   html.classList.add('booth-report-active');
-  if (requesting) html.classList.add('booth-request-active');
   html.classList.remove('booth-request-pending', 'booth-report-pending');
   const portrait = window.matchMedia(portraitQuery);
   const composition = window.matchMedia(compositionQuery);
@@ -400,44 +388,35 @@ export default async function mountBoothReturn() {
   const reserveSpace = () => html.style.setProperty('--booth-return-height', `${control.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveSpace).observe(control);
   reserveSpace();
-  const keyboard = requesting ? mountBoothKeyboard(document, control) : null;
-  if (keyboard) {
-    guard?.attachKeyboard(keyboard);
-    stylesheet.addEventListener('load', keyboard.update);
-  }
-  if (!requesting) {
-    const containNavigation = (event) => {
-      if (!html.classList.contains('booth-report-active')) return;
-      const link = event.target.closest?.('a[href]');
-      if (!link || control.contains(link)) return;
-      if (link.getAttribute('href').trim().startsWith('#')
-        && !link.hasAttribute('download') && (!link.target || link.target === '_self')
-        && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
-        && event.type !== 'auxclick') return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const status = control.querySelector('p');
-      status.textContent = 'Links and downloads stay closed on this shared screen. Ask the booth team to help you open them on your own device.';
-      status.hidden = false;
-    };
-    ['click', 'auxclick'].forEach((name) => document.body.addEventListener(name, containNavigation, true));
-  }
-  if (!demo && !requesting) {
-    fetch('/auth/booth/view', {
-      method: 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: window.location.pathname }),
-    }).then((result) => {
-      if (!result.ok) throw new Error('Booth report activity could not be recorded. Ask the booth team.');
-    }).catch((error) => {
-      if (html.classList.contains('booth-report-clearing')) return;
-      const status = control.querySelector('p');
-      status.textContent = error.message;
-      status.hidden = false;
-    });
-  }
+  const containNavigation = (event) => {
+    if (!html.classList.contains('booth-report-active')) return;
+    const link = event.target.closest?.('a[href]');
+    if (!link || control.contains(link)) return;
+    if (link.getAttribute('href').trim().startsWith('#')
+      && !link.hasAttribute('download') && (!link.target || link.target === '_self')
+      && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+      && event.type !== 'auxclick') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const status = control.querySelector('p');
+    status.textContent = 'Links and downloads stay closed on this shared screen. Ask the booth team to help you open them on your own device.';
+    status.hidden = false;
+  };
+  ['click', 'auxclick'].forEach((name) => document.body.addEventListener(name, containNavigation, true));
+  fetch('/auth/booth/view', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: window.location.pathname }),
+  }).then((result) => {
+    if (!result.ok) throw new Error('Booth report activity could not be recorded. Ask the booth team.');
+  }).catch((error) => {
+    if (html.classList.contains('booth-report-clearing')) return;
+    const status = control.querySelector('p');
+    status.textContent = error.message;
+    status.hidden = false;
+  });
   if (existingControl) return;
   (control.querySelector('[data-booth-clear]') || control.querySelector('button')).addEventListener('click', guard.reset);
   const picker = control.querySelector('[data-booth-picker]');
@@ -467,47 +446,6 @@ export default async function mountBoothReturn() {
       } catch (error) {
         if (current === guard.revision) guard.fail(error);
       }
-    });
-  }
-  if (demo) {
-    const requestButton = control.querySelector('.booth-request-action');
-    requestButton.addEventListener('click', async () => {
-      if (requestButton.disabled || html.classList.contains('booth-report-clearing')) return;
-      requestButton.disabled = true;
-      const current = guard.revision;
-      const status = control.querySelector('p');
-      status.textContent = 'Opening a fresh report request...';
-      status.hidden = false;
-      const transition = fetch('/auth/booth/request', {
-        method: 'POST',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-        signal: AbortSignal.timeout(10000),
-      });
-      guard.track(transition);
-      try {
-        const result = await transition;
-        if (!result.ok) throw new Error('The request form could not be opened. Retry or ask the booth team.');
-        const next = await result.json();
-        if (next.state !== 'request' || next.selectedPath !== '/request-report') {
-          throw new Error('The request form could not be opened.');
-        }
-        if (current === guard.revision) {
-          window.location.assign(withBoothPresentation(next.selectedPath, presentation));
-        }
-      } catch (error) {
-        if (current === guard.revision) {
-          status.textContent = error.message;
-          requestButton.disabled = false;
-        }
-      }
-    });
-  }
-  if (requesting) {
-    document.addEventListener('booth-request-complete', () => {
-      control.querySelector('[data-booth-clear]').textContent = 'Finish and clear this screen';
     });
   }
 }

@@ -30,9 +30,9 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-touchscreen-1');
-    expect(html).toContain('/styles/booth.css?v=booth-touchscreen-1');
-    expect(html).toContain('Adobe Brand Visibility');
+    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-1');
+    expect(html).toContain('/styles/booth.css?v=booth-final-figma-1');
+    expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
     expect(html).not.toMatch(/brand\s+visibility\s+report/i);
@@ -56,7 +56,8 @@ describe('bundled booth shell and exact report injection', () => {
 
   it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
     const images = [
-      'action-arrow.svg', 'finish-open-in.svg', 'entry-webpage-glow.svg', 'entry-webpage.png',
+      'action-arrow.svg', 'finish-open-in.svg',
+      'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
     ];
     for (const name of images) {
       const url = `https://portal.example/img/booth/${name}`;
@@ -82,7 +83,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-touchscreen-1', '/styles/booth.css?v=booth-touchscreen-1', '/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-final-figma-1', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-final-figma-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -165,7 +166,7 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-activity-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-final-figma-1');
     expect(injected[2][1]).toContain('/booth?recover=1');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await response.text()).toBe('<main>Unchanged report</main>');
@@ -176,7 +177,7 @@ describe('bundled booth shell and exact report injection', () => {
     vi.unstubAllGlobals();
   });
 
-  it('adds demo/request controls only on an exact, live, explicitly initialized booth device', async () => {
+  it('adds demo controls only on an exact, live, explicitly initialized booth device', async () => {
     const append = vi.fn();
     function PublicRewriter() {
       this.on = (_selector, handler) => {
@@ -192,7 +193,7 @@ describe('bundled booth shell and exact report injection', () => {
       let context;
       env.BOOTH_COORDINATOR.get = () => ({ fetch: async () => new Response(JSON.stringify(context), { headers: { 'Content-Type': 'application/json' } }) });
       const content = () => new Response('<main>Public page</main>', { headers: { 'Content-Type': 'text/html' } });
-      for (const mode of ['demo', 'request']) {
+      for (const mode of ['demo']) {
         const path = mode === 'demo' ? '/example-report/luma/' : '/request-report';
         context = { state: mode, selectedPath: path, demoId: 'luma', expiresAt: Date.now() + 600000 };
         await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withoutDevice } }), env);

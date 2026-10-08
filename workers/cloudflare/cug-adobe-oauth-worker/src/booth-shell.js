@@ -17,8 +17,9 @@ import reportCss from '../../../../styles/booth-report.css';
 import keyboardCss from '../../../../styles/booth-keyboard.css';
 import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
-import webpageGlow from '../../../../img/booth/entry-webpage-glow.svg';
-import webpage from '../../../../img/booth/entry-webpage.png';
+import wordmark from '../../../../img/booth/adobe-wordmark.svg';
+import finalGlow from '../../../../img/booth/entry-final-glow.svg';
+import finalWebpage from '../../../../img/booth/entry-final-webpage.png';
 import { boothStaff, authorizeBoothContext } from './booth.js';
 import {
   hasBoothBoundary,
@@ -45,8 +46,9 @@ const assets = new Map([
   ['/styles/booth-keyboard.css', [keyboardCss, 'text/css']],
   ['/img/booth/action-arrow.svg', [arrow, 'image/svg+xml']],
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
-  ['/img/booth/entry-webpage-glow.svg', [webpageGlow, 'image/svg+xml']],
-  ['/img/booth/entry-webpage.png', [webpage, 'image/png']],
+  ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
+  ['/img/booth/entry-final-glow.svg', [finalGlow, 'image/svg+xml']],
+  ['/img/booth/entry-final-webpage.png', [finalWebpage, 'image/png']],
 ]);
 
 function returnToBooth() {
@@ -64,7 +66,6 @@ function isSharedAsset(path) {
 function allowedContextPath(path, context) {
   if (!context) return false;
   const selected = context.selectedPath;
-  if (context.state === 'request') return path === '/request-report';
   if (!['report', 'demo'].includes(context.state) || !selected) return false;
   if (context.state === 'demo' && findBoothDemo(context.demoId)?.path !== selected) return false;
   if (path === selected) return true;
@@ -149,13 +150,7 @@ export async function protectBoothDocument(request, env) {
   if (['/booth', '/login', '/auth/logout', '/auth/me', '/auth/portal', '/auth/callback', '/auth/staff-login'].includes(pathname)
     || pathname.startsWith('/auth/booth/')) return null;
   if (pathname === '/api/report-requests' && request.method === 'POST') {
-    if (!await boothStaff(request, env)) return returnToBooth();
-    try {
-      const context = await authorizeBoothContext(request, env);
-      return context?.state === 'request' ? null : returnToBooth();
-    } catch {
-      return new Response('Booth state unavailable', { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
-    }
+    return returnToBooth();
   }
   if (pathname === '/auth/sharelink') {
     return new Response('Booth browsers cannot share arbitrary reports', {
@@ -203,7 +198,7 @@ html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(n
 html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-activity-1"></script>`, { html: true });
+</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-final-figma-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {

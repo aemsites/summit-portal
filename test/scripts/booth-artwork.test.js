@@ -14,7 +14,6 @@ describe('Figma booth artwork', () => {
       <body class="booth"><main class="stage" data-entry="3">
         <header class="stage-header"></header>
         <section class="welcome-intro">
-          <div class="eyebrow">Digital Opportunity Report</div>
           <h1>First<br>Second<br>Third</h1>
           <div class="hero-bottom"><p>See where your brand appears in AI search.</p></div>
         </section>
@@ -36,25 +35,23 @@ describe('Figma booth artwork', () => {
     const art = frame.contentWindow.getComputedStyle(hero, '::after');
     const glow = frame.contentWindow.getComputedStyle(hero, '::before');
     close(art.left, 909.23);
-    close(art.top, 241);
+    close(art.top, 105.75);
     close(art.width, 1278.94);
     close(art.height, 925.5);
-    expect(art.transformOrigin).to.equal('0px 0px');
     close(glow.left, 756.1);
-    close(glow.top, 233.08);
+    close(glow.top, 114.13);
     close(glow.width, 1485.33);
     close(glow.height, 1027.81);
   });
 
   it('aligns the fixed Entry 3 headline and subtitle to native Figma coordinates', () => {
-    close(hero.querySelector('.eyebrow').getBoundingClientRect().x, 95);
     close(hero.querySelector('h1').getBoundingClientRect().y, 517);
     close(hero.querySelector('.hero-bottom p').getBoundingClientRect().y, 887);
   });
 
   it('does not change the hero artwork even when a legacy entry parameter is present', () => {
     stage.dataset.entry = '6';
-    expect(frame.contentWindow.getComputedStyle(hero, '::after').backgroundImage).to.include('entry-webpage.png');
+    expect(frame.contentWindow.getComputedStyle(hero, '::after').backgroundImage).to.include('entry-final-webpage.png');
     expect(frame.contentWindow.getComputedStyle(hero).backgroundImage).to.equal('none');
   });
 
@@ -72,10 +69,7 @@ describe('Figma booth artwork', () => {
     const { contentWindow } = frame;
     for (const [width, minHeight, minFont] of [[2160, 129, 51], [1080, 72, 25], [390, 64, 22]]) {
       frame.style.width = `${width}px`;
-      // Let the iframe viewport and its responsive rules settle.
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
+      frame.contentDocument.documentElement.getBoundingClientRect();
       stage.querySelectorAll('.booth-alternative').forEach((button) => {
         const style = contentWindow.getComputedStyle(button);
         expect(button.getBoundingClientRect().height).to.be.at.least(minHeight);
@@ -86,7 +80,7 @@ describe('Figma booth artwork', () => {
       stage.querySelectorAll('.entry-alternatives, .recovery-actions').forEach((group) => {
         expect(parseFloat(contentWindow.getComputedStyle(group).gap)).to.be.at.least(16);
         const columns = contentWindow.getComputedStyle(group).gridTemplateColumns.split(' ');
-        expect(columns).to.have.length(width >= 1000 ? 2 : 1);
+        if (group.classList.contains('recovery-actions')) expect(columns).to.have.length(width >= 1000 ? 2 : 1);
       });
       expect(frame.contentDocument.documentElement.scrollWidth).to.be.at.most(width);
     }

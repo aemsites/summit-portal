@@ -2,7 +2,7 @@ import { reportRequestsAuthorisation, csvCell } from './report-requests.js';
 
 export const BOOTH_NOTICE_VERSION = 'booth-privacy-v1';
 export const BOOTH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-const KINDS = ['search', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent'];
+const KINDS = ['search', 'no_report', 'demo_selected', 'demo_viewed', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent'];
 const PAGE_SIZE = 100;
 const HEADERS = {
   'Cache-Control': 'private, no-store',

@@ -50,7 +50,8 @@ describe('confirmed booth report portrait layout', () => {
   });
 
   afterEach(() => {
-    timers.getCalls().forEach((call) => window.clearTimeout(call.returnValue));
+    timers.getCalls().filter((call) => call.args[0]?.name === 'reset')
+      .forEach((call) => window.clearTimeout(call.returnValue));
     document.body.addEventListener.getCalls().forEach(({ args }) => (
       document.body.removeEventListener(...args)
     ));
@@ -163,7 +164,7 @@ describe('confirmed booth report portrait layout', () => {
   );
   const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
 
-  it('mounts demo controls without a personal Finish or report-view event', async () => {
+  it('mounts demo controls without a personal Finish or request action and records demo viewing', async () => {
     const previous = window.location.href;
     window.history.replaceState(null, '', '/example-report/luma/');
     try {
@@ -173,8 +174,9 @@ describe('confirmed booth report portrait layout', () => {
       expect(control.textContent).to.include('Not a report for your company');
       expect(control.textContent).not.to.include('Finish reading my report');
       expect(control.querySelector('a').getAttribute('href')).to.equal('/booth?step=demos');
-      expect(control.querySelector('.booth-request-action').textContent).to.equal('Request my report');
-      expect(window.fetch.calledOnce).to.equal(true);
+      expect(control.querySelector('.booth-request-action')).to.equal(null);
+      expect(window.fetch.calledTwice).to.equal(true);
+      expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/view');
     } finally {
       window.history.replaceState(null, '', previous);
     }
@@ -230,41 +232,41 @@ describe('confirmed booth report portrait layout', () => {
     expect(control.getAttribute('href')).to.equal('/booth?step=finish');
   });
 
-  it('mounts the request profile only with exact server-confirmed request state', async () => {
+  it('rejects the retired request profile even with server-confirmed request state', async () => {
     const previous = window.location.href;
     window.history.replaceState(null, '', '/request-report');
     try {
       await reportFixture();
       await mount({ state: 'request' });
-      expect(document.documentElement.classList.contains('booth-request-active')).to.equal(true);
+      expect(document.documentElement.classList.contains('booth-request-active')).to.equal(false);
       expect(window.fetch.calledOnce).to.equal(true);
-      expect(document.querySelector('#booth-return a').getAttribute('href')).to.equal('/booth?step=demos');
+      expect(document.querySelector('#booth-return')).to.equal(null);
     } finally {
       window.history.replaceState(null, '', previous);
     }
   });
 
-  it('scrubs request fields immediately and serializes repeated clear actions on failure', async () => {
+  it('scrubs visitor fields immediately and serializes repeated clear actions on failure', async () => {
     const previous = window.location.href;
-    window.history.replaceState(null, '', '/request-report');
+    window.history.replaceState(null, '', '/report/');
     try {
       const main = await reportFixture();
       const form = document.createElement('form');
       form.innerHTML = '<input name="email"><input name="consent" type="checkbox">';
       main.append(form);
-      await mount({ state: 'request' });
+      await mount();
       form.querySelector('[name="email"]').value = 'visitor@example.test';
       form.querySelector('[name="consent"]').checked = true;
       let finishReset;
-      window.fetch.onSecondCall().returns(new Promise((resolve) => { finishReset = resolve; }));
+      window.fetch.onThirdCall().returns(new Promise((resolve) => { finishReset = resolve; }));
       const clear = document.querySelector('[data-booth-clear]');
       clear.click();
       clear.click();
       expect(form.querySelector('[name="email"]').value).to.equal('');
       expect(form.querySelector('[name="consent"]').checked).to.equal(false);
       await new Promise((resolve) => { window.setTimeout(resolve, 0); });
-      expect(window.fetch.callCount).to.equal(2);
-      expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/reset');
+      expect(window.fetch.callCount).to.equal(3);
+      expect(window.fetch.thirdCall.args[0]).to.equal('/auth/booth/reset');
       finishReset(new Response('', { status: 503 }));
       await new Promise((resolve) => { window.setTimeout(resolve, 0); });
       expect(document.querySelector('#booth-return p').textContent).to.include('Could not clear');
@@ -672,29 +674,24 @@ describe('confirmed booth report portrait layout', () => {
     expect(click.calledOnce).to.equal(true);
   });
 
-  it('clears request keyboard space immediately even when the secure reset fails', async () => {
+  it('conceals and scrubs historical request documents instead of reactivating the retired form', async () => {
     const previous = window.location.href;
     window.history.replaceState(null, '', '/request-report');
     try {
       const main = await reportFixture();
       main.insertAdjacentHTML('beforeend', '<form><input type="email" value="visitor@example.test"></form>');
       markReport().dataset.boothMode = 'request';
-      await mount({ state: 'request' });
       const input = main.querySelector('input');
       input.focus();
+      await mount({ state: 'request' });
       const html = document.documentElement;
-      html.classList.add('booth-keyboard-active');
-      html.style.setProperty('--booth-keyboard-inset', '400px');
-      window.fetch.onSecondCall().resolves(new Response(null, { status: 503 }));
-      document.querySelector('[data-booth-clear]').click();
       expect(input.value).to.equal('');
       expect(document.activeElement).not.to.equal(input);
-      expect(html.classList.contains('booth-keyboard-active')).to.equal(false);
-      expect(html.style.getPropertyValue('--booth-keyboard-inset')).to.equal('');
+      expect(html.classList.contains('booth-report-active')).to.equal(false);
+      expect(document.querySelector('#booth-return')).to.equal(null);
       expect(main.getClientRects()).to.have.length(0);
-      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
       expect(document.querySelector('#booth-recovery').hidden).to.equal(false);
-      expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('no longer active');
     } finally {
       window.history.replaceState(null, '', previous);
     }
