@@ -77,9 +77,9 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions are **not deployed**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report after the matching Worker deployment; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions were deployed **October 8 at 14:07 UTC**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
-**Booth seam and compact controls (branch, not deployed):** the desktop Entry
+**Booth seam and compact controls (October 8, deployed):** the desktop Entry
 layout paints dark only through the hero/rounded-notch region, then white
 behind the white panel. This removes the subpixel gray seam at the fractional
 panel boundary without rounding geometry or moving approved Figma coordinates.
@@ -92,6 +92,14 @@ on Entry, Industry and Finish. Presentation now belongs to the authorized
 report stylesheet rather than an injected duplicate style. The local synthetic
 `test/fixtures/booth-controls-browser.js` checks screenshot pixels at DPR 0.4,
 native/half-size/mobile controls, menu reservation and demo clearing.
+
+**Control rollout, October 8 at 14:07 UTC:** deployed merged main
+`d2752a61d40b42e9632cbf3fad135cef73e6fa35` (PR #165) to `summit-portal`.
+Worker version `1af6ce7f-89d2-4a92-bc64-08c57fd344e7` serves 100% of traffic,
+superseding `d7fe9620-1e83-4354-825b-bd8292efd450`. Live Entry/report JS and
+CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-byte.
+The unauthenticated `/booth` route still redirects to `/login?staff` with a
+private, no-store response. No customer lookup or email was performed.
 
 ### Touchscreen keyboard and navigation hardening
 

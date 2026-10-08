@@ -149,7 +149,7 @@ pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
 included in the 13:48 UTC Worker rollout below.
 
-### Entry seam and compact controls (branch, not deployed)
+### Entry seam and compact controls (October 8, deployed)
 
 The Entry backing changes from dark to white at the hero's lower edge, retaining
 the dark rounded-notch corners but eliminating the fractional-pixel gray seam
@@ -165,9 +165,14 @@ The authorized stylesheet owns menu presentation and upgrades older controls
 without duplicating timers or padding. Hidden picker/status elements stay hidden.
 
 Entry assets now use `booth-final-figma-4`; Worker injection and the origin
-lazy import both use `booth-controls-1`. These revisions require review,
-merge and a matching Worker deployment; the rollout recorded below remains
-the previous deployed version. The synthetic local browser regression is
+lazy import both use `booth-controls-1`. These revisions were deployed from
+merged main `d2752a61d40b42e9632cbf3fad135cef73e6fa35` (PR #165) on October 8
+at 14:07 UTC. Worker version `1af6ce7f-89d2-4a92-bc64-08c57fd344e7` serves
+100% of traffic, superseding `d7fe9620-1e83-4354-825b-bd8292efd450`.
+Live Entry/report JS and CSS, loading CSS and origin `scripts/lazy.js` match
+merged source byte-for-byte; unauthenticated `/booth` remains staff-gated
+with a private, no-store redirect. Close old report tabs and reload the kiosk.
+The synthetic local browser regression is
 `test/fixtures/booth-controls-browser.js` (2160×3840, 1080×1920, 390×844 and
 screenshot-pixel verification at DPR 0.4). No real lookup or email is performed.
 
