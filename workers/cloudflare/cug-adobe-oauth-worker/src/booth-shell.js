@@ -21,6 +21,7 @@ import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import wordmark from '../../../../img/booth/adobe-wordmark.svg';
 import finalGlow from '../../../../img/booth/entry-final-glow.svg';
+import finishGlow from '../../../../img/booth/finish-glow.svg';
 import finalWebpage from '../../../../img/booth/entry-final-webpage.png';
 import carveloIcon from '../../../../img/booth/industry-carvelo.svg';
 import frescopaIcon from '../../../../img/booth/industry-frescopa.svg';
@@ -62,6 +63,7 @@ const assets = new Map([
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
   ['/img/booth/entry-final-glow.svg', [finalGlow, 'image/svg+xml']],
+  ['/img/booth/finish-glow.svg', [finishGlow, 'image/svg+xml']],
   ['/img/booth/entry-final-webpage.png', [finalWebpage, 'image/png']],
   ['/img/booth/industry-carvelo.svg', [carveloIcon, 'image/svg+xml']],
   ['/img/booth/industry-frescopa.svg', [frescopaIcon, 'image/svg+xml']],
@@ -122,7 +124,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
+    if (pathname.startsWith('/img/booth/') || ['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });

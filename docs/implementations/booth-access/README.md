@@ -124,7 +124,7 @@ failed verification and idle cleanup against synthetic local data only.
 
 ### Report opening and Finish loading (October 8, local; not deployed)
 
-The picker shares the industry's outlined **Back to email lookup** treatment.
+The picker retains its centered outlined **Back to email lookup** treatment.
 Selection displays a full-screen loader immediately and makes covered controls
 inert; failure restores the picker and displays the error. Demo selection uses
 the same treatment. The Worker embeds matching loading markup and critical CSS
@@ -140,13 +140,34 @@ the authorized report HTML request. A controlled local cold-Finish probe with
 300ms delays measured 636ms before and 461ms after, not a live-service benchmark.
 No visitor HTML is persisted or shared.
 
-Entry and report-adapter URLs use `?v=booth-loading-1`, including the origin lazy
-import. `styles/booth-loading.css` is bundled, revalidated, and inlined into report
+The report adapter and origin lazy import use `?v=booth-loading-1`; Entry JS/CSS
+use `?v=booth-final-figma-2` with the final visual alignment below.
+`styles/booth-loading.css` is bundled, revalidated, and inlined into report
 concealment markup; no-JavaScript instructions remain readable. The local fixture
 now replays that Worker markup. `test/fixtures/booth-loading-browser.js` covers
 pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
 local only; the deployed version described below has not changed.
+
+### Latest Figma Entry, Industry and Finish (October 8, branch; not deployed)
+
+The current branch matches Figma nodes `320:136`, `328:112` and `320:2475`
+at 2160 by 2881px and scales to the taller touchscreen. Shared header, gutters,
+type, field border/corners, button glyphs/sizes and progress spacing follow the
+latest frames. Industry now uses white 950 by 165px thin-bordered cards, smaller
+company labels, three changed exported icons and a blue **Try another email**
+return action. The old availability footer is removed; staff signout is retained.
+Finish adds the exact exported rainbow glow and aligns the live montage,
+120px CTAs, 80px action gap and 54px help text.
+
+Staff demos, privacy disclosure, conditional no-match guidance, loading/errors,
+live selected-report data and swipe interactions remain required runtime
+additions. No Figma sample report is substituted for an attendee report.
+Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
+The picker still uses its touch-sized outlined return action. The latest main
+session-renewal changes are integrated. Native geometry checks are in
+`test/fixtures/booth-final-design-browser.js` and `booth-demo-browser.js`.
+Merging/pushing frontend code is not a Worker deployment.
 
 ### Final industry chooser (October 8, deployed)
 

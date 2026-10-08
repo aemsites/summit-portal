@@ -223,7 +223,7 @@ remain. No real customer lookup, context mutation or email is used.
 
 ### Report selection and preview loading (October 8, local; not deployed)
 
-The report picker now uses the industry chooser's centered outlined **Back to
+The report picker retains the previously approved centered outlined **Back to
 email lookup** action, including its 120px/45px native touchscreen sizing and
 smaller-screen touch minimums. Report and demo selections show a full-screen
 **Opening your report...** indicator immediately, with covered controls inert.
@@ -243,13 +243,50 @@ cold-Finish probe measured 636ms before and 461ms after; this is a synthetic
 measurement, not a production latency claim. Email and clearing stay available
 while previews load. No attendee HTML is cached or stored.
 
-Entry and report-adapter versions are `booth-loading-1`; the shared
+The report-adapter version is `booth-loading-1`; Entry uses `booth-final-figma-2`
+with the final visual corrections below. The shared
 `styles/booth-loading.css` is Worker-bundled and revalidated. The local fixture
 replays current Worker concealment/loading markup rather than maintaining a
 simplified copy. `test/fixtures/booth-loading-browser.js` checks delayed/failed
 selection, verified styled reveal, stable Finish loading, overlapping downloads,
 reduced motion and return sizing at 2160/1080/390px. These changes require a
 separate Worker deployment; the production version below is unchanged.
+
+### Latest three-screen Figma alignment (October 8, branch; not deployed)
+
+Aligned the latest [Entry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-136),
+[Industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=328-112)
+and [Finish](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-2475)
+frames after the designer's final review. All three share the 277px header.
+Entry matches the 136px notch, 112px gutters, 54px field/help typography,
+light-gray 6px field border, 454 by 120px action and exact exported open-in glyph.
+The hero uses the current exported art/glow with the design's clipped image frame.
+The staff's dark **Industry demos** action and disclosed private email tracking
+remain intentional additions absent from Figma.
+
+The chooser supersedes the older node documented below: white 950 by 165px
+cards, 1px black borders, 10px corners, 36px column/54px row gaps and 24px
+company labels. It uses the newly exported cart, healthcare and media icons,
+plus the seven unchanged industry icons. The centered blue **Try another email**
+action is 427 by 120px, verified against the actual Figma instance; the generic
+generated component's conflicting width is not used. The availability note is
+removed, while the staff signout control and conditional no-match copy remain.
+All canonical company/industry labels and routing identities already matched.
+
+Finish retains live, swipeable selected-report excerpts, not the Figma sample
+brand or scores. Its 1960 by 752px montage includes the exact exported rainbow
+glow, with 1410 by 724px center and 910/853 by 696px side cards. CTAs use the
+467/601 by 120px dimensions, 80px gap and 54px email explanation. The Entry and
+Finish progress footers match the common 112px gutters and 80px gaps.
+Geometry scales by viewport width with mobile/touch minimums and the footer
+anchored to the taller 2160 by 3840px touchscreen.
+
+Entry JS/CSS use `booth-final-figma-2`; all revised image assets revalidate and
+the new glow is Worker-bundled. This branch incorporates main's activity-based
+15-minute session renewal without weakening report concealment/loading gates.
+`booth-final-design-browser.js` and the updated industry verifier compare native
+geometry within one pixel; the original report/loading/privacy journeys remain.
+No production deployment is included in this change.
 
 ### Final Figma industry chooser (October 8, deployed)
 

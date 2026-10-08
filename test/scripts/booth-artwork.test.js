@@ -34,19 +34,21 @@ describe('Figma booth artwork', () => {
     stage.dataset.entry = '3';
     const art = frame.contentWindow.getComputedStyle(hero, '::after');
     const glow = frame.contentWindow.getComputedStyle(hero, '::before');
-    close(art.left, 909.23);
-    close(art.top, 105.75);
-    close(art.width, 1278.94);
-    close(art.height, 925.5);
-    close(glow.left, 756.1);
-    close(glow.top, 114.13);
-    close(glow.width, 1485.33);
-    close(glow.height, 1027.81);
+    close(art.left, 1020);
+    close(art.top, 94.5);
+    close(art.width, 1140);
+    close(art.height, 881);
+    close(glow.left, 1020);
+    close(glow.top, 94.5);
+    close(glow.width, 1140);
+    close(glow.height, 881);
+    expect(art.backgroundSize).to.equal('1278.96px 925.635px');
+    expect(glow.backgroundSize).to.equal('1510.62px 1023.62px');
   });
 
   it('aligns the fixed Entry 3 headline and subtitle to native Figma coordinates', () => {
-    close(hero.querySelector('h1').getBoundingClientRect().y, 517);
-    close(hero.querySelector('.hero-bottom p').getBoundingClientRect().y, 887);
+    close(hero.querySelector('h1').getBoundingClientRect().y, 555.5);
+    close(hero.querySelector('.hero-bottom p').getBoundingClientRect().y, 880.5);
   });
 
   it('does not change the hero artwork even when a legacy entry parameter is present', () => {
@@ -67,7 +69,7 @@ describe('Figma booth artwork', () => {
     const actions = groups.map((selector) => source.querySelector(selector).cloneNode(true));
     stage.replaceChildren(...actions);
     const { contentWindow } = frame;
-    for (const [width, minHeight, minFont] of [[2160, 129, 51], [1080, 72, 25], [390, 64, 22]]) {
+    for (const [width, minHeight, minFont] of [[2160, 120, 44.9], [1080, 72, 24], [390, 64, 22]]) {
       frame.style.width = `${width}px`;
       frame.contentDocument.documentElement.getBoundingClientRect();
       stage.querySelectorAll('.booth-alternative').forEach((button) => {
@@ -111,10 +113,15 @@ describe('Figma booth artwork', () => {
     expect(style(reportHero).display).to.equal('grid');
     expect(style(reportHero).gridTemplateColumns.split(' ')).to.have.length(2);
     expect(style(stats).gridTemplateColumns.split(' ')).to.have.length(4);
-    close(preview.getBoundingClientRect().width, 1950);
-    close(preview.getBoundingClientRect().height, 725);
-    close(preview.querySelector('[data-position="center"]').getBoundingClientRect().width, 1411.094);
-    const scale = 1411.094 / 1950;
+    close(preview.getBoundingClientRect().width, 1960);
+    close(preview.getBoundingClientRect().height, 752);
+    close(preview.querySelector('[data-position="center"]').getBoundingClientRect().width, 1410);
+    close(preview.querySelector('[data-position="left"]').getBoundingClientRect().width, 910);
+    close(preview.querySelector('[data-position="left"]').getBoundingClientRect().height, 696);
+    close(preview.querySelector('[data-position="right"]').getBoundingClientRect().width, 853);
+    const glow = frame.contentWindow.getComputedStyle(preview.querySelector('.preview-montage'), '::before');
+    expect(glow.backgroundImage).to.include('finish-glow.svg');
+    const scale = 1410 / 1950;
     close(reportHero.getBoundingClientRect().height, 552.5 * scale);
     close(stats.getBoundingClientRect().height, 447.65 * scale);
     close(style(preview.querySelector('h3')).fontSize, 73.125 * scale);

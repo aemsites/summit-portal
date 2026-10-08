@@ -31,7 +31,7 @@ export default async function verifyBoothLoading(page, root = 'http://localhost:
         back.height >= minimumHeight && back.font >= font && back.border >= 2,
         `Picker back action is too small at ${width}px: ${JSON.stringify(back)}`,
       );
-      check(back.label === 'Back to email lookup', 'Picker return copy differs from the industry chooser');
+      check(back.label === 'Back to email lookup', 'Picker return copy changed');
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Picker overflows');
     }
     await page.setViewportSize({ width: 2160, height: 3840 });

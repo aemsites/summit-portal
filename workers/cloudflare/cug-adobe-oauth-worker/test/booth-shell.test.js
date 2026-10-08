@@ -31,8 +31,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-loading-1');
-    expect(html).toContain('/styles/booth.css?v=booth-loading-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-2');
+    expect(html).toContain('/styles/booth.css?v=booth-final-figma-2');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -65,7 +65,7 @@ describe('bundled booth shell and exact report injection', () => {
 
   it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
     const images = [
-      'action-arrow.svg', 'finish-open-in.svg',
+      'action-arrow.svg', 'finish-open-in.svg', 'finish-glow.svg',
       'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
       ...BOOTH_DEMOS.map(({ id }) => `industry-${id}.svg`),
     ];
@@ -93,7 +93,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-loading-1', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-loading-1', '/scripts/booth-report.js?v=booth-loading-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-final-figma-2', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-2', '/scripts/booth-report.js?v=booth-loading-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
