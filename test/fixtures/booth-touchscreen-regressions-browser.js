@@ -13,7 +13,7 @@ export default async function verifyTouchscreenRegressions(page, root = 'http://
   });
   const check = (condition, message) => { if (!condition) failures.push(message); };
   const frame = page.frameLocator('#preview');
-  const ready = () => frame.locator('#email-form button:not([disabled])').waitFor();
+  const ready = () => frame.locator('#email-form button[type="submit"]:not([disabled])').waitFor();
   const start = async () => {
     await page.goto(root);
     await ready();
@@ -155,21 +155,46 @@ export default async function verifyTouchscreenRegressions(page, root = 'http://
         `${preset}/${scenario}: one submit tap must cause exactly one lookup`,
       );
       await frame.locator('.report-ai-visibility .rav-hbar-row').nth(5).waitFor();
-      const scores = await frame.locator('.rs-dark-value-row').evaluateAll((rows) => rows.map((row) => ({ width: row.clientWidth, scrollWidth: row.scrollWidth })));
+      const scores = await frame.locator('.rs-dark-value-row').evaluateAll((rows) => rows.map((row) => {
+        const value = row.querySelector('.rs-dark-value');
+        return {
+          width: row.clientWidth,
+          scrollWidth: row.scrollWidth,
+          lines: value.getBoundingClientRect().height
+              / parseFloat(getComputedStyle(value).lineHeight),
+        };
+      }));
       check(
-        scores.every((score) => score.scrollWidth <= score.width + 1),
-        `${preset}: metric values overflow`,
+        scores.every((score) => score.scrollWidth <= score.width + 1 && score.lines <= 1.05),
+        `${preset}: metric values overflow or wrap mid-score`,
       );
       matrix.push({ preset, scenario, editing, hidden });
     }
   }
   observations.matrix = matrix;
 
+  for (const scenario of ['overlay', 'resize', 'geometry']) {
+    await start();
+    await page.selectOption('#keyboard-mode', scenario);
+    await typing();
+    count = lookups.length;
+    await page.locator('[data-key="Enter"]').click();
+    await frame.locator('#booth-return').waitFor();
+    check(lookups.length - count === 1, `${scenario}: on-screen Enter must submit once`);
+  }
+  await start();
+  await frame.locator('#registration-email').click();
+  await page.keyboard.type('visitor@example.test');
+  count = lookups.length;
+  await page.keyboard.press('Enter');
+  await frame.locator('#booth-return').waitFor();
+  check(lookups.length - count === 1, 'Physical Enter must submit the same form once');
+
   for (const direct of [false, true]) {
     if (direct) {
       await page.setViewportSize({ width: 728, height: 1296 });
       await page.goto(`${root}/content/index?preview=entry`);
-      await page.locator('#email-form button:not([disabled])').waitFor();
+      await page.locator('#email-form button[type="submit"]:not([disabled])').waitFor();
       await page.getByRole('button', { name: 'Staff: show industry demos' }).click();
       await page.locator('#demo-options button').first().click();
       await page.locator('#booth-return').waitFor();

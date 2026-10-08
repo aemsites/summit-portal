@@ -530,6 +530,15 @@ one lookup per held first submit click, metric containment and real chart
 decoration, plus direct 728px-host report rendering. These fixes are for branch
 compare review; no deployment or pull request is authorized.
 
+After merging current main (`c97dc40`), the checks pass with the new Figma form,
+loading/concealment and fifteen-minute activity renewal preserved: 160 frontend
+tests, four Node server tests, 128 Worker booth/shell/history tests and changed-file
+lint. The interaction matrix also checks on-screen Enter in every mode, physical
+Enter and single-line score rendering; no browser errors or 404 assets occurred.
+The existing personal, ten-demo, keyboard, Entry/report recovery, loading and
+final-design browser verifiers pass in isolated foreground contexts. Repository-wide
+lint remains blocked by existing unrelated failures; changed files are clean.
+
 ### Local fallback review and rollout
 
 Run `npm run preview:booth` and open `http://localhost:3000/` for the exact

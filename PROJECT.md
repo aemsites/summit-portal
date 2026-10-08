@@ -754,6 +754,17 @@ fifteen-minute activity renewal), preserving the new session module and Worker
 concealment/loading markup. The simulator injects its pre-init hook only after
 awaiting the fixture's current report wrapper, not into a Promise.
 
+**Post-integration verification:** 160 targeted frontend tests, four local
+server tests and 128 Worker booth/shell/history tests pass. Changed-file
+ESLint/Stylelint and whitespace checks pass. Real-browser verification covers
+the 15-scenario interaction matrix, on-screen Enter in all three modes, physical
+Enter, invalid-email blocking, single-line scores, all ten decorated demos,
+personal/picker/Finish/send/reset, retained-focus diagnostics, recovery, loading
+and final Figma geometry. No page/console errors or missing assets occurred in
+the interaction matrix. Repo-wide `npm run lint` still fails on unrelated
+existing code (1,385 errors/243 warnings); the unchanged footer failure was
+confirmed directly against main. This branch does not repair that baseline.
+
 ## Project Structure
 
 ```

@@ -17,7 +17,7 @@ export default async function verifyBoothTouchscreen(page, root = 'http://localh
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto(root);
   const frame = page.frameLocator('#preview');
-  const ready = () => frame.locator('#email-form button:not([disabled])').waitFor();
+  const ready = () => frame.locator('#email-form button[type="submit"]:not([disabled])').waitFor();
   const start = async () => { await page.locator('#show-entry').click(); await ready(); };
   const state = () => frame.locator('html').evaluate((html) => ({
     height: window.innerHeight,
