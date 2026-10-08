@@ -17,6 +17,15 @@ The historical deployment table below does not prove these protections are live.
 | Touchscreen downloads and extra tabs | Verified locally | PDF/opaque export MIME and disposition denials; late client download/target suppression; ordinary portal downloads retained |
 | Matching Worker/assets and managed touchscreen | Not activated | Reviewed deployment, close old report tabs, reload/migrate kiosk, final hardware/network rehearsal; administration on a separate browser/device |
 
+## October 8 recovery fixes (not deployed)
+
+| Area | State | Evidence / remaining gate |
+|---|---|---|
+| Bounded Entry operations and reset | Verified locally | Ten-second fetch/body deadline for all Entry APIs; visible fail-closed recovery; serialized reset; stale response suppression; unconfirmed send never replayed |
+| Keyboard dismissal with focus retained | Verified locally | Layout/VisualViewport restoration removes reserve; geometry zero, field switching, reopen, pinch and cleanup unit checks; real-browser reduced/restored viewport fixtures |
+| Matching assets and documentation | Verified locally | `booth-recovery-1` Entry/adapter/keyboard versions, 118 frontend and 25 Worker shell/injection tests, changed-file lint, Worker dry run |
+| Device and production acceptance | External gate | 40-inch 2160 x 3840 physical display; CSS scaling/DPR/native keyboard unknown; no fresh protected-customer certification, real Turnstile/inbox receipt or production deployment |
+
 ## Historical implementation and activation
 
 | Area | State | Evidence / remaining gate |

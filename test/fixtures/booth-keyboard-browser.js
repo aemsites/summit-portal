@@ -45,6 +45,17 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
     await page.waitForTimeout(100);
     check(await fieldVisible('.rrf-consent'), 'Request consent cannot scroll above the booth controls');
     check(await fieldVisible('.rrf-action button'), 'Request submission cannot scroll above the booth controls');
+    await page.setViewportSize({ width, height });
+    await page.waitForFunction(() => !document.documentElement.classList.contains('booth-keyboard-active'));
+    check(
+      await page.locator('[name="primaryMarket"]').evaluate((field) => document.activeElement === field),
+      'Viewport restoration must retain field focus for the dismissal regression',
+    );
+    const controls = await page.locator('#booth-return').boundingBox();
+    check(
+      Math.abs(controls.y + controls.height - height) < 2,
+      `Dismissed keyboard leaves phantom control inset at ${width}x${height}`,
+    );
   }
   await entry(1080, 1920);
   await page.getByRole('button', { name: 'Request my report', exact: true }).click();
@@ -83,5 +94,5 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   await page.clock.fastForward(109001);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   await page.clock.resume();
-  return { checked: 'Focused fields after resize; overlay reachability for fields, consent and Submit; blur cleanup; input-only activity and eventual idle reset. Local fixtures only.' };
+  return { checked: 'Focused fields after resize and dismissal without blur; overlay reachability for fields, consent and Submit; blur cleanup; input-only activity and eventual idle reset. Local fixtures only.' };
 }

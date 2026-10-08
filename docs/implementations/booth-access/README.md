@@ -52,6 +52,35 @@ Addresses without an authored customer CUG permission do not qualify.
 
 ## Industry demo and report request recovery
 
+### Entry network deadlines
+
+Every Entry API operation has a **ten-second total fetch + JSON-body deadline**:
+initial status, lookup, demos, demo/personal selection, opening a request, picker,
+send, reset and staff exit. A stalled operation aborts, scrubs visitor fields and
+previews, discards stale callbacks and shows **Retry and clear screen**. New
+attendee actions stay blocked until the server confirms clearing. Existing idle
+and original absolute expiry timers are not extended by the timeout. Reset
+continues to serialize behind the bounded pending operation and shows
+**Clearing this visit...**, rather than waiting silently forever. A failed or
+timed-out reset exposes manual recovery without pretending the server cleared.
+The isolated `/booth?recover=1` reset also bounds body reading with its deadline.
+
+Aborting a browser request does **not** undo an accepted server mutation. The
+existing Durable Object queue still serializes mutations; authorization,
+booth isolation, original deadlines and per-report delivery-attempt recording
+are unchanged. A timed-out email send is explicitly **unconfirmed**, not a
+successful delivery and never an automatic resend. Ask the booth team before
+sending again. Stale demo-clearing completion cannot launch a new catalogue
+request after a reset supersedes it.
+
+`test/fixtures/booth-recovery-browser.js` holds a synthetic lookup indefinitely,
+checks scrubbing/visible fail-closed recovery at the deadline and confirms idle
+reset without releasing the held lookup. Unit tests cover stalled fetches and
+bodies across every Entry action, serialized clear, late responses, failed clear
+and uncertain send. These changes are local, not deployed.
+
+### Available fallback journeys
+
 Entry includes a staff demo shortcut and a fresh report-request action. A
 confirmed no-match (`404`, `code: no_report`) offers **Show an industry demo**,
 **Request my report** and **Try another email**. Service outages remain errors.
@@ -105,7 +134,13 @@ Entry and verified requests share `scripts/booth-keyboard.js` and
 `styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
 and supported keyboard geometry; reported overlays lift the control bar and add
 scroll space for consent and Submit. An unreported touch overlay gets a
-half-screen editing reserve, released on blur. Entry `input`/`change` now renew
+half-screen editing reserve. Positive keyboard geometry or significant layout/
+visual-viewport shrink is remembered for the editing lifecycle; its restoration
+releases the reserve **without requiring blur**. Typing alone keeps dismissal,
+while a new field focus or tap on the retained-focus field allows an unreported
+overlay to reopen. Moving between fields with an open keyboard preserves the
+unshrunk baseline. Blur, checkbox focus and pagehide also release the reserve.
+Entry `input`/`change` now renew
 its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
 fields. The security report guard also synchronously clears request keyboard
 space during recovery, including failed server resets, without adding another
@@ -120,13 +155,34 @@ policy must still contain browser chrome, long-press menus and policy links.
 
 Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
 `hasTouch: true` context against the local fixture server. It checks focused
-fields after viewport shrink, optional fields/consent/Submit above an 820px
+fields after viewport shrink and restoration with focus retained, optional fields/consent/Submit above an 820px
 overlay model, blur cleanup and input-only idle renewal. These are stress
 models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
 CSS viewport/DPR, keyboard height and policy links before device release.
+The confirmed device is a **40-inch portrait display with 2160 x 3840 physical
+pixels**, not a confirmed 2160 x 3840 CSS viewport. Local dismissal models also
+cover 125%/150%/200% scaling (1728 x 3072, 1440 x 2560, 1080 x 1920 CSS) and
+250% (864 x 1536 CSS). At 250% the existing large portrait report profile is
+inactive; configure and accept the device rather than changing the breakpoint.
 Keyboards larger than the fallback reserve require reported geometry or
 content-resize/device configuration. Merge and deploy the matching Worker
 assets only after approval; this branch push is not a production rollout.
+
+**October 8 local recovery checks:** 118 targeted frontend tests and 25 Worker
+shell/injection tests pass, along with changed-file ESLint and a summit Worker
+deployment **dry run**. Both original defects were reproduced before the fixes;
+the recovery and keyboard browser regressions now pass. Existing personal
+Entry/report/Finish, all ten synthetic demo choices, request validation/synthetic
+submission, reset/history behavior and an ordinary unmarked report were also
+checked. No fresh protected-customer verification, real Turnstile submission or
+inbox receipt is claimed. Hardware keyboard/reach and managed-device privacy
+acceptance are still required.
+
+Entry JS, injected/shared report-adapter imports and both keyboard imports use
+`?v=booth-recovery-1`; unchanged Entry CSS retains `?v=booth-touchscreen-1`.
+Deploy the matching Worker bundle **only after approval**, then close old report
+documents, reload `/booth` and reopen reports. Neither pushing this branch nor a
+frontend merge activates the separately deployed Worker.
 
 `test/fixtures/booth-report-browser.js` checks an existing protected customer
 report in a dedicated, authenticated staff touch context without booth cookies.

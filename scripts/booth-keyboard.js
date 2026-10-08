@@ -11,10 +11,21 @@ export function mountBoothKeyboard(root = document, control = null) {
   let restingHeight = view.innerHeight;
   let frame;
   let geometryReported = false;
+  let observed = false;
+  let dismissed = false;
+  let focused;
 
-  function clear() {
+  function release() {
     html.classList.remove('booth-keyboard-active');
     html.style.removeProperty('--booth-keyboard-inset');
+  }
+
+  function clear() {
+    observed = false;
+    dismissed = false;
+    geometryReported = false;
+    focused = undefined;
+    release();
   }
 
   function reconcile() {
@@ -28,21 +39,29 @@ export function mountBoothKeyboard(root = document, control = null) {
     }
     // Pinch zoom is not a keyboard, and should retain the browser's native panning.
     if (viewport && viewport.scale !== 1) {
-      clear();
+      release();
       return;
     }
     const top = viewport?.offsetTop || 0;
     let bottom = Math.min(view.innerHeight, top + (viewport?.height || view.innerHeight));
     const geometry = keyboard?.boundingRect;
     const resized = restingHeight - view.innerHeight > restingHeight * 0.15;
+    const visible = geometry?.height > 0 || resized
+      || (viewport && restingHeight - viewport.height > restingHeight * 0.15);
+    if (visible) {
+      observed = true;
+      dismissed = false;
+    } else if (observed) {
+      dismissed = true;
+    }
     if (geometry?.height > 0) bottom = Math.min(bottom, geometry.y);
-    else if (touch && !geometryReported && !resized && bottom === view.innerHeight) {
+    else if (touch && !geometryReported && !dismissed && !resized && bottom === view.innerHeight) {
       // Unreported overlays need real scroll range; reserve half the screen while editing.
       bottom = view.innerHeight / 2;
     }
     const inset = Math.max(0, view.innerHeight - bottom);
     html.style.setProperty('--booth-keyboard-inset', `${inset}px`);
-    html.classList.add('booth-keyboard-active');
+    html.classList.toggle('booth-keyboard-active', Boolean(visible || inset > 0));
     const barHeight = control?.getBoundingClientRect().height || 0;
     const bounds = field.getBoundingClientRect();
     const label = field.labels?.[0]?.getBoundingClientRect();
@@ -61,12 +80,34 @@ export function mountBoothKeyboard(root = document, control = null) {
     update();
   }
 
+  function focusIn() {
+    const field = root.activeElement;
+    if (field !== focused && (!observed || dismissed)) {
+      observed = false;
+      dismissed = false;
+      geometryReported = false;
+    }
+    focused = field;
+    update();
+  }
+
+  function pointerDown(event) {
+    if (dismissed && event.target === root.activeElement && event.target.matches(editable)) {
+      observed = false;
+      dismissed = false;
+      geometryReported = false;
+      update();
+    }
+  }
+
   function pagehide() {
     root.activeElement?.blur();
     clear();
   }
 
-  ['focusin', 'focusout', 'input'].forEach((name) => root.addEventListener(name, update));
+  root.addEventListener('focusin', focusIn);
+  root.addEventListener('pointerdown', pointerDown);
+  ['focusout', 'input'].forEach((name) => root.addEventListener(name, update));
   view.addEventListener('resize', update);
   view.addEventListener('pagehide', pagehide);
   viewport?.addEventListener('resize', update);
@@ -80,7 +121,9 @@ export function mountBoothKeyboard(root = document, control = null) {
     update,
     destroy() {
       view.cancelAnimationFrame(frame);
-      ['focusin', 'focusout', 'input'].forEach((name) => root.removeEventListener(name, update));
+      root.removeEventListener('focusin', focusIn);
+      root.removeEventListener('pointerdown', pointerDown);
+      ['focusout', 'input'].forEach((name) => root.removeEventListener(name, update));
       view.removeEventListener('resize', update);
       view.removeEventListener('pagehide', pagehide);
       viewport?.removeEventListener('resize', update);

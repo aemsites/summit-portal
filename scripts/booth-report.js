@@ -1,5 +1,5 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
-import { mountBoothKeyboard } from './booth-keyboard.js';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-1';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';

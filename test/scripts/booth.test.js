@@ -29,6 +29,26 @@ describe('booth runtime boundary', () => {
     expect(failure.status).to.equal(502);
   });
 
+  ['fetch', 'body'].forEach((phase) => {
+    it(`bounds a stalled ${phase} for every Entry API operation`, async () => {
+      const clock = sandbox.useFakeTimers();
+      const pending = new Promise(() => {});
+      const fetchStub = sandbox.stub(window, 'fetch').returns(phase === 'fetch'
+        ? pending : Promise.resolve({ ok: true, json: () => pending }));
+      const actions = ['status', 'lookup', 'demos', 'demo', 'select', 'send', 'request', 'picker', 'reset', 'exit'];
+      const failures = actions.map((action) => boothRequest(action, {}).catch((error) => error));
+      await clock.tickAsync(10001);
+      const errors = await Promise.all(failures);
+      errors.forEach((error) => {
+        expect(error.code).to.equal('timeout');
+        expect(error.message).to.include('timed out');
+      });
+      expect(errors[actions.indexOf('send')].message).to.include('could not be confirmed');
+      expect(fetchStub.getCalls().every((call) => call.args[1].signal.aborted)).to.equal(true);
+      expect(clock.countTimers()).to.equal(0);
+    });
+  });
+
   it('does not mount Finish on ordinary reports or a different selected pathname', async () => {
     sandbox.stub(window, 'fetch').resolves(new Response(JSON.stringify({
       selectedPath: '/accounts/e/example/insights/example-com/portal-landing/',
@@ -59,6 +79,13 @@ describe('booth runtime boundary', () => {
     </main>`;
     sandbox.stub(window, 'addEventListener');
     sandbox.stub(window.history, 'replaceState');
+    return root;
+  }
+
+  async function productionFixture() {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const root = new DOMParser().parseFromString(await response.text(), 'text/html');
+    sandbox.stub(window, 'addEventListener');
     return root;
   }
 
@@ -100,6 +127,182 @@ describe('booth runtime boundary', () => {
     expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
     expect(root.querySelector('#email-form button').disabled).to.equal(false);
     expect(root.getElementById('booth-status').textContent).to.equal('');
+  });
+
+  it('scrubs a stalled lookup, shows recovery, and serializes idle clear behind its bounded lifetime', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    let releaseLookup;
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().returns(new Promise((resolve) => { releaseLookup = resolve; }));
+    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(119000);
+    root.getElementById('registration-email').value = 'visitor@example.test';
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(1001);
+    expect(root.getElementById('registration-email').value).to.equal('');
+    expect(root.getElementById('booth-status').textContent).to.include('Clearing');
+    expect(fetchStub.callCount).to.equal(2);
+    await clock.tickAsync(9000);
+    expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
+    expect(root.querySelector('#email-form button').disabled).to.equal(false);
+    releaseLookup({ ok: true, json: async () => ({ state: 'picker', candidates: [{ label: 'Stale visitor' }] }) });
+    await clock.tickAsync(0);
+    expect(root.getElementById('report-options').textContent).to.equal('');
+  });
+
+  it('requires a confirmed reset after a lookup timeout rather than enabling another visitor', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().returns(new Promise(() => {}));
+    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('registration-email').value = 'visitor@example.test';
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(10001);
+    expect(root.getElementById('registration-email').value).to.equal('');
+    expect(root.getElementById('booth-status').textContent).to.include('timed out');
+    expect(root.getElementById('booth-retry').hidden).to.equal(false);
+    expect(root.querySelector('#email-form button').disabled).to.equal(true);
+    root.getElementById('booth-retry').click();
+    await clock.tickAsync(0);
+    expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/reset');
+    expect(root.querySelector('#email-form button').disabled).to.equal(false);
+  });
+
+  ['status', 'request', 'select', 'demos', 'demo', 'picker', 'exit'].forEach((action) => {
+    it(`exposes fail-closed recovery for stalled ${action} without replaying the operation`, async () => {
+      const root = await productionFixture();
+      root.getElementById('report-preview').remove();
+      const previousUrl = window.location.href;
+      window.history.replaceState(null, '', action === 'picker' ? '/booth?step=finish' : '/booth');
+      const clock = sandbox.useFakeTimers();
+      const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url) => {
+        if (url.endsWith(`/${action}`)) return new Promise(() => {});
+        if (url.endsWith('/status')) {
+          return {
+            ok: true,
+            json: async () => ({
+              state: action === 'picker' ? 'report' : 'picker',
+              selectedPath: action === 'picker' ? '/selected/' : undefined,
+              canChooseAnother: true,
+              candidates: [{ label: 'Selected company', path: '/selected/' }],
+              expiresAt: Date.now() + 600000,
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => (
+            url.endsWith('/demos') ? { demos: [{ id: 'luma', industry: 'Retail', company: 'Luma' }] } : { state: 'entry' }
+          ),
+        };
+      });
+      try {
+        mountBooth(root);
+        await clock.tickAsync(0);
+        if (action === 'request') root.querySelector('[data-request-report]').click();
+        if (action === 'select') root.querySelector('#report-options button').click();
+        if (['demos', 'demo'].includes(action)) {
+          root.querySelector('[data-show-demos]').click();
+          await clock.tickAsync(0);
+          if (action === 'demo') root.querySelector('#demo-options button').click();
+        }
+        if (action === 'picker') root.getElementById('choose-another-report').click();
+        if (action === 'exit') root.getElementById('staff-exit').click();
+        await clock.tickAsync(10001);
+        expect(root.getElementById('booth-status').textContent).to.include('timed out');
+        expect(root.getElementById('booth-retry').hidden).to.equal(false);
+        expect(root.querySelector('#email-form button').disabled).to.equal(true);
+        expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(true);
+        expect(root.getElementById('report-options').children).to.have.length(0);
+        expect(root.getElementById('demo-options').children).to.have.length(0);
+        expect(fetchStub.getCalls().filter((call) => call.args[0].endsWith(`/${action}`))).to.have.length(1);
+        root.getElementById('booth-retry').click();
+        await clock.tickAsync(0);
+        expect(root.querySelector('#email-form button').disabled).to.equal(false);
+        expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/reset');
+      } finally {
+        window.history.replaceState(null, '', previousUrl);
+      }
+    });
+  });
+
+  it('shows bounded recovery for a stalled reset and keeps controls blocked until the retry is confirmed', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: true, json: () => new Promise(() => {}) });
+    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(120000);
+    expect(root.getElementById('booth-status').textContent).to.include('Clearing');
+    await clock.tickAsync(10001);
+    expect(root.querySelector('#email-form button').disabled).to.equal(true);
+    expect(root.getElementById('booth-retry').hidden).to.equal(false);
+    expect(root.getElementById('booth-status').textContent).to.include('timed out');
+    root.getElementById('booth-retry').click();
+    await clock.tickAsync(0);
+    expect(root.querySelector('#email-form button').disabled).to.equal(false);
+  });
+
+  it('does not continue loading demos after their clearing request was superseded by reset', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    let clearDemos;
+    fetchStub.onSecondCall().returns(new Promise((resolve) => { clearDemos = resolve; }));
+    fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(119000);
+    root.querySelector('[data-show-demos]').click();
+    root.querySelector('[data-reset]').click();
+    await clock.tickAsync(1001);
+    clearDemos({ ok: true, json: async () => ({ state: 'entry' }) });
+    await clock.tickAsync(0);
+    expect(fetchStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+      '/auth/booth/status', '/auth/booth/reset', '/auth/booth/reset',
+    ]);
+    expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
+  });
+
+  it('treats a stalled send as uncertain without another send or success, even on a late response', async () => {
+    const root = await productionFixture();
+    root.getElementById('report-preview').remove();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({ state: 'report', selectedPath: '/selected/', expiresAt: Date.now() + 600000 }),
+    });
+    let lateSend;
+    fetchStub.onSecondCall().returns(new Promise((resolve) => { lateSend = resolve; }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.getElementById('send-report').click();
+      await clock.tickAsync(10001);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(true);
+      expect(root.getElementById('booth-status').textContent).to.include('Delivery could not be confirmed');
+      expect(root.getElementById('booth-retry').hidden).to.equal(false);
+      root.getElementById('send-report').click();
+      lateSend({ ok: true, json: async () => ({ sent: true }) });
+      await clock.tickAsync(0);
+      expect(fetchStub.callCount).to.equal(2);
+      expect(root.getElementById('finish-status').textContent).to.equal('');
+      expect(root.querySelector('#email-form button').disabled).to.equal(true);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
   });
 
   it('counts virtual-keyboard input and change as Entry activity without key or pointer events', async () => {
@@ -146,13 +349,6 @@ describe('booth runtime boundary', () => {
     expect(email.value).to.equal('');
     expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
   });
-
-  async function productionFixture() {
-    const response = await fetch(new URL('../../booth.html', import.meta.url));
-    const root = new DOMParser().parseFromString(await response.text(), 'text/html');
-    sandbox.stub(window, 'addEventListener');
-    return root;
-  }
 
   function jsonReply(body, status = 200) {
     return { ok: status < 400, status, json: async () => body };
