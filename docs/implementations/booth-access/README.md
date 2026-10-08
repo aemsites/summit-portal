@@ -149,6 +149,28 @@ pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
 included in the 13:48 UTC Worker rollout below.
 
+### Entry seam and compact controls (branch, not deployed)
+
+The Entry backing changes from dark to white at the hero's lower edge, retaining
+the dark rounded-notch corners but eliminating the fractional-pixel gray seam
+beneath the white panel. Approved hero/form coordinates are unchanged.
+
+The report menu adopts the shell's white surface, blue navigation pills and
+gray outlined secondary buttons. **Clear for next visitor** and **Choose another
+report** retain their behavior, with 64–72px touch targets, keyboard focus and
+disabled states. The measured menu height still reserves content space.
+Staff signout uses a separate compact outlined pill on every shell screen,
+with a 48px minimum / 64px native target; recovery links are unchanged.
+The authorized stylesheet owns menu presentation and upgrades older controls
+without duplicating timers or padding. Hidden picker/status elements stay hidden.
+
+Entry assets now use `booth-final-figma-4`; Worker injection and the origin
+lazy import both use `booth-controls-1`. These revisions require review,
+merge and a matching Worker deployment; the rollout recorded below remains
+the previous deployed version. The synthetic local browser regression is
+`test/fixtures/booth-controls-browser.js` (2160×3840, 1080×1920, 390×844 and
+screenshot-pixel verification at DPR 0.4). No real lookup or email is performed.
+
 ### Latest Figma Entry, Industry and Finish (October 8, deployed)
 
 The current branch matches Figma nodes `320:136`, `328:112` and `320:2475`
@@ -530,14 +552,17 @@ one lookup per held first submit click, metric containment and real chart
 decoration, plus direct 728px-host report rendering. These fixes are for branch
 compare review; no deployment or pull request is authorized.
 
-After merging current main (`c97dc40`), the checks pass with the new Figma form,
-loading/concealment and fifteen-minute activity renewal preserved: 160 frontend
+After merging current main (`d2752a6`), the checks pass with the new Figma form,
+loading/concealment, fifteen-minute activity renewal and compact controls
+preserved: 161 frontend
 tests, four Node server tests, 128 Worker booth/shell/history tests and changed-file
 lint. The interaction matrix also checks on-screen Enter in every mode, physical
 Enter and single-line score rendering; no browser errors or 404 assets occurred.
 The existing personal, ten-demo, keyboard, Entry/report recovery, loading and
-final-design browser verifiers pass in isolated foreground contexts. Repository-wide
-lint remains blocked by existing unrelated failures; changed files are clean.
+final-design and compact-controls browser verifiers pass in isolated foreground
+contexts. Demo negative-path checks deliberately return local no-match/outage
+404/502/503 API responses; no report assets are missing. Repository-wide lint
+remains blocked by existing unrelated failures; changed files are clean.
 
 ### Local fallback review and rollout
 

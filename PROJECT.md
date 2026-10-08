@@ -77,7 +77,21 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-loading-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-3`; the keyboard import retains `?v=booth-recovery-2`. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The latest screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions are **not deployed**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report after the matching Worker deployment; existing tabs do not hot-reload modules.
+
+**Booth seam and compact controls (branch, not deployed):** the desktop Entry
+layout paints dark only through the hero/rounded-notch region, then white
+behind the white panel. This removes the subpixel gray seam at the fractional
+panel boundary without rounding geometry or moving approved Figma coordinates.
+The report menu uses a white surface, blue navigation pills and outlined gray
+**Clear for next visitor** / **Choose another report** buttons. Its measured
+height still reserves report space; hidden controls, notices, focus, disabled
+states and reset authorization are unchanged. Menu buttons are 64–72px tall;
+shared staff signout is a compact outlined pill (48px minimum, 64px native)
+on Entry, Industry and Finish. Presentation now belongs to the authorized
+report stylesheet rather than an injected duplicate style. The local synthetic
+`test/fixtures/booth-controls-browser.js` checks screenshot pixels at DPR 0.4,
+native/half-size/mobile controls, menu reservation and demo clearing.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -749,18 +763,21 @@ exposes it rather than inventing a signal. Native Windows acceptance is still
 required. This follow-up is authorized for branch push/compare review, **not
 deployment or a PR**.
 
-The branch incorporates main through `c97dc40` (final Figma/loading and
-fifteen-minute activity renewal), preserving the new session module and Worker
-concealment/loading markup. The simulator injects its pre-init hook only after
-awaiting the fixture's current report wrapper, not into a Promise.
+The branch incorporates main through `d2752a6` (final Figma/loading,
+fifteen-minute activity renewal, scaled Entry seam and compact report controls),
+preserving the new session module and Worker concealment/loading markup. The
+simulator injects its pre-init hook only after awaiting the fixture's current
+report wrapper, not into a Promise. Asset-list merge conflicts retain current
+upstream shell/adapter versions alongside the revised keyboard helper version.
 
-**Post-integration verification:** 160 targeted frontend tests, four local
+**Post-integration verification:** 161 targeted frontend tests, four local
 server tests and 128 Worker booth/shell/history tests pass. Changed-file
 ESLint/Stylelint and whitespace checks pass. Real-browser verification covers
 the 15-scenario interaction matrix, on-screen Enter in all three modes, physical
 Enter, invalid-email blocking, single-line scores, all ten decorated demos,
 personal/picker/Finish/send/reset, retained-focus diagnostics, recovery, loading
-and final Figma geometry. No page/console errors or missing assets occurred in
+and final Figma geometry, plus the compact-controls/scaled-seam verifier.
+No page/console errors or missing assets occurred in
 the interaction matrix. Repo-wide `npm run lint` still fails on unrelated
 existing code (1,385 errors/243 warnings); the unchanged footer failure was
 confirmed directly against main. This branch does not repair that baseline.
