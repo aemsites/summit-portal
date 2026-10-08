@@ -33,7 +33,7 @@ lookup. It revokes the active selection, keeps the original expiry and rechecks
 permissions on selection; send/view outcomes remain independent per report.
 Sent and uncertain outcomes cannot become retryable by switching.
 
-**Security hardening is local, not deployed.** Dashboard navigation cannot exit
+**Security hardening is deployed; see the October 8 rollout below.** Dashboard navigation cannot exit
 booth restrictions. Staff administration uses a **separate browser/device**.
 Reset, logout, explicit signout, OAuth and fresh login preserve the kiosk
 boundary; re-login revokes the old visit before issuing another scoped session.
@@ -50,7 +50,7 @@ an exact-email entry does not permit neighboring addresses at that domain.
 CUGs are not registration lists. Staff identities never discover every company.
 Addresses without an authored customer CUG permission do not qualify.
 
-## Final Figma screens (October 8, not deployed)
+## Final Figma screens (October 8, deployed)
 
 The final Entry and Finish 6 frames are `312:388` and `244:579` in
 [Adobe Brand Visibility UI](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI).
@@ -63,11 +63,44 @@ registration-address delivery hint. The footer shows **Enter email / View report
 Save and share**; active/completed stages are red. No placeholder or static step
 badge remains. Smaller screens keep a mobile-first layout and touch-sized actions.
 
-This branch needs review, D1 migration `0003_booth_demo_activity.sql`, and a
-separately approved Worker deployment. It does not change production by itself.
-The migration extends allowed activity kinds while preserving historical data
-and indexes. Entry CSS uses `?v=booth-final-figma-1`; Entry JS and both adapter
-loading paths use the merged recovery version `?v=booth-recovery-2`.
+Latest main `e92398dcbcb12149a67fc1453daf7d146fdf5441` (PRs #157 and #158)
+was deployed to `summit-portal` with `--env summit` on October 8 at 09:47 UTC.
+Worker version `051e6ea0-e88b-47d8-a1f2-037360f73480` serves 100% of traffic.
+D1 migration `0003_booth_demo_activity.sql` was applied first, extending allowed
+activity kinds while preserving all 41 historical rows and the four activity
+indexes. No migrations remain pending. Entry CSS uses `?v=booth-final-figma-1`;
+Entry JS and both adapter loading paths use `?v=booth-recovery-2`.
+
+Live versioned booth modules, CSS and final artwork match the deployed source
+byte-for-byte. Anonymous Entry redirects to staff setup; status, demo catalogue
+and private CSV return 401. No customer lookup or email send was performed.
+Bindings, staff epoch and hourly retention cron remain unchanged. Close old
+report tabs and reload `/booth` on the managed touchscreen. Physical-device,
+Privacy/Legal and inbox-receipt acceptance remain separate gates.
+
+## Report-to-entry recovery correction (October 8, local, not deployed)
+
+The production recovery aside contained bare message text, but the adapter
+assumed it contained a paragraph. **Clear for next visitor** threw before
+posting reset, leaving the report concealed and recovery disabled. Startup
+verification failures hit the same mismatch. The local fixture already had a
+paragraph and therefore did not reproduce it.
+
+Worker injection now emits an alert paragraph. The adapter also normalizes the
+old HTML before using it, retaining the retry button and manual recovery link.
+The navigation guard permits only `/booth?recover=1` inside the recovery panel;
+ordinary external links/downloads remain contained. Worker injection and lazy
+loading both target `?v=booth-clear-1`; Entry/keyboard versions are unchanged.
+This correction is not deployed and requires the matching Worker rollout, not
+just a frontend push. Close old report tabs and reopen them after rollout.
+No migration or relaxed authorization is required.
+
+Frontend regressions exercise legacy HTML, verification failures, reset retry
+and manual recovery-link activation. Worker tests check the emitted paragraph
+and matching adapter import. `verifyBoothReportRecovery` in
+`test/fixtures/booth-recovery-browser.js` reads the actual injection markup and
+checks personal/demo return, legacy documents, Finish-to-entry, failed reset,
+failed verification and idle cleanup against synthetic local data only.
 
 ## Industry demo and report request recovery
 
@@ -96,7 +129,7 @@ request after a reset supersedes it.
 checks scrubbing/visible fail-closed recovery at the deadline and confirms idle
 reset without releasing the held lookup. Unit tests cover stalled fetches and
 bodies across every Entry action, serialized clear, late responses, failed clear
-and uncertain send. These changes are local, not deployed.
+and uncertain send. These changes are included in the October 8 deployment above.
 
 ### Available fallback journeys
 

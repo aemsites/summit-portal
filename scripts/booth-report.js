@@ -63,6 +63,16 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     document.body.append(recovery);
   }
   const recoveryButton = recovery.querySelector('[data-booth-recover]');
+  const recoveryMessage = recovery.querySelector('p') || document.createElement('p');
+  if (!recoveryMessage.parentElement) {
+    recoveryMessage.setAttribute('role', 'alert');
+    if (recovery.firstChild?.nodeType === Node.TEXT_NODE) {
+      recoveryMessage.append(recovery.firstChild);
+    } else {
+      recoveryMessage.textContent = 'Checking this booth report...';
+    }
+    recovery.prepend(recoveryMessage);
+  }
   const hide = () => {
     interrupted = true;
     html.classList.add('booth-report-clearing');
@@ -74,7 +84,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     hide();
     html.style.visibility = '';
     recovery.hidden = false;
-    recovery.querySelector('p').textContent = error.message;
+    recoveryMessage.textContent = error.message;
     recoveryButton.disabled = false;
     const control = document.getElementById('booth-return');
     const status = control?.querySelector('p');
@@ -92,7 +102,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     hide();
     recovery.hidden = false;
     recoveryButton.disabled = true;
-    recovery.querySelector('p').textContent = 'Clearing this screen...';
+    recoveryMessage.textContent = 'Clearing this screen...';
     try {
       await pending;
       const result = await fetch('/auth/booth/reset', {
@@ -392,6 +402,7 @@ export default async function mountBoothReturn() {
     if (!html.classList.contains('booth-report-active')) return;
     const link = event.target.closest?.('a[href]');
     if (!link || control.contains(link)) return;
+    if (link.closest('#booth-recovery') && link.getAttribute('href') === '/booth?recover=1') return;
     if (link.getAttribute('href').trim().startsWith('#')
       && !link.hasAttribute('download') && (!link.target || link.target === '_self')
       && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
