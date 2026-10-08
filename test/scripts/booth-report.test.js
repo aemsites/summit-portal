@@ -409,6 +409,14 @@ describe('confirmed booth report portrait layout', () => {
         expect(tick.querySelectorAll('tspan')).to.have.length(2);
       }
       expect(rect('#booth-return').bottom).to.equal(height);
+      const navigation = getComputedStyle(document.querySelector('#booth-return a'));
+      const clearing = getComputedStyle(document.querySelector('#booth-return [data-booth-clear]'));
+      expect(navigation.backgroundColor).to.equal('rgb(59, 99, 251)');
+      expect(parseFloat(navigation.borderRadius)).to.be.at.least(24);
+      expect(clearing.textDecorationLine).not.to.contain('underline');
+      expect(parseFloat(clearing.borderWidth)).to.equal(1);
+      expect(rect('#booth-return [data-booth-clear]').height).to.be.at.least(64);
+      expect(rect('#booth-return [data-booth-clear]').height).to.be.at.most(72);
       expect(parseFloat(getComputedStyle(document.body).paddingBottom))
         .to.be.closeTo(rect('#booth-return').height, 0.01);
     });
@@ -459,6 +467,23 @@ describe('confirmed booth report portrait layout', () => {
     expect(window.fetch.secondCall.args[0]).to.equal('/auth/booth/view');
   });
 
+  it('keeps the restyled menu above a reported keyboard inset', async () => {
+    await setViewport({ width: 2160, height: 3840 });
+    await reportFixture();
+    await mount();
+    const html = document.documentElement;
+    html.classList.add('booth-keyboard-active');
+    html.style.setProperty('--booth-keyboard-inset', '600px');
+    try {
+      expect(rect('#booth-return').bottom).to.equal(3240);
+      expect(parseFloat(getComputedStyle(document.body).paddingBottom))
+        .to.be.closeTo(rect('#booth-return').height + 600, 0.01);
+    } finally {
+      html.classList.remove('booth-keyboard-active');
+      html.style.removeProperty('--booth-keyboard-inset');
+    }
+  });
+
   it('upgrades an existing older Finish control without duplicating reset timers or padding', async () => {
     await setViewport({ width: 2160, height: 3840 });
     await reportFixture();
@@ -467,7 +492,12 @@ describe('confirmed booth report portrait layout', () => {
     existing.innerHTML = '<a href="/booth?step=finish">Finish</a><button>Clear</button>';
     const oldStyle = document.createElement('style');
     oldStyle.dataset.boothTest = 'true';
-    oldStyle.textContent = '.booth-report-active body { padding-bottom: calc(var(--booth-original-padding) + var(--booth-return-height)); }';
+    oldStyle.textContent = `
+      .booth-report-active body { padding-bottom: calc(var(--booth-original-padding) + var(--booth-return-height)); }
+      #booth-return { background: #1d1d1d; color: #fff; }
+      #booth-return a { border-radius: 12px; background: #eb1000; }
+      #booth-return button { border: 0; text-decoration: underline; }
+    `;
     document.head.append(oldStyle);
     document.body.append(existing);
     document.documentElement.classList.add('booth-report-active');
@@ -478,6 +508,9 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.querySelector('#booth-return')).to.equal(existing);
     expect(document.querySelectorAll('link[data-booth-report-layout]')).to.have.length(1);
     expect(font('.rc-desc')).to.equal(36);
+    expect(getComputedStyle(existing).backgroundColor).to.equal('rgb(255, 255, 255)');
+    expect(getComputedStyle(existing.querySelector('button')).textDecorationLine)
+      .not.to.contain('underline');
     expect(document.documentElement.style.getPropertyValue('--booth-original-padding')).to.equal('0px');
     expect(resetTimerCount()).to.equal(timerCount);
     expect(parseFloat(getComputedStyle(document.body).paddingBottom))

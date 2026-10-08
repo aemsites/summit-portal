@@ -225,7 +225,7 @@ html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(n
 html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-loading-1"></script>`, { html: true });
+</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-controls-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {
