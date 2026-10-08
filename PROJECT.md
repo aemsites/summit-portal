@@ -21,7 +21,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a dark pill **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
+- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a right-aligned white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
 **Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a booth-bound HttpOnly context with a renewable fifteen-minute inactivity expiry. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records each report's attempts before APO; uncertain delivery is explicit and non-retryable even after switching away and back. Reset clears attendee access but retains the scoped booth login, persistent kiosk restriction and separately disclosed lead history. The dedicated `booth_session` credential and signed `booth_device` are not general staff authentication. Selected HTML and rendering dependencies require the live selection and attendee permissions before origin fetch and again before return, including reset races. Private indexes/APIs, alternate report formats, PDFs, general sharing and unrelated reports are denied. Fresh report navigation and browser Back after reset return to Entry. Staff signout removes credentials but does not unlock the kiosk browser. Ordinary staff/customer browsing on unmarked browsers is unchanged. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; web code cannot protect against deliberate cookie deletion, developer tools, OS access or files previously downloaded.
@@ -269,7 +269,7 @@ cold-Finish probe measured 636ms before and 461ms after; this is a synthetic
 measurement, not a production latency claim. Email and clearing stay available
 while previews load. No attendee HTML is cached or stored.
 
-The report-adapter version is `booth-loading-1`; Entry uses `booth-final-figma-2`
+The report-adapter version is `booth-loading-1`; Entry uses `booth-final-figma-3`
 with the final visual corrections below. The shared
 `styles/booth-loading.css` is Worker-bundled and revalidated. The local fixture
 replays current Worker concealment/loading markup rather than maintaining a
@@ -287,8 +287,13 @@ frames after the designer's final review. All three share the 277px header.
 Entry matches the 136px notch, 112px gutters, 54px field/help typography,
 light-gray 6px field border, 454 by 120px action and exact exported open-in glyph.
 The hero uses the current exported art/glow with the design's clipped image frame.
-The staff's dark **Industry demos** action and disclosed private email tracking
-remain intentional additions absent from Figma.
+The staff's **Industry demos** action and disclosed private email tracking remain
+intentional additions absent from Figma. The subsequent requested refinement
+uses a white background, #505050 text and #8f8f8f outline rather than a dark fill.
+It sits at the right edge of the lookup action row, opposite **View my report**,
+with a 120px native height. On narrow screens it wraps to a right-aligned second
+row with a minimum 64px touch target. The privacy notice remains below both
+actions; the staff button is explicitly non-submitting.
 
 The chooser supersedes the older node documented below: white 950 by 165px
 cards, 1px black borders, 10px corners, 36px column/54px row gaps and 24px
@@ -307,7 +312,7 @@ Finish progress footers match the common 112px gutters and 80px gaps.
 Geometry scales by viewport width with mobile/touch minimums and the footer
 anchored to the taller 2160 by 3840px touchscreen.
 
-Entry JS/CSS use `booth-final-figma-2`; all revised image assets revalidate and
+Entry JS/CSS use `booth-final-figma-3`; all revised image assets revalidate and
 the new glow is Worker-bundled. This branch incorporates main's activity-based
 15-minute session renewal without weakening report concealment/loading gates.
 `booth-final-design-browser.js` and the updated industry verifier compare native

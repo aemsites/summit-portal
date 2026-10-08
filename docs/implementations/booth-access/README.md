@@ -141,7 +141,7 @@ the authorized report HTML request. A controlled local cold-Finish probe with
 No visitor HTML is persisted or shared.
 
 The report adapter and origin lazy import use `?v=booth-loading-1`; Entry JS/CSS
-use `?v=booth-final-figma-2` with the final visual alignment below.
+use `?v=booth-final-figma-3` with the final visual alignment below.
 `styles/booth-loading.css` is bundled, revalidated, and inlined into report
 concealment markup; no-JavaScript instructions remain readable. The local fixture
 now replays that Worker markup. `test/fixtures/booth-loading-browser.js` covers
@@ -163,6 +163,11 @@ Finish adds the exact exported rainbow glow and aligns the live montage,
 Staff demos, privacy disclosure, conditional no-match guidance, loading/errors,
 live selected-report data and swipe interactions remain required runtime
 additions. No Figma sample report is substituted for an attendee report.
+The Entry staff shortcut uses a white fill, gray text and gray outline to
+de-emphasize it. It shares the lookup action row, aligned to the right, and wraps
+to a right-aligned second row on mobile. Native height remains 120px and the
+mobile touch target at least 64px. Its `type="button"` opens demos without
+submitting the email form, and the privacy disclosure remains below the row.
 Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
 The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in

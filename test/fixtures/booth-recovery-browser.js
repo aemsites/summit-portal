@@ -24,7 +24,7 @@ export default async function verifyBoothRecovery(page, root = 'http://localhost
     await page.clock.fastForward(10001);
     await page.waitForFunction(() => !document.getElementById('booth-retry').hidden);
     check(await page.locator('#registration-email').inputValue() === '', 'Timeout retains visitor email');
-    check(await page.locator('#email-form button').isDisabled(), 'Timeout enables another visitor before reset');
+    check(await page.locator('#email-form button[type="submit"]').isDisabled(), 'Timeout enables another visitor before reset');
     check((await page.locator('#booth-status').textContent()).includes('timed out'), 'Timeout lacks visible recovery');
     await page.clock.fastForward(901000);
     await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);

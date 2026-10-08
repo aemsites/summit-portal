@@ -15,7 +15,7 @@ export default async function verifyBoothLoading(page, root = 'http://localhost:
     await page.goto(`${root}/content/index?preview=entry`);
     await ready();
     await page.locator('#registration-email').fill('multi@example.test');
-    await page.locator('#email-form button').click();
+    await page.locator('#email-form button[type="submit"]').click();
     await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
     for (const [width, height, minimumHeight, font] of [
       [2160, 3840, 120, 45], [1080, 1920, 72, 24], [390, 844, 64, 22],

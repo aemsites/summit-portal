@@ -46,7 +46,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await checkActions('.entry-alternatives button');
   await page.locator('#registration-email').fill('unmatched@not-a-prepared-company.test');
   const lookup = page.waitForResponse((response) => response.url().endsWith('/auth/booth/lookup'));
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   const missing = await lookup;
   check(
     missing.status() === 404 && (await missing.json()).code === 'no_report',
@@ -152,7 +152,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.goto(`${root}/content/index?preview=entry`);
   await ready();
   await page.locator('#registration-email').fill('service-error@example.test');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('#email-error:not([hidden])').waitFor();
   check(!await page.locator('[data-panel="unavailable"]').isVisible(), 'An outage was reported as a missing report');
   check(await page.evaluate(() => !localStorage.length && !sessionStorage.length), 'Attendee data persisted in browser storage');

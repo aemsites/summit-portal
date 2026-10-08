@@ -66,7 +66,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   });
   await page.setViewportSize({ width: 2160, height: 3840 });
   await page.goto(`${root}/content/index`);
-  await page.locator('#email-form button').waitFor();
+  await page.locator('#email-form button[type="submit"]').waitFor();
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   const entry = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -79,7 +79,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   check(entry.keyboardFocus !== 'registration-email', 'Attract screen must not force keyboard');
   check(await page.locator('#motion-toggle, .review, #step-index').count() === 0, 'Preview-only controls shipped');
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.waitForURL(`**${path}`);
   await page.locator('#booth-return').waitFor();
   check(await page.locator('#booth-return a').isVisible(), 'Finish must be visible at top of a long report');
@@ -149,7 +149,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
 
   multiple = true;
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   check(await page.locator('#report-options img').count() === 0, 'Picker label became executable HTML');
   await page.locator('#report-options button').nth(1).click();
@@ -175,7 +175,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   }));
   check(!mobile.overflow && mobile.actionHeight >= 62, 'Mobile entry overflow/touch target');
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Mobile picker overflow');
   await page.locator('#report-options button').nth(1).click();
@@ -202,7 +202,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.clock.resume();
   await page.clock.setSystemTime(new Date());
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   await page.locator('#report-options button').nth(1).click();
   await page.waitForURL(`**${other}`);
@@ -222,7 +222,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.goto(`${root}/content/index?entry=3&finish=2`);
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.waitForURL(`**${path}`);
   await page.getByRole('link', { name: 'Finish reading my report' }).click();
   await page.waitForURL('**/booth?step=finish');

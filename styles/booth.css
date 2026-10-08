@@ -643,10 +643,18 @@
     }
   }
 
+  .entry-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
   .entry-alternatives {
     display: flex;
     gap: 16px;
-    margin-top: 24px;
+    margin-inline-start: auto;
   }
 
   .booth-alternative {
@@ -665,6 +673,19 @@
   .booth-alternative:hover:not(:disabled) {
     border-color: var(--ink);
     background: #1d1d1d;
+  }
+
+  .entry-alternatives .booth-alternative {
+    border-color: #8f8f8f;
+    background: var(--surface);
+    color: #505050;
+    font-weight: 700;
+  }
+
+  .entry-alternatives .booth-alternative:hover:not(:disabled) {
+    border-color: #505050;
+    background: #f8f8f8;
+    color: var(--muted);
   }
 
   .recovery-panel {
@@ -814,10 +835,6 @@
     .recovery-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 2vw;
-    }
-
-    .entry-alternatives {
-      margin-top: 2vw;
     }
 
     .booth-alternative {

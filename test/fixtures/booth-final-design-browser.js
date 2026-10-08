@@ -47,11 +47,29 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   check(await page.locator('.arrow').getAttribute('src') === '/img/booth/finish-open-in.svg', 'Entry uses the wrong action glyph');
   check(await page.locator('#search-privacy').isVisible(), 'Design corrections removed the privacy disclosure');
   check(await page.getByRole('button', { name: 'Staff: show industry demos' }).isVisible(), 'Design corrections removed the staff shortcut');
+  const staffStyle = await page.locator('.entry-alternatives button').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, color: style.color, border: style.borderColor };
+  });
+  check(staffStyle.background === 'rgb(255, 255, 255)'
+    && staffStyle.color === 'rgb(80, 80, 80)'
+    && staffStyle.border === 'rgb(143, 143, 143)', 'Staff shortcut is not a quiet outlined action');
+  const staff = await bounds('.entry-alternatives button');
+  check(Math.abs(staff.y - 2212) < 1 && staff.height === 120
+    && Math.abs(staff.x + staff.width - 2048) < 1, 'Staff shortcut is not aligned to the right of the lookup action');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Entry overflows horizontally');
     const input = await bounds('.email-form input');
     check(input.height >= 64, 'Entry field is too small for touch');
+    const primary = await bounds('.email-form .primary');
+    const alternative = await bounds('.entry-alternatives button');
+    const row = await bounds('.entry-actions');
+    check(alternative.height >= 64
+      && Math.abs(alternative.x + alternative.width - row.x - row.width) < 1, 'Staff shortcut loses its right alignment or touch target');
+    const aligned = width < 1000
+      ? alternative.y >= primary.y + primary.height : Math.abs(alternative.y - primary.y) < 1;
+    check(aligned, 'Entry actions do not adapt from a shared desktop row to stacked mobile rows');
   }
 
   await page.setViewportSize({ width: 2160, height: 2881 });
