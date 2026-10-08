@@ -66,8 +66,15 @@ export function mountBoothKeyboard(root = document, control = null) {
     const bounds = field.getBoundingClientRect();
     const label = field.labels?.[0]?.getBoundingClientRect();
     const fieldTop = Math.min(bounds.top, label?.top ?? bounds.top);
-    if (fieldTop < top + 24 || bounds.bottom > bottom - barHeight - 24) {
+    const action = field.form?.querySelector('button[type="submit"]:not(:disabled), button:not([type]):not(:disabled), input[type="submit"]:not(:disabled)');
+    const actionBottom = action?.getClientRects().length
+      ? action.getBoundingClientRect().bottom : bounds.bottom;
+    const groupBottom = Math.max(bounds.bottom, actionBottom);
+    if (fieldTop < top + 24) {
       view.scrollTo({ top: Math.max(0, view.scrollY + fieldTop - top - 24), behavior: 'instant' });
+    } else if (groupBottom > bottom - barHeight - 24) {
+      const distance = Math.min(groupBottom - bottom + barHeight + 24, fieldTop - top - 24);
+      view.scrollTo({ top: Math.max(0, view.scrollY + distance), behavior: 'instant' });
     }
   }
 
@@ -92,6 +99,14 @@ export function mountBoothKeyboard(root = document, control = null) {
   }
 
   function pointerDown(event) {
+    const field = root.activeElement;
+    const action = event.target.closest('button, input');
+    if (event.button === 0 && html.classList.contains('booth-keyboard-active')
+      && field?.matches(editable) && field.form && action?.form === field.form
+      && action.type === 'submit' && !action.disabled) {
+      // Keep the submit hitbox stable until its native click; blur can collapse scroll space.
+      event.preventDefault();
+    }
     if (dismissed && event.target === root.activeElement && event.target.matches(editable)) {
       observed = false;
       dismissed = false;

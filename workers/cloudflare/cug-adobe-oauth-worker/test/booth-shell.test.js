@@ -94,7 +94,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-final-figma-4', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-4', '/scripts/booth-report.js?v=booth-controls-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
+    for (const path of ['/scripts/booth.js?v=booth-final-figma-4', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-4', '/scripts/booth-report.js?v=booth-controls-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-keyboard-scroll-1', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');

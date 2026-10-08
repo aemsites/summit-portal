@@ -116,6 +116,11 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
     await page.locator('#demo-options button').filter({ hasText: demo.industry }).click();
     await page.waitForURL(`**${demo.path}`);
     await page.locator('#booth-return').waitFor();
+    await page.locator('.report-ai-visibility .rav-hbar-row').nth(5).waitFor();
+    check(!await page.locator('main').innerText().then((text) => text.includes('horizontalbars | count')), 'Demo exposes raw authored chart data');
+    check(await page.locator('.report-carousel .rc-tab').count() === 3, 'Demo carousel was not decorated');
+    await page.locator('.report-carousel .rc-tab').nth(1).click();
+    check(await page.locator('.rc-slide:not([hidden])').textContent().then((text) => text.includes('Visibility differs by platform')), 'Demo carousel tab does not switch its real content');
     check((await page.locator('#booth-return').textContent()).includes('Not a report for your company'), 'Demo is not clearly identified');
     check(await page.getByRole('link', { name: 'Finish reading my report' }).count() === 0, 'Demo incorrectly offers personal Finish');
     check(await page.locator('.booth-request-action').count() === 0, 'Demo offers retired request action');

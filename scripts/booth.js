@@ -1,6 +1,6 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
-import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-2';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 import { boothRequest, createBoothInactivity } from './booth-session.js';
 
 export { boothRequest } from './booth-session.js';
