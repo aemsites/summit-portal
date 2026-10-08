@@ -31,6 +31,45 @@ describe('scripts.js', () => {
     block.remove();
   });
 
+  it('adds a closed export after the reports list once, without moving announcements, including a trailing slash', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = `
+      <div class="section"><div class="block-content">
+        <h1>Select a Customer</h1>
+        <div class="report-callout neutral"><p>Existing dashboard note.</p></div>
+        <div class="customer-picker">
+          <div class="cp-search"><input type="search"></div>
+          <div class="cp-grid"><a class="cp-card" href="/accounts/e/example/">Example report</a></div>
+        </div>
+      </div></div>
+    `;
+    document.body.append(main);
+    await ensureRequiredRouteBlocks('/adobe/dashboard/');
+    await ensureRequiredRouteBlocks('/adobe/dashboard');
+    expect(main.querySelectorAll('.dashboard-tools')).to.have.length(1);
+    expect(main.querySelector('.dt-usage').open).to.equal(false);
+    expect(main.querySelector('.customer-picker').nextElementSibling.className).to.equal('dashboard-tools');
+    expect(main.querySelector('.customer-picker .dashboard-tools')).to.equal(null);
+    expect(main.querySelector('.cp-search').nextElementSibling.className).to.equal('cp-grid');
+    expect(main.querySelector('.cp-card').textContent).to.equal('Example report');
+    expect(main.querySelector('.report-callout').textContent).to.include('Existing dashboard note');
+    expect(main.querySelector('.dashboard-tools .report-callout')).to.equal(null);
+    expect(main.querySelector('.customer-picker input')).to.exist;
+    main.remove();
+  });
+
+  it('does not add dashboard tools to other routes or pages without a report picker', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = '<div class="customer-picker"></div>';
+    document.body.append(main);
+    await ensureRequiredRouteBlocks('/accounts/e/example/portal-landing/');
+    expect(main.querySelector('.dashboard-tools')).to.equal(null);
+    main.replaceChildren();
+    await ensureRequiredRouteBlocks('/adobe/dashboard');
+    expect(main.querySelector('.dashboard-tools')).to.equal(null);
+    main.remove();
+  });
+
   it('initializes a visible access-denied recovery without duplicate decoration', async () => {
     const main = document.createElement('main');
     main.innerHTML = '<div><p>You are not authorized.</p></div>';
