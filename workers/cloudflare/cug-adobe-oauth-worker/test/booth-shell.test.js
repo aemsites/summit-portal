@@ -30,7 +30,7 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-recovery-2');
     expect(html).toContain('/styles/booth.css?v=booth-final-figma-1');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
@@ -52,6 +52,14 @@ describe('bundled booth shell and exact report injection', () => {
     expect(await serveBooth(new Request('https://portal.example/login'), env)).toBeNull();
     expect(await serveBooth(new Request('https://portal.example/scripts/ak.js'), env)).toBeNull();
     expect((await serveBooth(new Request('https://portal.example/booth', { method: 'POST' }), env)).status).toBe(405);
+  });
+
+  it('keeps the isolated recovery page reset bounded without claiming it succeeded', async () => {
+    const response = await serveBooth(new Request('https://portal.example/booth?recover=1', { headers: { Cookie: cookie } }), env);
+    const html = await response.text();
+    expect(html).toContain('signal:AbortSignal.timeout(10000)');
+    expect(html).toContain('Reset could not be confirmed. Ask staff for help.');
+    expect(html).toContain("r.json()).state!=='entry'");
   });
 
   it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
@@ -83,7 +91,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-final-figma-1', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-final-figma-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-recovery-2', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-recovery-2', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -166,7 +174,7 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-final-figma-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-recovery-2');
     expect(injected[2][1]).toContain('/booth?recover=1');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await response.text()).toBe('<main>Unchanged report</main>');

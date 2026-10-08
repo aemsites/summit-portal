@@ -85,7 +85,7 @@ function recoveryPage(headers) {
 <button id="reset" type="button">Clear visit and return to entry</button><p id="result" role="status"></p>
 <noscript>Ask staff to enable JavaScript and reset this visit. Do not reopen the report.</noscript></main>
 <script>document.getElementById('reset').onclick=async function(){this.disabled=true;try{
-const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin'});
+const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
 if(!r.ok||(await r.json()).state!=='entry')throw Error();
 location.replace('/booth');
 }catch{document.getElementById('result').textContent='Reset could not be confirmed. Ask staff for help.';this.disabled=false;}};</script>
@@ -198,7 +198,7 @@ html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(n
 html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-final-figma-1"></script>`, { html: true });
+</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-recovery-2"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {

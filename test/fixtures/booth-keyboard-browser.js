@@ -23,7 +23,8 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
       && bounds.bottom <= Math.min(window.innerHeight - covered, bar?.top ?? window.innerHeight);
   }, { target: selector, covered: occlusion });
   for (const [width, height, reducedHeight] of [
-    [2160, 3840, 2240], [1080, 1920, 1100], [1080, 1920, 960],
+    [2160, 3840, 2240], [1728, 3072, 1750], [1440, 2560, 1460],
+    [1080, 1920, 1100], [1080, 1920, 960], [864, 1536, 875],
   ]) {
     await entry(width, height);
     await page.locator('#registration-email').focus();
@@ -32,26 +33,22 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
     check(await fieldVisible('#registration-email'), `Focused Entry email is hidden at ${width}x${reducedHeight}`);
     await page.keyboard.insertText('visitor@example.test');
     check(await fieldVisible('#registration-email'), 'Typing moved Entry below the visible viewport');
-    await entry(width, height);
-    await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-    await page.waitForURL((url) => url.pathname === '/request-report');
-    await page.locator('html.booth-request-active').waitFor();
-    await page.locator('.rrf-optional summary').click();
-    await page.locator('[name="primaryMarket"]').focus();
-    await page.setViewportSize({ width, height: reducedHeight });
-    await page.waitForTimeout(100);
-    check(await fieldVisible('[name="primaryMarket"]'), 'Focused request field is hidden by resize or booth controls');
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.waitForTimeout(100);
-    check(await fieldVisible('.rrf-consent'), 'Request consent cannot scroll above the booth controls');
-    check(await fieldVisible('.rrf-action button'), 'Request submission cannot scroll above the booth controls');
+    check(await fieldVisible('#email-form button'), 'Entry action cannot scroll above a resized keyboard');
+    await page.setViewportSize({ width, height });
+    await page.waitForFunction(() => !document.documentElement.classList.contains('booth-keyboard-active'));
+    check(
+      await page.locator('#registration-email').evaluate((field) => document.activeElement === field),
+      'Viewport restoration must retain field focus for the dismissal regression',
+    );
+    check(
+      await page.evaluate(() => document.documentElement.style.getPropertyValue('--booth-keyboard-inset') === '0px'),
+      `Dismissed keyboard leaves phantom inset at ${width}x${height}`,
+    );
   }
   await entry(1080, 1920);
-  await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-  await page.waitForURL((url) => url.pathname === '/request-report');
-  await page.locator('html.booth-request-active').waitFor();
-  await page.locator('.rrf-optional summary').click();
-  await page.locator('[name="primaryMarket"]').focus();
+  await page.locator('#registration-email').focus();
   await page.evaluate(() => {
     const overlay = document.createElement('div');
     overlay.id = 'test-keyboard-overlay';
@@ -59,17 +56,11 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
     document.body.append(overlay);
   });
   await page.waitForTimeout(100);
-  check(await fieldVisible('[name="primaryMarket"]', 820), 'An overlay keyboard covers the focused request field');
+  check(await fieldVisible('#registration-email', 820), 'An overlay keyboard covers the focused Entry field');
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(100);
-  check(await fieldVisible('.rrf-consent', 820), 'Consent cannot scroll above an overlay keyboard');
-  check(await fieldVisible('.rrf-action button', 820), 'Submit cannot scroll above an overlay keyboard');
-  await page.locator('[name="consent"]').focus();
-  await page.waitForTimeout(100);
-  check(!await page.locator('html.booth-keyboard-active').count(), 'Checkbox focus retains a text keyboard reserve');
-  await page.locator('[name="primaryMarket"]').focus();
-  await page.waitForTimeout(100);
-  await page.locator('[name="primaryMarket"]').evaluate((field) => field.blur());
+  check(await fieldVisible('#email-form button', 820), 'Entry action cannot scroll above an overlay keyboard');
+  await page.locator('#registration-email').evaluate((field) => field.blur());
   await page.evaluate(() => document.getElementById('test-keyboard-overlay').remove());
   await page.waitForTimeout(100);
   check(!await page.locator('html.booth-keyboard-active').count(), 'Keyboard space remains after blur');
@@ -83,5 +74,5 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   await page.clock.fastForward(109001);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   await page.clock.resume();
-  return { checked: 'Focused fields after resize; overlay reachability for fields, consent and Submit; blur cleanup; input-only activity and eventual idle reset. Local fixtures only.' };
+  return { checked: 'Entry email after resize and dismissal without blur at native/scaled sizes; overlay reachability for email and action; blur cleanup; input-only activity and eventual idle reset. Retired booth requests are not reintroduced. Local fixtures only.' };
 }

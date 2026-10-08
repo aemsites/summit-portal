@@ -1,23 +1,44 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
-import { mountBoothKeyboard } from './booth-keyboard.js';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-2';
 
 export async function boothRequest(action, body) {
-  const response = await fetch(`/auth/booth/${action}`, {
-    method: body === undefined ? 'GET' : 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  const controller = new AbortController();
+  let timer;
+  const deadline = new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(action === 'send'
+        ? 'Sending timed out. Delivery could not be confirmed. Clear this screen and ask the booth team before sending again.'
+        : 'The booth service timed out. Retry and clear this screen, or ask the booth team.');
+      error.code = 'timeout';
+      reject(error);
+      controller.abort();
+    }, 10000);
   });
-  const result = await response.json();
-  if (!response.ok) {
-    const error = new Error(result.error || 'Booth service unavailable. Ask the booth team.');
-    error.status = response.status;
-    error.code = result.code;
-    throw error;
+  const operation = async () => {
+    const response = await fetch(`/auth/booth/${action}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const error = new Error(result.error || 'Booth service unavailable. Ask the booth team.');
+      error.status = response.status;
+      error.code = result.code;
+      throw error;
+    }
+    return result;
+  };
+  try {
+    // Bound body reading too, even if a transport does not promptly settle on abort.
+    return await Promise.race([operation(), deadline]);
+  } finally {
+    clearTimeout(timer);
   }
-  return result;
 }
 
 export function mountBooth(root = document) {
@@ -44,12 +65,6 @@ export function mountBooth(root = document) {
   let resetting = false;
   let settled = Promise.resolve();
 
-  function perform(action, body) {
-    const operation = boothRequest(action, body);
-    settled = operation.then(() => undefined, () => undefined);
-    return operation;
-  }
-
   function notice(id, message) {
     const element = root.getElementById(id);
     element.textContent = message;
@@ -69,7 +84,7 @@ export function mountBooth(root = document) {
     });
   }
 
-  function scrub() {
+  function scrub(clearTimers = true) {
     preview?.clear();
     email.blur();
     keyboard.clear();
@@ -85,8 +100,10 @@ export function mountBooth(root = document) {
     }
     retry.hidden = true;
     root.getElementById('staff-login').hidden = true;
-    clearTimeout(expiry);
-    clearTimeout(idle);
+    if (clearTimers) {
+      clearTimeout(expiry);
+      clearTimeout(idle);
+    }
     show('welcome');
   }
 
@@ -100,6 +117,20 @@ export function mountBooth(root = document) {
     root.getElementById('staff-login').hidden = error.status !== 401;
   }
 
+  function perform(action, body) {
+    const current = revision;
+    const operation = boothRequest(action, body).catch((error) => {
+      if (error.code === 'timeout' && current === revision) {
+        revision += 1;
+        scrub(false);
+        recovery(error);
+      }
+      throw error;
+    });
+    settled = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
   async function reset(action = 'reset') {
     if (resetting) return;
     resetting = true;
@@ -107,6 +138,8 @@ export function mountBooth(root = document) {
     revision += 1;
     scrub();
     form.querySelector('button').disabled = true;
+    stage.setAttribute('aria-busy', 'true');
+    notice('booth-status', 'Clearing this visit...');
     try {
       await settled;
       const result = await boothRequest(action, {});
@@ -119,6 +152,7 @@ export function mountBooth(root = document) {
       stage.hidden = false;
       stage.setAttribute('aria-busy', 'false');
       ready = true;
+      notice('booth-status', '');
       form.querySelector('button').disabled = false;
     } catch (error) {
       recovery(error);
@@ -197,6 +231,7 @@ export function mountBooth(root = document) {
     notice('demo-status', 'Loading industry demos...');
     try {
       const cleared = await perform('demo-picker', {});
+      if (current !== revision) return;
       if (cleared.state !== 'demos') throw new Error('The industry chooser could not be opened.');
       schedule(cleared);
       const recoveryCopy = root.getElementById('demo-recovery-copy');
@@ -273,7 +308,7 @@ export function mountBooth(root = document) {
   });
 
   send.addEventListener('click', async () => {
-    if (busy || resetting) return;
+    if (busy || resetting || !ready) return;
     busy = true;
     send.disabled = true;
     const current = revision;

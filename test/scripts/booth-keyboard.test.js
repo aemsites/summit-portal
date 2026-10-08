@@ -66,6 +66,14 @@ describe('scoped booth keyboard handling', () => {
     virtualKeyboard.dispatchEvent(new Event('geometrychange'));
     await sandbox.clock.tickAsync(32);
     expect(inset()).to.equal('0px');
+    expect(document.documentElement.classList.contains('booth-keyboard-active')).to.equal(false);
+    fixture.querySelector('input').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('960px');
+    virtualKeyboard.boundingRect = new DOMRect(0, 1100, 1080, 820);
+    virtualKeyboard.dispatchEvent(new Event('geometrychange'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('820px');
   });
 
   it('handles visual viewport resize and panning without double-counting offset', async () => {
@@ -93,6 +101,99 @@ describe('scoped booth keyboard handling', () => {
     await sandbox.clock.tickAsync(32);
     expect(inset()).to.equal('0px');
     expect(window.scrollTo.called).to.equal(true);
+  });
+
+  it('releases a resized keyboard reserve when dismissed without blurring the text field', async () => {
+    await focus();
+    sandbox.stub(window, 'innerHeight').value(1100);
+    viewport.height = 1100;
+    window.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    sandbox.stub(window, 'innerHeight').value(1920);
+    viewport.height = 1920;
+    window.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    expect(document.activeElement).to.equal(fixture.querySelector('input'));
+    expect(inset()).to.equal('0px');
+    expect(document.documentElement.classList.contains('booth-keyboard-active')).to.equal(false);
+  });
+
+  it('releases a visual keyboard reserve after dismissal and allows an unreported reopen', async () => {
+    await focus();
+    viewport.height = 1100;
+    viewport.offsetTop = 100;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    viewport.height = 1920;
+    viewport.offsetTop = 0;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('0px');
+    expect(document.documentElement.classList.contains('booth-keyboard-active')).to.equal(false);
+    fixture.querySelector('input').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('960px');
+  });
+
+  it('keeps dismissal through typing, but allows a new editable field to reopen an overlay', async () => {
+    await focus();
+    viewport.height = 1100;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    viewport.height = 1920;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    document.dispatchEvent(new Event('input'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('0px');
+    const next = document.createElement('textarea');
+    fixture.append(next);
+    active = next;
+    document.dispatchEvent(new Event('focusin'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('960px');
+  });
+
+  it('retains the unshrunk baseline when moving between fields with a resized keyboard', async () => {
+    await focus();
+    sandbox.stub(window, 'innerHeight').value(1100);
+    viewport.height = 1100;
+    window.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    const next = document.createElement('textarea');
+    fixture.append(next);
+    active = next;
+    document.dispatchEvent(new Event('focusout'));
+    document.dispatchEvent(new Event('focusin'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('0px');
+    sandbox.stub(window, 'innerHeight').value(1920);
+    viewport.height = 1920;
+    window.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('0px');
+    expect(document.documentElement.classList.contains('booth-keyboard-active')).to.equal(false);
+    document.dispatchEvent(new Event('focusin'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('0px');
+  });
+
+  it('does not mistake visual panning or pinching for a completed keyboard lifecycle', async () => {
+    await focus();
+    viewport.offsetTop = 100;
+    viewport.dispatchEvent(new Event('scroll'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('960px');
+    viewport.scale = 2;
+    viewport.height = 960;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    viewport.scale = 1;
+    viewport.height = 1920;
+    viewport.offsetTop = 0;
+    viewport.dispatchEvent(new Event('resize'));
+    await sandbox.clock.tickAsync(32);
+    expect(inset()).to.equal('960px');
   });
 
   it('does not infer an overlay for a mouse-only desktop', async () => {

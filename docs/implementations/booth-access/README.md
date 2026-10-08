@@ -66,9 +66,39 @@ badge remains. Smaller screens keep a mobile-first layout and touch-sized action
 This branch needs review, D1 migration `0003_booth_demo_activity.sql`, and a
 separately approved Worker deployment. It does not change production by itself.
 The migration extends allowed activity kinds while preserving historical data
-and indexes. Entry and both adapter loading paths use `?v=booth-final-figma-1`.
+and indexes. Entry CSS uses `?v=booth-final-figma-1`; Entry JS and both adapter
+loading paths use the merged recovery version `?v=booth-recovery-2`.
 
 ## Industry demo and report request recovery
+
+### Entry network deadlines
+
+Every Entry API operation has a **ten-second total fetch + JSON-body deadline**:
+initial status, lookup, demo chooser/catalogue, demo/personal selection, picker,
+send, reset and staff exit. A stalled operation aborts, scrubs visitor fields and
+previews, discards stale callbacks and shows **Retry and clear screen**. New
+attendee actions stay blocked until the server confirms clearing. Existing idle
+and original absolute expiry timers are not extended by the timeout. Reset
+continues to serialize behind the bounded pending operation and shows
+**Clearing this visit...**, rather than waiting silently forever. A failed or
+timed-out reset exposes manual recovery without pretending the server cleared.
+The isolated `/booth?recover=1` reset also bounds body reading with its deadline.
+
+Aborting a browser request does **not** undo an accepted server mutation. The
+existing Durable Object queue still serializes mutations; authorization,
+booth isolation, original deadlines and per-report delivery-attempt recording
+are unchanged. A timed-out email send is explicitly **unconfirmed**, not a
+successful delivery and never an automatic resend. Ask the booth team before
+sending again. Stale demo-clearing completion cannot launch a new catalogue
+request after a reset supersedes it.
+
+`test/fixtures/booth-recovery-browser.js` holds a synthetic lookup indefinitely,
+checks scrubbing/visible fail-closed recovery at the deadline and confirms idle
+reset without releasing the held lookup. Unit tests cover stalled fetches and
+bodies across every Entry action, serialized clear, late responses, failed clear
+and uncertain send. These changes are local, not deployed.
+
+### Available fallback journeys
 
 Entry includes a staff demo shortcut, but **no report-request action**. A
 confirmed no-match (`404`, `code: no_report`) offers **Show an industry demo**,
@@ -123,7 +153,13 @@ Entry uses `scripts/booth-keyboard.js` and
 `styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
 and supported keyboard geometry; reported overlays lift the control bar and add
 scroll space for the focused email and action. An unreported touch overlay gets a
-half-screen editing reserve, released on blur. Entry `input`/`change` now renew
+half-screen editing reserve. Positive keyboard geometry or significant layout/
+visual-viewport shrink is remembered for the editing lifecycle; its restoration
+releases the reserve **without requiring blur**. Typing alone keeps dismissal,
+while a new field focus or tap on the retained-focus field allows an unreported
+overlay to reopen. Moving between fields with an open keyboard preserves the
+unshrunk baseline. Blur, checkbox focus and pagehide also release the reserve.
+Entry `input`/`change` now renew
 its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
 fields. The security report guard also scrubs visitor fields during recovery,
 including historical request documents, without extending attendee expiry. Pinch zoom and the browser's
@@ -137,14 +173,36 @@ policy must still contain browser chrome, long-press menus and policy links.
 
 Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
 `hasTouch: true` context against the local fixture server. It checks focused
-fields after viewport shrink, an 820px overlay model, blur cleanup and input-only
-idle renewal. Its historical request-form checks are not part of the retired
-booth journey. These are stress
+fields after viewport shrink and restoration with focus retained, email/action reachability above an 820px
+overlay model, blur cleanup and input-only idle renewal. These are stress
 models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
 CSS viewport/DPR, keyboard height and policy links before device release.
+The confirmed device is a **40-inch portrait display with 2160 x 3840 physical
+pixels**, not a confirmed 2160 x 3840 CSS viewport. Local dismissal models also
+cover 125%/150%/200% scaling (1728 x 3072, 1440 x 2560, 1080 x 1920 CSS) and
+250% (864 x 1536 CSS). At 250% the existing large portrait report profile is
+inactive; configure and accept the device rather than changing the breakpoint.
 Keyboards larger than the fallback reserve require reported geometry or
 content-resize/device configuration. Merge and deploy the matching Worker
 assets only after approval; this branch push is not a production rollout.
+
+**October 8 merged recovery checks:** main `4f79f0cb4abb476d1b1009f878df5e608a06a098`
+is integrated without restoring retired booth requests. 141 targeted frontend
+tests and 157 Worker shell/injection/demo/activity/history/handler tests pass,
+along with changed-file ESLint/Stylelint and a summit Worker deployment
+**dry run**. Both original defects were reproduced before the fixes;
+the recovery and keyboard browser regressions now pass. Existing personal
+Entry/report/Finish, all ten synthetic demo choices, retired-request behavior,
+reset/history behavior and an ordinary unmarked report were also
+checked. No fresh protected-customer verification, real Turnstile submission or
+inbox receipt is claimed. Hardware keyboard/reach and managed-device privacy
+acceptance are still required.
+
+Entry JS, injected/shared report-adapter imports and the Entry keyboard import use
+`?v=booth-recovery-2`; Entry CSS retains main's `?v=booth-final-figma-1`.
+Deploy the matching Worker bundle **only after approval**, then close old report
+documents, reload `/booth` and reopen reports. Neither pushing this branch nor a
+frontend merge activates the separately deployed Worker.
 
 `test/fixtures/booth-report-browser.js` checks an existing protected customer
 report in a dedicated, authenticated staff touch context without booth cookies.

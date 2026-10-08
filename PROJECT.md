@@ -37,17 +37,19 @@ The lead-history privacy exclusions apply to the new **server-side action events
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.
 - `/example-report/frescopa` — public, delivery-published FrescoPa sample report. It is a self-contained copy of the approved FrescoPa landing page and PDF, separate from the protected customer route under `/accounts/f/frescopa/`.
 
-**Booth network recovery:** initial status or idle/reset failures keep lookup blocked and display a visible **Retry and clear screen** action. Server-marked report, demo and request documents are concealed before rendering and remain hidden until the adapter verifies their exact path and original expiry. Deadline, idle and history cleanup are installed before that verification, including when its request times out. After verification, the temporary server concealment wrapper is removed without replacing its nodes, preserving direct-body layout selectors and listeners. Recovery scrubs request fields and reveals Entry only after the server confirms a successful reset, never a blind local clear. The recovery target is 62px tall on portrait and mobile screens. These hardening changes are local and require the matching Worker/asset rollout.
+**Booth network recovery:** initial status or idle/reset failures keep lookup blocked and display a visible **Retry and clear screen** action. Entry API fetches **and JSON bodies share a ten-second deadline**, covering status, lookup, demo chooser/catalogue/selection, personal selection, picker, send, reset and exit. Timeout aborts the transport, invalidates stale UI callbacks, scrubs visitor details/previews and blocks new actions until server-confirmed clearing. Existing idle/absolute deadlines remain in force; reset still waits for the bounded prior operation and displays **Clearing this visit...** while waiting. Failed or timed-out reset stays fail-closed with manual recovery. Client abort cannot undo a server mutation or prove email delivery: timed-out send is explicitly uncertain, never automatically replayed or reported as successful. The server's existing serialized visit mutations and per-report delivery outcomes remain unchanged. The isolated `/booth?recover=1` reset also has a ten-second fetch/body deadline.
+
+Server-marked report and demo documents are concealed before rendering and remain hidden until the adapter verifies their exact path and original expiry. Historical request documents fail closed and return to Entry; request mode is no longer supported. Deadline, idle and history cleanup are installed before verification, including when its request times out. After verification, the temporary server concealment wrapper is removed without replacing its nodes, preserving direct-body layout selectors and listeners. Recovery scrubs visitor fields and reveals Entry only after the server confirms a successful reset, never a blind local clear. The recovery target is 62px tall on portrait and mobile screens. These hardening changes are local and require the matching Worker/asset rollout.
 
 **Booth report switching and exports:** **Choose another report** on a report or Finish returns to the same attendee's authorized picker without another email lookup. It revokes the active selection before showing candidates, preserves the original ten-minute deadline, and revalidates permissions on the next selection. Delivery outcomes remain separate per report; switching does not make a sent or uncertain send retryable. Touchscreen PDF/download controls are hidden and disabled, including late-decorated carousel/download controls and opaque export links. Attendees open PDFs through their emailed report on their own device; ordinary staff/customer downloads are unchanged. Booth links and forms no longer open separate tabs.
 
-**Booth report portrait layout:** `scripts/booth-report.js` loads `styles/booth-report.css` only after staff-authorized status confirms an active report, approved industry demo or request mode, the exact pathname and a finite future expiry. Ordinary reports never opt in through viewport, URL parameters or browser storage. Confirmed insight booth reports at least 1000px wide and 1600px tall with aspect ratio at most 3:4 use a shared column capped at 1920px, fluid 24–40px narrative text, 18–32px captions and 64–96px action targets. Briefing slides stack copy above full-width SVG plots, preserving chart geometry; ISO month ticks split into readable month/year lines with accessible original dates, then restore outside portrait bounds. Touch chart values remain visible without hover. AI panels stack with readable subtitles, platform bars preserve icon/label/bar/value alignment, and comparison tables retain their columns. Performance cards stack without removing details or actions. Smaller/landscape booth reports keep their existing report layout. Feedback/brand controls remain available in document flow rather than overlapping the fixed Finish bar, whose measured height reserves bottom space. The report helper and stylesheet are both Worker-bundled: matching Worker assets must be deployed separately after review; a frontend merge alone does not update the deployed booth. CSS viewport/DPR and standing-distance legibility still require actual hardware rehearsal.
+**Booth report portrait layout:** `scripts/booth-report.js` loads `styles/booth-report.css` only after staff-authorized status confirms an active report or approved industry demo, the exact pathname and a finite future expiry. Ordinary reports never opt in through viewport, URL parameters or browser storage. Confirmed insight booth reports at least 1000px wide and 1600px tall with aspect ratio at most 3:4 use a shared column capped at 1920px, fluid 24–40px narrative text, 18–32px captions and 64–96px action targets. Briefing slides stack copy above full-width SVG plots, preserving chart geometry; ISO month ticks split into readable month/year lines with accessible original dates, then restore outside portrait bounds. Touch chart values remain visible without hover. AI panels stack with readable subtitles, platform bars preserve icon/label/bar/value alignment, and comparison tables retain their columns. Performance cards stack without removing details or actions. Smaller/landscape booth reports keep their existing report layout. Feedback/brand controls remain available in document flow rather than overlapping the fixed Finish bar, whose measured height reserves bottom space. The report helper and stylesheet are both Worker-bundled: matching Worker assets must be deployed separately after review; a frontend merge alone does not update the deployed booth. CSS viewport/DPR and standing-distance legibility still require actual hardware rehearsal.
 
 **Exact 9:16 composition:** within the same trusted booth context and minimum dimensions, only an exact 9:16 CSS viewport adds `html.booth-report-composition`. It keeps the Adobe fonts/colors, authored narratives, chart data and section order while arranging AI comparisons side by side and findings in an unboxed asymmetric grid, with all AI prose visible. Performance uses two columns (four pages in a 2×2 overview), keeping the original field/lab verdict, score, all three metric values and thresholds visible. Native 2160 × 3840 uses 36px prose, 56px section titles, 48px card titles and 96px primary targets; 1080 × 1920 uses 24px prose and 64px targets, with metric thresholds on a second row below 1600px width. Native **Read analysis** disclosures move, rather than copy, the original summary, recommendation and verification nodes; tested-page URLs stay visible below their page titles. Leaving the exact ratio or clearing booth mode restores the moved nodes' original positions and listeners. Later decoration shares the existing chart observer, with no additional reset/expiry timers. Nearby ratios and the previous broader portrait chart/date/touch behavior retain their existing layout; ordinary native portrait reports use the separate exact-resolution scaling below.
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection, the shared lazy import and Entry JS/CSS use the matching `?v=booth-final-figma-1` URL, solely for cache versioning. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-recovery-2` adapter URL, solely for cache versioning. Entry JS and its keyboard import use the same version; Entry CSS retains main's `?v=booth-final-figma-1`. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -59,8 +61,13 @@ events. Bottom controls move above reported occlusion; the page gains enough
 scroll room to reach the email and its action. No browser keyboard
 overlay policy is forced. When a touch keyboard supplies neither geometry nor
 viewport reduction, a conservative half-screen editing reserve provides scroll
-room; this is a fallback assumption, not native keyboard detection. Blur,
-checkbox focus and pagehide release the reserve; reset blurs the field.
+room; this is a fallback assumption, not native keyboard detection. After a
+positive layout/visual-viewport reduction or keyboard geometry, restoration
+releases the reserve **even if the text field stays focused**. Typing alone
+does not recreate it; a new field focus or deliberate tap on the dismissed
+field permits an unreported keyboard to reopen. Field-to-field movement while
+the keyboard is open preserves its unshrunk baseline. Blur, checkbox focus
+and pagehide release the reserve; reset blurs the field.
 Pinch zoom retains native panning. Ordinary pages never mount this helper.
 
 The security report guard's reset, recovery and pagehide synchronously blur and
@@ -79,9 +86,9 @@ reports and Entry Privacy Policy links retain their existing behavior.
 This is not OS/browser kiosk lockdown; long-press menus, browser chrome and
 privacy-policy navigation still need managed-device policy.
 
-`test/fixtures/booth-keyboard-browser.js` checks exact focused-field visibility,
-consent/Submit scroll reachability, resize cases at native/fallback portrait
-sizes, an 820px unreported overlay stress model, blur cleanup and input-only
+`test/fixtures/booth-keyboard-browser.js` checks exact Entry email visibility,
+email/action scroll reachability, resize cases at native/scaled portrait
+sizes, restoration with focus retained, an 820px unreported overlay stress model, blur cleanup and input-only
 idle renewal against local synthetic fixtures in a `hasTouch: true` browser
 context. `test/fixtures/booth-report-browser.js` additionally exercises an
 existing authenticated customer report with local branch assets, touch
@@ -96,12 +103,25 @@ require reported geometry, content-resize configuration or device-specific
 adjustment. **These fixes require the matching Worker asset deployment after
 approval; a branch push does not update production.**
 
-Focused validation covers 83 frontend tests, 20 Worker shell/asset tests,
-Entry/report/demo/request browser journeys, all ten public reports and an
-existing protected customer report at native/fallback portrait sizes, plus a
-Worker deployment dry run. Changed-file ESLint/Stylelint pass. Repository-wide
-lint still fails in unchanged source, tools and vendored skills; those
-pre-existing issues are outside this fix.
+**October 8 recovery validation (local, not deployed):** regressions first
+reproduced stalled Entry requests/bodies and the retained-focus phantom reserve,
+then passed with the fixes. After merging main `4f79f0cb4abb476d1b1009f878df5e608a06a098`,
+**141 targeted frontend tests** and **157 Worker tests** (shell/injection,
+demo/activity/history and booth handlers), changed-file ESLint/Stylelint and the
+summit Worker deployment **dry run** pass. `test/fixtures/booth-recovery-browser.js` verifies
+visible timeout recovery, email scrubbing and idle reset without releasing the
+held lookup. Entry/personal report/Finish, all ten synthetic industry demos,
+retired-request behavior and ordinary unmarked report behavior are checked
+without real customer mutations or email. Entry dismissal models cover native
+2160 x 3840 and scaled 1728 x 3072, 1440 x 2560, 1080 x 1920 and 864 x 1536 CSS
+viewports. The physical display is **40-inch portrait, 2160 x 3840 physical
+pixels**; OS/browser/scaling/DPR and native keyboard policy remain unconfirmed.
+At 250% scaling (864 x 1536 CSS), the existing large-report portrait profile
+does not activate; this remains a device configuration/acceptance gate, not a
+breakpoint redesign. Earlier protected-customer verification is historical;
+no fresh authenticated customer report certification is claimed by this fix.
+Hardware keyboard/reach/privacy policy, real Turnstile and inbox receipt remain
+separate gates. Repository-wide pre-existing lint issues remain outside scope.
 
 **Ordinary report native portrait display:** at exactly **2160 × 3840 CSS pixels**, insight reports now enlarge the existing composition by **1.6×**: the 1200px shared column renders at **1920px**, with proportional text, charts and controls. The viewport-wide Cannes stripe compensates for CSS zoom to avoid horizontal overflow. Nearby dimensions, 1080 × 1920, mobile and landscape remain unchanged. Authorized booth reports retain their existing large-format profile without double scaling. This is viewport-specific frontend styling, not an access-mode change; actual hardware CSS viewport/DPR still needs confirmation.
 
@@ -139,7 +159,8 @@ and **Visit** to associate subsequent industry selections/views. Booth credentia
 cannot download it. The existing outbox, idempotency and 90-day retention remain.
 Apply D1 migration `0003_booth_demo_activity.sql` before an approved Worker
 deployment; it preserves historical rows/indexes and extends allowed event kinds.
-Assets use `?v=booth-final-figma-1`. This branch is **not deployed**, and no remote
+CSS uses `?v=booth-final-figma-1`; merged Entry/adapter/keyboard JS uses
+`?v=booth-recovery-2`. This branch is **not deployed**, and no remote
 migration or live customer search/send was performed.
 
 Validation covered all ten industry journeys, personal report/send/reset and
