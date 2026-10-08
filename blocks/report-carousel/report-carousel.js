@@ -1001,6 +1001,7 @@ export default function init(el) {
     const outDir = direction === 'prev' ? 80 : -80;
     const inDir = direction === 'prev' ? -80 : 80;
     const currIdx = currentIdxByTab[currentTab];
+    if (localIdx === currIdx || !tabSlides[currentTab][localIdx]) return;
 
     slideEls.forEach((slideEl) => {
       const inTab = parseInt(slideEl.dataset.tab, 10) === currentTab;
@@ -1012,7 +1013,11 @@ export default function init(el) {
         slideEl.style.transition = 'opacity 0.3s ease, transform 0.35s cubic-bezier(0.4, 0, 1, 1)';
         slideEl.style.opacity = '0';
         slideEl.style.transform = `translateX(${outDir}px)`;
-        setTimeout(() => { slideEl.hidden = true; }, 350);
+        setTimeout(() => {
+          // A later swipe or tab switch may have made this slide current again.
+          slideEl.hidden = parseInt(slideEl.dataset.tab, 10) !== currentTab
+            || parseInt(slideEl.dataset.localIdx, 10) !== currentIdxByTab[currentTab];
+        }, 350);
       } else if (inTab && isTarget) {
         // Animate in immediately (overlaps outgoing briefly)
         slideEl.hidden = false;
@@ -1045,7 +1050,11 @@ export default function init(el) {
       const inTab = parseInt(slideEl.dataset.tab, 10) === tabIdx;
       const isActive = parseInt(slideEl.dataset.localIdx, 10) === curr;
       slideEl.hidden = !(inTab && isActive);
-      if (inTab && isActive) triggerCascade(slideEl);
+      if (inTab && isActive) {
+        slideEl.style.opacity = '1';
+        slideEl.style.transform = 'translateX(0)';
+        triggerCascade(slideEl);
+      }
     });
     updateNav();
   }
@@ -1094,7 +1103,7 @@ export default function init(el) {
     && target.closest('button, a, input, select, textarea, [role="button"]'));
 
   slidesWrap.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' || !e.isPrimary) return;
     if (isInteractive(e.target)) return;
     swipeStartX = e.clientX;
     swipeStartY = e.clientY;

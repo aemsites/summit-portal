@@ -1,11 +1,11 @@
 import {
-  getSession, staffDomains, isVerifiedMethod, createBoothDeviceToken, verifyBoothDeviceToken,
+  getBoothSession, staffDomains, boothKioskCookie,
   clearSessionCookie, clearSignedInMarkerCookie,
+  createBoothRevocationToken, verifyBoothRevocationToken,
 } from './session.js';
 import { EMAIL_RE, jsonResponse } from './magiclink.js';
 import { parseCugSheetRows, compileSheetGroups } from './cugsheet.js';
-import { handleShareLinkRequest } from './sharelink.js';
-import { sha256hex } from './stafflogin.js';
+import { sendAuthorizedBoothReport } from './sharelink.js';
 import { matchesCugGroup, normalizeCugGroup } from './cug-group.js';
 import {
   BOOTH_NOTICE_VERSION, BoothActivityError, createBoothActivity,
@@ -60,15 +60,11 @@ function contextId(request) {
 }
 
 export async function boothStaff(request, env) {
-  const session = await getSession(request, env);
-  if (!session || !isVerifiedMethod(session.method)
-    || !staffDomains(env).has(session.email.split('@')[1]?.toLowerCase())) return null;
-  return session;
+  return getBoothSession(request, env);
 }
 
-async function staffBinding(request) {
-  const token = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)auth_token=([^\s;]+)/)?.[1];
-  return sha256hex(token || '');
+async function staffBinding(request, env) {
+  return (await getBoothSession(request, env))?.binding;
 }
 
 export function hasBoothDevice(request) {
@@ -76,17 +72,7 @@ export function hasBoothDevice(request) {
 }
 
 export async function boothDeviceAuthorized(request, env) {
-  const session = await boothStaff(request, env);
-  const token = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)booth_device=([^;]*)/)?.[1];
-  if (!session || !token) return false;
-  const marker = await verifyBoothDeviceToken(token, env);
-  return !!marker && marker.exp <= session.exp && marker.binding === await staffBinding(request);
-}
-
-export async function boothDeviceCookie(request, session, env) {
-  const token = await createBoothDeviceToken(await staffBinding(request), session.exp, env);
-  const maxAge = Math.max(0, session.exp - Math.floor(Date.now() / 1000));
-  return `booth_device=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+  return !!await boothStaff(request, env);
 }
 
 /** Always fetch fresh private data; stale-if-error CUG caches are not discovery authority. */
@@ -163,7 +149,13 @@ function mappingAllows(entries, path, email) {
     && matchesCugGroup(entry.group, email));
 }
 
-export async function discoverReports(email, env, timing = createBoothTiming()) {
+export async function discoverReports(
+  email,
+  env,
+  timing = createBoothTiming(),
+  grants = false,
+  resource = '',
+) {
   const domain = normalizeCugGroup(email).split('@')[1];
   if (staffDomains(env).has(domain)) return [];
   const [index, cugs, mapping] = await Promise.all([
@@ -191,6 +183,14 @@ export async function discoverReports(email, env, timing = createBoothTiming()) 
           .join(' — ').slice(0, 240) || website,
         portal: path.endsWith('/portal-landing/'),
         created: created(row.Created),
+        grantGroups: matchGroups(path).filter((group) => matchesCugGroup(group, email)),
+        org: mapping.find((entry) => matchesCugGroup(entry.group, email)
+          && typeof entry.url === 'string'
+          && path.startsWith(`${entry.url.replace(/\*+$/, '').replace(/\/+$/, '')}/`))?.org || '',
+        resourceAuthorized: !resource.startsWith('/accounts/')
+          || resource === path || resource === path.replace(/\/$/, '')
+          || (matchGroups(resource)?.some((group) => matchesCugGroup(group, email))
+            && mappingAllows(mapping, resource, email)),
       };
       const previous = websites.get(website);
       // Filter authorization BEFORE choosing the canonical/latest alias.
@@ -199,7 +199,19 @@ export async function discoverReports(email, env, timing = createBoothTiming()) 
         websites.set(website, candidate);
       }
     }
-    return [...websites.values()].map(({ path, label, company }) => ({ path, label, company }));
+    return [...websites.values()].map(({
+      path,
+      label,
+      company,
+      grantGroups,
+      org,
+      resourceAuthorized,
+    }) => ({
+      path,
+      label,
+      company,
+      ...(grants ? { grantGroups, org, resourceAuthorized: !!resourceAuthorized } : {}),
+    }));
   });
 }
 
@@ -214,7 +226,8 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'demos', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
+  if (!['status', 'demos', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'authorize'].includes(action)
+    || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
   if (request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
@@ -226,66 +239,48 @@ export async function handleBooth(request, env) {
   }
   if (!env.BOOTH_COORDINATOR) return finish(reply({ error: 'Booth service is not configured' }, 503));
   if (action === 'demos') return finish(reply({ demos: BOOTH_DEMOS }));
-  if (action === 'status' && !contextId(request)) return finish(reply({ state: 'entry' }));
+  if (action === 'status' && !contextId(request)) return finish(reply({ state: 'entry', canChooseAnother: false }));
   const id = contextId(request) || crypto.randomUUID();
   const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
   const upstream = await timing.measure('booth_rpc', () => stub.fetch(request));
   const response = new Response(upstream.body, upstream);
-  const maxAge = ['reset', 'exit'].includes(action) ? 0 : TTL;
-  response.headers.set('Set-Cookie', `${COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
+  const maxAge = ['reset', 'exit'].includes(action) && response.ok ? 0 : TTL;
+  response.headers.set('Set-Cookie', `${COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
   if (action === 'exit' && response.ok) {
-    response.headers.append('Set-Cookie', 'booth_device=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+    response.headers.append('Set-Cookie', 'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    response.headers.append('Set-Cookie', boothKioskCookie());
     response.headers.append('Set-Cookie', clearSessionCookie());
     response.headers.append('Set-Cookie', clearSignedInMarkerCookie());
   }
   return finish(response);
 }
 
-/** A verified staff dashboard navigation explicitly ends this browser's booth mode. */
-export async function resumeStaffPortal(request, response, env) {
-  const { pathname } = new URL(request.url);
-  const destination = request.headers.get('Sec-Fetch-Dest');
-  const prefetch = /prefetch/i.test(`${request.headers.get('Purpose') || ''} ${request.headers.get('Sec-Purpose') || ''}`);
-  if (request.method !== 'GET' || !/^\/adobe\/dashboard(?:\/|\.html)?$/.test(pathname)
-    || (response.status !== 304 && (response.status !== 200 || !response.headers.get('Content-Type')?.includes('text/html')))
-    || (destination !== null && !['document', 'iframe'].includes(destination))
-    || prefetch || !await boothStaff(request, env)) return null;
+/** This RPC is not an HTTP route. It rechecks fresh CUG+mapping authority for origin reads. */
+export async function authorizeBoothContext(request, env) {
+  if (!contextId(request) || !env.BOOTH_COORDINATOR || !await boothStaff(request, env)) return null;
+  const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(contextId(request)));
+  const headers = { Cookie: request.headers.get('Cookie') || '' };
+  const url = new URL('/auth/booth/authorize', request.url);
+  url.searchParams.set('resource', new URL(request.url).pathname);
+  const response = await stub.fetch(new Request(url, { headers }));
+  if (!response.ok) throw new Error('Booth authorization unavailable');
+  const context = await response.json();
+  return context.expiresAt > Date.now() ? context : null;
+}
 
-  if (contextId(request)) {
-    try {
-      const reset = await handleBooth(new Request(new URL('/auth/booth/reset', request.url), {
-        method: 'POST',
-        headers: {
-          Cookie: request.headers.get('Cookie') || '',
-          Origin: new URL(request.url).origin,
-          'Content-Type': 'application/json',
-        },
-        body: '{}',
-      }), env);
-      if (!reset.ok) {
-        if (reset.status === 403 && !await boothDeviceAuthorized(request, env)) {
-          // A new verified staff session cannot revoke its predecessor's private context.
-          // eslint-disable-next-line no-console
-          console.warn('[booth] Staff portal discarded stale cross-session booth cookies');
-        } else {
-          throw new Error('Booth context could not be cleared');
-        }
-      }
-    } catch {
-      operationalError('Staff portal transition could not clear the booth context');
-      return new Response('Booth mode could not be cleared. Retry or sign out before returning to the staff dashboard.', {
-        status: 503,
-        headers: { ...ASSET_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' },
-      });
-    }
-  }
-
-  const portal = new Response(response.body, response);
-  portal.headers.set('Cache-Control', 'private, no-store');
-  [COOKIE, 'booth_device'].forEach((name) => {
-    portal.headers.append('Set-Cookie', `${name}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
-  });
-  return portal;
+/** Called only after fresh staff authentication, before replacing kiosk credentials. */
+export async function resetBeforeBoothLogin(request, env, email) {
+  const id = contextId(request);
+  if (!id) return null;
+  if (!env.BOOTH_COORDINATOR) return reply({ error: 'Booth reset unavailable' }, 503);
+  const token = await createBoothRevocationToken(id, email, env);
+  const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
+  const response = await stub.fetch(new Request(new URL('/auth/booth/revoke', request.url), {
+    method: 'POST',
+    headers: { Cookie: request.headers.get('Cookie') || '', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  }));
+  return response.ok ? null : reply({ error: 'Booth reset could not be confirmed' }, 503);
 }
 
 /** Durable serialization + persistent send outcomes; KV is not a lock. */
@@ -397,12 +392,26 @@ export class BoothCoordinator {
 
   async handle(request, timing = createBoothTiming()) {
     const storage = timing.storage(this.state.storage);
+    const action = new URL(request.url).pathname.split('/').pop();
+    if (action === 'revoke') {
+      let token;
+      try {
+        ({ token } = await request.json());
+      } catch {
+        return reply({ error: 'Invalid revocation request' }, 400);
+      }
+      if (request.method !== 'POST'
+        || !await verifyBoothRevocationToken(token, contextId(request), this.env)) {
+        return reply({ error: 'Revocation authentication required' }, 403);
+      }
+      await this.clear(await storage.get('context'), timing);
+      return reply({ state: 'entry' });
+    }
     if (!await timing.measure('booth_actor_auth', () => boothStaff(request, this.env))) {
       return reply({ error: 'Staff authentication required' }, 401);
     }
-    const binding = await staffBinding(request);
-    const action = new URL(request.url).pathname.split('/').pop();
-    if (!['status', 'demo', 'request', 'lookup', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
+    const binding = await staffBinding(request, this.env);
+    if (!['status', 'authorize', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     let record = await storage.get('context');
@@ -418,7 +427,7 @@ export class BoothCoordinator {
       return reply({ state: 'entry' });
     }
     let body;
-    if (action !== 'status') {
+    if (!['status', 'authorize'].includes(action)) {
       try {
         body = await request.json();
         if (!body || Array.isArray(body) || typeof body !== 'object') throw new Error('Invalid body');
@@ -445,8 +454,13 @@ export class BoothCoordinator {
       return reply({ ...record, binding: undefined, state: record.mode });
     }
     if (record?.mode) {
-      if (action === 'status') {
-        return reply({ ...record, binding: undefined, state: record.mode });
+      if (['status', 'authorize'].includes(action)) {
+        return reply({
+          ...record,
+          binding: undefined,
+          state: record.mode,
+          canChooseAnother: false,
+        });
       }
       if (action !== 'lookup') {
         return reply({ error: 'Demo and request screens cannot send or select a personal report.' }, 409);
@@ -457,12 +471,60 @@ export class BoothCoordinator {
       await this.clear(record, timing);
       return reply({ error: 'Booth context expired. Start again.' }, 410);
     }
-    if (action === 'status') {
-      if (!record) return reply({ state: 'entry' });
+    if (['status', 'authorize', 'picker'].includes(action)) {
+      if (!record) {
+        return action === 'picker' ? reply({ error: 'Booth context expired. Start again.' }, 410)
+          : reply({ state: 'entry', canChooseAnother: false });
+      }
+      if (action === 'picker' && Object.keys(body).length) return reply({ error: 'Invalid picker request' }, 400);
+      let current;
+      try {
+        const resource = action === 'authorize' ? new URL(request.url).searchParams.get('resource') || '' : '';
+        current = await discoverReports(data.email, this.env, timing, action === 'authorize', resource);
+      } catch (error) {
+        discoveryFailure(error);
+        return reply({ error: 'Report authorization cannot be checked right now.' }, 502);
+      }
+      const candidates = current.filter((candidate) => (
+        data.candidates.some((item) => item.path === candidate.path)
+      ));
+      if (record.expiresAt <= Date.now() || !await boothStaff(request, this.env)
+        || (action !== 'picker' && record.selectedPath
+          && !candidates.some((item) => item.path === record.selectedPath))
+        || !candidates.length) {
+        await this.clear(record, timing);
+        return reply({ error: 'Report access expired or is no longer authorized. Start again.' }, 410);
+      }
+      if (action === 'picker') {
+        record.reports ||= {};
+        if (record.selectedPath) {
+          record.reports[record.selectedPath] = {
+            delivery: record.delivery,
+            viewed: record.viewed === true,
+          };
+        }
+        record.selectedPath = null;
+        record.delivery = 'ready';
+        record.viewed = false;
+        await storage.put('context', record);
+        const pickerData = JSON.stringify({ ...data, candidates });
+        const expirationTtl = Math.max(1, Math.ceil((record.expiresAt - Date.now()) / 1000));
+        await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${record.key}`, pickerData, { expirationTtl }));
+      }
       return reply({
         state: record.selectedPath ? 'report' : 'picker',
         selectedPath: record.selectedPath,
-        candidates: record.selectedPath ? [] : data.candidates,
+        candidates: record.selectedPath ? [] : candidates,
+        canChooseAnother: candidates.length > 1,
+        ...(action === 'authorize' ? {
+          email: data.email,
+          grantGroups: candidates.find((candidate) => (
+            candidate.path === record.selectedPath
+          ))?.grantGroups || [],
+          resourceAuthorized: candidates.find((candidate) => (
+            candidate.path === record.selectedPath
+          ))?.resourceAuthorized === true,
+        } : {}),
         sent: record.delivery === 'sent',
         contactRequested: record.contactRequested === true,
         activityPending: !!await storage.get('activity'),
@@ -511,6 +573,7 @@ export class BoothCoordinator {
         state: record.selectedPath ? 'report' : 'picker',
         selectedPath: record.selectedPath,
         candidates: record.selectedPath ? [] : candidates,
+        canChooseAnother: candidates.length > 1,
         expiresAt: record.expiresAt,
       });
     }
@@ -539,9 +602,13 @@ export class BoothCoordinator {
     }
     const path = action === 'select' ? body.path : record.selectedPath;
     let authorized;
+    let canChooseAnother = false;
     try {
-      const current = await discoverReports(data.email, this.env, timing);
+      const current = await discoverReports(data.email, this.env, timing, action === 'send');
       authorized = current.find((candidate) => candidate.path === path);
+      canChooseAnother = current.filter((candidate) => (
+        data.candidates.some((item) => item.path === candidate.path)
+      )).length > 1;
     } catch (error) {
       discoveryFailure(error);
       return reply({ error: 'Report authorization cannot be checked right now.' }, 502);
@@ -555,9 +622,14 @@ export class BoothCoordinator {
       return reply({ error: 'Booth session expired. Ask the booth team.' }, 410);
     }
     if (action === 'select') {
+      if (record.selectedPath !== path) {
+        const previous = record.reports?.[path];
+        record.delivery = previous?.delivery || 'ready';
+        record.viewed = previous?.viewed === true;
+      }
       record.selectedPath = path;
       await this.activity([createBoothActivity('report_selected', record.key, data.email, authorized)], record, timing);
-      return reply({ state: 'report', selectedPath: path, expiresAt: record.expiresAt });
+      return reply({ state: 'report', selectedPath: path, candidates: [], canChooseAnother, expiresAt: record.expiresAt });
     }
     if (action === 'view') {
       if (!record.viewed) {
@@ -569,12 +641,14 @@ export class BoothCoordinator {
     // Persist BEFORE calling APO. A restart or ambiguous upstream failure must never resend.
     record.delivery = 'attempted';
     await storage.put('context', record);
-    const internal = new Request(new URL('/auth/sharelink', request.url), {
-      method: 'POST',
-      headers: { Cookie: request.headers.get('Cookie'), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: data.email, path, mode: 'email' }),
-    });
-    const response = await handleShareLinkRequest(internal, this.env);
+    const response = await sendAuthorizedBoothReport(
+      data.email,
+      path,
+      new URL(request.url).origin,
+      authorized.grantGroups,
+      authorized.org,
+      this.env,
+    );
     if (!response.ok) {
       operationalError('Share-link dispatch could not be confirmed');
       return reply({ error: 'Email delivery could not be confirmed. Ask the booth team; do not send again.' }, 502);

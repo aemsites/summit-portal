@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setViewport } from '@web/test-runner-commands';
 import sinon from 'sinon';
-import mountBoothReturn, { createBoothPerformanceLayout, formatBoothChartDates } from '../../scripts/booth-report.js';
+import mountBoothReturn, { createBoothPerformanceLayout, formatBoothChartDates, restrictBoothLinks } from '../../scripts/booth-report.js';
 import decorateCarousel from '../../blocks/report-carousel/report-carousel.js';
 import decorateScores from '../../blocks/report-scores/report-scores.js';
 import decorateHero from '../../blocks/report-hero/report-hero.js';
@@ -12,10 +12,11 @@ class TestObserver {
 
   constructor(callback) {
     this.callback = callback;
+    this.targets = [];
     TestObserver.instances.push(this);
   }
 
-  observe() {}
+  observe(target) { this.targets.push(target); }
 }
 
 describe('confirmed booth report portrait layout', () => {
@@ -45,16 +46,25 @@ describe('confirmed booth report portrait layout', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     timers = sandbox.spy(window, 'setTimeout');
+    sandbox.spy(document.body, 'addEventListener');
   });
 
   afterEach(() => {
     timers.getCalls().forEach((call) => window.clearTimeout(call.returnValue));
+    document.body.addEventListener.getCalls().forEach(({ args }) => (
+      document.body.removeEventListener(...args)
+    ));
+    document.querySelector('#booth-test-footer')?.remove();
     document.querySelector('#booth-return')?.remove();
+    document.querySelector('#booth-recovery')?.remove();
+    document.querySelector('style[data-booth-report-safety]')?.remove();
+    document.querySelectorAll('script[data-booth-mode]').forEach((marker) => marker.remove());
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
     document.querySelector('main')?.remove();
+    document.querySelector('#booth-report-content')?.remove();
     document.documentElement.style.visibility = '';
-    document.documentElement.classList.remove('booth-report-active', 'booth-report-composition', 'booth-report-clearing', 'booth-request-active');
+    document.documentElement.classList.remove('booth-report-active', 'booth-report-composition', 'booth-report-clearing', 'booth-request-active', 'booth-report-pending');
     TestObserver.instances = [];
     sandbox.restore();
   });
@@ -168,6 +178,56 @@ describe('confirmed booth report portrait layout', () => {
     } finally {
       window.history.replaceState(null, '', previous);
     }
+  });
+
+  it('contains report links and downloads while preserving same-page navigation and booth controls', async () => {
+    const main = await reportFixture();
+    await mount();
+    main.insertAdjacentHTML('beforeend', `<a href="https://business.adobe.com/">Product</a>
+      <a href="/report.pdf" target="_blank" download>Download</a>
+      <a href="mailto:team@example.test">Contact</a>
+      <a href="#analysis">Analysis</a>
+      <div id="analysis"></div>`);
+    const links = [...main.querySelectorAll('a')].slice(-4);
+    const footer = document.createElement('footer');
+    footer.id = 'booth-test-footer';
+    footer.innerHTML = '<a href="https://example.com/footer">Footer link</a>';
+    document.body.append(footer);
+    const activation = sandbox.spy((event) => event.preventDefault());
+    links.forEach((link) => link.addEventListener('click', activation));
+    links.slice(0, 3).forEach((link) => {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.called).to.equal(false);
+    const footerClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+    footer.querySelector('a').addEventListener('click', activation);
+    footer.querySelector('a').dispatchEvent(footerClick);
+    expect(footerClick.defaultPrevented).to.equal(true);
+    expect(activation.called).to.equal(false);
+    expect(document.querySelector('#booth-return p').hidden).to.equal(false);
+    expect(document.querySelector('#booth-return p').textContent).to.include('shared screen');
+    const fragment = new MouseEvent('click', { bubbles: true, cancelable: true });
+    links[3].addEventListener('click', (event) => event.preventDefault());
+    links[3].dispatchEvent(fragment);
+    expect(activation.calledOnce).to.equal(true);
+    [
+      new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true }),
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: true }),
+    ].forEach((event) => {
+      links[3].dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+    });
+    expect(activation.calledOnce).to.equal(true);
+    const control = document.querySelector('#booth-return a');
+    const finish = new MouseEvent('click', { bubbles: true, cancelable: true });
+    control.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    control.dispatchEvent(finish);
+    expect(control.getAttribute('href')).to.equal('/booth?step=finish');
   });
 
   it('mounts the request profile only with exact server-confirmed request state', async () => {
@@ -310,12 +370,14 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('leaves large ordinary portrait reports unchanged, even if the stylesheet is cached', async () => {
+  it('uses the ordinary exact-resolution profile without cached booth styling', async () => {
     await setViewport({ width: 2160, height: 3840 });
     await reportFixture();
     await mount();
     document.documentElement.classList.remove('booth-report-active');
     expect(font('.rc-desc')).to.equal(18);
+    expect(rect('main > .section').width).to.equal(1920);
+    await setViewport({ width: 2160, height: 3841 });
     expect(rect('main > .section').width).to.equal(1200);
   });
 
@@ -416,6 +478,7 @@ describe('confirmed booth report portrait layout', () => {
     it(`restricts reversible composition to exact eligible 9:16 at ${width}x${height}`, async () => {
       await setViewport({ width, height });
       const main = await reportFixture();
+      restrictBoothLinks(main);
       const before = main.innerHTML;
       await mount();
       expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(exact);
@@ -438,7 +501,7 @@ describe('confirmed booth report portrait layout', () => {
     });
   }
 
-  it('keeps the complete long URL visible and accessible inside native analysis', async () => {
+  it('keeps the complete long URL visible outside closed native analysis', async () => {
     await setViewport({ width: 1080, height: 1920 });
     await reportFixture();
     const url = document.querySelector('.rsc-page-url');
@@ -446,8 +509,10 @@ describe('confirmed booth report portrait layout', () => {
     url.textContent = text;
     url.href = `https://${text}`;
     await mount();
-    const details = url.closest('details');
-    details.open = true;
+    const details = url.closest('.rsc-card').querySelector('details');
+    expect(url.closest('details')).to.equal(null);
+    expect(details.open).to.equal(false);
+    expect(url.getBoundingClientRect().height).to.be.greaterThan(0);
     expect(getComputedStyle(url).whiteSpace).to.equal('normal');
     expect(url.scrollWidth).to.be.at.most(url.clientWidth + 1);
     expect(url.textContent).to.equal(text);
@@ -460,7 +525,7 @@ describe('confirmed booth report portrait layout', () => {
     const layout = createBoothPerformanceLayout(main);
     const card = main.querySelector('.rsc-card');
     const before = card.innerHTML;
-    const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+    const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
     const click = sandbox.spy();
     nodes[0].addEventListener('click', click);
     for (let cycle = 0; cycle < 3; cycle += 1) {
@@ -474,7 +539,7 @@ describe('confirmed booth report portrait layout', () => {
       expect(details.open).to.equal(true);
       layout(false);
       expect(card.innerHTML).to.equal(before);
-      expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+      expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
         .to.deep.equal(nodes);
     }
     nodes[0].dispatchEvent(new Event('click'));
@@ -510,7 +575,7 @@ describe('confirmed booth report portrait layout', () => {
       first.parentElement.append(card);
       await mount();
       const before = card.innerHTML;
-      const nodes = [...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')];
+      const nodes = [...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')];
       const focused = card.querySelector(selector);
       const click = sandbox.spy((event) => event.preventDefault());
       focused.addEventListener('click', click);
@@ -522,8 +587,8 @@ describe('confirmed booth report portrait layout', () => {
         await setViewport({ width: 2160, height: 3840 });
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
-        const details = focused.closest('.booth-score-analysis');
-        expect(details.open).to.equal(true);
+        const details = card.querySelector('.booth-score-analysis');
+        expect(details.open).to.equal(selector === '.rsc-verify-link');
         expect(first.querySelector('.booth-score-analysis').open).to.equal(false);
         expect([...details.querySelector('.booth-score-analysis-content').children]).to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
@@ -531,10 +596,15 @@ describe('confirmed booth report portrait layout', () => {
         TestObserver.instances.forEach((observer) => observer.callback());
         expect(document.activeElement).to.equal(focused);
         expect(card.innerHTML).to.equal(before);
-        expect([...card.querySelectorAll('.rsc-page-url, .rsc-summary, .rsc-suggestion, .rsc-verify-link')])
+        expect([...card.querySelectorAll('.rsc-summary, .rsc-suggestion, .rsc-verify-link')])
           .to.deep.equal(nodes);
         expect(resetTimerCount()).to.equal(count);
       }
+      const event = new Event('click', { cancelable: true });
+      focused.dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+      expect(click.callCount).to.equal(0);
+      document.documentElement.classList.remove('booth-report-active');
       focused.dispatchEvent(new Event('click', { cancelable: true }));
       expect(click.callCount).to.equal(1);
     });
@@ -571,5 +641,206 @@ describe('confirmed booth report portrait layout', () => {
       expect(document.documentElement.classList.contains('booth-report-composition')).to.equal(false);
       expect(main.innerHTML).to.equal(before);
     });
+  });
+
+  function markReport(expiresAt = Date.now() + 600000) {
+    const marker = document.createElement('script');
+    marker.dataset.boothMode = 'report';
+    marker.dataset.boothExpiresAt = String(expiresAt);
+    document.head.append(marker);
+    return marker;
+  }
+
+  it('restores direct-body report nodes after verifying the server concealment wrapper', async () => {
+    const main = await reportFixture();
+    const content = document.createElement('div');
+    content.id = 'booth-report-content';
+    content.hidden = true;
+    document.body.append(content);
+    content.append(main);
+    markReport();
+    const action = main.querySelector('.rsc-page-name a');
+    const click = sandbox.spy((event) => event.preventDefault());
+    action.addEventListener('click', click);
+    await mount();
+    expect(document.querySelector('body > main')).to.equal(main);
+    expect(document.querySelector('#booth-report-content')).to.equal(null);
+    expect(document.querySelector('body > #booth-return')).not.to.equal(null);
+    expect(getComputedStyle(main).display).not.to.equal('none');
+    document.documentElement.classList.remove('booth-report-active');
+    action.dispatchEvent(new Event('click', { cancelable: true }));
+    expect(click.calledOnce).to.equal(true);
+  });
+
+  it('clears request keyboard space immediately even when the secure reset fails', async () => {
+    const previous = window.location.href;
+    window.history.replaceState(null, '', '/request-report');
+    try {
+      const main = await reportFixture();
+      main.insertAdjacentHTML('beforeend', '<form><input type="email" value="visitor@example.test"></form>');
+      markReport().dataset.boothMode = 'request';
+      await mount({ state: 'request' });
+      const input = main.querySelector('input');
+      input.focus();
+      const html = document.documentElement;
+      html.classList.add('booth-keyboard-active');
+      html.style.setProperty('--booth-keyboard-inset', '400px');
+      window.fetch.onSecondCall().resolves(new Response(null, { status: 503 }));
+      document.querySelector('[data-booth-clear]').click();
+      expect(input.value).to.equal('');
+      expect(document.activeElement).not.to.equal(input);
+      expect(html.classList.contains('booth-keyboard-active')).to.equal(false);
+      expect(html.style.getPropertyValue('--booth-keyboard-inset')).to.equal('');
+      expect(main.getClientRects()).to.have.length(0);
+      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+      expect(document.querySelector('#booth-recovery').hidden).to.equal(false);
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+    } finally {
+      window.history.replaceState(null, '', previous);
+    }
+  });
+
+  it('keeps the server concealment wrapper intact when verification fails', async () => {
+    const main = await reportFixture();
+    const content = document.createElement('div');
+    content.id = 'booth-report-content';
+    content.hidden = true;
+    document.body.append(content);
+    content.append(main);
+    markReport();
+    await mount({ state: 'entry' });
+    expect(document.getElementById('booth-report-content')).to.equal(content);
+    expect(content.hidden).to.equal(true);
+    expect(main.getClientRects()).to.have.length(0);
+    expect(document.getElementById('booth-recovery').hidden).to.equal(false);
+  });
+
+  ['http', 'network', 'invalid-json', 'entry', 'expired', 'wrong-path'].forEach((failure) => {
+    it(`conceals a server-marked report and requires confirmed clearing after ${failure}`, async () => {
+      const main = await reportFixture();
+      markReport();
+      sandbox.stub(document, 'addEventListener');
+      sandbox.stub(window, 'addEventListener');
+      const fetchStub = sandbox.stub(window, 'fetch');
+      const context = {
+        state: failure === 'entry' ? 'entry' : 'report',
+        selectedPath: failure === 'wrong-path' ? '/another-report/' : window.location.pathname,
+        expiresAt: failure === 'expired' ? 1 : Date.now() + 600000,
+      };
+      if (failure === 'network') fetchStub.onFirstCall().rejects(new TypeError('Load failed'));
+      else if (failure === 'invalid-json') fetchStub.onFirstCall().resolves(new Response('not JSON'));
+      else fetchStub.onFirstCall().resolves(Response.json(context, { status: failure === 'http' ? 503 : 200 }));
+      fetchStub.onSecondCall().resolves(new Response('', { status: 503 }));
+      const mounted = mountBoothReturn();
+      expect(getComputedStyle(main).display).to.equal('none');
+      await mounted;
+      expect(getComputedStyle(main).display).to.equal('none');
+      expect(document.getElementById('booth-recovery').hidden).to.equal(false);
+      expect(document.querySelector('link[data-booth-report-layout]')).to.equal(null);
+      document.querySelector('[data-booth-recover]').click();
+      await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+      expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+      expect(getComputedStyle(main).display).to.equal('none');
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+    });
+  });
+
+  it('never reveals a late verified response after the absolute cleanup deadline', async () => {
+    const main = await reportFixture();
+    sandbox.stub(document, 'addEventListener');
+    sandbox.stub(window, 'addEventListener');
+    const clock = sandbox.useFakeTimers();
+    const expiresAt = Date.now() + 5000;
+    markReport(expiresAt);
+    let completeStatus;
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().returns(new Promise((resolve) => { completeStatus = resolve; }));
+    fetchStub.onSecondCall().resolves(new Response('', { status: 503 }));
+    const mounted = mountBoothReturn();
+    await clock.tickAsync(5001);
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+    completeStatus(Response.json({ state: 'report', selectedPath: window.location.pathname, expiresAt: Date.now() + 600000 }));
+    await mounted;
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.querySelector('link[data-booth-report-layout]')).to.equal(null);
+    expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+  });
+
+  it('rejects status verification after a ten-second deadline without exposing the report', async () => {
+    const main = await reportFixture();
+    sandbox.stub(document, 'addEventListener');
+    sandbox.stub(window, 'addEventListener');
+    const clock = sandbox.useFakeTimers();
+    markReport();
+    const timeout = sandbox.stub(AbortSignal, 'timeout').callsFake((milliseconds) => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException('Verification timed out', 'TimeoutError')), milliseconds);
+      return controller.signal;
+    });
+    sandbox.stub(window, 'fetch').callsFake((url, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(options.signal.reason));
+    }));
+    const mounted = mountBoothReturn();
+    await clock.tickAsync(9999);
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
+    await clock.tickAsync(1);
+    await mounted;
+    expect(timeout.firstCall.args[0]).to.equal(10000);
+    expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(true);
+    expect(document.querySelector('#booth-recovery p').textContent).to.include('timed out');
+    expect(getComputedStyle(main).display).to.equal('none');
+  });
+
+  it('reveals a marked report only after verification and offers authorized report switching', async () => {
+    const main = await reportFixture();
+    markReport();
+    await mount({ canChooseAnother: true });
+    expect(document.documentElement.classList.contains('booth-report-pending')).to.equal(false);
+    expect(getComputedStyle(main).display).not.to.equal('none');
+    expect(document.getElementById('booth-recovery').hidden).to.equal(true);
+    const picker = document.querySelector('[data-booth-picker]');
+    expect(picker.hidden).to.equal(false);
+    window.fetch.onCall(2).resolves(new Response('', { status: 503 }));
+    picker.click();
+    picker.click();
+    await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+    expect(window.fetch.callCount).to.equal(3);
+    expect(window.fetch.thirdCall.args[0]).to.equal('/auth/booth/picker');
+    expect(window.fetch.thirdCall.args[1].body).to.equal('{}');
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.querySelector('#booth-recovery p').textContent).to.include('could not be checked');
+  });
+
+  it('removes PDF/download and new-tab actions, including later-decorated links', async () => {
+    const main = await reportFixture();
+    main.insertAdjacentHTML('beforeend', '<a href="/report.PDF?version=1" target="_blank">Download PDF</a><a href="/export" download>Export</a><a class="rd-cta-btn" href="/content/opaque-export" target="_blank">PDF</a><a class="rd-pdf-tag" href="/media_opaque-export">Full PDF</a>');
+    await mount();
+    const pdf = main.querySelector('[data-booth-download-disabled]');
+    expect(pdf.hasAttribute('href')).to.equal(false);
+    expect(getComputedStyle(pdf).display).to.equal('none');
+    expect(main.querySelector('[download], [target]')).to.equal(null);
+    expect(main.querySelectorAll('[data-booth-download-disabled]')).to.have.length(4);
+    expect(document.querySelector('.booth-download-note').textContent).to.include('emailed report');
+    expect(TestObserver.instances.some((observer) => observer.targets.includes(document.body)))
+      .to.equal(true);
+    const later = document.createElement('a');
+    later.href = '/later.pdf';
+    later.target = '_blank';
+    main.append(later);
+    TestObserver.instances.forEach((observer) => observer.callback());
+    expect(later.hasAttribute('href')).to.equal(false);
+    expect(later.hasAttribute('target')).to.equal(false);
+    expect(getComputedStyle(later).display).to.equal('none');
+  });
+
+  it('preserves downloads and new-tab links without booth authorization', async () => {
+    const main = await reportFixture();
+    main.insertAdjacentHTML('beforeend', '<a href="/report.pdf" target="_blank" download>Download PDF</a>');
+    await mount({ state: 'entry' });
+    const pdf = main.querySelector('[download]');
+    expect(pdf.getAttribute('href')).to.equal('/report.pdf');
+    expect(pdf.target).to.equal('_blank');
+    expect(pdf.hidden).to.equal(false);
   });
 });

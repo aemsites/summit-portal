@@ -7,9 +7,11 @@ are separate gates; code and fixture tests do not prove those gates passed.
 
 ## Approved scope
 
-`/booth` and every booth API are **staff-only**. Staff sets up the device through
-`/login?staff&redirect=%2Fbooth`; staff authentication remains in the existing
-secure HttpOnly session cookie, not an attendee URL token. At `/booth`,
+`/booth` requires staff setup through `/login?staff&redirect=%2Fbooth`, then
+replaces broad staff authentication with dedicated, signed HttpOnly
+`booth_session`/`booth_device` credentials and a persistent `booth_kiosk` boundary.
+Booth APIs require this scoped session, not a general staff privilege or attendee
+URL token. At `/booth`,
 the attendee enters a **business email**. The Worker matches its **exact address
 or domain** against existing CUGs to discover prepared account insight reports. One
 eligible website report opens directly; several require an explicit picker.
@@ -24,18 +26,22 @@ described below; ordinary reports retain their existing layout. It returns to
 the address stored by lookup; the browser cannot supply another recipient or
 path. **Prefer to meet later?** is static guidance to ask the booth team about a
 follow-up conversation. It does not record consent, send mail or schedule a meeting.
-Reset clears attendee access, not the staff login, non-PII device marker or
-disclosed lead-history records.
+Reset clears attendee access, not the scoped booth login, persistent kiosk
+boundary or disclosed lead-history records. **Choose another report** on a
+report or Finish returns to the same authorized picker without another email
+lookup. It revokes the active selection, keeps the original expiry and rechecks
+permissions on selection; send/view outcomes remain independent per report.
+Sent and uncertain outcomes cannot become retryable by switching.
 
-Verified staff returning to `/adobe/dashboard` leave booth mode without signing
-out. Only a successful, CUG-approved document navigation triggers this
-transition: the Worker clears the owned attendee context and expires
-`booth_context` and `booth_device` before allowing ordinary dashboard report
-browsing. HEAD, background fetches, prefetch, denied access and unverified
-link-borne sessions do not clear kiosk state. If the owned context cannot be
-cleared, the dashboard returns a visible recovery error and retains booth
-protection. A newly authenticated staff session discards stale browser cookies
-without revoking another session's private context.
+**Security hardening is local, not deployed.** Dashboard navigation cannot exit
+booth restrictions. Staff administration uses a **separate browser/device**.
+Reset, logout, explicit signout, OAuth and fresh login preserve the kiosk
+boundary; re-login revokes the old visit before issuing another scoped session.
+The original staff expiry and epoch revocation still apply. Only `/booth`
+migrates legacy broad-staff/device contexts. Selected HTML and rendering assets
+are authorized using attendee permissions, never staff-wide grants. Private
+indexes/APIs, other reports, raw formats, PDFs/download responses and the
+general share/copy endpoint remain unavailable to the booth browser.
 
 **Identity limitation:** asserted email is identification, not authentication.
 Anyone asserting a permitted address or domain can view its prepared reports on
@@ -93,6 +99,45 @@ input/change events count as activity. Failed verification removes the form;
 reset failures hide visitor content and expose recovery instead of pretending
 clear succeeded.
 
+### Touchscreen keyboard and link behavior
+
+Entry and verified requests share `scripts/booth-keyboard.js` and
+`styles/booth-keyboard.css`. Focused text fields/labels follow viewport resizing
+and supported keyboard geometry; reported overlays lift the control bar and add
+scroll space for consent and Submit. An unreported touch overlay gets a
+half-screen editing reserve, released on blur. Entry `input`/`change` now renew
+its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
+fields. The security report guard also synchronously clears request keyboard
+space during recovery, including failed server resets, without adding another
+reset lifecycle or extending attendee expiry. Pinch zoom and the browser's
+overlay policy are unchanged.
+
+Personal/demo report documents block links and downloads that could leave the
+shared screen, including new tabs and footer links, with a visible status
+message. In-page fragments and Finish/demo/reset controls still work. Ordinary
+reports and Entry/request Privacy Policy links are unchanged. Managed kiosk
+policy must still contain browser chrome, long-press menus and policy links.
+
+Run `test/fixtures/booth-keyboard-browser.js` in a Playwright
+`hasTouch: true` context against the local fixture server. It checks focused
+fields after viewport shrink, optional fields/consent/Submit above an 820px
+overlay model, blur cleanup and input-only idle renewal. These are stress
+models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
+CSS viewport/DPR, keyboard height and policy links before device release.
+Keyboards larger than the fallback reserve require reported geometry or
+content-resize/device configuration. Merge and deploy the matching Worker
+assets only after approval; this branch push is not a production rollout.
+
+`test/fixtures/booth-report-browser.js` checks an existing protected customer
+report in a dedicated, authenticated staff touch context without booth cookies.
+Pass its real report URL and the local asset-server URL; customer HTML is read
+from the authenticated origin, not substituted with demo content. Branch
+assets, booth state/shell and view/reset responses are intercepted. It checks
+native/fallback bounds, touch tabs/disclosures, link/download containment,
+the same report's real Finish preview and empty Entry after reset. No lookup,
+email or production booth mutation is performed; never put credentials or
+customer report content in test files.
+
 ### Local fallback review and rollout
 
 Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
@@ -134,12 +179,13 @@ real authenticated submission and final hardware rehearsal remain unverified.
 | Actual selected-report preview | `scripts/booth-preview.js`, shared insight-hero/dark-stat builders |
 | Cosmetic header/partner settings | `scripts/booth-presentation.js`, shared by Entry and the report control |
 | Actual report control/layout | `scripts/booth-report.js`, `styles/booth-report.css`, shared lazy import and context-only Worker injection |
+| Booth keyboard viewport/scroll handling | `scripts/booth-keyboard.js`, `styles/booth-keyboard.css`, Entry and verified requests only |
 | Staff/context/discovery | Worker `src/booth.js`, `BoothCoordinator` Durable Object, existing `SESSIONS` KV |
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text/Data-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 | Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
 
-Wrangler bundles the **single source** shell, two stylesheets, four booth scripts
+Wrangler bundles the **single source** shell, three stylesheets, five booth scripts
 and the shared hero/stat renderer modules, so
 the deployed Worker can serve the complete booth before the frontend PR merges.
 The fixed Entry 3 design bundles only the arrow, website/glow illustration assets
@@ -471,8 +517,9 @@ all three metric values and thresholds. Exact-ratio widths below 1600px place
 thresholds on a second row rather than squeezing the metric columns.
 
 Each performance card has a native **Read analysis** disclosure containing the
-original summary, recommendation, URL and verification nodes, not rewritten
-or cloned content. When activation moves a focused analysis descendant, only
+original summary, recommendation and verification nodes, not rewritten
+or cloned content. Tested-page URLs remain visible below their page titles.
+When activation moves a focused analysis descendant, only
 that card's disclosure opens and the exact element is refocused after attachment.
 Without analysis focus, all disclosures remain closed for the default overview.
 Leaving the exact ratio, or clearing booth mode, restores the original DOM
@@ -489,15 +536,20 @@ the original ISO ticks. Touch taps reuse existing chart hit testing and keep
 the value readout visible without hover. Outside the exact composition, AI panels
 stack with readable subtitles;
 platform bars retain icon/label/bar/value alignment, and comparison tables retain
-their columns. Details, tabs, carousel arrows/dots, links and downloads
-remain available. Existing feedback/brand controls move into document flow in
+their columns. Details, tabs, carousel arrows/dots, same-page fragments and booth
+controls remain available; other report links cannot leave the shared screen.
+Booth-only PDF/download controls are hidden and disabled,
+including late decoration and opaque PDF links in report-download blocks;
+attendees use their emailed report for PDFs on their own devices. Ordinary
+staff/customer report downloads are unchanged. Booth links/forms stay in one tab.
+Existing feedback/brand controls move into document flow in
 booth context rather than overlapping Finish. The existing ResizeObserver
 reserves the measured Finish bar height, including wrapping and viewport changes.
 
 Both the helper and its new stylesheet are exact Worker-bundled assets. The
-Worker injection and shared lazy import use the same `?v=portrait-2` adapter URL
+Worker injection and shared lazy import use the same `?v=booth-activity-1` adapter URL
 to avoid a previously cached unversioned module; this is cache versioning, not
-a layout opt-in. Only the report adapter and its stylesheet receive `no-cache`
+a layout opt-in. Entry, report-adapter and keyboard JS/CSS receive `no-cache`
 revalidation. After fresh authorization the adapter can upgrade an older Finish
 control without duplicating its reset timers or counting bottom padding twice.
 Review and deploy the matching Worker bundle separately from the frontend merge.
@@ -612,7 +664,8 @@ expired, wrong or reset context redirects to Entry; malformed/expired/rotated
 markers deny rather than bypass; source failures remain fail-closed. Fresh
 document and concurrent-reset regressions pass.
 
-**History/exit verified live:** parent deployed `9779109` as
+**Historical history/exit evidence (superseded by local scoped-session hardening):**
+parent deployed `9779109` as
 `c13ab557-dccd-43c4-9348-895f39e88900`. The real direct report/Finish flow passed
 again **without another send**. Reset returned Entry; a fresh report request
 redirected, and actual browser Back landed on `/booth` with no report present.
@@ -668,21 +721,26 @@ customer, confirm the expected report, send once, check actual recipient receipt
 then rehearse reset and back/idle behavior on the final screen/network.
 
 Shared-device browser lockdown is an **operational gate**, not a UI security
-promise. The device marker is a scoped account-document boundary, not a complete
-browser lock. It expires no later than the authenticated staff JWT and binds to
-that exact session; unmarked ordinary staff browsing is unchanged. Assets,
-downloads, other portal routes and already-delivered content are not a global
-kiosk lockdown. **Staff: sign out and leave booth mode** clears attendee state,
-device marker and staff cookies; broader staff browsing then requires login.
-Alternatively, deliberately opening the authorized staff dashboard clears booth
-state and the device marker while keeping verified staff signed in. The
-ordinary dashboard is not an attendee reset target; account documents remain
-restricted until that staff transition succeeds.
-Disable address
-bar/history/tab escape using managed kiosk controls and keep staff nearby.
-Ten-minute server expiry and two-minute interactive idle reset do not revoke
-that session. A failed report reset hides old report content and keeps a visible
-recovery message; staff must resolve it before the next visitor.
+promise. The dedicated credentials expire no later than the original staff
+session and bind to the same random identifier. The HttpOnly/Secure
+`booth_kiosk=1` cookie lasts one year and persists through reset and signout;
+scoped credentials are restricted even without that marker. **Staff: sign out
+this device** clears attendee state and credentials but does not unlock
+dashboard access. Re-login stays scoped; staff administration belongs on a
+separate browser/device. Unmarked ordinary staff/customer browsers are unchanged.
+The server allowlist permits shared static assets and selected rendering
+dependencies, not private indexes, arbitrary report formats or PDFs. A MIME,
+Content-Disposition or redirect mismatch fails closed, including opaque export
+URLs and HEAD requests.
+
+Deploy the Worker and matching assets together after review. Close old report
+tabs, reload `/booth`, and migrate an existing staff/device session there before
+handing the screen to attendees. Disable address-bar/history/tab escape,
+developer tools, cookie deletion and OS access using managed kiosk controls;
+keep staff nearby. Ten-minute context expiry and two-minute interactive idle
+reset do not revoke the scoped login. Failed verification/reset keeps content
+hidden until confirmed server clearing. Web code cannot erase already-downloaded
+files or prevent someone from asserting another permitted email address.
 
 ## Planning history
 

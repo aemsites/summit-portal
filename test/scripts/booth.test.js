@@ -102,11 +102,60 @@ describe('booth runtime boundary', () => {
     expect(root.getElementById('booth-status').textContent).to.equal('');
   });
 
+  it('counts virtual-keyboard input and change as Entry activity without key or pointer events', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').callsFake(async () => (
+      { ok: true, json: async () => ({ state: 'entry' }) }
+    ));
+    mountBooth(root);
+    await clock.tickAsync(110000);
+    const email = root.getElementById('registration-email');
+    email.value = 'still-typing@example.test';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await clock.tickAsync(11000);
+    expect(email.value).to.equal('still-typing@example.test');
+    email.dispatchEvent(new Event('change', { bubbles: true }));
+    await clock.tickAsync(110000);
+    expect(email.value).to.equal('still-typing@example.test');
+    expect(fetchStub.calledOnce).to.equal(true);
+    await clock.tickAsync(10001);
+    expect(email.value).to.equal('');
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+  });
+
+  it('retains absolute expiry even when virtual-keyboard activity keeps renewing idle time', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url) => (
+      {
+        ok: true,
+        json: async () => (url.endsWith('/status')
+          ? { state: 'picker', candidates: [], expiresAt: 180000 }
+          : { state: 'entry' }),
+      }
+    ));
+    mountBooth(root);
+    await clock.tickAsync(110000);
+    const email = root.getElementById('registration-email');
+    email.value = 'active@example.test';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await clock.tickAsync(50000);
+    email.dispatchEvent(new Event('change', { bubbles: true }));
+    await clock.tickAsync(20001);
+    expect(email.value).to.equal('');
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+  });
+
   async function productionFixture() {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const root = new DOMParser().parseFromString(await response.text(), 'text/html');
     sandbox.stub(window, 'addEventListener');
     return root;
+  }
+
+  function jsonReply(body, status = 200) {
+    return { ok: status < 400, status, json: async () => body };
   }
 
   it('offers explicit demo/request recovery only for a confirmed no-report lookup', async () => {
@@ -343,6 +392,80 @@ describe('booth runtime boundary', () => {
       expect(root.getElementById('finish-status').textContent).to.include('reporting is delayed');
       expect(fetchStub.callCount).to.equal(2);
       expect(root.getElementById('send-report').disabled).to.equal(false);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('returns from Finish to the authorized picker without a new email lookup or delivery', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish&brand=semrush');
+    const clock = sandbox.useFakeTimers();
+    const path = '/accounts/e/example/insights/example-com/portal-landing/';
+    const expiresAt = Date.now() + 600000;
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/booth/status').resolves(jsonReply({ state: 'report', selectedPath: path, expiresAt, canChooseAnother: true, sent: true }));
+    fetchStub.withArgs(path).resolves(new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    let completePicker;
+    fetchStub.withArgs('/auth/booth/picker').returns(new Promise((resolve) => { completePicker = resolve; }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      const choose = root.getElementById('choose-another-report');
+      expect(choose.hidden).to.equal(false);
+      expect(root.getElementById('send-report').disabled).to.equal(true);
+      root.getElementById('report-preview').textContent = 'Previous company report preview';
+      choose.click();
+      choose.click();
+      await clock.tickAsync(0);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(true);
+      expect(root.getElementById('report-preview').textContent).to.equal('');
+      const pickerCalls = fetchStub.getCalls().filter((call) => call.args[0] === '/auth/booth/picker');
+      expect(pickerCalls).to.have.length(1);
+      expect(pickerCalls[0].args[1].body).to.equal('{}');
+      completePicker(jsonReply({
+        state: 'picker',
+        expiresAt,
+        candidates: [{ path, label: 'Example.com' }, { path: '/authorized-other/', label: '<img src=x> Example.org' }],
+      }));
+      await clock.tickAsync(0);
+      expect(root.querySelector('[data-panel="picker"]').hidden).to.equal(false);
+      expect(root.getElementById('report-options').children).to.have.length(2);
+      expect(root.getElementById('report-options').querySelector('img')).to.equal(null);
+      expect(root.getElementById('registration-email').value).to.equal('');
+      expect(window.location.pathname + window.location.search).to.equal('/booth?step=picker&brand=semrush');
+      expect(fetchStub.getCalls().some((call) => /lookup|send/.test(call.args[0]))).to.equal(false);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('keeps Finish hidden after failed switching until confirmed attendee clearing', async () => {
+    const root = await productionFixture();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    const path = '/accounts/e/example/insights/example-com/portal-landing/';
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/booth/status').resolves(jsonReply({ state: 'report', selectedPath: path, expiresAt: Date.now() + 600000, canChooseAnother: true }));
+    fetchStub.withArgs(path).resolves(new Response('<main></main>', { headers: { 'Content-Type': 'text/html' } }));
+    fetchStub.withArgs('/auth/booth/picker').resolves(jsonReply({ error: 'Permission check unavailable' }, 503));
+    fetchStub.withArgs('/auth/booth/reset').resolves(jsonReply({ state: 'entry' }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.getElementById('choose-another-report').click();
+      await clock.tickAsync(0);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(true);
+      expect(root.querySelector('#email-form button').disabled).to.equal(true);
+      expect(root.getElementById('booth-retry').hidden).to.equal(false);
+      expect(root.getElementById('booth-status').textContent).to.equal('Permission check unavailable');
+      root.getElementById('booth-retry').click();
+      await clock.tickAsync(0);
+      expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
+      expect(root.querySelector('#email-form button').disabled).to.equal(false);
+      expect(root.getElementById('choose-another-report').hidden).to.equal(true);
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }

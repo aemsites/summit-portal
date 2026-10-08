@@ -1,5 +1,9 @@
-import { createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL } from './session.js';
+import {
+  createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL,
+  hasBoothBoundary, boothSessionCookies,
+} from './session.js';
 import { jsonResponse } from './magiclink.js';
+import { resetBeforeBoothLogin } from './booth.js';
 
 const STAFF_GROUPS = ['adobe.com', 'semrush.com'];
 const FAILED_LOGIN_DELAY_MS = 350; // blunt brute-forcing
@@ -56,6 +60,10 @@ export async function handleStaffLoginRequest(request, env) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
+  if (hasBoothBoundary(request) && (request.headers.get('Origin') !== new URL(request.url).origin
+    || request.headers.get('Content-Type')?.split(';')[0] !== 'application/json')) {
+    return jsonResponse({ error: 'Same-origin JSON request required' }, 403);
+  }
 
   let username;
   let password;
@@ -86,6 +94,16 @@ export async function handleStaffLoginRequest(request, env) {
     method: 'staff',
     gen_epoch: String((env && env.EVENT_CRED_EPOCH) ?? ''),
   };
+  if (hasBoothBoundary(request)) {
+    const resetFailure = await resetBeforeBoothLogin(request, env, email);
+    if (resetFailure) return resetFailure;
+    const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
+    (await boothSessionCookies({
+      email,
+      exp: Math.floor(Date.now() / 1000) + EVENT_SESSION_TTL,
+    }, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
+    return new Response(JSON.stringify({ result: 'ok' }), { headers });
+  }
   const token = await createSession(env, userInfo, EVENT_SESSION_TTL);
   log(`session minted for ${username} (4-day, epoch=${userInfo.gen_epoch})`);
 

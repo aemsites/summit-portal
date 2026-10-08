@@ -1,26 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, unlink, rmdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile, unlink } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
-import { createMockEnv } from './helpers.js';
-import { createSession, getSession } from '../src/session.js';
-import { boothDeviceCookie } from '../src/booth.js';
+import { createMockEnv, createMockBoothCookie } from './helpers.js';
 
 describe('bundled booth shell and exact report injection', () => {
   let env;
   let cookie;
+  let expiresAt;
   const selectedPath = '/accounts/e/example/insights/example-com/portal-landing/';
 
   beforeEach(async () => {
     env = createMockEnv();
-    cookie = `auth_token=${await createSession(env, { email: 'operator@adobe.com', method: 'oauth' })}; booth_context=00000000-0000-4000-8000-000000000000`;
+    expiresAt = Date.now() + 600000;
+    cookie = `${await createMockBoothCookie(env)}; booth_context=00000000-0000-4000-8000-000000000000`;
     env.BOOTH_COORDINATOR = {
       idFromName: (name) => name,
-      get: () => ({ fetch: async () => new Response(JSON.stringify({ selectedPath }), { headers: { 'Content-Type': 'application/json' } }) }),
+      get: () => ({ fetch: async () => new Response(JSON.stringify({ state: 'report', selectedPath, expiresAt }), { headers: { 'Content-Type': 'application/json' } }) }),
     };
   });
 
@@ -31,6 +30,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
+    expect(html).toContain('/scripts/booth.js?v=booth-touchscreen-1');
+    expect(html).toContain('/styles/booth.css?v=booth-touchscreen-1');
     expect(html).toContain('Adobe Brand Visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -42,7 +43,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(500);
@@ -80,13 +81,13 @@ describe('bundled booth shell and exact report injection', () => {
     }
   });
 
-  it('revalidates only the report adapter/assets and serves its versioned URL', async () => {
-    for (const path of ['/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css']) {
+  it('revalidates changed booth assets and serves their versioned URLs', async () => {
+    for (const path of ['/scripts/booth.js?v=booth-touchscreen-1', '/styles/booth.css?v=booth-touchscreen-1', '/scripts/booth-report.js?v=booth-activity-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
     }
-    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth.js'), env);
+    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth-preview.js'), env);
     expect(unchanged.headers.has('Cache-Control')).toBe(false);
   });
 
@@ -140,20 +141,32 @@ describe('bundled booth shell and exact report injection', () => {
 
   it('injects only an authorized successful HTML report with exact selected pathname', async () => {
     const transform = vi.fn((response) => response);
+    const injected = [];
     class Rewriter {
       on(selector, handler) {
-        const append = vi.fn();
-        handler.element({ append });
-        expect(selector).toBe('body');
-        expect(append.mock.calls[0][0]).toContain('/scripts/booth-report.js?v=booth-activity-1');
-        return { transform };
+        handler.element({
+          prepend: (value) => injected.push([selector, value]),
+          append: () => {},
+          getAttribute: () => '',
+          setAttribute: (name, value) => injected.push([name, value]),
+        });
+        return this;
       }
+
+      transform(response) { return transform(response); }
     }
     vi.stubGlobal('HTMLRewriter', Rewriter);
     const content = () => new Response('<main>Unchanged report</main>', { headers: { 'Content-Type': 'text/html' } });
     const request = (path) => new Request(`https://portal.example${path}`, { headers: { Cookie: cookie } });
     const response = await injectBoothReturn(content(), request(selectedPath), env);
     expect(transform).toHaveBeenCalledTimes(1);
+    expect(injected[0]).toEqual(['class', 'booth-report-pending']);
+    expect(injected[1][0]).toBe('head');
+    expect(injected[1][1]).toContain('display: none !important');
+    expect(injected[1][1]).toContain('data-booth-mode="report"');
+    expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-activity-1');
+    expect(injected[2][1]).toContain('/booth?recover=1');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await response.text()).toBe('<main>Unchanged report</main>');
     await injectBoothReturn(content(), request('/accounts/o/other/'), env);
@@ -167,23 +180,22 @@ describe('bundled booth shell and exact report injection', () => {
     const append = vi.fn();
     function PublicRewriter() {
       this.on = (_selector, handler) => {
-        handler.element({ append });
-        return { transform: (response) => response };
+        handler.element({ prepend: append, append: () => {}, getAttribute: () => '', setAttribute: () => {} });
+        return this;
       };
+      this.transform = (response) => response;
     }
     vi.stubGlobal('HTMLRewriter', PublicRewriter);
     try {
-      const staffRequest = new Request('https://portal.example/booth', { headers: { Cookie: cookie } });
-      const session = await getSession(staffRequest, env);
-      const device = await boothDeviceCookie(staffRequest, session, env);
-      const withDevice = `${cookie}; ${device.split(';')[0]}`;
+      const withDevice = cookie;
+      const withoutDevice = cookie.replace(/;\s*booth_device=[^;]+/, '');
       let context;
       env.BOOTH_COORDINATOR.get = () => ({ fetch: async () => new Response(JSON.stringify(context), { headers: { 'Content-Type': 'application/json' } }) });
       const content = () => new Response('<main>Public page</main>', { headers: { 'Content-Type': 'text/html' } });
       for (const mode of ['demo', 'request']) {
         const path = mode === 'demo' ? '/example-report/luma/' : '/request-report';
         context = { state: mode, selectedPath: path, demoId: 'luma', expiresAt: Date.now() + 600000 };
-        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: cookie } }), env);
+        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withoutDevice } }), env);
         expect(append).not.toHaveBeenCalled();
         const enhanced = await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withDevice } }), env);
         expect(append.mock.calls[0][0]).toContain(`data-booth-mode="${mode}"`);
@@ -221,8 +233,7 @@ describe('Digital Opportunity Report review naming', () => {
   });
 
   it('exports the legacy preview with canonical naming and embedded assets', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'booth-naming-'));
-    const destination = join(directory, 'review.html');
+    const destination = resolve('.booth-naming-review.html');
     try {
       execFileSync(execPath, [
         fileURLToPath(new URL('export-touchscreen-review.mjs', design)), destination,
@@ -240,7 +251,6 @@ describe('Digital Opportunity Report review naming', () => {
       await unlink(destination).catch((error) => {
         if (error.code !== 'ENOENT') throw error;
       });
-      await rmdir(directory);
     }
   });
 });

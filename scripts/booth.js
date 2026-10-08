@@ -1,5 +1,6 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
+import { mountBoothKeyboard } from './booth-keyboard.js';
 
 export async function boothRequest(action, body) {
   const response = await fetch(`/auth/booth/${action}`, {
@@ -29,10 +30,12 @@ export function mountBooth(root = document) {
   const email = root.getElementById('registration-email');
   const form = root.getElementById('email-form');
   const send = root.getElementById('send-report');
+  const chooseAnother = root.getElementById('choose-another-report');
   const status = root.getElementById('booth-status');
   const retry = root.getElementById('booth-retry');
   const previewTarget = root.getElementById('report-preview');
   const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
+  const keyboard = mountBoothKeyboard(root);
   let ready = false;
   let busy = false;
   let idle;
@@ -59,12 +62,18 @@ export function mountBooth(root = document) {
 
   function scrub() {
     preview?.clear();
+    email.blur();
+    keyboard.clear();
     email.value = '';
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'booth-status'].forEach((id) => notice(id, ''));
     root.getElementById('demo-options')?.replaceChildren();
     if (root.getElementById('demo-status')) notice('demo-status', '');
     send.disabled = false;
+    if (chooseAnother) {
+      chooseAnother.hidden = true;
+      chooseAnother.disabled = false;
+    }
     retry.hidden = true;
     root.getElementById('staff-login').hidden = true;
     clearTimeout(expiry);
@@ -94,7 +103,7 @@ export function mountBooth(root = document) {
       const result = await boothRequest(action, {});
       if (result.state !== 'entry') throw new Error('This screen could not be cleared. Retry or ask the booth team.');
       if (action === 'exit') {
-        window.location.replace('/login?staff&redirect=%2Fadobe%2Fdashboard');
+        window.location.replace('/login?staff&redirect=%2Fbooth');
         return;
       }
       window.history.replaceState(null, '', withBoothPresentation('/booth', presentation));
@@ -131,6 +140,7 @@ export function mountBooth(root = document) {
     }
     if (result.selectedPath && finishing) {
       show('finish');
+      if (chooseAnother) chooseAnother.hidden = result.canChooseAnother !== true;
       preview?.load(result);
       send.disabled = result.sent || result.delivery === 'attempted';
       let message = '';
@@ -173,6 +183,7 @@ export function mountBooth(root = document) {
     if (busy || resetting || !ready) return;
     busy = true;
     const current = revision;
+    email.blur();
     email.value = '';
     notice('booth-status', 'Opening a fresh report request...');
     try {
@@ -247,6 +258,7 @@ export function mountBooth(root = document) {
     busy = true;
     const current = revision;
     const button = form.querySelector('button');
+    email.blur();
     button.disabled = true;
     notice('email-error', '');
     try {
@@ -284,9 +296,35 @@ export function mountBooth(root = document) {
     }
   });
 
+  chooseAnother?.addEventListener('click', async () => {
+    if (busy || resetting || !ready) return;
+    busy = true;
+    revision += 1;
+    const current = revision;
+    preview?.clear();
+    show(null);
+    chooseAnother.disabled = true;
+    notice('booth-status', 'Checking your other reports...');
+    try {
+      const result = await perform('picker', {});
+      if (current !== revision) return;
+      if (result.state !== 'picker' || !Array.isArray(result.candidates)) {
+        throw new Error('Your reports could not be checked. Retry and clear this screen.');
+      }
+      window.history.replaceState(null, '', withBoothPresentation('/booth?step=picker', presentation));
+      notice('booth-status', '');
+      apply(result);
+    } catch (error) {
+      if (current === revision) recovery(error);
+    } finally {
+      busy = false;
+      chooseAnother.disabled = false;
+    }
+  });
+
   root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
   root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
-  ['pointerdown', 'keydown'].forEach((name) => root.addEventListener(name, activity));
+  ['pointerdown', 'keydown', 'input', 'change'].forEach((name) => root.addEventListener(name, activity));
   window.addEventListener('pagehide', () => {
     revision += 1;
     ready = false;

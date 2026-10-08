@@ -4,6 +4,21 @@
 below means repository/fixture verification, not production rollout or inbox
 receipt. The child implementation does not deploy or merge production.
 
+## Local security hardening
+
+These changes are implemented in the security-review worktree, **not deployed**.
+The historical deployment table below does not prove these protections are live.
+
+| Area | State | Evidence / remaining gate |
+|---|---|---|
+| Booth-only credential and persistent boundary | Verified locally | Scoped purposes rejected by general authentication; dashboard/API/share/format denials; reset, logout, OAuth/re-login and legacy migration regressions |
+| One active report with controlled switching | Verified locally | Original recipient/deadline retained; fresh permission checks; independent sent/uncertain/view outcomes per report |
+| Fail-closed report lifecycle | Verified locally | Real workerd early concealment; client verification failure/timeout, idle/history/reset recovery; wrapper removal preserves original nodes/layout |
+| Touchscreen downloads and extra tabs | Verified locally | PDF/opaque export MIME and disposition denials; late client download/target suppression; ordinary portal downloads retained |
+| Matching Worker/assets and managed touchscreen | Not activated | Reviewed deployment, close old report tabs, reload/migrate kiosk, final hardware/network rehearsal; administration on a separate browser/device |
+
+## Historical implementation and activation
+
 | Area | State | Evidence / remaining gate |
 |---|---|---|
 | Isolated booth Worker + evergreen shell | Verified locally | Exact routes, bundled single-source assets, Wrangler dry-run |
