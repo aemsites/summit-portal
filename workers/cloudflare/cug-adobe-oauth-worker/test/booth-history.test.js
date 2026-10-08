@@ -174,7 +174,7 @@ describe('persistent booth authorization boundary', () => {
     expect(cookies.has('booth_session')).toBe(true);
     await request('/auth/booth/lookup', { email: 'visitor@example.com' });
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(Date.now() + 601000);
+    vi.setSystemTime(Date.now() + 901000);
     expect((await request(selected)).status).toBe(302);
     vi.useRealTimers();
     env.EVENT_CRED_EPOCH = '2';

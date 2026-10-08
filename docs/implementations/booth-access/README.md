@@ -29,9 +29,23 @@ button; there is no meeting/contact action or implied sales consent.
 Reset clears attendee access, not the scoped booth login, persistent kiosk
 boundary or disclosed lead-history records. **Choose another report** on a
 report or Finish returns to the same authorized picker without another email
-lookup. It revokes the active selection, keeps the original expiry and rechecks
+lookup. It revokes the active selection, keeps the current inactivity expiry and rechecks
 permissions on selection; send/view outcomes remain independent per report.
 Sent and uncertain outcomes cannot become retryable by switching.
+
+**Inactivity policy (October 8, local; not deployed):** the screen and attendee
+access now expire together after **15 minutes without visitor interaction**.
+Touch/pointer, scrolling, keyboard and input/change events renew the existing
+visit through same-origin `POST /auth/booth/activity`. Active reports can remain
+open beyond fifteen minutes; there is no separate ten-minute visit cutoff.
+The shared frontend helper batches input renewals, subtracts elapsed idle time,
+and updates its deadline only after server confirmation. The Worker rechecks
+staff/device binding and personal-report permissions before refreshing Durable
+Object expiry, KV retention and the context cookie. Passive status, view and
+asset requests never renew access. Failed renewal keeps the screen fail-closed;
+expired/reset visits cannot be revived. Manual clear/history safeguards and
+the **four-day staff login** are unchanged. Deploy the Worker and matching
+bundled assets together after review, then close old report tabs and reload.
 
 **Security hardening is deployed; see the October 8 rollout below.** Dashboard navigation cannot exit
 booth restrictions. Staff administration uses a **separate browser/device**.
@@ -154,7 +168,7 @@ initial status, lookup, demo chooser/catalogue, demo/personal selection, picker,
 send, reset and staff exit. A stalled operation aborts, scrubs visitor fields and
 previews, discards stale callbacks and shows **Retry and clear screen**. New
 attendee actions stay blocked until the server confirms clearing. Existing idle
-and original absolute expiry timers are not extended by the timeout. Reset
+and server-confirmed inactivity expiry timers are not extended by the timeout. Reset
 continues to serialize behind the bounded pending operation and shows
 **Clearing this visit...**, rather than waiting silently forever. A failed or
 timed-out reset exposes manual recovery without pretending the server cleared.
@@ -162,7 +176,7 @@ The isolated `/booth?recover=1` reset also bounds body reading with its deadline
 
 Aborting a browser request does **not** undo an accepted server mutation. The
 existing Durable Object queue still serializes mutations; authorization,
-booth isolation, original deadlines and per-report delivery-attempt recording
+booth isolation, server-confirmed deadlines and per-report delivery-attempt recording
 are unchanged. A timed-out email send is explicitly **unconfirmed**, not a
 successful delivery and never an automatic resend. Ask the booth team before
 sending again. Stale demo-clearing completion cannot launch a new catalogue
@@ -236,7 +250,7 @@ while a new field focus or tap on the retained-focus field allows an unreported
 overlay to reopen. Moving between fields with an open keyboard preserves the
 unshrunk baseline. Blur, checkbox focus and pagehide also release the reserve.
 Entry `input`/`change` now renew
-its idle timer without affecting absolute expiry. Reset/pagehide blur and scrub
+its fifteen-minute idle timer and server visitor expiry. Reset/pagehide blur and scrub
 fields. The security report guard also scrubs visitor fields during recovery,
 including historical request documents, without extending attendee expiry. Pinch zoom and the browser's
 overlay policy are unchanged.
@@ -896,7 +910,7 @@ Deploy the Worker and matching assets together after review. Close old report
 tabs, reload `/booth`, and migrate an existing staff/device session there before
 handing the screen to attendees. Disable address-bar/history/tab escape,
 developer tools, cookie deletion and OS access using managed kiosk controls;
-keep staff nearby. Ten-minute context expiry and two-minute interactive idle
+keep staff nearby. The coordinated fifteen-minute inactivity expiry and screen
 reset do not revoke the scoped login. Failed verification/reset keeps content
 hidden until confirmed server clearing. Web code cannot erase already-downloaded
 files or prevent someone from asserting another permitted email address.
