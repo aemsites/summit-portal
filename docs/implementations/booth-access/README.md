@@ -174,6 +174,12 @@ session-renewal changes are integrated. Native geometry checks are in
 `test/fixtures/booth-final-design-browser.js` and `booth-demo-browser.js`.
 Merging/pushing frontend code is not a Worker deployment.
 
+Wrangler must explicitly include `styles/booth-loading.css` in its Text-module
+rules. Its default CSS loader exports an object, not a stylesheet string, which
+would serve/inject `[object Object]` despite the Vitest text-asset mocks passing.
+The shell packaging regression runs the actual summit dry-run build and checks
+the emitted loading stylesheet against the source before deployment.
+
 ### Final industry chooser (October 8, deployed)
 
 The approved [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714)

@@ -319,6 +319,12 @@ the new glow is Worker-bundled. This branch incorporates main's activity-based
 geometry within one pixel; the original report/loading/privacy journeys remain.
 No production deployment is included in this change.
 
+The production packaging check must use Wrangler itself, not only Vitest's
+text-asset importer. `styles/booth-loading.css` is explicitly a Wrangler Text
+module; otherwise esbuild exports an empty CSS-module object and the loader
+endpoint/report injection contain `[object Object]`. The shell regression now
+builds the real summit bundle and compares its loading CSS asset to the source.
+
 ### Final Figma industry chooser (October 8, deployed)
 
 Implemented [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714).
