@@ -559,7 +559,62 @@ describe('booth isolated context', () => {
     expect((await request('lookup', { email: 'person@unmatched.example' })).status).toBe(404);
     delete data['/closed-user-groups.json'];
     expect((await request('lookup', { email: 'visitor@example.com' })).status).toBe(502);
-    expect([...env.REPORT_REQUESTS.events.values()].map((event) => event.kind)).toEqual(['search', 'search']);
+    expect([...env.REPORT_REQUESTS.events.values()].map((event) => event.kind)).toEqual(['search', 'no_report', 'search']);
+  });
+
+  it('privately correlates unmatched searches with selected and actually opened industry demos', async () => {
+    const email = 'person@unmatched.example';
+    expect((await request('lookup', { email })).status).toBe(404);
+    const missing = await (await request('status')).json();
+    expect(missing.state).toBe('unavailable');
+    expect(JSON.stringify(missing)).not.toContain(email);
+    const picker = await (await request('demo-picker', {})).json();
+    expect(picker).toMatchObject({ state: 'demos', unmatched: true });
+    expect(JSON.stringify(picker)).not.toContain(email);
+    expect((await request('demo', { id: 'luma' })).status).toBe(200);
+    const selected = await (await request('status')).json();
+    expect(JSON.stringify(selected)).not.toContain(email);
+    expect(selected).not.toHaveProperty('flowId');
+    expect((await request('view', { path: '/example-report/carvelo/' })).status).toBe(400);
+    expect((await request('view', { path: '/example-report/luma/' })).status).toBe(200);
+    expect((await request('view', { path: '/example-report/luma/' })).status).toBe(200);
+    await request('demo-picker', {});
+    await request('demo', { id: 'carvelo' });
+    await request('view', { path: '/example-report/carvelo/' });
+    const events = [...env.REPORT_REQUESTS.events.values()];
+    expect(events.map((event) => event.kind)).toEqual([
+      'search', 'no_report', 'demo_selected', 'demo_viewed', 'demo_selected', 'demo_viewed',
+    ]);
+    expect(events.every((event) => event.email === email)).toBe(true);
+    expect(new Set(events.map((event) => event.flow_id)).size).toBe(1);
+    expect(events[2]).toMatchObject({ company: 'Luma', report_label: 'Retail / apparel', report_path: '/example-report/luma/' });
+    expect(env.SESSIONS.store.size).toBe(0);
+    expect((await request('send', {})).status).toBe(409);
+    await request('reset', {});
+    expect(await state.storage.get('context')).toBeUndefined();
+    await request('demo', { id: 'luma' });
+    await request('view', { path: '/example-report/luma/' });
+    expect(env.REPORT_REQUESTS.events.size).toBe(6);
+  });
+
+  it('retains unmatched activity for retry without misclassifying outages or exposing its email', async () => {
+    await request('lookup', { email: 'person@unmatched.example' });
+    env.REPORT_REQUESTS.prepare = () => { throw new Error('Database offline'); };
+    expect((await request('demo', { id: 'luma' })).status).toBe(503);
+    const outbox = await state.storage.get('activity');
+    expect(outbox.map((event) => event.kind)).toEqual(['demo_selected']);
+    const record = await state.storage.get('context');
+    expect(record.mode).toBe('demo');
+    await request('reset', {});
+    expect(await state.storage.get('context')).toBeUndefined();
+    expect(await state.storage.get('activity')).toEqual(outbox);
+    env.REPORT_REQUESTS = createMockBoothD1();
+    await actor.alarm();
+    expect([...env.REPORT_REQUESTS.events.values()][0]).toMatchObject({ kind: 'demo_selected', email: 'person@unmatched.example' });
+    delete data['/closed-user-groups.json'];
+    expect((await request('lookup', { email: 'visitor@example.com' })).status).toBe(502);
+    expect(await state.storage.get('context')).toBeUndefined();
+    expect((await (await request('demo-picker', {})).json()).unmatched).toBe(false);
   });
 
   it('does not infer contact consent from searching, viewing or emailing and refuses recipient overrides', async () => {

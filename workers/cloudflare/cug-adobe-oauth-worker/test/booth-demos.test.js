@@ -6,7 +6,7 @@ import { BoothCoordinator, handleBooth } from '../src/booth.js';
 import { createBoothActivity } from '../src/booth-activity.js';
 import { createMockEnv, createMockBoothD1, createMockBoothStorage, createMockBoothCookie } from './helpers.js';
 
-describe('staff-bound, identity-free booth demos and report requests', () => {
+describe('staff-bound booth demos and retired report requests', () => {
   let env;
   let cookie;
   let storage;
@@ -54,13 +54,14 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
     expect((await (await request('status')).json()).state).toBe('demo');
     expect(fetch).not.toHaveBeenCalled();
     expect(env.REPORT_REQUESTS.events.size).toBe(0);
-    for (const action of ['send', 'view', 'select']) {
+    expect((await request('view', { path: demo.path })).status).toBe(200);
+    for (const action of ['send', 'select']) {
       expect((await request(action, {})).status).toBe(409);
     }
     expect((await request('contact', {})).status).toBe(404);
   });
 
-  it('clears the previous visitor KV before switching to a demo, then opens a fresh public form', async () => {
+  it('clears the previous visitor KV before switching to a demo and rejects the retired request flow', async () => {
     await env.SESSIONS.put('booth:previous', JSON.stringify({ email: 'previous@example.com' }));
     await storage.put('context', { key: 'previous', expiresAt: Date.now() + 600000, binding: '' });
     // Establish a legitimate binding using the same staff session.
@@ -71,10 +72,8 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
     await request('demo', { id: 'luma' });
     expect(await env.SESSIONS.get('booth:previous')).toBeNull();
     const response = await request('request', {});
-    const result = await response.json();
-    expect(result).toMatchObject({ state: 'request', selectedPath: '/request-report' });
-    expect(result).not.toHaveProperty('demoId');
-    expect(JSON.stringify(result)).not.toContain('previous');
+    expect(response.status).toBe(404);
+    expect((await storage.get('context')).selectedPath).toBe('/example-report/luma/');
     expect(env.REPORT_REQUESTS.events.size).toBe(0);
     expect((await request('reset', {})).headers.get('Set-Cookie')).toContain('Max-Age=0');
     expect(await storage.get('context')).toBeUndefined();
@@ -89,7 +88,7 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
   });
 
   it('rejects request prefill, cross-origin changes and anonymous access', async () => {
-    expect((await request('request', { email: 'visitor@example.com' })).status).toBe(400);
+    expect((await request('request', { email: 'visitor@example.com' })).status).toBe(404);
     expect((await request('demo', { id: 'luma' }, { Origin: 'https://evil.example' })).status).toBe(403);
     for (const action of ['demos', 'demo', 'request']) {
       expect((await request(action, action === 'demos' ? undefined : {}, { Cookie: '' })).status).toBe(401);
@@ -97,7 +96,7 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it.each(['demo', 'request'])('preserves the existing outbox retry when switching to %s', async (mode) => {
+  it.each(['demo'])('preserves the existing outbox retry when switching to %s', async (mode) => {
     const outbox = [createBoothActivity('search', 'prior-visit', 'visitor@example.test')];
     await storage.put('activity', outbox);
     const alarm = vi.spyOn(storage, 'setAlarm');
@@ -111,8 +110,8 @@ describe('staff-bound, identity-free booth demos and report requests', () => {
     expect(env.REPORT_REQUESTS.events.size).toBe(0);
   });
 
-  it('expires demo/request state and prevents a different staff session from reusing it', async () => {
-    await request('request', {});
+  it('expires demo state and prevents a different staff session from reusing it', async () => {
+    await request('demo', { id: 'luma' });
     const original = cookie;
     cookie = `${await createMockBoothCookie(env, 'another@adobe.com')}; ${original.match(/booth_context=[^;]+/)[0]}`;
     expect((await request('status')).status).toBe(403);

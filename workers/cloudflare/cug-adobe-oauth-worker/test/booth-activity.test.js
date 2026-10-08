@@ -162,4 +162,29 @@ describe('identified booth activity and anonymous analytics boundary', () => {
     await countBoothActivity(env, 'contact_requested');
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it('exports unmatched and demo outcomes with private visit correlation while counting them anonymously', async () => {
+    env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+    for (const kind of ['no_report', 'demo_selected', 'demo_viewed']) {
+      await storeBoothActivity(env, createBoothActivity(
+        kind,
+        'missing-visit',
+        'unmatched@example.com',
+        kind === 'no_report' ? null : { path: '/example-report/luma/', company: 'Luma', label: 'Retail / apparel' },
+      ));
+      const csv = await (await handleBoothActivity(request(`?kind=${kind}`, '/api/booth-activity.csv'), env, session)).text();
+      expect(csv).toContain('"unmatched@example.com"');
+      expect(csv).toContain('"missing-visit"');
+      await countBoothActivity(env, kind);
+      const payload = JSON.parse(fetch.mock.lastCall[1].body);
+      expect(payload).toEqual({
+        type: 'event',
+        hostname: 'act.aem.now',
+        event: `booth_${kind}`,
+        path: '/booth',
+        ua: 'ServerSide/1.0 (+https://act.aem.now/)',
+      });
+    }
+  });
 });

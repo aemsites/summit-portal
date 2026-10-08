@@ -71,7 +71,7 @@ createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'];
+    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'];
     if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -103,8 +103,8 @@ createServer(async (request, response) => {
       const email = body.email.trim().toLowerCase();
       if (!['visitor@example.test', 'multi@example.test'].includes(email)) {
         Object.keys(context).forEach((key) => { delete context[key]; });
-        Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
         const missing = email !== 'service-error@example.test';
+        Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + 600000 });
         response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
           : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
@@ -132,17 +132,27 @@ createServer(async (request, response) => {
         delete context.selectedPath;
       }
     }
-    if (action === 'demo' || action === 'request') {
+    if (action === 'demo-picker') {
+      const unmatched = context.unmatched === true;
+      Object.keys(context).forEach((key) => { delete context[key]; });
+      Object.assign(context, { state: 'unavailable', unmatched, expiresAt: Date.now() + 600000 });
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ ...context, state: 'demos' }));
+      return;
+    }
+    if (action === 'demo') {
       const demo = findBoothDemo(body.id);
       if (action === 'demo' && !demo) {
         response.writeHead(400, { 'Content-Type': 'application/json' });
         response.end('{"error":"Choose an available industry demo."}');
         return;
       }
+      const unmatched = context.unmatched === true;
       Object.keys(context).forEach((key) => { delete context[key]; });
       Object.assign(context, {
         state: action,
-        selectedPath: demo?.path || '/request-report',
+        selectedPath: demo.path,
+        unmatched,
         expiresAt: Date.now() + 600000,
         ...(demo ? { demoId: demo.id, company: demo.company, industry: demo.industry } : {}),
       });
@@ -151,7 +161,8 @@ createServer(async (request, response) => {
       Object.keys(context).forEach((key) => { delete context[key]; });
       Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
     }
-    if (['send', 'view'].includes(action) && context.state !== 'report') {
+    if ((action === 'send' && context.state !== 'report')
+      || (action === 'view' && !['demo', 'report'].includes(context.state))) {
       response.writeHead(409, { 'Content-Type': 'application/json' });
       response.end('{"error":"Open the example report first. This is a local fixture."}');
       return;
@@ -185,10 +196,8 @@ createServer(async (request, response) => {
     return;
   }
   if (preview && path === '/request-report') {
-    const context = fixtureContext(request, response);
-    const html = await readFile(resolve(root, 'test/fixtures/booth-preview-request.html'), 'utf8');
-    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    response.end(markedDocument(html, context));
+    response.writeHead(302, { Location: '/booth' });
+    response.end();
     return;
   }
   if (path.startsWith('/accounts/')) {

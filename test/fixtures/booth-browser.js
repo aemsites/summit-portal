@@ -94,10 +94,14 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   check(await page.getByRole('heading', { name: 'Talk through your report here' }).count() === 0, 'Removed guidance section returned');
   const finish = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
-    guidance: document.querySelector('.finish-guidance').getBoundingClientRect().height,
+    row: document.querySelector('.finish-action-row').getBoundingClientRect().height,
+    reset: document.querySelector('.finish-clear').getBoundingClientRect().height,
     action: document.querySelector('#send-report').getBoundingClientRect().height,
+    titleHeight: document.querySelector('#report-preview .rh-insight-text h3').getBoundingClientRect().height,
+    titleLine: parseFloat(getComputedStyle(document.querySelector('#report-preview .rh-insight-text h3')).lineHeight),
   }));
-  check(!finish.overflow && finish.guidance >= 261 && finish.action >= 130, 'Figma portrait Finish sizing changed');
+  check(!finish.overflow && finish.row >= 130 && finish.action >= 130 && finish.reset >= 130, 'Figma portrait Finish sizing changed');
+  check(finish.titleHeight >= (finish.titleLine * 2) - 1, 'Report preview clipped a partial title line');
   await page.getByRole('button', { name: 'Email my report' }).click();
   await page.waitForFunction(() => document.querySelector('#finish-status').textContent.includes('was emailed'));
   check(calls === 1 && await page.locator('#send-report').isDisabled(), 'Duplicate send UI protection failed');
@@ -212,5 +216,5 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.waitForURL('**/booth');
   check(await page.locator('#stage').getAttribute('data-entry') === '3'
     && await page.locator('#registration-email').inputValue() === '', 'Reset lost variant or leaked email');
-  return { entry, finish, mobile, checked: 'Fixed Entry 3 → direct report → native Finish 6 previews without another lookup → send → reset; static follow-up guidance; preview rotation; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage; ignored legacy variants. All emails are synthetic fixtures, no live email sent.' };
+  return { entry, finish, mobile, checked: 'Final Entry → direct report → Finish 6 previews without another lookup → send → reset; horizontal actions; preview rotation; explicit picker; escaped labels; failed delivery; mobile; reduced motion; no client storage; ignored legacy variants. All emails are synthetic fixtures, no live email sent.' };
 }
