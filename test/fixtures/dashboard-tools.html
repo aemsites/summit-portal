@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="header" content="off">
+    <title>Dashboard tools - synthetic local fixture</title>
+    <link rel="stylesheet" href="/styles/styles.css">
+    <style>
+      main { padding-top: 24px; }
+      .default-content h1 { margin: 0 0 20px; }
+      .fixture-label { font-size: 13px; color: var(--color-text-secondary); }
+    </style>
+    <script type="module">
+      const originalFetch = window.fetch;
+      const example = {
+        Report: 'Example',
+        Customers: 'Example',
+        Folder: '/accounts/e/example/insights/example-test/portal-landing/',
+      };
+      window.fetch = (input, options) => {
+        const url = new URL(input instanceof Request ? input.url : input, window.location.href);
+        const datasets = [
+          '/data/portal-list.json', '/data/insights-list.json', '/data/account-list.json',
+          '/data/company-list.json', '/data/event-tabs.json', '/closed-user-groups.json',
+        ];
+        if (datasets.includes(url.pathname)) {
+          return Promise.resolve(Response.json({
+            data: url.pathname === '/data/insights-list.json' ? [example] : [],
+          }));
+        }
+        if (url.pathname === '/api/booth-activity.csv') {
+          const kind = url.searchParams.get('kind');
+          const actions = ['search', 'no_report'].filter((action) => !kind || kind === action);
+          const rows = actions.map((action) => `"2026-10-08T12:00:00.000Z","visitor@example.test","example-visit","${action}","","","","booth-privacy-v1","2027-01-06T12:00:00.000Z"`);
+          const csv = ['Occurred,Email,Visit,Action,Company,Report,Report path,Notice,Expires', ...rows].join('\r\n');
+          return Promise.resolve(new Response(`${csv}\r\n`, { headers: { 'Content-Type': 'text/csv' } }));
+        }
+        return originalFetch(input, options);
+      };
+      const { ensureRequiredRouteBlocks } = await import('/scripts/scripts.js');
+      await ensureRequiredRouteBlocks('/adobe/dashboard');
+    </script>
+  </head>
+  <body>
+    <main>
+      <div>
+        <p class="fixture-label">Local preview. Downloads contain synthetic data only.</p>
+        <h1>Adobe internal dashboard</h1>
+        <div class="report-callout report-requests">
+          <div>
+            <div><p>Public report requests</p></div>
+            <div>
+              <h2>Customers can request a Digital Opportunity Report online.</h2>
+              <p>Find the customer request, generate their report in Digital Insights, then return here to share their report.</p>
+            </div>
+            <div>
+              <p><a href="/adobe/report-requests">Open report requests</a></p>
+              <p><a href="/request-report">View public request form</a></p>
+            </div>
+          </div>
+        </div>
+        <div class="report-callout neutral">
+          <div>
+            <div><p>Guide</p></div>
+            <div><p><strong>Sales playbook:</strong> learn how to present a Digital Opportunity Report. <a href="/docs/sales-playbook">Open the sales playbook</a></p></div>
+          </div>
+        </div>
+        <div class="report-callout neutral">
+          <div>
+            <div><p>Note</p></div>
+            <div><p><strong>Why a report may be incomplete:</strong> some sections depend on the data available for that domain.</p></div>
+          </div>
+        </div>
+        <div class="customer-picker">
+          <div><div><a href="/data/portal-list.json">Reports</a></div></div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

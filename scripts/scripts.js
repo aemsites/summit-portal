@@ -34,6 +34,16 @@ const decorateArea = ({ area = document }) => {
 };
 
 export async function ensureRequiredRouteBlocks(pathname = window.location.pathname) {
+  if (pathname.replace(/\/$/, '') === '/adobe/dashboard') {
+    const main = document.querySelector('main');
+    const picker = main?.querySelector('.customer-picker');
+    if (picker && !main.querySelector('.dashboard-tools')) {
+      const block = document.createElement('div');
+      block.className = 'dashboard-tools';
+      picker.after(block);
+      await loadBlock(block);
+    }
+  }
   if (pathname === '/403') {
     const main = document.querySelector('main');
     if (main && !main.querySelector('.portal-recovery')) {
