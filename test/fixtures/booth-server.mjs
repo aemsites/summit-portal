@@ -7,7 +7,16 @@ import { resolve, extname } from 'node:path';
 import { BOOTH_DEMOS, findBoothDemo } from '../../workers/cloudflare/cug-adobe-oauth-worker/src/booth-demos.js';
 
 const root = resolve(import.meta.dirname, '../..');
-const preview = process.argv.includes('--preview');
+const simulator = process.argv.includes('--simulator');
+const preview = simulator || process.argv.includes('--preview');
+const portIndex = process.argv.indexOf('--port');
+const explicitPort = portIndex !== -1 || process.env.PORT !== undefined;
+const portValue = portIndex !== -1 ? process.argv[portIndex + 1] : process.env.PORT;
+if (explicitPort && (!/^\d+$/.test(portValue || '') || Number(portValue) < 1 || Number(portValue) > 65535)) {
+  throw new Error('--port / PORT must be an integer between 1 and 65535.');
+}
+let port = Number(portValue || (simulator ? 3001 : 3000));
+const initialPort = port;
 const fixtures = new Map();
 const reportPath = '/accounts/e/example/insights/example-com/portal-landing/';
 const otherReportPath = '/accounts/e/example/insights/example-org/portal-landing/';
@@ -54,8 +63,12 @@ function markedDocument(html, context) {
     .replace('</body>', '</div><aside id="booth-recovery"><p role="alert">Checking this booth report...</p><button type="button" data-booth-recover>Retry and clear screen</button></aside></body>');
 }
 
-createServer(async (request, response) => {
-  const url = new URL(request.url, 'http://localhost:3000');
+function simulatorDocument(html) {
+  return simulator ? html.replace('<head>', '<head><script src="/test/fixtures/booth-touchscreen-device.js"></script>') : html;
+}
+
+const server = createServer(async (request, response) => {
+  const url = new URL(request.url, 'http://localhost');
   let path = url.pathname;
   response.setHeader('Cache-Control', 'no-store');
   if (preview && (path === '/booth' || path === '/content/index')) {
@@ -192,7 +205,7 @@ createServer(async (request, response) => {
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const context = fixtureContext(request, response);
-    response.end(markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context));
+    response.end(simulatorDocument(markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context)));
     return;
   }
   if (preview && path === '/request-report') {
@@ -212,7 +225,7 @@ createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     const context = preview ? fixtureContext(request, response) : null;
-    response.end(context ? markedDocument(html, context) : html);
+    response.end(simulatorDocument(context ? markedDocument(html, context) : html));
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);
@@ -224,13 +237,30 @@ createServer(async (request, response) => {
   try {
     const bytes = await readFile(file);
     response.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream' });
-    response.end(bytes);
+    if (path === '/booth.html') response.end(simulatorDocument(bytes.toString()));
+    else if (path === '/test/fixtures/booth-touchscreen.html') {
+      response.end(bytes.toString().replace('<body>', `<body data-simulator="${simulator}">`));
+    } else response.end(bytes);
   } catch {
     response.writeHead(404);
     response.end();
   }
-}).listen(Number(process.env.PORT || 3000), '127.0.0.1', () => {
-  process.stdout.write(preview
-    ? 'LOCAL FIXTURES ONLY: http://localhost:3000/ — no real email, auth, or lead recording.\n'
-    : 'Test-only booth fixture server: http://localhost:3000/content/index\n');
 });
+
+server.on('error', (error) => {
+  if (simulator && !explicitPort && error.code === 'EADDRINUSE' && port < initialPort + 20) {
+    process.stderr.write(`Port ${port} is busy; leaving that service alone and trying ${port + 1}.\n`);
+    port += 1;
+    server.listen(port, '127.0.0.1');
+    return;
+  }
+  process.stderr.write(`Cannot start local booth server on port ${port}: ${error.message}\n`);
+  process.exitCode = 1;
+});
+server.on('listening', () => {
+  process.stdout.write(preview
+    ? `LOCAL FIXTURES ONLY: http://localhost:${port}/ — no real email, auth, or lead recording.\n`
+    : `Test-only booth fixture server: http://localhost:${port}/content/index\n`);
+  if (simulator) process.stdout.write('Open the URL, tap Registration email, and use the on-screen keys or sample addresses. Keyboard scenarios are assumptions, not native OS emulation.\n');
+});
+server.listen(port, '127.0.0.1');

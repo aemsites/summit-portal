@@ -254,7 +254,8 @@ overlay model, blur cleanup and input-only idle renewal. These are stress
 models, **not native OS keyboard emulation**. Rehearse the actual OS/browser,
 CSS viewport/DPR, keyboard height and policy links before device release.
 The confirmed device is a **40-inch portrait display with 2160 x 3840 physical
-pixels**, not a confirmed 2160 x 3840 CSS viewport. Local dismissal models also
+pixels** and a built-in **Windows 11** mini-PC; target browsers are Microsoft
+Edge and Google Chrome. This is not a confirmed 2160 x 3840 CSS viewport. Local dismissal models also
 cover 125%/150%/200% scaling (1728 x 3072, 1440 x 2560, 1080 x 1920 CSS) and
 250% (864 x 1536 CSS). At 250% the existing large portrait report profile is
 inactive; configure and accept the device rather than changing the breakpoint.
@@ -290,13 +291,158 @@ the same report's real Finish preview and empty Entry after reset. No lookup,
 email or production booth mutation is performed; never put credentials or
 customer report content in test files.
 
+### Local Windows 11 touchscreen simulator
+
+From the repository worktree:
+
+```bash
+npm run preview:touchscreen
+```
+
+Open the **URL printed by the command** in your browser. It binds only to
+loopback, defaults to `http://localhost:3001/`, and tries the next free port when
+that port is busy; no running service is stopped. For an explicit port use
+`npm run preview:touchscreen -- --port 3010` (an occupied explicit port fails
+visibly). The ordinary AEM development server on 3000 is not needed.
+
+Tap **Registration email** in the screen, then type with the schematic
+on-screen QWERTY keys, your physical keyboard, or a sample-address button.
+Enter submits the real form with native validity checks. Email inputs do not
+expose a selection API in Chromium, so simulated keys edit the end of the
+address; physical typing retains the browser's real caret behavior.
+`visitor@example.test` opens one synthetic private report;
+`multi@example.test` opens the real website picker; any other address models
+no-match except `service-error@example.test`, which models a lookup outage.
+Read the report, use **Finish reading my report**, try the fake email send and
+**Finish and clear this screen**. Or use **Industry demos** and exercise the
+actual ten-industry chooser, example report, Change industry and Clear flow.
+Demos intentionally do not offer personal-report Finish/email. The operator's
+**Launch sample Finish** bypasses lookup only in this local fixture.
+
+The confirmed screen is 40-inch portrait, 2160 x 3840 physical pixels. Windows
+11 runs on a built-in generation-8 processor, 8GB RAM, 2GB video memory and 256GB
+SSD. These facts do **not** establish DPR, CSS viewport, native keyboard behavior
+or performance. Assumed Windows scaling presets select resting CSS viewports:
+
+| Assumption | Resting CSS viewport |
+|---|---|
+| 100% | 2160 x 3840 |
+| 125% | 1728 x 3072 |
+| 150% | 1440 x 2560 |
+| 200% | 1080 x 1920 |
+| 250% | 864 x 1536; existing large-touch profile inactive |
+
+Fit/fill-width/1:1 is a separate preview transform, not device scaling or browser
+zoom. Keyboard height defaults to **45%** of the resting screen and is adjustable
+from 20% to 65%. Three deliberately different scenarios are available:
+
+| Scenario | What actually changes |
+|---|---|
+| Unreported overlay | Keyboard covers the lower screen; iframe innerHeight stays full. The real product's fallback reserve is observable, not patched. |
+| Layout viewport shrinks | Iframe innerHeight genuinely shrinks; the physical-screen frame stays full. Dismissal restores full height. |
+| Reported geometry | A local pre-init VirtualKeyboard facade emits geometrychange/boundingRect; layout stays full. This is synthetic, not the native browser API. |
+
+**Hide & restore** (including the keyboard's Hide key) explicitly blurs the
+field, retains its text and restores the pre-edit scroll position after the
+real helper releases its reserve. Tap the field again to reopen. This is an
+explicit end-editing policy, not claimed detection of native Windows dismissal.
+**Diagnostic: dismiss without blur** instead retains field focus: reported
+resize/geometry release the reserve; a truly unreported overlay cannot communicate
+dismissal, so the measured fallback reserve can remain.
+Switching scaling/scenario
+ends editing without navigating; changing only visual magnification does not.
+The panel measures route, viewport, keyboard height, product
+`booth-keyboard-active` / `--booth-keyboard-inset`, field/label bounds and critical
+action coverage against the visible rectangle. Scroll **inside** the screen to
+check reachability. Hidden-keyboard fallback reserve is explicitly warned about:
+an unreported overlay has no native dismissal signal, and the simulator never
+forces the product's inset to zero to conceal that limitation.
+
+Everything is fixture-only: no customer lookup, real mail, staff authentication
+or lead recording. Server-memory state is isolated by a ten-minute fixture
+cookie and lost on restart. Industry reports and metrics are synthetic.
+Pre-init touch/API facades run only in the explicitly opted-in local workbench
+iframe, before booth modules, and persist by reconnecting after document
+navigation. Standalone/unrelated reports do not acquire simulation behavior.
+The old `preview:booth` mode remains layout-only on 3000. `test/` is excluded by
+`.hlxignore`; there is no root `.assetsignore`. The initial harness changed no
+production code. The user-directed follow-up below corrects only the shared
+booth keyboard helper; no Worker business logic or import infrastructure changes.
+
+**Reproduced interaction fixes:** the real helper previously scrolled the label
+to 24px even when a small scroll would suffice. It now scrolls only enough to
+reveal the label, field/help and primary submit, leaving entry lower in the
+available screen and allowing wheel scrolling. A held first submit tap also
+failed: blur released bottom padding and moved the button between pointerdown
+and pointerup. Submit pointerdown now retains editing focus, preserving the
+native click and form validation/submission exactly once. It does not submit
+on pointerdown. Entry uses `booth-keyboard-scroll-1`; the Worker continues
+revalidating that asset. Valid Enter already submitted correctly; incomplete
+or name-only input still fails native email validation.
+
+The demo rendering failure was in `booth-preview-report.html`: booth shell
+styles and partial hero/stats construction left charts/carousel as raw authored
+rows. The fixture now loads actual report block styles, normal Author Kit
+wrappers and real builders, with six synthetic visibility bars and three
+interactive briefing tabs. All ten demos reuse this deliberately synthetic
+report. The nonexistent PDF link was removed. Extra scroll range remains
+labelled for long-report tests; it is not representative report length.
+
+**Real Windows 11 checklist:** run the same command on the screen's mini-PC,
+then open the printed localhost URL separately in **Microsoft Edge** and
+**Google Chrome**, starting with browser zoom **100%**. Confirm actual Windows
+display scaling, CSS viewport and DPR in the browser (for the direct full-screen
+fixture, inspect `window.innerWidth`, `window.innerHeight`,
+`window.devicePixelRatio` at `/content/index?preview=entry`). Fullscreen/kiosk
+chrome can change usable height. A fit-to-laptop picture does not prove reach or
+legibility on the mounted display. The direct fixture has no synthetic
+touch/keyboard API; use it to rehearse the **real Windows keyboard**.
+
+Verify that the native keyboard **auto-opens on the actual event build**;
+a touchscreen-equipped mini-PC does not guarantee that policy. For a manual
+acceptance-test fallback in Windows 11, use **Settings > Personalization >
+Taskbar > System tray icons > Touch keyboard > Always**, then tap the taskbar
+keyboard icon. This allows manual opening even with a physical keyboard
+attached; **When no keyboard attached** is conditional. See Microsoft's
+[Windows touch-keyboard setup](https://support.microsoft.com/en-us/windows/hardware/input-devices/enable-and-disable-the-touch-keyboard-in-windows).
+Do not apply the separate Windows 10 tablet-mode instructions to this device.
+
+Both target browsers are Chromium-based, but testing one Chromium browser on a
+development laptop does not prove native Windows behavior or Edge compatibility.
+Native keyboard layout/policy, true touch/coarse-pointer media, pinch gestures,
+screen-reader use, Turnstile, real delivery, privacy-policy links and managed
+kiosk lockdown require hardware/backend acceptance. Mouse clicks in this
+workbench remain mouse PointerEvents; only maxTouchPoints is locally advertised
+as one to exercise the existing touch fallback. Host DPR is unchanged and no
+overlaysContent policy is forced. External frame navigation is surfaced as a
+local-origin error; do not enter real credentials.
+
+`test/fixtures/booth-touchscreen-browser.js` is the reusable Playwright verifier
+for interactive keys, measured overlay/shrink/geometry, retained-focus
+dismissal/reopen, scaling changes and fixture-only navigation/send/reset.
+Run it in a fresh foreground Chromium page against the printed simulator URL;
+it is not a native Windows/Edge certification. `node --test
+test/fixtures/booth-server.test.mjs` checks validated ports, API opt-in and
+pre-init injection isolation. October 8 local verification passed these four
+server checks, 125 targeted frontend tests, changed-file lint and the interactive
+verifier (27 local API actions), plus the existing personal, keyboard, ten-demo
+and Entry/report recovery browser verifiers.
+
+`test/fixtures/booth-touchscreen-regressions-browser.js` additionally locks down
+the user's exact interactions with actual key/button/wheel events. It was run
+red before fixes. Its 15 preset/scenario combinations cover context/action
+visibility, explicit Hide restoration/reopen, native invalid-email validation,
+one lookup per held first submit click, metric containment and real chart
+decoration, plus direct 728px-host report rendering. These fixes are for branch
+compare review; no deployment or pull request is authorized.
+
 ### Local fallback review and rollout
 
 Run `npm run preview:booth` and open `http://localhost:3000/` for the exact
 2160 × 3840 review frame, or `/content/index` for the direct shell.
 `no-report@example.test` produces a true no-match;
-`service-error@example.test` produces an outage. Other synthetic emails use
-the prepared-report fixture; arbitrary unmatched domains also return no-report.
+`service-error@example.test` produces an outage. `visitor@example.test` opens one
+prepared-report fixture; `multi@example.test` opens a picker; all other addresses return no-report.
 Ten local demo paths share synthetic report content with the selected company
 label. The demo verifier checks all industries, no-match messaging, no request
 actions, view tracking, idle/history clearing and visible verification failures.

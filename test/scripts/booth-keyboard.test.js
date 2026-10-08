@@ -44,15 +44,45 @@ describe('scoped booth keyboard handling', () => {
   });
 
   async function focus() {
-    active = fixture.querySelector('input');
+    active = fixture.querySelector('#keyboard-field');
     document.dispatchEvent(new Event('focusin'));
     await sandbox.clock.tickAsync(32);
   }
 
-  it('creates scroll room for unreported touch overlays and positions the field with its label', async () => {
+  it('creates scroll room and scrolls only enough to reveal the field with its label', async () => {
     await focus();
     expect(inset()).to.equal('960px');
-    expect(window.scrollTo.lastCall.args[0].top).to.equal(window.scrollY + 1450 - 24);
+    expect(window.scrollTo.lastCall.args[0].top).to.equal(window.scrollY + 1588 - 936);
+  });
+
+  it('includes the primary form action in minimal scrolling', async () => {
+    const form = document.createElement('form');
+    const button = document.createElement('button');
+    button.type = 'submit';
+    fixture.append(form);
+    form.append(fixture.querySelector('label'), fixture.querySelector('input'), button);
+    sandbox.stub(button, 'getBoundingClientRect').returns({ top: 1660, bottom: 1740 });
+    await focus();
+    expect(window.scrollTo.lastCall.args[0].top).to.equal(window.scrollY + 1740 - 936);
+  });
+
+  it('retains editing focus on submit pointerdown without replacing native click or submission', async () => {
+    const form = document.createElement('form');
+    const button = document.createElement('button');
+    button.type = 'submit';
+    fixture.append(form);
+    form.append(fixture.querySelector('input'), button);
+    const submit = sinon.spy();
+    form.addEventListener('submit', submit);
+    await focus();
+    const down = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 });
+    button.dispatchEvent(down);
+    expect(down.defaultPrevented).to.equal(true);
+    expect(submit.called).to.equal(false);
+    button.type = 'button';
+    const other = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 });
+    button.dispatchEvent(other);
+    expect(other.defaultPrevented).to.equal(false);
   });
 
   it('uses reported overlay geometry without changing the browser keyboard policy', async () => {

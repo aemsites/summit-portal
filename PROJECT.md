@@ -115,7 +115,9 @@ retired-request behavior and ordinary unmarked report behavior are checked
 without real customer mutations or email. Entry dismissal models cover native
 2160 x 3840 and scaled 1728 x 3072, 1440 x 2560, 1080 x 1920 and 864 x 1536 CSS
 viewports. The physical display is **40-inch portrait, 2160 x 3840 physical
-pixels**; OS/browser/scaling/DPR and native keyboard policy remain unconfirmed.
+pixels**, with a built-in **Windows 11** mini-PC. Target browsers are Microsoft
+Edge and Google Chrome; browser versions, scaling/DPR and native keyboard policy
+remain unconfirmed.
 At 250% scaling (864 x 1536 CSS), the existing large-report portrait profile
 does not activate; this remains a device configuration/acceptance gate, not a
 breakpoint redesign. Earlier protected-customer verification is historical;
@@ -542,28 +544,80 @@ and confirmed removal of the talk-through guidance. These user decisions govern
 the implementation. Comment coverage remains limited to retrieved notifications,
 not complete native Figma comment-resolution or version history.
 
-**Local touchscreen review:** `npm run preview:booth` serves
-`http://localhost:3000/` on loopback. The review frame loads the actual booth
-shell at an exact **2160 × 3840 CSS viewport**, with optional 1080 × 1920 fallback
-and 2160 × 2881 Figma reference. Fit, fill-width and 1:1 inspection change only
-the frame's visual scale, never its CSS viewport. Entry/Finish controls switch
-between the two fixed screens. Explicit local fixtures enable example-report navigation,
-send/contact feedback and reset without real email, lead recording or staff
-authentication; entered emails are not retained. The selected synthetic report and
-Finish preview share the same authored hero/metrics. Use
-`no-report@example.test` to exercise missing-report recovery and
-`service-error@example.test` for an outage; any other synthetic email opens the
-prepared-report fixture. All ten demo routes reuse synthetic report content with
-the chosen company label. The request fixture uses the real decorator and
-portrait styles with fake Turnstile and a locally intercepted success response,
-never a real lead submission. Browser flow checks cover
-one lookup followed by the report document and one preview document request,
-consent/delivery/reset failures and privacy clearing. Render checks cover
-2160 × 2881, 2160 × 3840, 1080 × 1920 and 390 × 844 without horizontal overflow;
-all Finish actions fit the portrait reference/target/fallback viewports, with
-mobile content deliberately scrollable. This does not verify physical
-legibility, browser zoom/DPR or the actual event hardware's CSS viewport.
-Without `--preview`, the fixture server still returns 503 for unmocked APIs.
+**Local Windows 11 touchscreen simulator:** run `npm run preview:touchscreen`
+and open the printed localhost URL (default **3001**, automatically tries the
+next free port without stopping existing services). `-- --port 3010` selects an
+explicit validated port. It extends the existing `test/fixtures/booth-touchscreen`
+workbench, not a production route. The actual Entry/report/picker/industry/Finish
+modules run against synthetic local data and fake sends/resets only. Requests
+and contact controls remain retired. `visitor@example.test` opens one private
+example; `multi@example.test` opens the picker; arbitrary other addresses return
+no-match; `service-error@example.test` models an outage.
+
+The confirmed device is a **40-inch, 2160 × 3840 physical-pixel Windows 11**
+screen. Assumed 100%/125%/150%/200%/250% device scaling selects actual resting CSS
+viewports 2160 × 3840, 1728 × 3072, 1440 × 2560, 1080 × 1920 and 864 × 1536.
+250% explicitly warns that the existing large-touch profile is inactive.
+Fit/fill-width/1:1 separately magnify the preview; host DPR/browser zoom are
+not emulated. The adjustable schematic QWERTY email keyboard opens on editable
+focus/retap and accepts clickable keys and physical typing. **Hide & restore**
+ends editing (explicit blur), keeps the entered text and restores the pre-edit
+scroll position. A separate **Diagnostic: dismiss without blur** preserves focus.
+Scenarios cover unreported overlay, actual iframe layout shrink and a
+clearly synthetic VirtualKeyboard geometry API. A blocking local-only pre-init
+hook advertises one touch point inside the opted-in frame before production
+helpers mount, reattaching on navigation with bounded listeners. It does not
+force overlaysContent or patch the product's keyboard reserve. Changing scaling/scenario
+ends editing; plain magnification does not.
+
+The operator panel measures route, inner viewport, focused field/label/action
+bounds, usable rectangle and the product's keyboard class/inset. It exposes,
+rather than clears, retained fallback space after **unreported** dismissal.
+The fake fixture cookie/state expire after ten minutes and disappear on server
+restart. All industry reports reuse synthetic content. `preview:booth` retains
+the existing layout-only server on 3000; unopted direct pages do not receive
+touch/API facades, and non-preview APIs still return 503. `test/` is excluded
+from delivery by `.hlxignore`; no root `.assetsignore` exists. See the
+[one-command guide and real-device checklist](docs/implementations/booth-access/README.md#local-windows-11-touchscreen-simulator).
+This cannot certify native Windows keyboard layout/policy, Edge compatibility,
+coarse-pointer CSS/touch/pinch behavior, standing reach, screen readers,
+performance, real authentication/Turnstile, delivery or kiosk lockdown.
+
+**Simulator verification (October 8, local only):** 125 targeted booth,
+keyboard, adapter and preview unit tests plus four Node server isolation/port
+tests pass with changed-file ESLint/Stylelint. The new interactive Playwright
+verifier checks on-screen and physical typing/input events, field/label/action
+coverage, five scaling presets, resize/geometry dismissal with focus retained,
+overlay-reserve warnings, navigation/fake send/reset, small-host controls,
+independent magnification, adjustable height and visible foreign-origin errors.
+Existing keyboard, personal-report, ten-demo and Entry/report recovery browser
+verifiers also pass with fresh foreground contexts.
+
+**Touchscreen interaction corrections (October 8, branch only):** reproduced
+and corrected two production helper defects: top-aligning the label on every
+needed scroll, and losing the first held submit tap when blur collapsed scroll
+space between pointerdown/up. The helper now scrolls the minimum needed for the
+label, email/help and primary action; submit pointerdown retains editing focus
+until the ordinary native click/validated form submission. It does not submit
+on pointerdown or add another submit handler. Entry imports the revised helper
+as `?v=booth-keyboard-scroll-1`; Worker asset revalidation stays intact.
+Valid on-screen Enter already used the same native form; name-only/invalid
+emails remain blocked by browser validation.
+
+The broken demos were **local fixture rendering**, not evidence of broken
+production reports: the fixture loaded booth shell CSS, partially built only
+hero/stats, and left AI visibility/carousel authored rows undecorated. It now
+uses report styles, normal section/block wrappers and the real block builders,
+including six synthetic chart bars and three working briefing tabs. No fake
+PDF download is offered. The intentionally extended fixture scroll range is
+labelled. The actual-click regression was observed red before correction;
+it covers all five scaling presets in overlay/resize/geometry modes, wheel
+scrolling while typing, Hide/reopen, native validity, one lookup per held
+submit click, and framed/direct report decoration. Unreported native dismissal
+without blur/viewport/geometry signals remains unknowable; the diagnostic
+exposes it rather than inventing a signal. Native Windows acceptance is still
+required. This follow-up is authorized for branch push/compare review, **not
+deployment or a PR**.
 
 ## Project Structure
 

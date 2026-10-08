@@ -1,6 +1,6 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
-import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-2';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 
 export async function boothRequest(action, body) {
   const controller = new AbortController();
