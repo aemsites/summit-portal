@@ -101,7 +101,7 @@ CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-b
 The unauthenticated `/booth` route still redirects to `/login?staff` with a
 private, no-store response. No customer lookup or email was performed.
 
-**Portrait staff login (branch, not deployed):** `/login?staff&redirect=%2Fbooth`
+**Portrait staff login (merged, live):** `/login?staff&redirect=%2Fbooth`
 keeps the existing username/password authentication and redirect flow, with a
 staff-only portrait profile in `blocks/portal-login/portal-login.css`.
 At 2160 × 3840 the content/card is 1440px wide, the page heading is 80px,
@@ -118,7 +118,7 @@ merge/AEM Code Sync publishes it; no Worker deployment is required.
 fixture, not real authentication. Layout/error/submission regressions live in
 `test/blocks/portal-login.test.js`; real staff credentials were not used.
 
-**Figma report picker (branch, not deployed):** the multi-report selection screen
+**Figma report picker (October 8, deployed):** the multi-report selection screen
 matches frame `404:1500` in Adobe Brand Visibility UI, including the black
 marquee, exact heading/subtitle, two-column gray cards, website icons and
 outlined return pill. At 2160px wide the marquee starts at y277 and is 963px
@@ -127,7 +127,7 @@ supports the reference 2160 × 2881 and native 2160 × 3840, with scaled/mobile
 adaptations. A single 280KB composite Figma export preserves the illustration
 and its effects instead of rebuilding them from multi-megabyte source layers.
 The shell uses `?v=booth-picker-figma-1`; earlier deployed versions above are
-historical, not this branch's rollout.
+historical and superseded by this rollout.
 
 Icons load independently through staff-gated, private/no-store
 `GET /auth/booth/icon?path=...`. The Worker revalidates the current visitor's
@@ -142,8 +142,18 @@ images are rejected. Missing icons retain a globe and visible availability
 hint without blocking selection. Host validation does not pin DNS.
 The local synthetic `figma-picker@example.test` lookup and
 `test/fixtures/booth-picker-browser.js` verify geometry, icons and recovery;
-they do not query customers or send email. This branch includes the approved
-portrait-login fix and needs merge plus a separate matching Worker deployment.
+they do not query customers or send email. Merged main
+`d91bf81` (PR #167) includes the approved
+portrait-login fix. On October 8 at **16:11 UTC**, the matching `summit-portal`
+Worker was deployed as version `fc171729-76d0-4d59-9b58-3418964e8e84`,
+serving **100% of traffic** and superseding `9d1d86b2-673a-4af9-8b86-fd9dab65a8df`.
+Live picker JS/CSS, loading CSS, artwork, icons/globe and origin login CSS
+match merged source byte-for-byte. Anonymous booth access redirects to staff
+login; icon/internal/status APIs reject anonymous callers with private/no-store
+responses. No customer lookup, reset or email was performed. The merge adds no
+schema migrations; a remote D1 migration-list query was denied (7403), so no
+claim is made about unrelated pending migrations. Bindings, epoch and hourly
+cron are unchanged. Close old report tabs and reload `/booth`.
 
 ### Touchscreen keyboard and navigation hardening
 

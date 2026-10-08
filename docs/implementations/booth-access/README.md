@@ -5,7 +5,7 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
-## Portrait staff setup (branch, not deployed)
+## Portrait staff setup (merged, live)
 
 The origin-served `portal-login` block adds staff-only large portrait sizing
 for `/login?staff&redirect=%2Fbooth`. At 2160 × 3840: 1440px card, 80px page
@@ -23,7 +23,7 @@ regressions are in `test/blocks/portal-login.test.js`; browser retry/success
 checks use intercepted synthetic credentials only. Merge/AEM Code Sync
 publishes this frontend CSS; **no Worker deployment is needed**.
 
-## Multi-report picker (branch, not deployed)
+## Multi-report picker (October 8, deployed)
 
 The [approved Figma frame](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=404-1500)
 replaces the old website list with a black marquee and the exact copy:
@@ -66,9 +66,24 @@ visitor replacement. Final checks passed: 182 booth/login frontend tests,
 456 Worker tests (one existing skip), changed-file ESLint/Stylelint, actual
 Wrangler dry-run packaging and native browser picker/report/loading/recovery
 journeys. Repository-wide lint still reports unrelated existing violations;
-they are not fixed by this branch. The branch includes the portrait staff-login fix above.
-No deployment is performed: merge/AEM Code Sync publishes login CSS; the
-booth shell, assets and icon endpoint require a separate Worker deployment.
+they are not fixed by this change. The merge includes the portrait staff-login fix above.
+
+Merged main `d91bf81` (PR #167) was deployed to `summit-portal` on October 8
+at **16:11 UTC**. Worker version `fc171729-76d0-4d59-9b58-3418964e8e84`
+serves **100% of traffic**, superseding `9d1d86b2-673a-4af9-8b86-fd9dab65a8df`.
+Live picker JS/CSS, loading CSS, composite artwork, icons/globe and origin
+staff-login CSS match the merged files byte-for-byte. Anonymous booth access
+keeps the staff redirect; icon, internal-context and status requests are
+staff-gated with private/no-store replies. Authenticated exclusion of the
+internal context RPC is covered by the Worker tests, not a live visitor session.
+No customer lookup, reset or email was performed.
+
+The merge contains no schema migrations. The remote D1 migration-list request
+was denied with Cloudflare code 7403; no unrelated migration status is asserted
+and no migration was applied. Existing bindings, credential epoch and hourly
+cron are unchanged. Login CSS is origin-served and was published by
+merge/AEM Code Sync, not by the Worker upload. Close old report tabs and reload
+`/booth` on the kiosk; existing documents do not hot-reload modules.
 
 ## Approved scope
 
