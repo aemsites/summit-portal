@@ -359,6 +359,32 @@
     text-underline-offset: 4px;
   }
 
+  .staff-button {
+    min-height: 48px;
+    margin-inline-start: auto;
+    border: 1px solid #8f8f8f;
+    border-radius: 100px;
+    padding: 8px 22px;
+    background: #fff;
+    color: #505050;
+    font: 700 14px/1.25 var(--font-body);
+    text-decoration: none;
+  }
+
+  .staff-button:hover {
+    background: #f5f5f5;
+  }
+
+  .staff-button:focus-visible {
+    outline: 3px solid #3b63fb;
+    outline-offset: 4px;
+  }
+
+  .staff-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
   .stage-footer {
     position: relative;
     display: flex;
@@ -500,7 +526,10 @@
     }
 
     .welcome-layout {
-      background: #1d1d1d;
+      background: linear-gradient(
+        #1d1d1d calc(1302 * 100vw / 2160),
+        #fff calc(1302 * 100vw / 2160)
+      );
     }
 
     .welcome-entry .lead {
@@ -620,11 +649,12 @@
       font-size: max(14px, 1.111vw);
     }
 
-    .stage-footer .link-button {
+    .stage-footer .staff-button {
       position: absolute;
       right: 5.093vw;
       bottom: 12px;
-      font-size: max(16px, 1.111vw);
+      min-height: max(48px, 2.963vw);
+      font-size: max(14px, 1.2963vw);
     }
 
     .booth-progress {
@@ -824,11 +854,8 @@
     display: none;
   }
 
-  .stage[data-screen="demos"] .stage-footer .link-button {
+  .stage[data-screen="demos"] .stage-footer .staff-button {
     position: static;
-    font-weight: 700;
-    text-box-trim: trim-both;
-    text-box-edge: cap alphabetic;
   }
 
   @media (width >= 1000px) {
@@ -952,10 +979,6 @@
       font-size: max(14px, calc(26 * var(--industry-unit)));
     }
 
-    .stage[data-screen="demos"] .stage-footer .link-button {
-      padding: calc(24 * var(--industry-unit)) calc(32 * var(--industry-unit));
-      font-size: max(16px, calc(26 * var(--industry-unit)));
-    }
   }
 
   .finish-preview {

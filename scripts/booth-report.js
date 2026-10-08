@@ -391,19 +391,6 @@ export default async function mountBoothReturn() {
     } else {
       control.innerHTML = '<a href="/booth?step=finish">Finish reading my report ↗</a><button data-booth-picker type="button" hidden>Choose another report</button><button data-booth-clear type="button">Clear for next visitor</button><small class="booth-download-note">PDFs are available in your emailed report.</small><p role="status" hidden></p>';
     }
-    const style = document.createElement('style');
-    style.textContent = `
-    .booth-report-active body { padding-bottom: calc(var(--booth-original-padding) + var(--booth-return-height)); }
-    #booth-return { position: fixed; inset: auto 0 0; z-index: 100; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; padding: 24px; background: #1d1d1d; color: #fff; font: 700 clamp(20px, 2.6vw, 56px)/1.3 adobe-clean, sans-serif; }
-    #booth-return a { display: block; padding: 24px 32px; border-radius: 12px; background: #eb1000; color: #fff; text-decoration: none; }
-    #booth-return button { min-height: 64px; border: 0; background: transparent; color: #fff; font: inherit; text-decoration: underline; cursor: pointer; }
-    #booth-return :focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
-    #booth-return p { width: 100%; margin: 0; }
-    #booth-return .booth-demo-notice { width: 100%; display: grid; gap: 8px; }
-    #booth-return .booth-demo-notice span { font-size: .65em; font-weight: 400; }
-    #booth-return .booth-download-note { width: 100%; font-size: .65em; font-weight: 400; }
-  `;
-    document.head.append(style);
     html.style.setProperty('--booth-original-padding', getComputedStyle(document.body).paddingBottom);
     document.body.append(control);
   }

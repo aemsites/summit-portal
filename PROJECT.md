@@ -77,7 +77,21 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-loading-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-3`; the keyboard import retains `?v=booth-recovery-2`. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The latest screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions are **not deployed**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report after the matching Worker deployment; existing tabs do not hot-reload modules.
+
+**Booth seam and compact controls (branch, not deployed):** the desktop Entry
+layout paints dark only through the hero/rounded-notch region, then white
+behind the white panel. This removes the subpixel gray seam at the fractional
+panel boundary without rounding geometry or moving approved Figma coordinates.
+The report menu uses a white surface, blue navigation pills and outlined gray
+**Clear for next visitor** / **Choose another report** buttons. Its measured
+height still reserves report space; hidden controls, notices, focus, disabled
+states and reset authorization are unchanged. Menu buttons are 64–72px tall;
+shared staff signout is a compact outlined pill (48px minimum, 64px native)
+on Entry, Industry and Finish. Presentation now belongs to the authorized
+report stylesheet rather than an injected duplicate style. The local synthetic
+`test/fixtures/booth-controls-browser.js` checks screenshot pixels at DPR 0.4,
+native/half-size/mobile controls, menu reservation and demo clearing.
 
 ### Touchscreen keyboard and navigation hardening
 

@@ -149,6 +149,28 @@ pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
 included in the 13:48 UTC Worker rollout below.
 
+### Entry seam and compact controls (branch, not deployed)
+
+The Entry backing changes from dark to white at the hero's lower edge, retaining
+the dark rounded-notch corners but eliminating the fractional-pixel gray seam
+beneath the white panel. Approved hero/form coordinates are unchanged.
+
+The report menu adopts the shell's white surface, blue navigation pills and
+gray outlined secondary buttons. **Clear for next visitor** and **Choose another
+report** retain their behavior, with 64–72px touch targets, keyboard focus and
+disabled states. The measured menu height still reserves content space.
+Staff signout uses a separate compact outlined pill on every shell screen,
+with a 48px minimum / 64px native target; recovery links are unchanged.
+The authorized stylesheet owns menu presentation and upgrades older controls
+without duplicating timers or padding. Hidden picker/status elements stay hidden.
+
+Entry assets now use `booth-final-figma-4`; Worker injection and the origin
+lazy import both use `booth-controls-1`. These revisions require review,
+merge and a matching Worker deployment; the rollout recorded below remains
+the previous deployed version. The synthetic local browser regression is
+`test/fixtures/booth-controls-browser.js` (2160×3840, 1080×1920, 390×844 and
+screenshot-pixel verification at DPR 0.4). No real lookup or email is performed.
+
 ### Latest Figma Entry, Industry and Finish (October 8, deployed)
 
 The current branch matches Figma nodes `320:136`, `328:112` and `320:2475`

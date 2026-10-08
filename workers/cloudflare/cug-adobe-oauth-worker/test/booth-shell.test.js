@@ -32,8 +32,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-3');
-    expect(html).toContain('/styles/booth.css?v=booth-final-figma-3');
+    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-4');
+    expect(html).toContain('/styles/booth.css?v=booth-final-figma-4');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -94,7 +94,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-final-figma-3', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-3', '/scripts/booth-report.js?v=booth-loading-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
+    for (const path of ['/scripts/booth.js?v=booth-final-figma-4', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-4', '/scripts/booth-report.js?v=booth-controls-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -179,10 +179,10 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-loading-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-controls-1');
     expect(injected[1][1]).toContain('.booth-loading.booth-loading-overlay');
     expect(await readFile(new URL('../../../../scripts/lazy.js', import.meta.url), 'utf8'))
-      .toContain("import('./booth-report.js?v=booth-loading-1')");
+      .toContain("import('./booth-report.js?v=booth-controls-1')");
     expect(injected[2][1]).toContain('Opening your report...');
     expect(injected[2][1]).toContain('class="booth-recovery-actions" hidden');
     expect(injected[2][1]).toContain('/booth?recover=1');
