@@ -6,13 +6,18 @@
   <meta name="referrer" content="no-referrer">
   <title>Test fixture prepared report</title>
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <link rel="stylesheet" href="/styles/booth.css">
-  <style>main { min-height: 12000px; } .finish-preview { max-width: 1200px; margin: 0 auto; }</style>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/blocks/report-hero/report-hero.css">
+  <link rel="stylesheet" href="/blocks/report-stats/report-stats.css">
+  <link rel="stylesheet" href="/blocks/report-ai-visibility/report-ai-visibility.css">
+  <link rel="stylesheet" href="/blocks/report-carousel/report-carousel.css">
+  <style>main { min-height: 12000px; }</style>
   <script type="module" src="/scripts/booth-report.js"></script>
 </head>
-<body class="booth">
+<body>
   <main>
-    <div class="finish-preview">
+    <div class="section"><div class="block-content">
       <div class="report-hero insight">
         <div>
           <div>
@@ -30,27 +35,38 @@
         <div><div>Site Performance</div><div>34/100</div><div>Clear headroom</div><div>warning</div><div>Example site performance has room for improvement.</div><div>speedometer</div></div>
         <div><div>AI Visibility Trend</div><div>+8</div><div>vs. previous measurement (pts)</div><div>positive</div><div>The example score increased from 53 to 61.</div><div></div></div>
       </div>
+    </div></div>
+    <div class="section"><div class="block-content">
       <div class="report-ai-visibility">
         <div><div>stats</div><div>AI visibility score</div><div><p>61</p><p>Up from 53</p></div><div>out of 100</div></div>
         <div><div>stats</div><div>Website pages cited</div><div><p>720</p></div><div>across the tracked prompts</div></div>
         <div><div>competitors</div><div><h3>Competitive landscape</h3><p>The prepared report measures how this brand compares across tracked AI search prompts.</p></div><div><p>horizontalbars | count</p><p>Example brand | 61 | | #e60000</p><p>Example competitor A | 49 | | #94a3b8</p><p>Example competitor B | 31 | | #94a3b8</p></div><div>Local synthetic data only.</div></div>
         <div><div>competitors</div><div><h3>Platform visibility</h3><p>Visibility varies across the platforms in the selected report.</p></div><div><p>horizontalbars | count</p><p>ChatGPT | 61 | | #e60000</p><p>Gemini | 58 | | #e60000</p><p>Google AI Overview | 54 | | #e60000</p></div><div>Local synthetic data only.</div></div>
       </div>
+    </div></div>
+    <div class="section"><div class="block-content">
       <div class="report-carousel">
-        <div><div>Executive overview</div><div>Search &amp; AI visibility</div><div>Site experience</div><div><a href="/example-fixture.pdf">Download full report</a></div></div>
+        <div><div>Executive overview</div><div>Search &amp; AI visibility</div><div>Site experience</div></div>
         <div><div>Top insight</div><div><h3>AI visibility has room to grow.</h3><p>The selected report identifies where the brand can gain visibility and improve the site experience.</p></div><div><p>columnchart</p><p>Organic Growth | 73 | #e60000</p><p>AI Visibility | 61 | #e60000</p><p>Site Performance | 34 | #e60000</p></div><div>Local synthetic data only.</div></div>
+        <div><div>Search &amp; AI visibility</div></div>
+        <div><div>Finding</div><div><h3>Visibility differs by platform.</h3><p>Compare the synthetic platform scores in the chart above.</p></div><div><p>columnchart</p><p>ChatGPT | 61 | #e60000</p><p>Gemini | 58 | #e60000</p><p>Google AI Overview | 54 | #e60000</p></div><div>Local synthetic data only.</div></div>
+        <div><div>Site experience</div></div>
+        <div><div>Recommendation</div><div><h3>Improve the page experience.</h3><p>Use this synthetic finding to exercise the real report tabs and charts.</p></div><div></div><div>Local synthetic data only.</div></div>
       </div>
-    </div>
-    <p>LOCAL FIXTURE ONLY. No real customer report, email delivery, or contact request.</p>
+    </div></div>
+    <div class="section"><div class="default-content"><p>LOCAL FIXTURE ONLY. No real customer report, email delivery, or contact request. Extra scroll range is reserved for long-report tests.</p></div></div>
   </main>
   <script type="module">
     import { buildInsightHero } from '/blocks/report-hero/report-hero.js';
     import { buildDarkStats } from '/blocks/report-stats/report-stats.js';
+    import initVisibility from '/blocks/report-ai-visibility/report-ai-visibility.js';
+    import initCarousel from '/blocks/report-carousel/report-carousel.js';
     const hero = document.querySelector('.report-hero');
     buildInsightHero(hero, [...hero.children]);
-    hero.querySelector('.rh-insight-bg-svg').remove();
     const stats = document.querySelector('.report-stats');
-    buildDarkStats(stats, [...stats.children], { interactive: false, animate: false });
+    buildDarkStats(stats, [...stats.children], { animate: false });
+    await initVisibility(document.querySelector('.report-ai-visibility'));
+    initCarousel(document.querySelector('.report-carousel'));
   </script>
 </body>
 </html>

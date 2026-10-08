@@ -5,59 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <title>Booth touchscreen · Local review</title>
-  <style>
-    :root { font-family: "adobe-clean", sans-serif; color: #f5f5f5; background: #171717; }
-    * { box-sizing: border-box; }
-    body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; margin: 0; }
-    header, footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 24px; }
-    header { border-bottom: 1px solid #555; }
-    footer { justify-content: space-between; border-top: 1px solid #555; font-size: 14px; }
-    header strong { margin-right: auto; font-size: 20px; }
-    label { display: flex; align-items: center; gap: 8px; }
-    button, select { min-height: 40px; border: 1px solid #888; border-radius: 4px; padding: 8px 12px; background: #292929; color: inherit; font: inherit; }
-    button { cursor: pointer; }
-    button[aria-pressed="true"] { background: #f5f5f5; color: #171717; }
-    :is(button, select):focus-visible { outline: 3px solid #e60000; outline-offset: 3px; }
-    main { display: grid; min-height: 0; overflow: auto; place-items: center; padding: 16px; }
-    main[data-mode="width"] { place-items: start center; }
-    main[data-mode="native"] { place-items: start; }
-    .frame { position: relative; flex: none; background: #fff; }
-    iframe { position: absolute; inset: 0 auto auto 0; display: block; border: 0; transform-origin: top left; }
-    .warning { color: #ffbd69; }
-  </style>
+  <link rel="stylesheet" href="/test/fixtures/booth-touchscreen.css">
+  <title>Booth touchscreen simulator · Local only</title>
   <script type="module" src="/test/fixtures/booth-touchscreen.js"></script>
 </head>
 <body>
-  <header>
-    <strong>Booth touchscreen review</strong>
-    <label>Viewport
+  <header class="workbench-header">
+    <div><p class="eyebrow">Adobe / Local test bench</p><h1>Touchscreen simulator</h1></div>
+    <p class="local-notice">Synthetic reports. Fake sends.<br>No customer lookup or lead recording.</p>
+  </header>
+  <main class="workbench">
+    <aside class="operator" aria-label="Simulator controls">
+      <h2>Windows 11 / 40-inch portrait</h2>
+      <p class="hint">2160 × 3840 physical pixels confirmed. CSS scaling below is an assumption.</p>
+      <p class="hint">Open this local test in Microsoft Edge and Google Chrome. Both are Chromium browsers; this is a schematic QWERTY email keyboard, not the native Windows keyboard.</p>
+      <label for="resolution">Assumed device scaling</label>
       <select id="resolution">
-        <option value="2160x3840">2160 × 3840 · event target</option>
-        <option value="1080x1920">1080 × 1920 · fallback</option>
-        <option value="2160x2881">2160 × 2881 · Figma reference</option>
+        <option value="2160x3840">100% · 2160 × 3840 CSS px</option>
+        <option value="1728x3072">125% · 1728 × 3072 CSS px</option>
+        <option value="1440x2560">150% · 1440 × 2560 CSS px</option>
+        <option value="1080x1920">200% · 1080 × 1920 CSS px</option>
+        <option value="864x1536">250% · 864 × 1536 CSS px</option>
+        <option value="2160x2881">Figma reference · 2160 × 2881</option>
       </select>
-    </label>
-    <span>Final Entry · Finish 6 · Swipeable previews · Industry demos · Private unmatched tracking</span>
-    <button type="button" id="show-entry" aria-pressed="true">Entry screen</button>
-    <button type="button" id="show-finish" aria-pressed="false">Finish screen</button>
-    <label>View
+      <p id="profile-warning" class="warning" hidden>250% falls below the existing large-touch profile cutoff. This shows the current smaller-screen layout, not a redesign.</p>
+      <label for="mode">Laptop view magnification</label>
       <select id="mode">
         <option value="fit">Fit whole screen</option>
         <option value="width">Fill width · scroll</option>
         <option value="native">1:1 · scroll both axes</option>
       </select>
-    </label>
-  </header>
-  <main id="viewport" data-mode="fit">
-    <div class="frame" id="frame">
-      <iframe id="preview" title="Actual booth UI with local-only fixture actions"></iframe>
-    </div>
+      <p class="hint">Magnification changes only the preview transform, not its CSS viewport or your browser zoom.</p>
+      <h2>Keyboard scenario</h2>
+      <label for="keyboard-mode">How the browser reports it</label>
+      <select id="keyboard-mode">
+        <option value="overlay">Unreported overlay</option>
+        <option value="resize">Layout viewport shrinks</option>
+        <option value="geometry">Reported geometry · synthetic API</option>
+      </select>
+      <label for="keyboard-height">Height <output id="height-label" for="keyboard-height">45% of screen</output></label>
+      <input id="keyboard-height" type="range" min="20" max="65" step="1" value="45">
+      <div class="actions">
+        <button id="show-keyboard" type="button" data-preserve-focus>Show keyboard</button>
+        <button id="hide-keyboard" type="button" data-preserve-focus>Hide &amp; restore</button>
+      </div>
+      <p class="hint">Hide ends editing, keeps your text and restores the pre-edit scroll position. Tap the field to reopen. Scroll inside the screen while typing; your physical keyboard also works.</p>
+      <button id="dismiss-keyboard" type="button" data-preserve-focus>Diagnostic: dismiss without blur</button>
+      <p class="hint">This separate diagnostic keeps field focus. Resize/geometry report dismissal; an unreported overlay cannot signal it, so its fallback reserve may remain. Changing a scenario ends editing without reloading.</p>
+      <h2>Try a journey</h2>
+      <div class="actions">
+        <button type="button" id="show-entry">Start over / Entry</button>
+        <button type="button" id="show-finish">Launch sample Finish</button>
+      </div>
+      <p class="hint">Sample addresses fill the field; they are not native autofill.</p>
+      <div class="samples">
+        <button type="button" data-email="visitor@example.test" data-preserve-focus>visitor@example.test <small>One private report</small></button>
+        <button type="button" data-email="multi@example.test" data-preserve-focus>multi@example.test <small>Report picker</small></button>
+        <button type="button" data-email="missing@example.test" data-preserve-focus>missing@example.test <small>No match → industry demos</small></button>
+        <button type="button" data-email="service-error@example.test" data-preserve-focus>service-error@example.test <small>Lookup outage</small></button>
+      </div>
+      <details>
+        <summary>What this cannot reproduce</summary>
+        <p>Windows 11 is confirmed. Browser version, native keyboard layout/policy, DPR, device scaling, mounting and reach are unknown. The keyboard is a local test control, not an OS replica.</p>
+        <p>The opted-in frame advertises one touch point to exercise the existing fallback. Mouse clicks remain mouse PointerEvents; coarse-pointer CSS, genuine touches, pinch gestures, screen readers, Turnstile, fullscreen lockdown and privacy-policy handling need real-device tests. Host DPR is not changed.</p>
+        <p>Geometry uses a pre-init local VirtualKeyboard facade, not a native API. No overlaysContent policy is forced. Hide uses explicit blur, not a fabricated native dismissal signal. The diagnostic shows unreported fallback behavior without patching the product's reserve.</p>
+        <p>API state is in this local server's memory, isolated by a fifteen-minute fixture cookie. Local activity renews the server's inactivity deadline; restarting loses all sample visits. Example metrics and industry reports are synthetic. Fake send acceptance does not prove delivery.</p>
+      </details>
+    </aside>
+    <section class="screen-workspace" aria-label="Interactive portrait screen">
+      <div class="screen-caption"><strong>Actual booth UI</strong><span id="size-label">Loading…</span></div>
+      <div id="viewport" data-mode="fit">
+        <div class="frame" id="frame">
+          <iframe id="preview" title="Actual booth UI with local-only fixture actions" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+          <section id="keyboard" class="keyboard" aria-label="Simulated email keyboard" hidden>
+            <div class="keyboard-heading"><span>Simulated keyboard</span><button type="button" data-key="Hide">Hide ↓</button></div>
+            <div class="key-row" data-keys="q w e r t y u i o p"></div>
+            <div class="key-row" data-keys="a s d f g h j k l"></div>
+            <div class="key-row" data-keys="Shift z x c v b n m Backspace"></div>
+            <div class="key-row" data-keys="1 2 3 4 5 6 7 8 9 0"></div>
+            <div class="key-row" data-keys="@ . - _ Space Enter"></div>
+          </section>
+        </div>
+      </div>
+      <div id="connection-error" class="warning" role="alert" hidden></div>
+      <section class="measurements" aria-label="Measured screen state">
+        <h2>Measured, not assumed <button type="button" id="refresh-state">Refresh</button></h2>
+        <dl id="measurements"></dl>
+        <p id="coverage-warning" class="warning" role="status" aria-live="polite"></p>
+        <p class="hint">Visibility checks use the current frame rectangle, excluding the simulated keyboard. Scroll inside the screen to test action reachability. At laptop fit scale, event-sized targets look much smaller than they do on hardware.</p>
+      </section>
+    </section>
   </main>
-  <footer>
-    <span id="size-label" role="status">Loading 2160 × 3840 viewport…</span>
-    <span>Sample report: <code>visitor@example.test</code> · Other emails: no report · Outage: <code>service-error@example.test</code></span>
-    <span class="warning">LOCAL FIXTURES: no real email or lead recording. Confirm CSS viewport and browser zoom on the event device.</span>
-  </footer>
 </body>
 </html>
