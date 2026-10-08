@@ -473,13 +473,13 @@ describe('confirmed booth report portrait layout', () => {
     document.documentElement.classList.add('booth-report-active');
     document.documentElement.style.setProperty('--booth-original-padding', '0px');
     document.documentElement.style.setProperty('--booth-return-height', '180px');
-    const timerCount = timers.callCount;
+    const timerCount = resetTimerCount();
     await mount();
     expect(document.querySelector('#booth-return')).to.equal(existing);
     expect(document.querySelectorAll('link[data-booth-report-layout]')).to.have.length(1);
     expect(font('.rc-desc')).to.equal(36);
     expect(document.documentElement.style.getPropertyValue('--booth-original-padding')).to.equal('0px');
-    expect(timers.callCount).to.equal(timerCount);
+    expect(resetTimerCount()).to.equal(timerCount);
     expect(parseFloat(getComputedStyle(document.body).paddingBottom))
       .to.be.closeTo(rect('#booth-return').height, 0.01);
     await mountBoothReturn();
@@ -746,6 +746,64 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.getElementById('booth-recovery').hidden).to.equal(false);
   });
 
+  it('shows loading, not recovery instructions, until access verification fails', async () => {
+    const main = await reportFixture();
+    markReport();
+    let finish;
+    sandbox.stub(window, 'fetch').returns(new Promise((resolve) => { finish = resolve; }));
+    const mounted = mountBoothReturn();
+    const recovery = document.getElementById('booth-recovery');
+    try {
+      expect(recovery.querySelector('.booth-loading-ring')).not.to.equal(null);
+      expect(recovery.querySelector('[role="status"]').textContent).to.include('Opening your report');
+      expect(recovery.querySelector('.booth-recovery-actions').hidden).to.equal(true);
+      expect(getComputedStyle(main).display).to.equal('none');
+    } finally {
+      finish(new Response('', { status: 503 }));
+      await mounted;
+    }
+    expect(recovery.querySelector('.booth-recovery-actions').hidden).to.equal(false);
+    expect(recovery.querySelector('.booth-loading-ring').hidden).to.equal(true);
+    expect(recovery.querySelector('[role="alert"]').textContent).to.include('could not be verified');
+    expect(getComputedStyle(main).display).to.equal('none');
+  });
+
+  ['timeout', 'expiry'].forEach((failure) => {
+    it(`keeps a late stylesheet from revealing report content after ${failure}`, async () => {
+      const main = await reportFixture();
+      const clock = sandbox.useFakeTimers();
+      const expiresAt = Date.now() + (failure === 'expiry' ? 5000 : 600000);
+      markReport(expiresAt);
+      const fetchStub = sandbox.stub(window, 'fetch');
+      fetchStub.onFirstCall().resolves({
+        ok: true,
+        json: async () => ({ state: 'report', selectedPath: window.location.pathname, expiresAt }),
+      });
+      fetchStub.onSecondCall().resolves(new Response('', { status: 503 }));
+      let stylesheet;
+      const append = document.head.append.bind(document.head);
+      sandbox.stub(document.head, 'append').callsFake((element) => {
+        if (element.dataset.boothReportLayout) stylesheet = element;
+        else append(element);
+      });
+      const mounted = mountBoothReturn();
+      await clock.tickAsync(0);
+      expect(stylesheet).not.to.equal(undefined);
+      expect(getComputedStyle(main).display).to.equal('none');
+      await clock.tickAsync(failure === 'expiry' ? 5001 : 10001);
+      if (failure === 'expiry') stylesheet.dispatchEvent(new Event('load'));
+      await mounted;
+      expect(getComputedStyle(main).display).to.equal('none');
+      expect(document.documentElement.classList.contains('booth-report-active')).to.equal(false);
+      expect(document.getElementById('booth-return')).to.equal(null);
+      expect(document.querySelector('#booth-recovery p').textContent).to.include(
+        failure === 'expiry' ? 'Could not clear' : 'layout timed out',
+      );
+      stylesheet.dispatchEvent(new Event('load'));
+      expect(getComputedStyle(main).display).to.equal('none');
+    });
+  });
+
   ['http', 'network', 'invalid-json', 'entry', 'expired', 'wrong-path'].forEach((failure) => {
     it(`conceals a server-marked report and requires confirmed clearing after ${failure}`, async () => {
       const main = await reportFixture();
@@ -796,6 +854,55 @@ describe('confirmed booth report portrait layout', () => {
     expect(getComputedStyle(main).display).to.equal('none');
     expect(document.querySelector('link[data-booth-report-layout]')).to.equal(null);
     expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+  });
+
+  it('renews touch and scroll activity beyond the injected deadline, then conceals after fifteen idle minutes', async () => {
+    const main = await reportFixture();
+    const clock = sandbox.useFakeTimers({ now: Date.now() });
+    const expiresAt = Date.now() + 900000;
+    markReport(expiresAt);
+    await mount({ expiresAt });
+    window.fetch.callsFake(async (url, options) => (
+      url.endsWith('/activity')
+        ? Response.json({ expiresAt: Date.now() + 900000 - JSON.parse(options.body).idleMs })
+        : Response.json({ error: 'Synthetic reset failure' }, { status: 503 })
+    ));
+    const scroll = document.addEventListener.getCalls().find(({ args }) => args[0] === 'scroll');
+    const touch = document.addEventListener.getCalls().find(({ args }) => args[0] === 'pointerdown');
+    await clock.tickAsync(840000);
+    touch.args[1]();
+    await clock.tickAsync(0);
+    expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
+    await clock.tickAsync(120000);
+    expect(getComputedStyle(main).display).not.to.equal('none');
+    scroll.args[1]();
+    await clock.tickAsync(1);
+    expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
+    expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
+    await clock.tickAsync(899998);
+    expect(getComputedStyle(main).display).not.to.equal('none');
+    await clock.tickAsync(1);
+    expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/reset');
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
+  });
+
+  it('conceals a report immediately if activity renewal loses staff authentication', async () => {
+    const main = await reportFixture();
+    const clock = sandbox.useFakeTimers({ now: Date.now() });
+    markReport(Date.now() + 900000);
+    await mount({ expiresAt: Date.now() + 900000 });
+    window.fetch.callsFake(async () => ({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Staff authentication required' }),
+    }));
+    const input = document.addEventListener.getCalls().find(({ args }) => args[0] === 'input');
+    input.args[1]();
+    await clock.tickAsync(10);
+    expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
+    expect(document.querySelector('#booth-recovery p').textContent).to.equal('Staff authentication required');
+    expect(getComputedStyle(main).display).to.equal('none');
   });
 
   it('rejects status verification after a ten-second deadline without exposing the report', async () => {

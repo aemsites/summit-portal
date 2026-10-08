@@ -13,7 +13,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   };
   const actionProfiles = [];
   const checkActions = async (selector) => {
-    const sizes = [[2160, 3840, selector.includes('demos') ? 120 : 129, 42], [1080, 1920, 72, 24], [390, 844, 64, 22]];
+    const sizes = [[2160, 3840, 119.9, 42], [1080, 1920, 72, 24], [390, 844, 62, 22]];
     for (const [width, height, minHeight, minFont] of sizes) {
       await page.setViewportSize({ width, height });
       const targets = page.locator(selector);
@@ -31,7 +31,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
       check(targetsProfile.length >= 1, 'Alternative actions disappeared');
       check(targetsProfile.every((action) => action.height >= minHeight
         && action.font >= minFont
-        && action.border >= 2), `Alternative actions are too small at ${width}px`);
+        && (selector.includes('demos') || action.border >= 2)), `Alternative actions are too small at ${width}px`);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Alternative actions overflow');
       actionProfiles.push({ selector, width, actions: targetsProfile });
     }
@@ -46,7 +46,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await checkActions('.entry-alternatives button');
   await page.locator('#registration-email').fill('unmatched@not-a-prepared-company.test');
   const lookup = page.waitForResponse((response) => response.url().endsWith('/auth/booth/lookup'));
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   const missing = await lookup;
   check(
     missing.status() === 404 && (await missing.json()).code === 'no_report',
@@ -63,7 +63,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   check(await page.locator('#demo-options button').count() === 10, 'Industry catalogue is incomplete');
   check(!await page.locator('#demo-intro').isVisible(), 'Unmatched guidance was duplicated');
   check(!await page.locator('.booth-progress').isVisible(), 'Industry screen retained the old progress footer');
-  check(await page.locator('.demo-footer-note').isVisible(), 'Designed industry footer is missing');
+  check(!await page.locator('.demo-footer-note').isVisible(), 'Retired industry availability footer returned');
   const icons = await page.locator('#demo-options .demo-icon').evaluateAll(
     (images) => Promise.all(images.map((image) => image.decode().then(
       () => image.naturalWidth === 64 && image.naturalHeight === 64,
@@ -85,26 +85,25 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
       first: bounds('.demo-option'),
       last: bounds('.demo-option:last-child'),
       icon: bounds('.demo-icon'),
-      back: bounds('.industry-panel .booth-alternative'),
-      footer: bounds('.stage-footer'),
+      back: bounds('.industry-panel [data-reset]'),
     };
   });
   const figma = {
     header: { x: 0, y: 0, width: 2160, height: 277 },
     title: { x: 112, y: 397, width: 1936, height: 97 },
-    grid: { x: 112, y: 754, width: 1936, height: 1193 },
-    first: { x: 112, y: 754, width: 928, height: 181 },
-    last: { x: 1120, y: 1766, width: 928, height: 181 },
-    icon: { x: 156, y: 812.5, width: 64, height: 64 },
-    back: { x: 835.5, y: 2147, width: 489, height: 120 },
-    footer: { x: 0, y: 2728, width: 2160, height: 153 },
+    grid: { x: 112, y: 740, width: 1936, height: 1041 },
+    first: { x: 112, y: 740, width: 950, height: 165 },
+    last: { x: 1098, y: 1616, width: 950, height: 165 },
+    icon: { x: 153, y: 790.5, width: 64, height: 64 },
+    back: { x: 866.5, y: 1927, width: 427, height: 120 },
   };
   Object.entries(figma).forEach(([part, expected]) => {
     Object.entries(expected).forEach(([dimension, value]) => {
       check(Math.abs(design[part][dimension] - value) <= 1, `Figma ${part} ${dimension} changed`);
     });
   });
-  await checkActions('[data-panel="demos"] .booth-alternative');
+  check(await page.locator('[data-panel="demos"] [data-reset]').textContent() === 'Try another email', 'Industry return copy differs from final Figma');
+  await checkActions('[data-panel="demos"] [data-reset]');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Industry chooser overflows');
@@ -142,11 +141,11 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   check(await page.locator('#demo-intro').isVisible(), 'Staff shortcut lost its truthful introduction');
   await page.locator('#demo-options button').first().click();
   await page.locator('#booth-return').waitFor();
-  await page.clock.fastForward(110000);
+  await page.clock.fastForward(890000);
   await page.locator('#booth-return strong').click();
   await page.clock.fastForward(30000);
   check(new URL(page.url()).pathname.startsWith('/example-report/'), 'Touch activity did not renew demo idle time');
-  await page.clock.fastForward(90001);
+  await page.clock.fastForward(870001);
   await page.waitForURL('**/booth');
   await ready();
   await page.goBack();
@@ -154,10 +153,11 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await ready();
   check(await page.locator('#registration-email').inputValue() === '', 'History restored attendee details');
   await page.clock.resume();
+  await page.clock.setSystemTime(new Date());
   await page.goto(`${root}/content/index?preview=entry`);
   await ready();
   await page.locator('#registration-email').fill('service-error@example.test');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('#email-error:not([hidden])').waitFor();
   check(!await page.locator('[data-panel="unavailable"]').isVisible(), 'An outage was reported as a missing report');
   check(await page.evaluate(() => !localStorage.length && !sessionStorage.length), 'Attendee data persisted in browser storage');

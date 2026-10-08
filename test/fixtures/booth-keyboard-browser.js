@@ -35,7 +35,7 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
     check(await fieldVisible('#registration-email'), 'Typing moved Entry below the visible viewport');
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.waitForTimeout(100);
-    check(await fieldVisible('#email-form button'), 'Entry action cannot scroll above a resized keyboard');
+    check(await fieldVisible('#email-form button[type="submit"]'), 'Entry action cannot scroll above a resized keyboard');
     await page.setViewportSize({ width, height });
     await page.waitForFunction(() => !document.documentElement.classList.contains('booth-keyboard-active'));
     check(
@@ -59,7 +59,7 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   check(await fieldVisible('#registration-email', 820), 'An overlay keyboard covers the focused Entry field');
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(100);
-  check(await fieldVisible('#email-form button', 820), 'Entry action cannot scroll above an overlay keyboard');
+  check(await fieldVisible('#email-form button[type="submit"]', 820), 'Entry action cannot scroll above an overlay keyboard');
   await page.locator('#registration-email').evaluate((field) => field.blur());
   await page.evaluate(() => document.getElementById('test-keyboard-overlay').remove());
   await page.waitForTimeout(100);
@@ -67,11 +67,11 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   await page.clock.install();
   await entry(1080, 1920);
   await page.locator('#registration-email').click();
-  await page.clock.fastForward(110000);
+  await page.clock.fastForward(890000);
   await page.keyboard.insertText('still-typing@example.test');
   await page.clock.fastForward(11000);
   check(await page.locator('#registration-email').inputValue() === 'still-typing@example.test', 'Active virtual-keyboard typing was cleared as idle');
-  await page.clock.fastForward(109001);
+  await page.clock.fastForward(889001);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   await page.clock.resume();
   return { checked: 'Entry email after resize and dismissal without blur at native/scaled sizes; overlay reachability for email and action; blur cleanup; input-only activity and eventual idle reset. Retired booth requests are not reintroduced. Local fixtures only.' };

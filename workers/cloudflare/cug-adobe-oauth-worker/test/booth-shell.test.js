@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFile, unlink } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdtemp, readFile, readdir, rm, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
@@ -31,8 +32,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-industry-figma-1');
-    expect(html).toContain('/styles/booth.css?v=booth-industry-figma-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-3');
+    expect(html).toContain('/styles/booth.css?v=booth-final-figma-3');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -44,7 +45,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('bundles the actual source assets and leaves every other origin route alone', async () => {
-    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/scripts/booth-preview.js', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/blocks/report-hero/report-hero.js', '/blocks/report-stats/report-stats.js', '/blocks/report-carousel/report-carousel.js', '/blocks/report-ai-visibility/rav-core.js', '/blocks/report-carousel/report-carousel.css', '/blocks/report-ai-visibility/report-ai-visibility.css', '/styles/booth.css', '/styles/booth-report.css', '/styles/booth-keyboard.css', '/styles/booth-loading.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect((await response.text()).length).toBeGreaterThan(500);
@@ -65,7 +66,7 @@ describe('bundled booth shell and exact report injection', () => {
 
   it('bundles every exported design asset with correct MIME types and HEAD behavior', async () => {
     const images = [
-      'action-arrow.svg', 'finish-open-in.svg',
+      'action-arrow.svg', 'finish-open-in.svg', 'finish-glow.svg',
       'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
       ...BOOTH_DEMOS.map(({ id }) => `industry-${id}.svg`),
     ];
@@ -93,7 +94,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-industry-figma-1', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-industry-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-keyboard-scroll-1', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-final-figma-3', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-final-figma-3', '/scripts/booth-report.js?v=booth-loading-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-keyboard-scroll-1', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css', '/img/booth/finish-glow.svg', '/img/booth/industry-frescopa.svg']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -178,10 +179,12 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-clear-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-loading-1');
+    expect(injected[1][1]).toContain('.booth-loading.booth-loading-overlay');
     expect(await readFile(new URL('../../../../scripts/lazy.js', import.meta.url), 'utf8'))
-      .toContain("import('./booth-report.js?v=booth-clear-1')");
-    expect(injected[2][1]).toContain('<p role="alert">Your report is concealed while access is checked.</p>');
+      .toContain("import('./booth-report.js?v=booth-loading-1')");
+    expect(injected[2][1]).toContain('Opening your report...');
+    expect(injected[2][1]).toContain('class="booth-recovery-actions" hidden');
     expect(injected[2][1]).toContain('/booth?recover=1');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await response.text()).toBe('<main>Unchanged report</main>');
@@ -269,4 +272,25 @@ describe('Digital Opportunity Report review naming', () => {
       });
     }
   });
+});
+
+describe('production booth stylesheet packaging', () => {
+  it('includes exact loading CSS as a text module in the real Wrangler bundle', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'booth-css-bundle-'));
+    const worker = fileURLToPath(new URL('../', import.meta.url));
+    try {
+      execFileSync(execPath, [
+        resolve(worker, 'node_modules/wrangler/bin/wrangler.js'),
+        'deploy', '--env', 'summit', '--dry-run', '--outdir', directory,
+      ], { cwd: worker, timeout: 60000 });
+      const files = await readdir(directory);
+      const stylesheet = files.find((name) => name.endsWith('-booth-loading.css'));
+      expect(stylesheet, 'Loading CSS must be a Wrangler Text asset, not an empty CSS-module object').toBeDefined();
+      const source = await readFile(new URL('../../../../styles/booth-loading.css', import.meta.url), 'utf8');
+      expect(await readFile(join(directory, stylesheet), 'utf8')).toBe(source);
+      expect(await readFile(join(directory, 'index.js'), 'utf8')).toContain(stylesheet);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 70000);
 });

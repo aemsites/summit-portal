@@ -66,7 +66,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   });
   await page.setViewportSize({ width: 2160, height: 3840 });
   await page.goto(`${root}/content/index`);
-  await page.locator('#email-form button').waitFor();
+  await page.locator('#email-form button[type="submit"]').waitFor();
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   const entry = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -74,12 +74,12 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
     actionHeight: document.querySelector('#email-form button').getBoundingClientRect().height,
     keyboardFocus: document.activeElement.id,
   }));
-  check(!entry.overflow && Math.abs(parseFloat(entry.inputText) - 68) < 1
-    && entry.actionHeight >= 129, 'Figma portrait sizing changed');
+  check(!entry.overflow && Math.abs(parseFloat(entry.inputText) - 54) < 1
+    && entry.actionHeight >= 119.9, 'Figma portrait sizing changed');
   check(entry.keyboardFocus !== 'registration-email', 'Attract screen must not force keyboard');
   check(await page.locator('#motion-toggle, .review, #step-index').count() === 0, 'Preview-only controls shipped');
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.waitForURL(`**${path}`);
   await page.locator('#booth-return').waitFor();
   check(await page.locator('#booth-return a').isVisible(), 'Finish must be visible at top of a long report');
@@ -100,7 +100,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
     titleHeight: document.querySelector('#report-preview .rh-insight-text h3').getBoundingClientRect().height,
     titleLine: parseFloat(getComputedStyle(document.querySelector('#report-preview .rh-insight-text h3')).lineHeight),
   }));
-  check(!finish.overflow && finish.row >= 130 && finish.action >= 130 && finish.reset >= 130, 'Figma portrait Finish sizing changed');
+  check(!finish.overflow && finish.row >= 119.9 && finish.action >= 119.9 && finish.reset >= 119.9, 'Figma portrait Finish sizing changed');
   check(finish.titleHeight >= (finish.titleLine * 2) - 1, 'Report preview clipped a partial title line');
   const bars = await page.locator('#report-preview .rav-hbar-row').evaluateAll(
     (rows) => rows.map((row) => {
@@ -149,7 +149,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
 
   multiple = true;
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   check(await page.locator('#report-options img').count() === 0, 'Picker label became executable HTML');
   await page.locator('#report-options button').nth(1).click();
@@ -175,7 +175,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   }));
   check(!mobile.overflow && mobile.actionHeight >= 62, 'Mobile entry overflow/touch target');
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Mobile picker overflow');
   await page.locator('#report-options button').nth(1).click();
@@ -190,7 +190,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.clock.install();
   await page.locator('#registration-email').fill('visitor@example.com');
   await page.locator('#registration-email').press('ArrowLeft');
-  await page.clock.fastForward(120001);
+  await page.clock.fastForward(900001);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   check(state.state === 'entry', 'Idle timeout must reset server context');
   await page.evaluate(() => {
@@ -200,8 +200,9 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.waitForFunction(() => !document.querySelector('#stage').hidden);
   check(await page.locator('#registration-email').inputValue() === '', 'bfcache restored attendee state');
   await page.clock.resume();
+  await page.clock.setSystemTime(new Date());
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
   await page.locator('#report-options button').nth(1).click();
   await page.waitForURL(`**${other}`);
@@ -221,7 +222,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.goto(`${root}/content/index?entry=3&finish=2`);
   await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   await page.locator('#registration-email').fill('visitor@example.com');
-  await page.locator('#email-form button').click();
+  await page.locator('#email-form button[type="submit"]').click();
   await page.waitForURL(`**${path}`);
   await page.getByRole('link', { name: 'Finish reading my report' }).click();
   await page.waitForURL('**/booth?step=finish');

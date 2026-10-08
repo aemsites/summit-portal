@@ -1,45 +1,9 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
 import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
+import { boothRequest, createBoothInactivity } from './booth-session.js';
 
-export async function boothRequest(action, body) {
-  const controller = new AbortController();
-  let timer;
-  const deadline = new Promise((resolve, reject) => {
-    timer = setTimeout(() => {
-      const error = new Error(action === 'send'
-        ? 'Sending timed out. Delivery could not be confirmed. Clear this screen and ask the booth team before sending again.'
-        : 'The booth service timed out. Retry and clear this screen, or ask the booth team.');
-      error.code = 'timeout';
-      reject(error);
-      controller.abort();
-    }, 10000);
-  });
-  const operation = async () => {
-    const response = await fetch(`/auth/booth/${action}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      signal: controller.signal,
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      const error = new Error(result.error || 'Booth service unavailable. Ask the booth team.');
-      error.status = response.status;
-      error.code = result.code;
-      throw error;
-    }
-    return result;
-  };
-  try {
-    // Bound body reading too, even if a transport does not promptly settle on abort.
-    return await Promise.race([operation(), deadline]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+export { boothRequest } from './booth-session.js';
 
 export function mountBooth(root = document) {
   const stage = root.getElementById('stage');
@@ -54,16 +18,24 @@ export function mountBooth(root = document) {
   const chooseAnother = root.getElementById('choose-another-report');
   const status = root.getElementById('booth-status');
   const retry = root.getElementById('booth-retry');
+  const loading = root.getElementById('booth-loading');
   const previewTarget = root.getElementById('report-preview');
   const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
   const keyboard = mountBoothKeyboard(root);
   let ready = false;
   let busy = false;
-  let idle;
-  let expiry;
   let revision = 0;
   let resetting = false;
   let settled = Promise.resolve();
+  let inactivity;
+
+  function opening(active) {
+    if (loading) {
+      loading.hidden = !active;
+      if (active) loading.focus();
+    }
+    stage.inert = active;
+  }
 
   function notice(id, message) {
     const element = root.getElementById(id);
@@ -91,6 +63,7 @@ export function mountBooth(root = document) {
   }
 
   function scrub(clearTimers = true) {
+    opening(false);
     preview?.clear();
     email.blur();
     keyboard.clear();
@@ -107,8 +80,7 @@ export function mountBooth(root = document) {
     retry.hidden = true;
     root.getElementById('staff-login').hidden = true;
     if (clearTimers) {
-      clearTimeout(expiry);
-      clearTimeout(idle);
+      inactivity.stop();
     }
     show('welcome');
   }
@@ -133,7 +105,7 @@ export function mountBooth(root = document) {
       }
       throw error;
     });
-    settled = operation.then(() => undefined, () => undefined);
+    settled = Promise.allSettled([settled, operation]).then(() => undefined);
     return operation;
   }
 
@@ -168,22 +140,22 @@ export function mountBooth(root = document) {
   }
 
   function activity() {
-    clearTimeout(idle);
-    idle = setTimeout(reset, 120000);
+    if (!resetting) inactivity.activity();
   }
 
   function schedule(result) {
-    clearTimeout(expiry);
-    if (result.expiresAt) expiry = setTimeout(reset, Math.max(0, result.expiresAt - Date.now()));
+    inactivity.setExpiry(result.expiresAt);
   }
 
   function apply(result, finishing = false) {
     schedule(result);
     if (result.state === 'demo') {
+      opening(true);
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
     if (result.selectedPath && !finishing) {
+      opening(true);
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
@@ -213,12 +185,22 @@ export function mountBooth(root = document) {
           busy = true;
           const current = revision;
           button.disabled = true;
+          opening(true);
           try {
             const selection = await perform('select', { path: candidate.path });
-            if (current === revision) apply(selection);
+            if (current === revision) {
+              if (selection.state !== 'report' || !selection.selectedPath) {
+                throw new Error('The selected report could not be opened.');
+              }
+              apply(selection);
+            }
           } catch (error) {
-            if (current === revision) notice('picker-status', error.message);
             button.disabled = false;
+            if (current === revision) {
+              opening(false);
+              notice('picker-status', error.message);
+              button.focus();
+            }
           } finally {
             busy = false;
           }
@@ -271,14 +253,19 @@ export function mountBooth(root = document) {
           busy = true;
           const selecting = revision;
           button.disabled = true;
+          opening(true);
           notice('demo-status', 'Opening this example report...');
           try {
             const selected = await perform('demo', { id: demo.id });
             if (selected.state !== 'demo') throw new Error('The example report could not be opened.');
             if (selecting === revision) apply(selected);
           } catch (error) {
-            if (selecting === revision) notice('demo-status', error.message);
             button.disabled = false;
+            if (selecting === revision) {
+              opening(false);
+              notice('demo-status', error.message);
+              button.focus();
+            }
           } finally {
             busy = false;
           }
@@ -291,9 +278,21 @@ export function mountBooth(root = document) {
       if (current === revision) notice('demo-status', error.message);
     } finally {
       busy = false;
-      activity();
+      inactivity.activity(false);
     }
   }
+
+  inactivity = createBoothInactivity({
+    reset,
+    onError(error) {
+      revision += 1;
+      scrub(false);
+      recovery(error);
+    },
+    track(operation) {
+      settled = Promise.allSettled([settled, operation]).then(() => undefined);
+    },
+  });
 
   root.querySelectorAll('[data-show-demos]').forEach((button) => button.addEventListener('click', showDemos));
 
@@ -314,6 +313,7 @@ export function mountBooth(root = document) {
       email.value = '';
       if (current === revision) {
         if (error.code === 'no_report') {
+          schedule(error);
           show('unavailable');
           root.getElementById('unavailable-heading').focus();
         } else notice('email-error', error.message);
@@ -369,7 +369,8 @@ export function mountBooth(root = document) {
 
   root.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => reset()));
   root.getElementById('staff-exit').addEventListener('click', () => reset('exit'));
-  ['pointerdown', 'keydown', 'input', 'change'].forEach((name) => root.addEventListener(name, activity));
+  ['pointerdown', 'pointermove', 'keydown', 'input', 'change', 'scroll']
+    .forEach((name) => root.addEventListener(name, activity, { capture: true, passive: true }));
   window.addEventListener('pagehide', () => {
     revision += 1;
     ready = false;

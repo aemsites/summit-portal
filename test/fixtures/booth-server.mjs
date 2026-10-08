@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { BOOTH_DEMOS, findBoothDemo } from '../../workers/cloudflare/cug-adobe-oauth-worker/src/booth-demos.js';
+import { BOOTH_INACTIVITY_MS } from '../../scripts/booth-session.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const simulator = process.argv.includes('--simulator');
@@ -35,9 +36,9 @@ function fixtureContext(request, response) {
   const cookie = request.headers.cookie?.match(/(?:^|;\s*)booth_preview=([\w-]+)/)?.[1];
   if (fixtures.has(cookie)) return fixtures.get(cookie);
   const key = randomUUID();
-  const context = { state: 'entry', expiresAt: Date.now() + 600000 };
+  const context = { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS };
   fixtures.set(key, context);
-  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=600`);
+  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
   return context;
 }
 
@@ -52,15 +53,20 @@ function fixtureReport(context, path = reportPath) {
   });
 }
 
-function markedDocument(html, context) {
+async function markedDocument(html, context) {
+  const source = await readFile(resolve(root, 'workers/cloudflare/cug-adobe-oauth-worker/src/booth-shell.js'), 'utf8');
+  const recovery = source.match(/<aside id="booth-recovery">.*?<\/aside><noscript>.*?<\/noscript>/s)?.[0];
+  const safety = source.match(/<style id="booth-report-concealment">.*?<\/style><noscript>.*?<\/noscript>/s)?.[0];
+  if (!recovery || !safety) throw new Error('Worker report loading/concealment markup is unavailable.');
+  const loading = await readFile(resolve(root, 'styles/booth-loading.css'), 'utf8');
   return html.replace('<html lang="en">', '<html lang="en" class="booth-report-pending">')
-    .replace('<head>', '<head><style>:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery,#booth-return){display:none!important} #booth-recovery[hidden]{display:none!important}</style>')
+    .replace('<head>', `<head>${safety.replace(/\$\{loadingCss\}/, loading)}`)
     .replace(
       /(?:data-booth-mode="request"\s+)?src="\/scripts\/booth-report\.js"/,
       `data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js"`,
     )
     .replace(/(<body[^>]*>)/, '$1<div id="booth-report-content" hidden>')
-    .replace('</body>', '</div><aside id="booth-recovery"><p role="alert">Checking this booth report...</p><button type="button" data-booth-recover>Retry and clear screen</button></aside></body>');
+    .replace('</body>', `</div>${recovery}</body>`);
 }
 
 function simulatorDocument(html) {
@@ -76,7 +82,7 @@ const server = createServer(async (request, response) => {
     if (url.searchParams.get('preview') === 'finish') fixtureReport(context);
     if (url.searchParams.get('preview') === 'entry') {
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
     }
   }
   if (preview && path === '/') path = '/test/fixtures/booth-touchscreen.html';
@@ -84,7 +90,7 @@ const server = createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'];
+    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'];
     if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -117,9 +123,9 @@ const server = createServer(async (request, response) => {
       if (!['visitor@example.test', 'multi@example.test'].includes(email)) {
         Object.keys(context).forEach((key) => { delete context[key]; });
         const missing = email !== 'service-error@example.test';
-        Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + 600000 });
+        Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
         response.writeHead(missing ? 404 : 502, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.' }
+        response.end(JSON.stringify(missing ? { code: 'no_report', error: 'No prepared report is available.', expiresAt: context.expiresAt }
           : { error: 'Prepared reports cannot be checked right now. Ask the booth team.' }));
         return;
       }
@@ -128,7 +134,7 @@ const server = createServer(async (request, response) => {
         state: 'picker',
         candidates: email === 'multi@example.test' ? candidates : candidates.slice(0, 1),
         reports: {},
-        expiresAt: Date.now() + 600000,
+        expiresAt: Date.now() + BOOTH_INACTIVITY_MS,
       });
       if (context.candidates.length === 1) fixtureReport(context);
     }
@@ -148,7 +154,7 @@ const server = createServer(async (request, response) => {
     if (action === 'demo-picker') {
       const unmatched = context.unmatched === true;
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'unavailable', unmatched, expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'unavailable', unmatched, expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ ...context, state: 'demos' }));
       return;
@@ -166,13 +172,28 @@ const server = createServer(async (request, response) => {
         state: action,
         selectedPath: demo.path,
         unmatched,
-        expiresAt: Date.now() + 600000,
+        expiresAt: Date.now() + BOOTH_INACTIVITY_MS,
         ...(demo ? { demoId: demo.id, company: demo.company, industry: demo.industry } : {}),
       });
     }
     if (['reset', 'exit'].includes(action)) {
       Object.keys(context).forEach((key) => { delete context[key]; });
-      Object.assign(context, { state: 'entry', expiresAt: Date.now() + 600000 });
+      Object.assign(context, { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
+    }
+    if (action === 'activity') {
+      if (context.state === 'entry' || !Number.isInteger(body.idleMs)
+        || body.idleMs < 0 || body.idleMs >= BOOTH_INACTIVITY_MS) {
+        response.writeHead(410, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Local fixture visit expired."}');
+        return;
+      }
+      const expiresAt = Date.now() + BOOTH_INACTIVITY_MS - body.idleMs;
+      context.expiresAt = Math.max(context.expiresAt, expiresAt);
+      const key = request.headers.cookie.match(/booth_preview=([\w-]+)/)[1];
+      response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ expiresAt: context.expiresAt }));
+      return;
     }
     if ((action === 'send' && context.state !== 'report')
       || (action === 'view' && !['demo', 'report'].includes(context.state))) {
@@ -187,7 +208,8 @@ const server = createServer(async (request, response) => {
       context.reports[context.selectedPath] = { sent: true, delivery: 'sent' };
     }
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify(context));
+    response.end(JSON.stringify(context.state === 'entry'
+      ? { state: 'entry', canChooseAnother: false } : context));
     return;
   }
   if (path.startsWith('/auth/')) {
@@ -205,7 +227,7 @@ const server = createServer(async (request, response) => {
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const context = fixtureContext(request, response);
-    response.end(simulatorDocument(markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context)));
+    response.end(simulatorDocument(await markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context)));
     return;
   }
   if (preview && path === '/request-report') {
@@ -225,7 +247,7 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     const context = preview ? fixtureContext(request, response) : null;
-    response.end(simulatorDocument(context ? markedDocument(html, context) : html));
+    response.end(simulatorDocument(context ? await markedDocument(html, context) : html));
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);

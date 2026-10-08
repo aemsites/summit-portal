@@ -69,7 +69,7 @@
         <p>Windows 11 is confirmed. Browser version, native keyboard layout/policy, DPR, device scaling, mounting and reach are unknown. The keyboard is a local test control, not an OS replica.</p>
         <p>The opted-in frame advertises one touch point to exercise the existing fallback. Mouse clicks remain mouse PointerEvents; coarse-pointer CSS, genuine touches, pinch gestures, screen readers, Turnstile, fullscreen lockdown and privacy-policy handling need real-device tests. Host DPR is not changed.</p>
         <p>Geometry uses a pre-init local VirtualKeyboard facade, not a native API. No overlaysContent policy is forced. Hide uses explicit blur, not a fabricated native dismissal signal. The diagnostic shows unreported fallback behavior without patching the product's reserve.</p>
-        <p>API state is in this local server's memory, isolated by a ten-minute fixture cookie. Restarting the server loses it. Example metrics and industry reports are synthetic. Fake send acceptance does not prove delivery.</p>
+        <p>API state is in this local server's memory, isolated by a fifteen-minute fixture cookie. Local activity renews the server's inactivity deadline; restarting loses all sample visits. Example metrics and industry reports are synthetic. Fake send acceptance does not prove delivery.</p>
       </details>
     </aside>
     <section class="screen-workspace" aria-label="Interactive portrait screen">

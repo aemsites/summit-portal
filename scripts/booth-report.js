@@ -1,4 +1,5 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
+import { createBoothInactivity } from './booth-session.js';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
@@ -37,12 +38,11 @@ export function restrictBoothLinks(root) {
 function createReportGuard(key, expiresAt, presentation, pendingVerification = false) {
   if (guards.has(key)) return guards.get(key);
   const html = document.documentElement;
-  let idle;
-  let deadline;
   let revision = 0;
   let resetting = false;
   let interrupted = false;
   let pending = Promise.resolve();
+  let inactivity;
   if (!document.querySelector('style[data-booth-report-safety]')) {
     const style = document.createElement('style');
     style.dataset.boothReportSafety = 'true';
@@ -73,8 +73,43 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     }
     recovery.prepend(recoveryMessage);
   }
+  const loading = recovery.querySelector('[data-booth-loading]') || document.createElement('div');
+  if (!loading.parentElement) {
+    loading.dataset.boothLoading = 'true';
+    const ring = document.createElement('span');
+    ring.className = 'booth-loading-ring';
+    ring.setAttribute('aria-hidden', 'true');
+    loading.append(ring, recoveryMessage);
+    recovery.prepend(loading);
+  }
+  const ring = loading.querySelector('.booth-loading-ring');
+  const recoveryActions = recovery.querySelector('.booth-recovery-actions') || document.createElement('div');
+  if (!recoveryActions.parentElement) {
+    recoveryActions.className = 'booth-recovery-actions';
+    recoveryActions.append(...[...recovery.childNodes].filter((node) => node !== loading));
+    recovery.append(recoveryActions);
+  }
+  if (!document.querySelector('#booth-report-concealment, link[data-booth-loading]')) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/styles/booth-loading.css';
+    stylesheet.dataset.boothLoading = 'true';
+    document.head.append(stylesheet);
+  }
+  function pendingMessage(text) {
+    recovery.hidden = false;
+    loading.classList.add('booth-loading', 'booth-loading-overlay');
+    loading.setAttribute('role', 'status');
+    recoveryMessage.classList.add('booth-loading-title');
+    recoveryMessage.removeAttribute('role');
+    recoveryMessage.textContent = text;
+    ring.hidden = false;
+    recoveryActions.hidden = true;
+  }
+  pendingMessage('Opening your report...');
   const hide = () => {
     interrupted = true;
+    inactivity.stop();
     html.classList.add('booth-report-clearing');
     clearVisitorFields(document);
     const control = document.getElementById('booth-return');
@@ -84,7 +119,12 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     hide();
     html.style.visibility = '';
     recovery.hidden = false;
+    loading.classList.remove('booth-loading', 'booth-loading-overlay');
+    loading.removeAttribute('role');
+    recoveryMessage.setAttribute('role', 'alert');
     recoveryMessage.textContent = error.message;
+    ring.hidden = true;
+    recoveryActions.hidden = false;
     recoveryButton.disabled = false;
     const control = document.getElementById('booth-return');
     const status = control?.querySelector('p');
@@ -97,12 +137,9 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     if (resetting) return;
     resetting = true;
     revision += 1;
-    clearTimeout(idle);
-    clearTimeout(deadline);
     hide();
-    recovery.hidden = false;
+    pendingMessage('Clearing this screen...');
     recoveryButton.disabled = true;
-    recoveryMessage.textContent = 'Clearing this screen...';
     try {
       await pending;
       const result = await fetch('/auth/booth/reset', {
@@ -124,35 +161,42 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   }
   function activity() {
     if (interrupted || resetting) return;
-    clearTimeout(idle);
-    idle = setTimeout(reset, 120000);
+    inactivity.activity();
   }
+  inactivity = createBoothInactivity({
+    reset,
+    onError: fail,
+    track(operation) {
+      pending = Promise.allSettled([pending, operation]).then(() => undefined);
+    },
+  });
   const guard = {
     fail,
     reset,
     get revision() { return revision; },
     get interrupted() { return interrupted; },
     get resetting() { return resetting; },
-    track(operation) { pending = operation.then(() => undefined, () => undefined); },
-    conceal() { hide(); },
+    track(operation) {
+      pending = Promise.allSettled([pending, operation]).then(() => undefined);
+    },
+    conceal() { hide(); pendingMessage('Opening your reports...'); },
     activate(context) {
       if (interrupted) return false;
-      clearTimeout(deadline);
       const remaining = Math.min(expiresAt, context.expiresAt) - Date.now();
       if (remaining <= 0) {
         fail(new Error('This booth report has expired. Retry and clear the screen.'));
         return false;
       }
-      deadline = setTimeout(reset, Math.max(0, remaining));
+      inactivity.setExpiry(Date.now() + remaining);
       recovery.hidden = true;
-      activity();
+      inactivity.activity(false);
       return true;
     },
   };
   guards.set(key, guard);
   recoveryButton.addEventListener('click', reset);
-  ['pointerdown', 'keydown', 'input', 'change']
-    .forEach((name) => document.addEventListener(name, activity));
+  ['pointerdown', 'pointermove', 'keydown', 'input', 'change', 'scroll']
+    .forEach((name) => document.addEventListener(name, activity, { capture: true, passive: true }));
   document.addEventListener('click', (event) => {
     const link = event.target.closest?.('a');
     if (!link) return;
@@ -164,7 +208,6 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   }, true);
   window.addEventListener('pagehide', () => {
     revision += 1;
-    clearTimeout(idle);
     hide();
     html.style.visibility = 'hidden';
   });
@@ -173,7 +216,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   });
   window.addEventListener('popstate', reset);
   if (pendingVerification) {
-    deadline = setTimeout(reset, Math.max(0, expiresAt - Date.now()));
+    inactivity.setExpiry(expiresAt, false);
     activity();
   }
   return guard;
@@ -317,11 +360,25 @@ export default async function mountBoothReturn() {
   stylesheet.rel = 'stylesheet';
   stylesheet.href = '/styles/booth-report.css';
   stylesheet.dataset.boothReportLayout = 'true';
-  stylesheet.addEventListener('error', () => {
-    // eslint-disable-next-line no-console
-    console.warn('Booth portrait layout unavailable.');
+  const layoutReady = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('The report layout timed out. Retry and clear the screen.')), 10000);
+    const complete = () => { clearTimeout(timer); resolve(); };
+    stylesheet.addEventListener('load', complete, { once: true });
+    stylesheet.addEventListener('error', () => {
+      // eslint-disable-next-line no-console
+      console.warn('Booth portrait layout unavailable.');
+      complete();
+    }, { once: true });
   });
   document.head.append(stylesheet);
+  try {
+    await layoutReady;
+  } catch (error) {
+    if (guard) guard.fail(error);
+    else throw error;
+    return;
+  }
+  if (guard?.interrupted) return;
   const existingControl = document.getElementById('booth-return');
   const html = document.documentElement;
   const control = existingControl || document.createElement('aside');

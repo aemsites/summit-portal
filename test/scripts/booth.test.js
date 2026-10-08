@@ -35,7 +35,7 @@ describe('booth runtime boundary', () => {
       const pending = new Promise(() => {});
       const fetchStub = sandbox.stub(window, 'fetch').returns(phase === 'fetch'
         ? pending : Promise.resolve({ ok: true, json: () => pending }));
-      const actions = ['status', 'lookup', 'demo-picker', 'demos', 'demo', 'select', 'send', 'picker', 'reset', 'exit'];
+      const actions = ['status', 'lookup', 'demo-picker', 'demos', 'demo', 'select', 'send', 'picker', 'reset', 'exit', 'activity'];
       const failures = actions.map((action) => boothRequest(action, {}).catch((error) => error));
       await clock.tickAsync(10001);
       const errors = await Promise.all(failures);
@@ -89,6 +89,47 @@ describe('booth runtime boundary', () => {
     return root;
   }
 
+  it('uses the industry return action for the report picker', async () => {
+    const root = await productionFixture();
+    const back = root.querySelector('[data-panel="picker"] [data-reset]');
+    expect(back.classList.contains('booth-alternative')).to.equal(true);
+    expect(back.textContent).to.equal('Back to email lookup');
+    expect(back.closest('.recovery-actions')).not.to.equal(null);
+  });
+
+  it('shows opening feedback immediately and restores the picker after failed selection', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({
+        state: 'picker',
+        candidates: [{ label: 'Example report', path: '/accounts/example/' }],
+      }),
+    });
+    let rejectSelection;
+    fetchStub.onSecondCall().returns(new Promise((resolve, reject) => {
+      rejectSelection = reject;
+    }));
+    mountBooth(root);
+    await clock.tickAsync(0);
+    const button = root.querySelector('#report-options button');
+    let focusedWhileDisabled;
+    sandbox.stub(button, 'focus').callsFake(() => { focusedWhileDisabled = button.disabled; });
+    button.click();
+    expect(root.getElementById('booth-loading').hidden).to.equal(false);
+    expect(root.getElementById('stage').inert).to.equal(true);
+    expect(root.getElementById('booth-loading').textContent).to.include('Opening your report');
+    rejectSelection(new Error('Selection unavailable'));
+    await clock.tickAsync(0);
+    expect(root.getElementById('booth-loading').hidden).to.equal(true);
+    expect(root.getElementById('stage').inert).to.equal(false);
+    expect(button.disabled).to.equal(false);
+    expect(focusedWhileDisabled).to.equal(false);
+    expect(root.getElementById('picker-status').textContent).to.equal('Selection unavailable');
+  });
+
   it('recovers an initial status failure only after a confirmed retry/clear request', async () => {
     const root = recoveryFixture();
     const clock = sandbox.useFakeTimers();
@@ -117,7 +158,7 @@ describe('booth runtime boundary', () => {
     mountBooth(root);
     await clock.tickAsync(0);
     root.getElementById('registration-email').value = 'visitor@example.com';
-    await clock.tickAsync(120000);
+    await clock.tickAsync(900000);
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.getElementById('booth-status').textContent).to.equal('Load failed');
     expect(root.querySelector('#email-form button').disabled).to.equal(true);
@@ -138,7 +179,7 @@ describe('booth runtime boundary', () => {
     fetchStub.onSecondCall().returns(new Promise((resolve) => { releaseLookup = resolve; }));
     fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
     mountBooth(root);
-    await clock.tickAsync(119000);
+    await clock.tickAsync(899000);
     root.getElementById('registration-email').value = 'visitor@example.test';
     root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await clock.tickAsync(1001);
@@ -243,7 +284,7 @@ describe('booth runtime boundary', () => {
     fetchStub.onSecondCall().resolves({ ok: true, json: () => new Promise(() => {}) });
     fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
     mountBooth(root);
-    await clock.tickAsync(120000);
+    await clock.tickAsync(900000);
     expect(root.getElementById('booth-status').textContent).to.include('Clearing');
     await clock.tickAsync(10001);
     expect(root.querySelector('#email-form button').disabled).to.equal(true);
@@ -314,14 +355,14 @@ describe('booth runtime boundary', () => {
       { ok: true, json: async () => ({ state: 'entry' }) }
     ));
     mountBooth(root);
-    await clock.tickAsync(110000);
+    await clock.tickAsync(890000);
     const email = root.getElementById('registration-email');
     email.value = 'still-typing@example.test';
     email.dispatchEvent(new Event('input', { bubbles: true }));
     await clock.tickAsync(11000);
     expect(email.value).to.equal('still-typing@example.test');
     email.dispatchEvent(new Event('change', { bubbles: true }));
-    await clock.tickAsync(110000);
+    await clock.tickAsync(890000);
     expect(email.value).to.equal('still-typing@example.test');
     expect(fetchStub.calledOnce).to.equal(true);
     await clock.tickAsync(10001);
@@ -329,32 +370,102 @@ describe('booth runtime boundary', () => {
     expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
   });
 
-  it('retains absolute expiry even when virtual-keyboard activity keeps renewing idle time', async () => {
+  it('renews server expiry for input and change instead of cutting an active visitor off at the original deadline', async () => {
     const root = recoveryFixture();
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url) => (
       {
         ok: true,
-        json: async () => (url.endsWith('/status')
-          ? { state: 'picker', candidates: [], expiresAt: 180000 }
-          : { state: 'entry' }),
+        json: async () => {
+          if (url.endsWith('/status')) return { state: 'picker', candidates: [], expiresAt: 900000 };
+          if (url.endsWith('/activity')) return { expiresAt: Date.now() + 900000 };
+          return { state: 'entry' };
+        },
       }
     ));
     mountBooth(root);
-    await clock.tickAsync(110000);
+    await clock.tickAsync(890000);
     const email = root.getElementById('registration-email');
     email.value = 'active@example.test';
     email.dispatchEvent(new Event('input', { bubbles: true }));
     await clock.tickAsync(50000);
+    expect(email.value).to.equal('active@example.test');
     email.dispatchEvent(new Event('change', { bubbles: true }));
-    await clock.tickAsync(20001);
+    await clock.tickAsync(899999);
+    expect(email.value).to.equal('active@example.test');
+    await clock.tickAsync(1);
     expect(email.value).to.equal('');
-    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+    expect(fetchStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+      '/auth/booth/status', '/auth/booth/activity', '/auth/booth/activity', '/auth/booth/reset',
+    ]);
   });
 
   function jsonReply(body, status = 200) {
     return { ok: status < 400, status, json: async () => body };
   }
+
+  it('waits for renewal before clearing even when a concurrent send fails first', async () => {
+    const root = await productionFixture();
+    root.getElementById('report-preview').remove();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    let completeRenewal;
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/booth/status').resolves(jsonReply({ state: 'report', selectedPath: '/selected/', expiresAt: 900000 }));
+    fetchStub.withArgs('/auth/booth/activity').returns(new Promise((resolve) => {
+      completeRenewal = resolve;
+    }));
+    fetchStub.withArgs('/auth/booth/send').resolves(jsonReply({ error: 'Delivery unavailable' }, 502));
+    fetchStub.withArgs('/auth/booth/reset').resolves(jsonReply({ state: 'entry' }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.dispatchEvent(new Event('pointerdown'));
+      await clock.tickAsync(0);
+      root.getElementById('send-report').click();
+      await clock.tickAsync(0);
+      expect(root.getElementById('finish-status').textContent).to.equal('Delivery unavailable');
+      root.querySelector('[data-panel="finish"] [data-reset]').click();
+      await clock.tickAsync(0);
+      expect(fetchStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        '/auth/booth/status', '/auth/booth/activity', '/auth/booth/send',
+      ]);
+      expect(root.getElementById('booth-status').textContent).to.include('Clearing');
+      completeRenewal(jsonReply({ expiresAt: 900000 }));
+      await clock.tickAsync(0);
+      expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/reset');
+      expect(root.querySelector('#email-form button').disabled).to.equal(false);
+      expect(clock.countTimers()).to.equal(0);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('renews the no-report screen from its confirmed server expiry until fifteen minutes of inactivity', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url, options) => {
+      if (url.endsWith('/lookup')) return jsonReply({ code: 'no_report', error: 'No report', expiresAt: 900000 }, 404);
+      if (url.endsWith('/activity')) {
+        return jsonReply({ expiresAt: Date.now() + 900000 - JSON.parse(options.body).idleMs });
+      }
+      return jsonReply({ state: 'entry' });
+    });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.getElementById('registration-email').value = 'no-report@example.test';
+    root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await clock.tickAsync(840000);
+    root.dispatchEvent(new Event('pointerdown'));
+    await clock.tickAsync(0);
+    expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/activity');
+    await clock.tickAsync(899999);
+    expect(root.querySelector('[data-panel="unavailable"]').hidden).to.equal(false);
+    await clock.tickAsync(1);
+    expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/reset');
+    expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
+  });
 
   it('offers explicit demo recovery without a request form for a confirmed no-report lookup', async () => {
     const root = await productionFixture();
