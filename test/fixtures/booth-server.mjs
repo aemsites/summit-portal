@@ -44,15 +44,20 @@ function fixtureReport(context, path = reportPath) {
   });
 }
 
-function markedDocument(html, context) {
+async function markedDocument(html, context) {
+  const source = await readFile(resolve(root, 'workers/cloudflare/cug-adobe-oauth-worker/src/booth-shell.js'), 'utf8');
+  const recovery = source.match(/<aside id="booth-recovery">.*?<\/aside><noscript>.*?<\/noscript>/s)?.[0];
+  const safety = source.match(/<style id="booth-report-concealment">.*?<\/style><noscript>.*?<\/noscript>/s)?.[0];
+  if (!recovery || !safety) throw new Error('Worker report loading/concealment markup is unavailable.');
+  const loading = await readFile(resolve(root, 'styles/booth-loading.css'), 'utf8');
   return html.replace('<html lang="en">', '<html lang="en" class="booth-report-pending">')
-    .replace('<head>', '<head><style>:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery,#booth-return){display:none!important} #booth-recovery[hidden]{display:none!important}</style>')
+    .replace('<head>', `<head>${safety.replace(/\$\{loadingCss\}/, loading)}`)
     .replace(
       /(?:data-booth-mode="request"\s+)?src="\/scripts\/booth-report\.js"/,
       `data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js"`,
     )
     .replace(/(<body[^>]*>)/, '$1<div id="booth-report-content" hidden>')
-    .replace('</body>', '</div><aside id="booth-recovery"><p role="alert">Checking this booth report...</p><button type="button" data-booth-recover>Retry and clear screen</button></aside></body>');
+    .replace('</body>', `</div>${recovery}</body>`);
 }
 
 createServer(async (request, response) => {
@@ -209,7 +214,7 @@ createServer(async (request, response) => {
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const context = fixtureContext(request, response);
-    response.end(markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context));
+    response.end(await markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context));
     return;
   }
   if (preview && path === '/request-report') {
@@ -229,7 +234,7 @@ createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     const context = preview ? fixtureContext(request, response) : null;
-    response.end(context ? markedDocument(html, context) : html);
+    response.end(context ? await markedDocument(html, context) : html);
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);

@@ -21,7 +21,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 ### Pages
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a dark pill **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
+- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a right-aligned white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
 **Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a booth-bound HttpOnly context with a renewable fifteen-minute inactivity expiry. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records each report's attempts before APO; uncertain delivery is explicit and non-retryable even after switching away and back. Reset clears attendee access but retains the scoped booth login, persistent kiosk restriction and separately disclosed lead history. The dedicated `booth_session` credential and signed `booth_device` are not general staff authentication. Selected HTML and rendering dependencies require the live selection and attendee permissions before origin fetch and again before return, including reset races. Private indexes/APIs, alternate report formats, PDFs, general sharing and unrelated reports are denied. Fresh report navigation and browser Back after reset return to Entry. Staff signout removes credentials but does not unlock the kiosk browser. Ordinary staff/customer browsing on unmarked browsers is unchanged. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; web code cannot protect against deliberate cookie deletion, developer tools, OS access or files previously downloaded.
@@ -77,7 +77,7 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-clear-1` adapter URL for the deployed return-to-entry correction below. The new industry chooser versions Entry JS/CSS with `?v=booth-industry-figma-1`; the keyboard import retains `?v=booth-recovery-2`. Entry, preview, visibility-helper, report-adapter and keyboard assets receive `no-cache` revalidation. The chooser and preview corrections require a separate Worker deployment after merge. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-clear-1` adapter URL for the deployed return-to-entry correction below. The industry chooser versions Entry JS/CSS with `?v=booth-industry-figma-1`; the keyboard import retains `?v=booth-recovery-2`. Entry, preview, visibility-helper, report-adapter and keyboard assets receive `no-cache` revalidation. The chooser and preview corrections were deployed October 8 at 11:41 UTC. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -247,7 +247,79 @@ verification failure and idle clearing return to a usable blank Entry.
 Existing visitor scrubbing, server-confirmed reset and fail-closed concealment
 remain. No real customer lookup, context mutation or email is used.
 
-### Final Figma industry chooser (October 8, not deployed)
+### Report selection and preview loading (October 8, local; not deployed)
+
+The report picker retains the previously approved centered outlined **Back to
+email lookup** action, including its 120px/45px native touchscreen sizing and
+smaller-screen touch minimums. Report and demo selections show a full-screen
+**Opening your report...** indicator immediately, with covered controls inert.
+Failed selections restore usable controls and an explicit error.
+
+The Worker supplies the same loading treatment in its initial HTML and critical
+CSS while the selected report remains concealed. Recovery actions appear only
+on failure; legacy recovery markup still works. Report content is revealed
+after access confirmation and portrait stylesheet loading, not before.
+Stylesheet stalls have a ten-second recovery deadline; expiry/reset still
+prevent late reveal. No-JavaScript instructions remain visible.
+
+Finish reserves the preview area with a reduced-motion-aware progress indicator.
+Renderer imports now overlap the authorized HTML fetch instead of waiting for
+it. With independently delayed 300ms HTML/renderer requests, the same local
+cold-Finish probe measured 636ms before and 461ms after; this is a synthetic
+measurement, not a production latency claim. Email and clearing stay available
+while previews load. No attendee HTML is cached or stored.
+
+The report-adapter version is `booth-loading-1`; Entry uses `booth-final-figma-3`
+with the final visual corrections below. The shared
+`styles/booth-loading.css` is Worker-bundled and revalidated. The local fixture
+replays current Worker concealment/loading markup rather than maintaining a
+simplified copy. `test/fixtures/booth-loading-browser.js` checks delayed/failed
+selection, verified styled reveal, stable Finish loading, overlapping downloads,
+reduced motion and return sizing at 2160/1080/390px. These changes require a
+separate Worker deployment; the production version below is unchanged.
+
+### Latest three-screen Figma alignment (October 8, branch; not deployed)
+
+Aligned the latest [Entry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-136),
+[Industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=328-112)
+and [Finish](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-2475)
+frames after the designer's final review. All three share the 277px header.
+Entry matches the 136px notch, 112px gutters, 54px field/help typography,
+light-gray 6px field border, 454 by 120px action and exact exported open-in glyph.
+The hero uses the current exported art/glow with the design's clipped image frame.
+The staff's **Industry demos** action and disclosed private email tracking remain
+intentional additions absent from Figma. The subsequent requested refinement
+uses a white background, #505050 text and #8f8f8f outline rather than a dark fill.
+It sits at the right edge of the lookup action row, opposite **View my report**,
+with a 120px native height. On narrow screens it wraps to a right-aligned second
+row with a minimum 64px touch target. The privacy notice remains below both
+actions; the staff button is explicitly non-submitting.
+
+The chooser supersedes the older node documented below: white 950 by 165px
+cards, 1px black borders, 10px corners, 36px column/54px row gaps and 24px
+company labels. It uses the newly exported cart, healthcare and media icons,
+plus the seven unchanged industry icons. The centered blue **Try another email**
+action is 427 by 120px, verified against the actual Figma instance; the generic
+generated component's conflicting width is not used. The availability note is
+removed, while the staff signout control and conditional no-match copy remain.
+All canonical company/industry labels and routing identities already matched.
+
+Finish retains live, swipeable selected-report excerpts, not the Figma sample
+brand or scores. Its 1960 by 752px montage includes the exact exported rainbow
+glow, with 1410 by 724px center and 910/853 by 696px side cards. CTAs use the
+467/601 by 120px dimensions, 80px gap and 54px email explanation. The Entry and
+Finish progress footers match the common 112px gutters and 80px gaps.
+Geometry scales by viewport width with mobile/touch minimums and the footer
+anchored to the taller 2160 by 3840px touchscreen.
+
+Entry JS/CSS use `booth-final-figma-3`; all revised image assets revalidate and
+the new glow is Worker-bundled. This branch incorporates main's activity-based
+15-minute session renewal without weakening report concealment/loading gates.
+`booth-final-design-browser.js` and the updated industry verifier compare native
+geometry within one pixel; the original report/loading/privacy journeys remain.
+No production deployment is included in this change.
+
+### Final Figma industry chooser (October 8, deployed)
 
 Implemented [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714).
 The 2160 × 2881 reference has a 277px header, 112px body gutters, two columns
@@ -267,9 +339,20 @@ The existing canonical **Automotive** spelling is retained.
 Entry JS/CSS use `booth-industry-figma-1`; all ten icons are Worker-bundled.
 The synthetic browser verifier checks native Figma geometry within one pixel,
 loaded icons, every industry, touch profiles and reset/history privacy.
-No migration is needed. This branch also includes the Finish preview bar fix.
+No migration is needed. The same rollout includes the Finish preview bar fix.
 
-### Finish preview chart fills (October 8, not deployed)
+**Production rollout, October 8 at 11:41 UTC:** deployed merged main
+`aabdd0a92e9da6760dbb6fd6995ece3397c2dc8d` (PR #160) to `summit-portal`,
+version `025e07bc-95e2-4e78-9a9b-be865998f32c`, serving 100% of traffic.
+Live Entry JS/CSS, the preview runtime/helper, all ten industry SVGs, the
+report adapter and origin lazy module match merged source byte-for-byte.
+Changed assets revalidate; anonymous Entry redirects to staff setup and
+status, demos and private CSV remain unauthorized. The bounded manual recovery
+page remains available. No D1 migrations were pending; bindings, staff epoch
+and cron are unchanged. No live attendee lookup, reset or email was performed.
+Close old report tabs and reload `/booth` on the touchscreen.
+
+### Finish preview chart fills (October 8, deployed)
 
 The static LLM visibility preview now applies the completed `rav-animate` chart
 state. Previously, the real data percentages were present but CSS kept fills at
@@ -278,8 +361,7 @@ observer. Competitor and platform bars preserve their authored values, relative
 widths and colors; genuine zero scores stay empty. Ordinary report animations
 are unchanged. The preview imports `rav-core.js?v=booth-preview-bars-1`, and the
 Worker revalidates both the preview runtime and visibility helper with `no-cache`.
-This correction is local and requires review/merge plus a Worker deployment;
-the production version above does not yet include it.
+This correction is included in the verified production rollout above.
 
 ### Industry demo fallback and fresh booth requests (October 7 historical)
 

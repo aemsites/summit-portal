@@ -18,6 +18,7 @@ export function mountBooth(root = document) {
   const chooseAnother = root.getElementById('choose-another-report');
   const status = root.getElementById('booth-status');
   const retry = root.getElementById('booth-retry');
+  const loading = root.getElementById('booth-loading');
   const previewTarget = root.getElementById('report-preview');
   const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
   const keyboard = mountBoothKeyboard(root);
@@ -27,6 +28,14 @@ export function mountBooth(root = document) {
   let resetting = false;
   let settled = Promise.resolve();
   let inactivity;
+
+  function opening(active) {
+    if (loading) {
+      loading.hidden = !active;
+      if (active) loading.focus();
+    }
+    stage.inert = active;
+  }
 
   function notice(id, message) {
     const element = root.getElementById(id);
@@ -54,6 +63,7 @@ export function mountBooth(root = document) {
   }
 
   function scrub(clearTimers = true) {
+    opening(false);
     preview?.clear();
     email.blur();
     keyboard.clear();
@@ -140,10 +150,12 @@ export function mountBooth(root = document) {
   function apply(result, finishing = false) {
     schedule(result);
     if (result.state === 'demo') {
+      opening(true);
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
     if (result.selectedPath && !finishing) {
+      opening(true);
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
@@ -173,12 +185,22 @@ export function mountBooth(root = document) {
           busy = true;
           const current = revision;
           button.disabled = true;
+          opening(true);
           try {
             const selection = await perform('select', { path: candidate.path });
-            if (current === revision) apply(selection);
+            if (current === revision) {
+              if (selection.state !== 'report' || !selection.selectedPath) {
+                throw new Error('The selected report could not be opened.');
+              }
+              apply(selection);
+            }
           } catch (error) {
-            if (current === revision) notice('picker-status', error.message);
             button.disabled = false;
+            if (current === revision) {
+              opening(false);
+              notice('picker-status', error.message);
+              button.focus();
+            }
           } finally {
             busy = false;
           }
@@ -231,14 +253,19 @@ export function mountBooth(root = document) {
           busy = true;
           const selecting = revision;
           button.disabled = true;
+          opening(true);
           notice('demo-status', 'Opening this example report...');
           try {
             const selected = await perform('demo', { id: demo.id });
             if (selected.state !== 'demo') throw new Error('The example report could not be opened.');
             if (selecting === revision) apply(selected);
           } catch (error) {
-            if (selecting === revision) notice('demo-status', error.message);
             button.disabled = false;
+            if (selecting === revision) {
+              opening(false);
+              notice('demo-status', error.message);
+              button.focus();
+            }
           } finally {
             busy = false;
           }

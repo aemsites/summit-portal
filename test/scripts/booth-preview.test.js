@@ -155,6 +155,21 @@ describe('selected report preview', () => {
     expect(target.querySelector('.rh-insight-text h3').textContent).to.equal('Actual selected brand');
   });
 
+  it('shows a visible loading indicator while the selected report is pending', async () => {
+    let finish;
+    sandbox.stub(window, 'fetch').returns(new Promise((resolve) => { finish = resolve; }));
+    const preview = createBoothPreview(target, retry);
+    const pending = preview.load(context());
+    expect(target.getAttribute('aria-busy')).to.equal('true');
+    expect(target.querySelector('.booth-loading [aria-hidden="true"]')).not.to.equal(null);
+    expect(target.querySelector('[role="status"]').textContent).to.include('Loading your report preview');
+    expect(target.querySelector('h3, img')).to.equal(null);
+    finish(response());
+    await pending;
+    expect(target.querySelector('.booth-loading')).to.equal(null);
+    expect(target.getAttribute('aria-busy')).to.equal('false');
+  });
+
   it('rejects non-selected, expired, normalized or cross-origin paths without a request', async () => {
     const fetchStub = sandbox.stub(window, 'fetch');
     const preview = createBoothPreview(target, retry);

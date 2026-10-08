@@ -108,6 +108,15 @@ export function mountPreviewCarousel(montage) {
   select(center);
 }
 
+function loadRenderers() {
+  return Promise.all([
+    import('../blocks/report-hero/report-hero.js?v=booth-preview-6'),
+    import('../blocks/report-stats/report-stats.js?v=booth-preview-6'),
+    import('../blocks/report-carousel/report-carousel.js?v=booth-preview-6'),
+    import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1'),
+  ]);
+}
+
 export async function renderBoothPreview(html, path, doc = document) {
   const base = new URL(path, window.location.origin);
   const source = new DOMParser().parseFromString(html, 'text/html');
@@ -117,12 +126,7 @@ export async function renderBoothPreview(html, path, doc = document) {
   }
   const [
     { buildInsightHero }, { buildDarkStats }, { buildBriefingPreview }, { buildVisibilityPreview },
-  ] = await Promise.all([
-    import('../blocks/report-hero/report-hero.js?v=booth-preview-6'),
-    import('../blocks/report-stats/report-stats.js?v=booth-preview-6'),
-    import('../blocks/report-carousel/report-carousel.js?v=booth-preview-6'),
-    import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1'),
-  ]);
+  ] = await loadRenderers();
   const hero = copyContent(authoredHero, base, doc);
   hero.className = 'report-hero insight';
   if (authoredHero.dataset.lede) {
@@ -240,7 +244,18 @@ export function createBoothPreview(target, retry) {
     const path = result.selectedPath;
     context = result;
     target.setAttribute('aria-busy', 'true');
-    message('Loading your report preview...');
+    const doc = target.ownerDocument;
+    const loading = doc.createElement('div');
+    loading.className = 'booth-loading';
+    loading.setAttribute('role', 'status');
+    const ring = doc.createElement('span');
+    ring.className = 'booth-loading-ring';
+    ring.setAttribute('aria-hidden', 'true');
+    const title = doc.createElement('p');
+    title.className = 'booth-loading-title';
+    title.textContent = 'Loading your report preview...';
+    loading.append(ring, title);
+    target.replaceChildren(loading);
     try {
       const url = new URL(path, window.location.origin);
       if (result.state !== 'report' || !Number.isFinite(result.expiresAt)
@@ -248,11 +263,18 @@ export function createBoothPreview(target, retry) {
         || url.origin !== window.location.origin || url.pathname !== path) {
         throw new Error('A current selected report is required for the preview.');
       }
-      const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal });
-      if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html')) {
-        throw new Error('The selected report preview could not be loaded.');
-      }
-      const blocks = await renderBoothPreview(await response.text(), path, target.ownerDocument);
+      const [html] = await Promise.all([
+        (async () => {
+          const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal });
+          if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html')) {
+            throw new Error('The selected report preview could not be loaded.');
+          }
+          return response.text();
+        })(),
+        loadRenderers(),
+      ]);
+      if (current !== revision || signal.aborted) return;
+      const blocks = await renderBoothPreview(html, path, target.ownerDocument);
       if (current !== revision || signal.aborted) return;
       if (result.expiresAt <= Date.now()) {
         clear();

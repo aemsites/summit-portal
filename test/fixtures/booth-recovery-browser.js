@@ -24,7 +24,7 @@ export default async function verifyBoothRecovery(page, root = 'http://localhost
     await page.clock.fastForward(10001);
     await page.waitForFunction(() => !document.getElementById('booth-retry').hidden);
     check(await page.locator('#registration-email').inputValue() === '', 'Timeout retains visitor email');
-    check(await page.locator('#email-form button').isDisabled(), 'Timeout enables another visitor before reset');
+    check(await page.locator('#email-form button[type="submit"]').isDisabled(), 'Timeout enables another visitor before reset');
     check((await page.locator('#booth-status').textContent()).includes('timed out'), 'Timeout lacks visible recovery');
     await page.clock.fastForward(901000);
     await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
@@ -51,7 +51,7 @@ export async function verifyBoothReportRecovery(page, root = 'http://localhost:3
   check(response.ok(), 'Worker report injection source is unavailable');
   const recovery = (await response.text()).match(/<aside id="booth-recovery">.*?<\/aside>/s)?.[0];
   check(recovery, 'Worker recovery HTML is unavailable');
-  const legacy = recovery.replace(/<p role="alert">(.*?)<\/p>/s, '$1');
+  const legacy = '<aside id="booth-recovery">Your report is concealed while access is checked. <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside>';
   let markup = recovery;
   let rejectStatus = false;
   let rejectReset = false;

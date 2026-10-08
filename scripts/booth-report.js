@@ -73,6 +73,40 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     }
     recovery.prepend(recoveryMessage);
   }
+  const loading = recovery.querySelector('[data-booth-loading]') || document.createElement('div');
+  if (!loading.parentElement) {
+    loading.dataset.boothLoading = 'true';
+    const ring = document.createElement('span');
+    ring.className = 'booth-loading-ring';
+    ring.setAttribute('aria-hidden', 'true');
+    loading.append(ring, recoveryMessage);
+    recovery.prepend(loading);
+  }
+  const ring = loading.querySelector('.booth-loading-ring');
+  const recoveryActions = recovery.querySelector('.booth-recovery-actions') || document.createElement('div');
+  if (!recoveryActions.parentElement) {
+    recoveryActions.className = 'booth-recovery-actions';
+    recoveryActions.append(...[...recovery.childNodes].filter((node) => node !== loading));
+    recovery.append(recoveryActions);
+  }
+  if (!document.querySelector('#booth-report-concealment, link[data-booth-loading]')) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/styles/booth-loading.css';
+    stylesheet.dataset.boothLoading = 'true';
+    document.head.append(stylesheet);
+  }
+  function pendingMessage(text) {
+    recovery.hidden = false;
+    loading.classList.add('booth-loading', 'booth-loading-overlay');
+    loading.setAttribute('role', 'status');
+    recoveryMessage.classList.add('booth-loading-title');
+    recoveryMessage.removeAttribute('role');
+    recoveryMessage.textContent = text;
+    ring.hidden = false;
+    recoveryActions.hidden = true;
+  }
+  pendingMessage('Opening your report...');
   const hide = () => {
     interrupted = true;
     inactivity.stop();
@@ -85,7 +119,12 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     hide();
     html.style.visibility = '';
     recovery.hidden = false;
+    loading.classList.remove('booth-loading', 'booth-loading-overlay');
+    loading.removeAttribute('role');
+    recoveryMessage.setAttribute('role', 'alert');
     recoveryMessage.textContent = error.message;
+    ring.hidden = true;
+    recoveryActions.hidden = false;
     recoveryButton.disabled = false;
     const control = document.getElementById('booth-return');
     const status = control?.querySelector('p');
@@ -99,9 +138,8 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     resetting = true;
     revision += 1;
     hide();
-    recovery.hidden = false;
+    pendingMessage('Clearing this screen...');
     recoveryButton.disabled = true;
-    recoveryMessage.textContent = 'Clearing this screen...';
     try {
       await pending;
       const result = await fetch('/auth/booth/reset', {
@@ -141,7 +179,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     track(operation) {
       pending = Promise.allSettled([pending, operation]).then(() => undefined);
     },
-    conceal() { hide(); },
+    conceal() { hide(); pendingMessage('Opening your reports...'); },
     activate(context) {
       if (interrupted) return false;
       const remaining = Math.min(expiresAt, context.expiresAt) - Date.now();
@@ -322,11 +360,25 @@ export default async function mountBoothReturn() {
   stylesheet.rel = 'stylesheet';
   stylesheet.href = '/styles/booth-report.css';
   stylesheet.dataset.boothReportLayout = 'true';
-  stylesheet.addEventListener('error', () => {
-    // eslint-disable-next-line no-console
-    console.warn('Booth portrait layout unavailable.');
+  const layoutReady = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('The report layout timed out. Retry and clear the screen.')), 10000);
+    const complete = () => { clearTimeout(timer); resolve(); };
+    stylesheet.addEventListener('load', complete, { once: true });
+    stylesheet.addEventListener('error', () => {
+      // eslint-disable-next-line no-console
+      console.warn('Booth portrait layout unavailable.');
+      complete();
+    }, { once: true });
   });
   document.head.append(stylesheet);
+  try {
+    await layoutReady;
+  } catch (error) {
+    if (guard) guard.fail(error);
+    else throw error;
+    return;
+  }
+  if (guard?.interrupted) return;
   const existingControl = document.getElementById('booth-return');
   const html = document.documentElement;
   const control = existingControl || document.createElement('aside');
