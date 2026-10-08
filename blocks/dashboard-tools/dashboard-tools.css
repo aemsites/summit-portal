@@ -1,0 +1,107 @@
+.dashboard-tools {
+  margin: 8px 0 12px;
+  border-block: 1px solid var(--color-border);
+  color: var(--color-text-body);
+  font-family: var(--font-family);
+  font-size: 14px;
+}
+
+.dashboard-tools summary {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 12px 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.dashboard-tools .dt-summary-meta {
+  display: inline-block;
+  margin-left: 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.dashboard-tools .dt-description {
+  max-width: 75ch;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.dashboard-tools .dt-export {
+  max-width: 560px;
+}
+
+.dashboard-tools .dt-export label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.dashboard-tools .dt-export-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.dashboard-tools select,
+.dashboard-tools .dt-download {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.dashboard-tools select {
+  max-width: 100%;
+}
+
+.dashboard-tools .dt-download {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dashboard-tools .dt-download:hover {
+  background: var(--color-surface-hover);
+}
+
+.dashboard-tools :disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.dashboard-tools .dt-retention,
+.dashboard-tools .dt-export-status {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.dashboard-tools .dt-export-status:empty {
+  display: none;
+}
+
+.dashboard-tools .dt-guidance {
+  max-width: 85ch;
+  margin: 16px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-tools .dt-guidance p {
+  margin: 0 0 8px;
+}
+
+.dashboard-tools :is(button, select, a, summary):focus-visible {
+  outline: 2px solid var(--color-adobe-red-dark);
+  outline-offset: 4px;
+}

@@ -337,6 +337,34 @@ real authenticated submission and final hardware rehearsal remain unverified.
 | Bundled shell/assets | Worker `src/booth-shell.js`, exact Wrangler Text/Data-module rules |
 | Delivery | Existing `handleShareLinkRequest`, APO notification and CUG policy |
 | Identified activity / export | Worker `src/booth-activity.js`, `REPORT_REQUESTS` D1, migration `0002_booth_activity.sql` |
+| Internal dashboard CSV utility | `blocks/dashboard-tools/`, route initialization in `scripts/scripts.js` |
+
+The internal `/adobe/dashboard` adds a closed **Booth usage export** utility
+below the reports list, after the picker, not a prominent top-of-page banner
+or an interruption between search and results.
+Expanding it offers all retained activity
+or a specific action (search, no report, report/demo selected or opened, report
+email sent, historical contact opt-in). Each CSV row is an action, not a unique
+person; Email and Visit correlate the journey. Business emails and the 90-day
+retention window are disclosed beside the controls. Downloads require the existing
+Adobe OAuth authorization, complete the response body before saving, and show
+visible failures instead of downloading an error document or partial CSV.
+
+Expanded content includes **View the booth experience**, linking to `/booth`.
+Its adjacent, accessible warning tells staff to use a separate browser or
+private window because the live route sets a browser-wide kiosk restriction;
+a new tab does not isolate that cookie boundary. The introductory sign-in
+requirement is omitted on this authenticated dashboard; export authorization
+and explicit session/permission errors are unchanged.
+
+There is no copy-link action, playbook shortcut or event-setup
+promotion in the utility: usage and event-request documentation are not yet
+available for this experience. Existing authored announcements are not moved
+or changed. Expanded guidance explains that booth activity is not contact
+consent and portal retention does not delete downloaded copies. No authored
+dashboard change or new Worker endpoint is required; merge/code sync rolls
+out the frontend. `test/fixtures/dashboard-tools.html` uses synthetic `.test`
+data for local layout/download review only.
 
 Wrangler bundles the **single source** shell, three stylesheets, five booth scripts
 and the shared hero/stat renderer modules, so

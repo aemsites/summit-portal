@@ -28,6 +28,32 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 
 **Identified booth lead history:** a first-party D1 ledger correlates the asserted business email and visit ID with valid searches (including no-match/service failures), authorized company/report selection, browser-confirmed report opening and mail-service-accepted report sends. Historical contact opt-ins remain privately retrievable; Finish 6 records no new contact event and suppresses anonymous contact counts, including outbox replay. Selected does not mean opened; opened does not prove reading, identity or physical attendance. Adobe OAuth staff can retrieve paginated JSON or complete action-filtered CSV at `/api/booth-activity` and `/api/booth-activity.csv`; booth credentials, partner OAuth and link-borne logins cannot retrieve emails. Records expire after **90 days**, are immediately excluded from retrieval at expiry, and are purged hourly. A Durable Object outbox retries D1 outages without resending mail or exposing a previous attendee after reset. Simple Analytics receives only best-effort action counts, not email addresses, hashes, visit IDs, company names, report URLs or attendee headers. Compact point-of-action notices link to Adobe's Privacy Policy; lookup notice version and historical opt-in timestamps are retained. Privacy/Legal review, the D1 migration, Worker/asset rollout and backup-retention review remain activation gates; the text is not a legal waiver or blanket marketing consent. See [booth access](docs/implementations/booth-access/README.md#identified-booth-leads-and-privacy-notices).
 
+**Dashboard booth usage:** `/adobe/dashboard` (including its trailing-slash form)
+adds a closed **Booth usage export** utility below the reports list, as a sibling
+after the picker, rather than a top-of-dashboard banner or an interruption
+between search and results. Expanded content links to `/booth` with a warning
+to use a separate browser or private window: opening the live booth sets a
+browser-wide kiosk restriction, and another tab does not isolate it. The
+introductory Adobe sign-in requirement is omitted on this authenticated page;
+export authorization and session/permission error handling remain unchanged.
+No copy action, playbook or event-setup promotion is presented: there is not yet usage
+or event-request documentation for this experience. Existing authored dashboard
+announcements remain unchanged and in their original locations. Expanding
+`dashboard-tools` exposes all retained activity or action-filtered CSV downloads,
+including emails that searched and searches with no report. Business-email
+inclusion and **90-day deletion** are stated alongside the controls. Each CSV
+row is an action, not a unique person; Email/Visit correlate the journey.
+Guidance distinguishes mail-service acceptance from delivery and activity from
+sales-contact consent, and clarifies responsibility for downloaded copies.
+Exports use the existing same-origin Adobe-OAuth-only endpoint on demand,
+validate CSV responses and read the complete stream before downloading;
+session, permission, service and interrupted-export errors stay visible.
+No identified data is put in browser storage or analytics.
+`test/fixtures/dashboard-tools.html` is a local synthetic-data preview, not a
+production dashboard or authenticated-data fixture. No DA content change or
+new import infrastructure is needed. This frontend change requires merge/code
+sync; it does not deploy or alter the Worker.
+
 **Booth security hardening (deployed):** entering `/booth` replaces broad `auth_token` access with a signed `booth_session` (`booth-session` purpose), a bound `booth_device` (`booth-device` purpose) and persistent `booth_kiosk=1`. Scoped credentials preserve the original absolute staff expiry and epoch revocation; the kiosk marker lasts one year and survives reset, signout, OAuth and re-login. Fresh authentication remains booth-scoped and must revoke the old visit before replacing credentials. Legacy staff/device contexts migrate only through `/booth`; dashboard navigation cannot clear the boundary. **Staff administration must use a separate browser/device.** The marker is not authorization, and its absence does not unlock a browser still carrying scoped credentials. The Worker and matching report adapter are deployed; close old report tabs and reload the actual managed touchscreen before attendees use it.
 
 **Booth reporting outages:** subsequent valid searches append to the durable outbox even while D1 is unavailable; expired entries are removed independently of D1 recovery. Retrying a saved selection may open the same authorized report; switching to another requires the deliberate picker transition and fresh revalidation. Confirmed send/contact outcomes remain explicit and do not become resend requests.
