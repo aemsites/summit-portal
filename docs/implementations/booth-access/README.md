@@ -78,7 +78,7 @@ Bindings, staff epoch and hourly retention cron remain unchanged. Close old
 report tabs and reload `/booth` on the managed touchscreen. Physical-device,
 Privacy/Legal and inbox-receipt acceptance remain separate gates.
 
-## Report-to-entry recovery correction (October 8, local, not deployed)
+## Report-to-entry recovery correction (October 8, deployed)
 
 The production recovery aside contained bare message text, but the adapter
 assumed it contained a paragraph. **Clear for next visitor** threw before
@@ -91,8 +91,14 @@ old HTML before using it, retaining the retry button and manual recovery link.
 The navigation guard permits only `/booth?recover=1` inside the recovery panel;
 ordinary external links/downloads remain contained. Worker injection and lazy
 loading both target `?v=booth-clear-1`; Entry/keyboard versions are unchanged.
-This correction is not deployed and requires the matching Worker rollout, not
-just a frontend push. Close old report tabs and reopen them after rollout.
+Merged main `2974aad25b3ce73830171e6848c2f4add97418bf` (PR #159) was deployed
+October 8 at 10:12 UTC to `summit-portal`. Worker version
+`4d79da8a-1e79-4e03-a362-b72cfb901634` serves 100% of traffic.
+The live versioned adapter and origin lazy module match merged main byte-for-byte,
+with matching imports. Staff-only API/CSV boundaries remain intact; the isolated
+recovery page retains bounded, confirmed clearing. No migration was pending,
+bindings/epoch/cron are unchanged, and no live visitor reset or email was used
+for verification. Close old report tabs and reload `/booth` before testing.
 No migration or relaxed authorization is required.
 
 Frontend regressions exercise legacy HTML, verification failures, reset retry
@@ -101,6 +107,43 @@ and matching adapter import. `verifyBoothReportRecovery` in
 `test/fixtures/booth-recovery-browser.js` reads the actual injection markup and
 checks personal/demo return, legacy documents, Finish-to-entry, failed reset,
 failed verification and idle cleanup against synthetic local data only.
+
+### Final industry chooser (October 8, not deployed)
+
+The approved [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714)
+is implemented as a two-column icon grid with Figma spacing, card treatments,
+typography, an outlined centered return button and the availability/staff footer.
+The ten SVGs are exact Figma exports, approximately 20KB combined, served by the
+Worker with their original bytes and SVG MIME types. The native 2160 × 2881
+reference scales for the taller touchscreen and retains usable smaller-screen
+targets. Mobile uses one column.
+
+Only a confirmed no-match shows the complete missing-email introduction;
+the staff shortcut shows the truthful industry-example introduction instead.
+The catalogue, demo routes, identified tracking and reset/idle/history boundaries
+are unchanged. Existing Adobe Clean Bold is used for labels because the loaded
+Display kit supplies Black only; the canonical **Automotive** spelling remains.
+The chooser-specific footer is removed when returning to Entry.
+
+Entry JS/CSS use `?v=booth-industry-figma-1`; keyboard and report-adapter imports
+remain unchanged. Browser checks compare key native bounds with Figma within
+one pixel, verify all icons and industries, and cover 2160/1080/390px layouts.
+This change and the bar correction below require a Worker rollout after merge;
+no schema or authorization change is needed.
+
+### Finish preview bar fills (October 8, not deployed)
+
+Static visibility previews render the completed chart state immediately, without
+an `IntersectionObserver`. The omitted activation class previously left
+competitor/platform fills at zero width despite correct data percentages.
+The normal report keeps its scroll animation; preview values, colors and zero
+scores are unchanged. Real-stylesheet regressions check proportional widths,
+authored colors, zero scores and the absence of observer initialization. The
+synthetic Finish browser journey also checks painted bar proportions.
+
+The visibility helper import is `?v=booth-preview-bars-1`; the Worker revalidates
+`booth-preview.js` and `rav-core.js` with `no-cache`. These changes are not
+deployed yet: merging frontend code alone does not update Worker-bundled assets.
 
 ## Industry demo and report request recovery
 

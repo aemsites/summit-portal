@@ -6,6 +6,7 @@ import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
 import { createMockEnv, createMockBoothCookie } from './helpers.js';
+import { BOOTH_DEMOS } from '../src/booth-demos.js';
 
 describe('bundled booth shell and exact report injection', () => {
   let env;
@@ -30,8 +31,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-recovery-2');
-    expect(html).toContain('/styles/booth.css?v=booth-final-figma-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-industry-figma-1');
+    expect(html).toContain('/styles/booth.css?v=booth-industry-figma-1');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -66,6 +67,7 @@ describe('bundled booth shell and exact report injection', () => {
     const images = [
       'action-arrow.svg', 'finish-open-in.svg',
       'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
+      ...BOOTH_DEMOS.map(({ id }) => `industry-${id}.svg`),
     ];
     for (const name of images) {
       const url = `https://portal.example/img/booth/${name}`;
@@ -91,13 +93,15 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-recovery-2', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-industry-figma-1', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1', '/styles/booth.css?v=booth-industry-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
     }
-    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth-preview.js'), env);
+    const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth-presentation.js'), env);
     expect(unchanged.headers.has('Cache-Control')).toBe(false);
+    const preview = await serveBooth(new Request('https://portal.example/scripts/booth-preview.js'), env);
+    expect(await preview.text()).toContain("import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1')");
   });
 
   it('keeps only bounded cosmetic setup parameters through staff login, never an arbitrary target', async () => {

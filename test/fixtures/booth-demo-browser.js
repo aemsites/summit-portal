@@ -13,7 +13,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   };
   const actionProfiles = [];
   const checkActions = async (selector) => {
-    const sizes = [[2160, 3840, 129, 42], [1080, 1920, 72, 24], [390, 844, 64, 22]];
+    const sizes = [[2160, 3840, selector.includes('demos') ? 120 : 129, 42], [1080, 1920, 72, 24], [390, 844, 64, 22]];
     for (const [width, height, minHeight, minFont] of sizes) {
       await page.setViewportSize({ width, height });
       const targets = page.locator(selector);
@@ -61,6 +61,49 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.locator('#demo-options button').nth(9).waitFor();
   check(await page.locator('#demo-recovery-copy').isVisible(), 'Unmatched chooser guidance disappeared');
   check(await page.locator('#demo-options button').count() === 10, 'Industry catalogue is incomplete');
+  check(!await page.locator('#demo-intro').isVisible(), 'Unmatched guidance was duplicated');
+  check(!await page.locator('.booth-progress').isVisible(), 'Industry screen retained the old progress footer');
+  check(await page.locator('.demo-footer-note').isVisible(), 'Designed industry footer is missing');
+  const icons = await page.locator('#demo-options .demo-icon').evaluateAll(
+    (images) => Promise.all(images.map((image) => image.decode().then(
+      () => image.naturalWidth === 64 && image.naturalHeight === 64,
+    ))),
+  );
+  check(icons.length === 10 && icons.every(Boolean), 'The ten exported Figma icons must load');
+  await page.setViewportSize({ width: 2160, height: 2881 });
+  await page.evaluate(() => document.fonts.ready);
+  const design = await page.evaluate(() => {
+    const bounds = (selector) => {
+      const element = document.querySelector(selector);
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    return {
+      header: bounds('.stage-header'),
+      title: bounds('#demos-heading'),
+      grid: bounds('#demo-options'),
+      first: bounds('.demo-option'),
+      last: bounds('.demo-option:last-child'),
+      icon: bounds('.demo-icon'),
+      back: bounds('.industry-panel .booth-alternative'),
+      footer: bounds('.stage-footer'),
+    };
+  });
+  const figma = {
+    header: { x: 0, y: 0, width: 2160, height: 277 },
+    title: { x: 112, y: 397, width: 1936, height: 97 },
+    grid: { x: 112, y: 754, width: 1936, height: 1193 },
+    first: { x: 112, y: 754, width: 928, height: 181 },
+    last: { x: 1120, y: 1766, width: 928, height: 181 },
+    icon: { x: 156, y: 812.5, width: 64, height: 64 },
+    back: { x: 835.5, y: 2147, width: 489, height: 120 },
+    footer: { x: 0, y: 2728, width: 2160, height: 153 },
+  };
+  Object.entries(figma).forEach(([part, expected]) => {
+    Object.entries(expected).forEach(([dimension, value]) => {
+      check(Math.abs(design[part][dimension] - value) <= 1, `Figma ${part} ${dimension} changed`);
+    });
+  });
   await checkActions('[data-panel="demos"] .booth-alternative');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
@@ -91,6 +134,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
   await page.locator('#demo-options button').nth(9).waitFor();
   check(!await page.locator('#demo-recovery-copy').isVisible(), 'New visitor inherited missing-report messaging');
+  check(await page.locator('#demo-intro').isVisible(), 'Staff shortcut lost its truthful introduction');
   await page.locator('#demo-options button').first().click();
   await page.locator('#booth-return').waitFor();
   await page.clock.fastForward(110000);
@@ -123,5 +167,5 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.reload();
   await page.getByRole('button', { name: 'Retry and clear screen', exact: true }).waitFor();
   check(!await page.locator('main').isVisible(), 'Failed verification left demo content usable');
-  return { demos: demos.length, actionProfiles, checked: 'Touch-sized alternatives; real progress; no-match guidance; all industries; no request flow; demo viewing; reset/idle/history privacy; outage distinction. No live data or submissions.' };
+  return { demos: demos.length, design, actionProfiles, checked: 'Figma industry layout; exported icons; touch-sized alternatives; no-match guidance; all industries; no request flow; demo viewing; reset/idle/history privacy; outage distinction. No live data or submissions.' };
 }

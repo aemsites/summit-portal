@@ -20,6 +20,16 @@ import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import wordmark from '../../../../img/booth/adobe-wordmark.svg';
 import finalGlow from '../../../../img/booth/entry-final-glow.svg';
 import finalWebpage from '../../../../img/booth/entry-final-webpage.png';
+import carveloIcon from '../../../../img/booth/industry-carvelo.svg';
+import frescopaIcon from '../../../../img/booth/industry-frescopa.svg';
+import securfinancialIcon from '../../../../img/booth/industry-securfinancial.svg';
+import hallibyIcon from '../../../../img/booth/industry-halliby.svg';
+import healthcareIcon from '../../../../img/booth/industry-we-healthcare.svg';
+import binjiIcon from '../../../../img/booth/industry-binji.svg';
+import bodeaIcon from '../../../../img/booth/industry-bodea.svg';
+import lumaIcon from '../../../../img/booth/industry-luma.svg';
+import citisignalIcon from '../../../../img/booth/industry-citisignal.svg';
+import wkndIcon from '../../../../img/booth/industry-wknd-fly.svg';
 import { boothStaff, authorizeBoothContext } from './booth.js';
 import {
   hasBoothBoundary,
@@ -49,6 +59,16 @@ const assets = new Map([
   ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
   ['/img/booth/entry-final-glow.svg', [finalGlow, 'image/svg+xml']],
   ['/img/booth/entry-final-webpage.png', [finalWebpage, 'image/png']],
+  ['/img/booth/industry-carvelo.svg', [carveloIcon, 'image/svg+xml']],
+  ['/img/booth/industry-frescopa.svg', [frescopaIcon, 'image/svg+xml']],
+  ['/img/booth/industry-securfinancial.svg', [securfinancialIcon, 'image/svg+xml']],
+  ['/img/booth/industry-halliby.svg', [hallibyIcon, 'image/svg+xml']],
+  ['/img/booth/industry-we-healthcare.svg', [healthcareIcon, 'image/svg+xml']],
+  ['/img/booth/industry-binji.svg', [binjiIcon, 'image/svg+xml']],
+  ['/img/booth/industry-bodea.svg', [bodeaIcon, 'image/svg+xml']],
+  ['/img/booth/industry-luma.svg', [lumaIcon, 'image/svg+xml']],
+  ['/img/booth/industry-citisignal.svg', [citisignalIcon, 'image/svg+xml']],
+  ['/img/booth/industry-wknd-fly.svg', [wkndIcon, 'image/svg+xml']],
 ]);
 
 function returnToBooth() {
@@ -98,7 +118,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (['/scripts/booth.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css'].includes(pathname)) {
+    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });

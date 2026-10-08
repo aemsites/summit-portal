@@ -405,10 +405,43 @@ describe('booth runtime boundary', () => {
     expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/demo-picker');
     expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/demos');
     expect(root.getElementById('registration-email').value).to.equal('');
-    expect(root.getElementById('demo-options').querySelector('img')).to.equal(null);
+    const icon = root.getElementById('demo-options').querySelector('img');
+    expect(icon.getAttribute('src')).to.equal('/img/booth/industry-luma.svg');
+    expect(icon.alt).to.equal('');
+    expect(icon.width).to.equal(64);
+    expect(icon.height).to.equal(64);
+    expect(root.getElementById('demo-options').querySelectorAll('img')).to.have.length(1);
+    expect(root.getElementById('demo-options').querySelector('.demo-copy').textContent).to.include('<img src=x> Luma');
     expect(root.getElementById('demo-options').textContent).to.include('Retail / apparel');
     expect(root.querySelector('[data-panel="demos"]').hidden).to.equal(false);
     expect(root.getElementById('demo-recovery-copy').hidden).to.equal(false);
+    expect(root.getElementById('demo-intro').hidden).to.equal(true);
+    expect(root.getElementById('stage').dataset.screen).to.equal('demos');
+    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: Sign out and leave booth mode');
+  });
+
+  it('keeps staff shortcut guidance truthful and restores the Entry footer after clearing', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ state: 'demos', unmatched: false }) });
+    fetchStub.onThirdCall().resolves({
+      ok: true,
+      json: async () => ({ demos: [{ id: 'carvelo', industry: 'Automotive', company: 'Carvelo' }] }),
+    });
+    fetchStub.onCall(3).resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    root.querySelector('[data-show-demos]').click();
+    await clock.tickAsync(0);
+    expect(root.getElementById('demo-intro').hidden).to.equal(false);
+    expect(root.getElementById('demo-recovery-copy').hidden).to.equal(true);
+    expect(root.getElementById('demo-options').querySelector('img').getAttribute('src')).to.equal('/img/booth/industry-carvelo.svg');
+    root.querySelector('[data-panel="demos"] [data-reset]').click();
+    await clock.tickAsync(0);
+    expect(root.getElementById('stage').dataset.screen).to.equal('welcome');
+    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: sign out this device');
   });
 
   it('hides attendee panels before scripts load and while Finish status is pending', async () => {

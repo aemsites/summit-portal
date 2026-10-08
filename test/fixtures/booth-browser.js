@@ -102,6 +102,21 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   }));
   check(!finish.overflow && finish.row >= 130 && finish.action >= 130 && finish.reset >= 130, 'Figma portrait Finish sizing changed');
   check(finish.titleHeight >= (finish.titleLine * 2) - 1, 'Report preview clipped a partial title line');
+  const bars = await page.locator('#report-preview .rav-hbar-row').evaluateAll(
+    (rows) => rows.map((row) => {
+      const fill = row.querySelector('.rav-hbar-fill');
+      return {
+        target: parseFloat(fill.style.getPropertyValue('--bar-w')),
+        width: parseFloat(getComputedStyle(fill).width),
+        track: parseFloat(getComputedStyle(fill.parentElement).width),
+      };
+    }),
+  );
+  check(
+    bars.length === 6 && bars.every((bar) => bar.track > 0
+      && Math.abs((bar.width / bar.track) * 100 - bar.target) < 0.02),
+    'Finish competitor/platform bars must paint their actual values without scroll activation',
+  );
   await page.getByRole('button', { name: 'Email my report' }).click();
   await page.waitForFunction(() => document.querySelector('#finish-status').textContent.includes('was emailed'));
   check(calls === 1 && await page.locator('#send-report').isDisabled(), 'Duplicate send UI protection failed');

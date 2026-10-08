@@ -121,7 +121,7 @@ export async function renderBoothPreview(html, path, doc = document) {
     import('../blocks/report-hero/report-hero.js?v=booth-preview-6'),
     import('../blocks/report-stats/report-stats.js?v=booth-preview-6'),
     import('../blocks/report-carousel/report-carousel.js?v=booth-preview-6'),
-    import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-6'),
+    import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1'),
   ]);
   const hero = copyContent(authoredHero, base, doc);
   hero.className = 'report-hero insight';
