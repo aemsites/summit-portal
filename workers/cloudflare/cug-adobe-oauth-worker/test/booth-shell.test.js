@@ -91,7 +91,7 @@ describe('bundled booth shell and exact report injection', () => {
   });
 
   it('revalidates changed booth assets and serves their versioned URLs', async () => {
-    for (const path of ['/scripts/booth.js?v=booth-recovery-2', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-recovery-2', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
+    for (const path of ['/scripts/booth.js?v=booth-recovery-2', '/styles/booth.css?v=booth-final-figma-1', '/scripts/booth-report.js?v=booth-clear-1', '/styles/booth-report.css', '/scripts/booth-keyboard.js?v=booth-recovery-2', '/styles/booth-keyboard.css']) {
       const response = await serveBooth(new Request(`https://portal.example${path}`), env);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
@@ -174,7 +174,10 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-recovery-2');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-clear-1');
+    expect(await readFile(new URL('../../../../scripts/lazy.js', import.meta.url), 'utf8'))
+      .toContain("import('./booth-report.js?v=booth-clear-1')");
+    expect(injected[2][1]).toContain('<p role="alert">Your report is concealed while access is checked.</p>');
     expect(injected[2][1]).toContain('/booth?recover=1');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await response.text()).toBe('<main>Unchanged report</main>');

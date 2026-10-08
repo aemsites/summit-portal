@@ -28,7 +28,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 
 **Identified booth lead history:** a first-party D1 ledger correlates the asserted business email and visit ID with valid searches (including no-match/service failures), authorized company/report selection, browser-confirmed report opening and mail-service-accepted report sends. Historical contact opt-ins remain privately retrievable; Finish 6 records no new contact event and suppresses anonymous contact counts, including outbox replay. Selected does not mean opened; opened does not prove reading, identity or physical attendance. Adobe OAuth staff can retrieve paginated JSON or complete action-filtered CSV at `/api/booth-activity` and `/api/booth-activity.csv`; booth credentials, partner OAuth and link-borne logins cannot retrieve emails. Records expire after **90 days**, are immediately excluded from retrieval at expiry, and are purged hourly. A Durable Object outbox retries D1 outages without resending mail or exposing a previous attendee after reset. Simple Analytics receives only best-effort action counts, not email addresses, hashes, visit IDs, company names, report URLs or attendee headers. Compact point-of-action notices link to Adobe's Privacy Policy; lookup notice version and historical opt-in timestamps are retained. Privacy/Legal review, the D1 migration, Worker/asset rollout and backup-retention review remain activation gates; the text is not a legal waiver or blanket marketing consent. See [booth access](docs/implementations/booth-access/README.md#identified-booth-leads-and-privacy-notices).
 
-**Booth security hardening (local, not deployed):** entering `/booth` replaces broad `auth_token` access with a signed `booth_session` (`booth-session` purpose), a bound `booth_device` (`booth-device` purpose) and persistent `booth_kiosk=1`. Scoped credentials preserve the original absolute staff expiry and epoch revocation; the kiosk marker lasts one year and survives reset, signout, OAuth and re-login. Fresh authentication remains booth-scoped and must revoke the old visit before replacing credentials. Legacy staff/device contexts migrate only through `/booth`; dashboard navigation cannot clear the boundary. **Staff administration must use a separate browser/device.** The marker is not authorization, and its absence does not unlock a browser still carrying scoped credentials. Rollout must deploy the Worker and matching report adapter, close old report tabs and reload the actual managed touchscreen before attendees use it.
+**Booth security hardening (deployed):** entering `/booth` replaces broad `auth_token` access with a signed `booth_session` (`booth-session` purpose), a bound `booth_device` (`booth-device` purpose) and persistent `booth_kiosk=1`. Scoped credentials preserve the original absolute staff expiry and epoch revocation; the kiosk marker lasts one year and survives reset, signout, OAuth and re-login. Fresh authentication remains booth-scoped and must revoke the old visit before replacing credentials. Legacy staff/device contexts migrate only through `/booth`; dashboard navigation cannot clear the boundary. **Staff administration must use a separate browser/device.** The marker is not authorization, and its absence does not unlock a browser still carrying scoped credentials. The Worker and matching report adapter are deployed; close old report tabs and reload the actual managed touchscreen before attendees use it.
 
 **Booth reporting outages:** subsequent valid searches append to the durable outbox even while D1 is unavailable; expired entries are removed independently of D1 recovery. Retrying a saved selection may open the same authorized report; switching to another requires the deliberate picker transition and fresh revalidation. Confirmed send/contact outcomes remain explicit and do not become resend requests.
 
@@ -49,7 +49,7 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-recovery-2` adapter URL, solely for cache versioning. Entry JS and its keyboard import use the same version; Entry CSS retains main's `?v=booth-final-figma-1`. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import now use the matching `?v=booth-clear-1` adapter URL for the local return-to-entry correction below; deployment is pending. Entry JS and its keyboard import retain `?v=booth-recovery-2`; Entry CSS retains main's `?v=booth-final-figma-1`. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -100,10 +100,10 @@ Geometry/pinch/lifecycle unit tests supplement this; none emulates the
 native OS keyboard. Confirm the real CSS viewport, scaling and keyboard height
 on the 2160 × 3840 physical display. Keyboards taller than the fallback reserve
 require reported geometry, content-resize configuration or device-specific
-adjustment. **These fixes require the matching Worker asset deployment after
-approval; a branch push does not update production.**
+adjustment. **The matching Worker assets were deployed October 8; a branch push
+alone does not update production.**
 
-**October 8 recovery validation (local, not deployed):** regressions first
+**October 8 recovery validation (deployed; rollout below):** regressions first
 reproduced stalled Entry requests/bodies and the retained-focus phantom reserve,
 then passed with the fixes. After merging main `4f79f0cb4abb476d1b1009f878df5e608a06a098`,
 **141 targeted frontend tests** and **157 Worker tests** (shell/injection,
@@ -125,7 +125,7 @@ separate gates. Repository-wide pre-existing lint issues remain outside scope.
 
 **Ordinary report native portrait display:** at exactly **2160 × 3840 CSS pixels**, insight reports now enlarge the existing composition by **1.6×**: the 1200px shared column renders at **1920px**, with proportional text, charts and controls. The viewport-wide Cannes stripe compensates for CSS zoom to avoid horizontal overflow. Nearby dimensions, 1080 × 1920, mobile and landscape remain unchanged. Authorized booth reports retain their existing large-format profile without double scaling. This is viewport-specific frontend styling, not an access-mode change; actual hardware CSS viewport/DPR still needs confirmation.
 
-### October 8 final Figma screens and unmatched/demo tracking (not deployed)
+### October 8 final Figma screens and unmatched/demo tracking (deployed)
 
 Implemented the final [Entry frame](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=312-388)
 and [Finish 6 frame](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=244-579):
@@ -157,11 +157,23 @@ Adobe OAuth can export missing-report emails at
 `https://act.aem.now/api/booth-activity.csv?kind=no_report`; use the complete CSV
 and **Visit** to associate subsequent industry selections/views. Booth credentials
 cannot download it. The existing outbox, idempotency and 90-day retention remain.
-Apply D1 migration `0003_booth_demo_activity.sql` before an approved Worker
-deployment; it preserves historical rows/indexes and extends allowed event kinds.
+Applied D1 migration `0003_booth_demo_activity.sql` before Worker deployment;
+it preserved historical rows/indexes and extended allowed event kinds.
 CSS uses `?v=booth-final-figma-1`; merged Entry/adapter/keyboard JS uses
-`?v=booth-recovery-2`. This branch is **not deployed**, and no remote
-migration or live customer search/send was performed.
+`?v=booth-recovery-2`. No live customer search/send was performed.
+
+**Production rollout, October 8 at 09:47 UTC:** deployed latest main
+`e92398dcbcb12149a67fc1453daf7d146fdf5441`, including PRs #157 and #158,
+to the `summit-portal` Worker (`--env summit`). Version
+`051e6ea0-e88b-47d8-a1f2-037360f73480` serves 100% of traffic.
+The production D1 migration preserved all 41 existing activity rows and the four
+activity indexes; no migrations remain pending. Live versioned runtime, adapter,
+keyboard, presentation, preview, CSS and final artwork match this revision
+byte-for-byte. Anonymous `/booth` redirects to staff setup; status, demo catalogue
+and private activity CSV remain unauthorized. KV/D1/Durable Object bindings,
+staff epoch and hourly retention cron are unchanged. Close existing report tabs
+and reload `/booth` on the managed touchscreen. Physical-device acceptance,
+Privacy/Legal approval and inbox-receipt checks remain separate gates.
 
 Validation covered all ten industry journeys, personal report/send/reset and
 swipe/keyboard previews, reference/native/fallback/mobile geometry, private
@@ -169,6 +181,31 @@ correlation and migration preservation. The complete frontend suite passed
 254 tests with one concurrent browser; parallel runs intermittently stalled
 in frame-driven layout tests. Worker tests passed 437 with one existing skip;
 changed-file ESLint/Stylelint and the optimized Worker dry run passed.
+
+### October 8 report-to-entry recovery correction (local, not deployed)
+
+Replaying the deployed Worker's recovery HTML reproduced the concealed report,
+disabled retry button and `Cannot set properties of null (setting 'textContent')`
+before any reset request was sent. The Worker emitted bare status text while the
+adapter assumed a message paragraph existed. The simplified local fixture
+already had that paragraph, so earlier local journeys missed the production
+contract mismatch.
+
+Worker injection now supplies an alert paragraph. The adapter also normalizes
+legacy injected HTML, preserving its retry control and isolated recovery link;
+reset/failure messages use the verified paragraph reference. The report's
+navigation guard allows only the explicit `/booth?recover=1` recovery link in
+that recovery panel, while other external links and downloads stay blocked.
+Worker injection and lazy loading use the matching `?v=booth-clear-1` adapter.
+No D1 migration, authorization change or production rollout is part of this fix.
+
+Regressions reproduce the old markup failure, cover failed verification/reset
+and manual recovery link activation, and require the Worker/lazy import contract.
+The local browser verifier reads actual Worker markup rather than substituting
+its own: personal/demo clearing, legacy HTML, Finish-to-entry, reset retry,
+verification failure and idle clearing return to a usable blank Entry.
+Existing visitor scrubbing, server-confirmed reset and fail-closed concealment
+remain. No real customer lookup, context mutation or email is used.
 
 ### Industry demo fallback and fresh booth requests (October 7 historical)
 

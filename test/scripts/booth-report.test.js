@@ -159,6 +159,19 @@ describe('confirmed booth report portrait layout', () => {
     if (style) style.dataset.boothTest = 'true';
   }
 
+  function legacyRecoveryFixture() {
+    document.body.insertAdjacentHTML('beforeend', '<aside id="booth-recovery">Your report is concealed while access is checked. <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside>');
+    return document.getElementById('booth-recovery');
+  }
+
+  function markReport(expiresAt = Date.now() + 600000) {
+    const marker = document.createElement('script');
+    marker.dataset.boothMode = 'report';
+    marker.dataset.boothExpiresAt = String(expiresAt);
+    document.head.append(marker);
+    return marker;
+  }
+
   const font = (selector) => parseFloat(
     getComputedStyle(document.querySelector(selector)).fontSize,
   );
@@ -276,6 +289,35 @@ describe('confirmed booth report portrait layout', () => {
     } finally {
       window.history.replaceState(null, '', previous);
     }
+  });
+
+  it('clears reports with legacy Worker recovery markup and keeps failed resets retryable', async () => {
+    const main = await reportFixture();
+    const recovery = legacyRecoveryFixture();
+    markReport();
+    await mount();
+    window.fetch.onCall(2).resolves(new Response('', { status: 503 }));
+    window.fetch.onCall(3).resolves(new Response('', { status: 503 }));
+    const clear = document.querySelector('[data-booth-clear]');
+    clear.click();
+    clear.click();
+    await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+    expect(window.fetch.callCount).to.equal(3);
+    expect(window.fetch.thirdCall.args[0]).to.equal('/auth/booth/reset');
+    expect(recovery.querySelector('p').textContent).to.include('Could not clear');
+    expect(recovery.querySelector('[data-booth-recover]').disabled).to.equal(false);
+    expect(recovery.querySelector('a').getAttribute('href')).to.equal('/booth?recover=1');
+    expect(getComputedStyle(main).display).to.equal('none');
+    const manualRecovery = sandbox.spy((event) => event.preventDefault());
+    const fallback = recovery.querySelector('a');
+    fallback.addEventListener('click', manualRecovery);
+    fallback.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(manualRecovery.calledOnce).to.equal(true);
+    recovery.querySelector('[data-booth-recover]').click();
+    await new Promise((resolve) => { window.setTimeout(resolve, 0); });
+    expect(window.fetch.callCount).to.equal(4);
+    expect(window.fetch.getCall(3).args[0]).to.equal('/auth/booth/reset');
+    expect(recovery.querySelector('[data-booth-recover]').disabled).to.equal(false);
   });
 
   for (const invalid of [
@@ -645,14 +687,6 @@ describe('confirmed booth report portrait layout', () => {
     });
   });
 
-  function markReport(expiresAt = Date.now() + 600000) {
-    const marker = document.createElement('script');
-    marker.dataset.boothMode = 'report';
-    marker.dataset.boothExpiresAt = String(expiresAt);
-    document.head.append(marker);
-    return marker;
-  }
-
   it('restores direct-body report nodes after verifying the server concealment wrapper', async () => {
     const main = await reportFixture();
     const content = document.createElement('div');
@@ -715,6 +749,7 @@ describe('confirmed booth report portrait layout', () => {
   ['http', 'network', 'invalid-json', 'entry', 'expired', 'wrong-path'].forEach((failure) => {
     it(`conceals a server-marked report and requires confirmed clearing after ${failure}`, async () => {
       const main = await reportFixture();
+      legacyRecoveryFixture();
       markReport();
       sandbox.stub(document, 'addEventListener');
       sandbox.stub(window, 'addEventListener');

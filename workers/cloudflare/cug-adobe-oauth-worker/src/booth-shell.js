@@ -198,12 +198,12 @@ html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(n
 html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-recovery-2"></script>`, { html: true });
+</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-clear-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {
       marked.body = true;
-      element.prepend('<aside id="booth-recovery">Your report is concealed while access is checked. <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
+      element.prepend('<aside id="booth-recovery"><p role="alert">Your report is concealed while access is checked.</p> <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
       element.append('</div>', { html: true });
     },
   })
