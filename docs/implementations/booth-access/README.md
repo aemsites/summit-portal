@@ -5,6 +5,24 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
+## Portrait staff setup (branch, not deployed)
+
+The origin-served `portal-login` block adds staff-only large portrait sizing
+for `/login?staff&redirect=%2Fbooth`. At 2160 × 3840: 1440px card, 80px page
+heading, 44px field text, 32px labels/help/errors, 144px input targets and a
+120px **Sign in** pill. At 1080 × 1920, inputs and submit remain 80px tall,
+with 24px field text. The form stays in normal flow with keyboard space below.
+Customer login and regular desktop/mobile layouts do not opt in. Existing
+light/dark colors, credential POST, disabled/error states and return paths
+are unchanged; CSS targets both Author Kit and standard AEM wrappers.
+
+Local visual fixture:
+`http://localhost:3000/test/fixtures/portal-login.html?staff&redirect=%2Fbooth`.
+It has no real authentication backend. The layout and credential-failure
+regressions are in `test/blocks/portal-login.test.js`; browser retry/success
+checks use intercepted synthetic credentials only. Merge/AEM Code Sync
+publishes this frontend CSS; **no Worker deployment is needed**.
+
 ## Approved scope
 
 `/booth` requires staff setup through `/login?staff&redirect=%2Fbooth`, then

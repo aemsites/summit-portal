@@ -290,3 +290,94 @@
   gap: var(--spacing-s);
   margin-top: var(--spacing-s);
 }
+
+/* Staff setup on portrait event screens, not customer login or ordinary desktops. */
+@media (width >= 1000px) and (height >= 1600px) and (aspect-ratio <= 3/4) {
+  body:has(.portal-login.pl-staff-only) {
+    font-size: clamp(24px, 1.6667vw, 36px);
+  }
+
+  body:has(.portal-login.pl-staff-only) main {
+    padding: clamp(80px, 8svh, 320px) clamp(48px, 5.1852vw, 112px);
+  }
+
+  body:has(.portal-login.pl-staff-only) main > .section:has(.portal-login) {
+    width: 100%;
+    max-width: 1440px;
+  }
+
+  body:has(.portal-login.pl-staff-only) .section:has(.portal-login) > :is(
+    .default-content, .default-content-wrapper, .block-content, .portal-login-wrapper
+  ) {
+    max-width: 1440px;
+    padding-inline: 0;
+  }
+
+  body:has(.portal-login.pl-staff-only) .section:has(.portal-login) > :is(
+    .default-content, .default-content-wrapper
+  ) {
+    margin-bottom: clamp(32px, 2.963vw, 64px);
+  }
+
+  body:has(.portal-login.pl-staff-only) main h1 {
+    margin: 0 0 clamp(24px, 1.4815vw, 32px);
+    font-size: clamp(48px, 3.7037vw, 80px);
+    line-height: 1.15;
+  }
+
+  .portal-login.pl-staff-only {
+    max-width: none;
+  }
+
+  .portal-login.pl-staff-only .pl-staff {
+    max-width: none;
+    padding: clamp(32px, 2.963vw, 64px);
+    gap: clamp(16px, 1.1111vw, 24px);
+    box-sizing: border-box;
+  }
+
+  .portal-login.pl-staff-only .pl-staff-header {
+    gap: clamp(16px, 1.1111vw, 24px);
+  }
+
+  .portal-login.pl-staff-only .pl-staff-lock {
+    width: clamp(28px, 1.8519vw, 40px);
+    height: clamp(28px, 1.8519vw, 40px);
+  }
+
+  .portal-login.pl-staff-only .pl-staff-title {
+    font-size: clamp(32px, 2.2222vw, 48px);
+    line-height: 1.25;
+  }
+
+  .portal-login.pl-staff-only :is(.pl-label, .pl-staff-hint, .pl-error) {
+    font-size: clamp(24px, 1.4815vw, 32px);
+    line-height: 1.5;
+  }
+
+  .portal-login.pl-staff-only .pl-staff-form {
+    gap: clamp(16px, 1.1111vw, 24px);
+    margin-top: clamp(24px, 1.4815vw, 32px);
+  }
+
+  .portal-login.pl-staff-only .pl-label:not(:first-child) {
+    margin-top: clamp(16px, 1.4815vw, 32px);
+  }
+
+  .portal-login.pl-staff-only :is(.pl-input, .pl-submit) {
+    font-size: clamp(24px, 2.0371vw, 44px);
+    padding: clamp(16px, 1.4815vw, 32px);
+    line-height: 1.4;
+  }
+
+  .portal-login.pl-staff-only .pl-input {
+    min-height: clamp(80px, 6.6667vw, 144px);
+  }
+
+  .portal-login.pl-staff-only .pl-submit {
+    min-height: clamp(80px, 5.5556vw, 120px);
+    margin-top: clamp(16px, 1.1111vw, 24px);
+    border-radius: 100px;
+    padding-block: 16px;
+  }
+}

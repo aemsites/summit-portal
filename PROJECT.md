@@ -101,6 +101,23 @@ CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-b
 The unauthenticated `/booth` route still redirects to `/login?staff` with a
 private, no-store response. No customer lookup or email was performed.
 
+**Portrait staff login (branch, not deployed):** `/login?staff&redirect=%2Fbooth`
+keeps the existing username/password authentication and redirect flow, with a
+staff-only portrait profile in `blocks/portal-login/portal-login.css`.
+At 2160 × 3840 the content/card is 1440px wide, the page heading is 80px,
+field text is 44px, inputs are 144px tall and **Sign in** is a 120px pill.
+Labels, help and error text are 32px. At 1080 × 1920, fields and the submit
+target are 80px with 24px text. The form remains in normal document flow;
+the upper-screen placement leaves space below it for keyboard interaction.
+The profile requires staff-only markup, width >=1000px, height >=1600px and
+aspect ratio <=3:4; customer login, mobile and ordinary desktop sizes retain
+their previous layout. Both wrapper conventions and existing color themes
+are supported. This is origin-served block CSS, **not a Worker asset**:
+merge/AEM Code Sync publishes it; no Worker deployment is required.
+`test/fixtures/portal-login.html?staff&redirect=%2Fbooth` is a local visual
+fixture, not real authentication. Layout/error/submission regressions live in
+`test/blocks/portal-login.test.js`; real staff credentials were not used.
+
 ### Touchscreen keyboard and navigation hardening
 
 `scripts/booth-keyboard.js` and `styles/booth-keyboard.css` are shared by the
