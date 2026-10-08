@@ -89,6 +89,47 @@ describe('booth runtime boundary', () => {
     return root;
   }
 
+  it('uses the industry return action for the report picker', async () => {
+    const root = await productionFixture();
+    const back = root.querySelector('[data-panel="picker"] [data-reset]');
+    expect(back.classList.contains('booth-alternative')).to.equal(true);
+    expect(back.textContent).to.equal('Back to email lookup');
+    expect(back.closest('.recovery-actions')).not.to.equal(null);
+  });
+
+  it('shows opening feedback immediately and restores the picker after failed selection', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({
+        state: 'picker',
+        candidates: [{ label: 'Example report', path: '/accounts/example/' }],
+      }),
+    });
+    let rejectSelection;
+    fetchStub.onSecondCall().returns(new Promise((resolve, reject) => {
+      rejectSelection = reject;
+    }));
+    mountBooth(root);
+    await clock.tickAsync(0);
+    const button = root.querySelector('#report-options button');
+    let focusedWhileDisabled;
+    sandbox.stub(button, 'focus').callsFake(() => { focusedWhileDisabled = button.disabled; });
+    button.click();
+    expect(root.getElementById('booth-loading').hidden).to.equal(false);
+    expect(root.getElementById('stage').inert).to.equal(true);
+    expect(root.getElementById('booth-loading').textContent).to.include('Opening your report');
+    rejectSelection(new Error('Selection unavailable'));
+    await clock.tickAsync(0);
+    expect(root.getElementById('booth-loading').hidden).to.equal(true);
+    expect(root.getElementById('stage').inert).to.equal(false);
+    expect(button.disabled).to.equal(false);
+    expect(focusedWhileDisabled).to.equal(false);
+    expect(root.getElementById('picker-status').textContent).to.equal('Selection unavailable');
+  });
+
   it('recovers an initial status failure only after a confirmed retry/clear request', async () => {
     const root = recoveryFixture();
     const clock = sandbox.useFakeTimers();

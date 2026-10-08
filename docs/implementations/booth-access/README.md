@@ -108,7 +108,33 @@ and matching adapter import. `verifyBoothReportRecovery` in
 checks personal/demo return, legacy documents, Finish-to-entry, failed reset,
 failed verification and idle cleanup against synthetic local data only.
 
-### Final industry chooser (October 8, not deployed)
+### Report opening and Finish loading (October 8, local; not deployed)
+
+The picker shares the industry's outlined **Back to email lookup** treatment.
+Selection displays a full-screen loader immediately and makes covered controls
+inert; failure restores the picker and displays the error. Demo selection uses
+the same treatment. The Worker embeds matching loading markup and critical CSS
+before report scripts execute, without removing access checks or concealment.
+Recovery controls are shown on failure, not during normal verification, and
+legacy recovery markup remains supported.
+
+Verified report content waits for portrait CSS before reveal. A stalled layout
+request enters explicit recovery after ten seconds; expiry/clearing prevent a
+late reveal. Finish shows a reduced-motion-aware indicator in a reserved preview
+area while sending and clearing remain usable. Static renderer downloads overlap
+the authorized report HTML request. A controlled local cold-Finish probe with
+300ms delays measured 636ms before and 461ms after, not a live-service benchmark.
+No visitor HTML is persisted or shared.
+
+Entry and report-adapter URLs use `?v=booth-loading-1`, including the origin lazy
+import. `styles/booth-loading.css` is bundled, revalidated, and inlined into report
+concealment markup; no-JavaScript instructions remain readable. The local fixture
+now replays that Worker markup. `test/fixtures/booth-loading-browser.js` covers
+pending/failed selection, access/CSS gating, responsive return controls, stable
+preview loading, concurrent downloads and reduced motion. These changes are
+local only; the deployed version described below has not changed.
+
+### Final industry chooser (October 8, deployed)
 
 The approved [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714)
 is implemented as a two-column icon grid with Figma spacing, card treatments,
@@ -128,10 +154,18 @@ The chooser-specific footer is removed when returning to Entry.
 Entry JS/CSS use `?v=booth-industry-figma-1`; keyboard and report-adapter imports
 remain unchanged. Browser checks compare key native bounds with Figma within
 one pixel, verify all icons and industries, and cover 2160/1080/390px layouts.
-This change and the bar correction below require a Worker rollout after merge;
-no schema or authorization change is needed.
+This change and the bar correction below were deployed from merged main
+`aabdd0a92e9da6760dbb6fd6995ece3397c2dc8d` (PR #160), October 8 at 11:41 UTC.
+Worker version `025e07bc-95e2-4e78-9a9b-be865998f32c` serves 100% of traffic.
+Live versioned Entry JS/CSS, preview runtime/helper, report adapter, all ten
+SVGs and origin lazy module match the merged source byte-for-byte. Asset
+revalidation and anonymous staff-only API/CSV boundaries remain intact.
+No migrations were pending; bindings, staff epoch and cron are unchanged.
+The manual recovery page retains bounded, confirmed clearing. No live visitor
+lookup, reset or email was used. Close existing report tabs and reload `/booth`
+on the touchscreen.
 
-### Finish preview bar fills (October 8, not deployed)
+### Finish preview bar fills (October 8, deployed)
 
 Static visibility previews render the completed chart state immediately, without
 an `IntersectionObserver`. The omitted activation class previously left
@@ -142,8 +176,9 @@ authored colors, zero scores and the absence of observer initialization. The
 synthetic Finish browser journey also checks painted bar proportions.
 
 The visibility helper import is `?v=booth-preview-bars-1`; the Worker revalidates
-`booth-preview.js` and `rav-core.js` with `no-cache`. These changes are not
-deployed yet: merging frontend code alone does not update Worker-bundled assets.
+`booth-preview.js` and `rav-core.js` with `no-cache`. These changes are included
+in the verified production rollout above; future frontend changes still require
+a separate Worker deployment to update bundled assets.
 
 ## Industry demo and report request recovery
 

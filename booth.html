@@ -9,8 +9,8 @@
   <link rel="icon" href="/img/icons/adobe-logo.svg">
   <link rel="stylesheet" href="https://use.typekit.net/hah7vzn.css">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <link rel="stylesheet" href="/styles/booth.css?v=booth-industry-figma-1">
-  <script type="module" src="/scripts/booth.js?v=booth-industry-figma-1"></script>
+  <link rel="stylesheet" href="/styles/booth.css?v=booth-loading-1">
+  <script type="module" src="/scripts/booth.js?v=booth-loading-1"></script>
 </head>
 <body class="booth">
   <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="6" data-notice-version="booth-privacy-v1" aria-busy="true">
@@ -75,12 +75,14 @@
           <button class="secondary booth-alternative" data-reset type="button">Back to email lookup</button>
         </div>
       </section>
-      <section class="panel welcome-entry" data-panel="picker" aria-labelledby="picker-heading" hidden>
+      <section class="panel welcome-entry picker-panel" data-panel="picker" aria-labelledby="picker-heading" hidden>
         <h2 id="picker-heading">Choose your report.</h2>
         <p class="lead">Several customized company reports are authorized for your business email.</p>
         <div id="report-options" class="finish-actions"></div>
         <p id="picker-status" class="notice" role="alert" hidden></p>
-        <button class="link-button" data-reset type="button">Start again</button>
+        <div class="recovery-actions">
+          <button class="secondary booth-alternative" data-reset type="button">Back to email lookup</button>
+        </div>
       </section>
       <section class="panel" data-panel="finish" aria-labelledby="finish-heading" hidden>
         <div class="finish-content">
@@ -110,6 +112,9 @@
       <button id="staff-exit" class="link-button" type="button">Staff: sign out this device</button>
     </footer>
   </main>
-
+  <div id="booth-loading" class="booth-loading booth-loading-overlay" role="status" aria-live="polite" tabindex="-1" hidden>
+    <span class="booth-loading-ring" aria-hidden="true"></span>
+    <p class="booth-loading-title">Opening your report...</p>
+  </div>
 </body>
 </html>

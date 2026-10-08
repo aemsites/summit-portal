@@ -15,6 +15,7 @@ import visibilityCss from '../../../../blocks/report-ai-visibility/report-ai-vis
 import css from '../../../../styles/booth.css';
 import reportCss from '../../../../styles/booth-report.css';
 import keyboardCss from '../../../../styles/booth-keyboard.css';
+import loadingCss from '../../../../styles/booth-loading.css';
 import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import wordmark from '../../../../img/booth/adobe-wordmark.svg';
@@ -54,6 +55,7 @@ const assets = new Map([
   ['/styles/booth.css', [css, 'text/css']],
   ['/styles/booth-report.css', [reportCss, 'text/css']],
   ['/styles/booth-keyboard.css', [keyboardCss, 'text/css']],
+  ['/styles/booth-loading.css', [loadingCss, 'text/css']],
   ['/img/booth/action-arrow.svg', [arrow, 'image/svg+xml']],
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
@@ -118,7 +120,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css'].includes(pathname)) {
+    if (['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });
@@ -213,17 +215,18 @@ export async function injectBoothReturn(response, request, env) {
     element(element) {
       marked.head = true;
       element.prepend(`<style id="booth-report-concealment">
+${loadingCss}
 html.booth-report-pending body > :not(#booth-return):not(#booth-recovery):not(noscript),
 html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(noscript) { display: none !important; }
 html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-clear-1"></script>`, { html: true });
+</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-loading-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {
       marked.body = true;
-      element.prepend('<aside id="booth-recovery"><p role="alert">Your report is concealed while access is checked.</p> <button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
+      element.prepend('<aside id="booth-recovery"><div class="booth-loading booth-loading-overlay" data-booth-loading role="status"><span class="booth-loading-ring" aria-hidden="true"></span><p class="booth-loading-title">Opening your report...</p></div><div class="booth-recovery-actions" hidden><button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</div></aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
       element.append('</div>', { html: true });
     },
   })

@@ -1,6 +1,7 @@
 @import url("../blocks/report-carousel/report-carousel.css");
 @import url("../blocks/report-ai-visibility/report-ai-visibility.css");
 @import url("./booth-keyboard.css");
+@import url("./booth-loading.css");
 
 .booth {
   color-scheme: light;
@@ -746,20 +747,23 @@
     margin: 0;
   }
 
-  .industry-panel .recovery-actions {
+  .industry-panel .recovery-actions,
+  .picker-panel .recovery-actions {
     display: flex;
     justify-content: center;
     margin-top: 48px;
   }
 
-  .industry-panel .booth-alternative {
+  .industry-panel .booth-alternative,
+  .picker-panel .booth-alternative {
     border-color: var(--muted);
     background: transparent;
     color: var(--ink);
     font-weight: 700;
   }
 
-  .industry-panel .booth-alternative:hover:not(:disabled) {
+  .industry-panel .booth-alternative:hover:not(:disabled),
+  .picker-panel .booth-alternative:hover:not(:disabled) {
     background: #f8f8f8;
   }
 
@@ -812,7 +816,8 @@
       padding: 6vw 5.093vw;
     }
 
-    .stage[data-screen="demos"] {
+    .stage[data-screen="demos"],
+    .stage[data-screen="picker"] {
       --industry-unit: calc(100vw / 2160);
     }
 
@@ -883,7 +888,8 @@
       margin-top: calc(200 * var(--industry-unit));
     }
 
-    .industry-panel .booth-alternative {
+    .industry-panel .booth-alternative,
+    .picker-panel .booth-alternative {
       width: calc(489 * var(--industry-unit));
       min-height: max(72px, calc(120 * var(--industry-unit)));
       border-width: max(2px, calc(5 * var(--industry-unit)));
@@ -922,6 +928,10 @@
       display: grid;
       min-height: inherit;
       align-content: center;
+    }
+
+    > .booth-loading {
+      min-height: 360px;
     }
 
     .report-hero {
@@ -1256,6 +1266,12 @@
 
     .finish-preview > .preview-message {
       min-height: max(200px, 33.565vw);
+      background: #2a2a2a;
+    }
+
+    .finish-preview > .booth-loading {
+      min-height: max(200px, 33.565vw);
+      border-radius: 24px;
       background: #2a2a2a;
     }
 
