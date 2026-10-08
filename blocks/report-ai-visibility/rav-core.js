@@ -651,7 +651,7 @@ export function parseVisibilityRows(block) {
   }));
 }
 
-/** Render the overview only, without report sheets, CTAs or performance-section loading. */
+/** Render a completed overview without scroll observers, sheets, CTAs or performance loading. */
 export function buildVisibilityPreview(block) {
   const rows = parseVisibilityRows(block);
   const stats = rows.filter((row) => row.type === 'stats');
@@ -673,6 +673,7 @@ export function buildVisibilityPreview(block) {
     panels.forEach((row) => wrap.append(renderPanel(row)));
     container.append(wrap);
   }
+  block.classList.add('rav-animate');
   block.replaceChildren(container);
   return true;
 }

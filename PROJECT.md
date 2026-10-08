@@ -49,7 +49,7 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import now use the matching `?v=booth-clear-1` adapter URL for the local return-to-entry correction below; deployment is pending. Entry JS and its keyboard import retain `?v=booth-recovery-2`; Entry CSS retains main's `?v=booth-final-figma-1`. Entry, report-adapter and keyboard JS/CSS receive `no-cache` revalidation. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. After an approved Worker deployment, close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-clear-1` adapter URL for the deployed return-to-entry correction below. The new industry chooser versions Entry JS/CSS with `?v=booth-industry-figma-1`; the keyboard import retains `?v=booth-recovery-2`. Entry, preview, visibility-helper, report-adapter and keyboard assets receive `no-cache` revalidation. The chooser and preview corrections require a separate Worker deployment after merge. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -182,7 +182,7 @@ correlation and migration preservation. The complete frontend suite passed
 in frame-driven layout tests. Worker tests passed 437 with one existing skip;
 changed-file ESLint/Stylelint and the optimized Worker dry run passed.
 
-### October 8 report-to-entry recovery correction (local, not deployed)
+### October 8 report-to-entry recovery correction (deployed)
 
 Replaying the deployed Worker's recovery HTML reproduced the concealed report,
 disabled retry button and `Cannot set properties of null (setting 'textContent')`
@@ -197,7 +197,18 @@ reset/failure messages use the verified paragraph reference. The report's
 navigation guard allows only the explicit `/booth?recover=1` recovery link in
 that recovery panel, while other external links and downloads stay blocked.
 Worker injection and lazy loading use the matching `?v=booth-clear-1` adapter.
-No D1 migration, authorization change or production rollout is part of this fix.
+No D1 migration or authorization change is required.
+
+**Production rollout, October 8 at 10:12 UTC:** deployed merged main
+`2974aad25b3ce73830171e6848c2f4add97418bf` (PR #159) to the `summit-portal`
+Worker, version `4d79da8a-1e79-4e03-a362-b72cfb901634`, serving 100% of traffic.
+The live `booth-clear-1` adapter and origin lazy module match this revision
+byte-for-byte and use the same import version. Anonymous Entry redirects to
+staff setup; status, demos and private CSV remain unauthorized. The isolated
+recovery page remains available with bounded, server-confirmed reset. No D1
+migrations were pending; bindings, staff epoch and cron are unchanged. No live
+attendee lookup, reset or email was performed. Close old report tabs and reload
+`/booth` before testing on the touchscreen.
 
 Regressions reproduce the old markup failure, cover failed verification/reset
 and manual recovery link activation, and require the Worker/lazy import contract.
@@ -206,6 +217,40 @@ its own: personal/demo clearing, legacy HTML, Finish-to-entry, reset retry,
 verification failure and idle clearing return to a usable blank Entry.
 Existing visitor scrubbing, server-confirmed reset and fail-closed concealment
 remain. No real customer lookup, context mutation or email is used.
+
+### Final Figma industry chooser (October 8, not deployed)
+
+Implemented [Screen 3 Choose an industry](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=320-3714).
+The 2160 × 2881 reference has a 277px header, 112px body gutters, two columns
+of 928 × 181px light-gray cards with the ten exact exported 64px industry icons,
+and a centered 489 × 120px outlined return button. The chooser alone replaces
+the progress footer with the availability note and designed staff signout label.
+It scales to the 2160 × 3840 touchscreen, retains touch-size minimums at
+1080 × 1920, and uses one column on mobile.
+
+The missing-email introduction appears only after a confirmed no-match;
+the staff shortcut instead says to explore an industry example without making
+a false claim about an email. Canonical catalogue names, report destinations,
+selection/view tracking, confirmed clearing and authorization are unchanged.
+Industry labels use the already-loaded Adobe Clean Bold rather than incorrectly
+substituting the kit's Display Black for an unavailable Display Bold weight.
+The existing canonical **Automotive** spelling is retained.
+Entry JS/CSS use `booth-industry-figma-1`; all ten icons are Worker-bundled.
+The synthetic browser verifier checks native Figma geometry within one pixel,
+loaded icons, every industry, touch profiles and reset/history privacy.
+No migration is needed. This branch also includes the Finish preview bar fix.
+
+### Finish preview chart fills (October 8, not deployed)
+
+The static LLM visibility preview now applies the completed `rav-animate` chart
+state. Previously, the real data percentages were present but CSS kept fills at
+zero width because previews intentionally omit the normal report's scroll
+observer. Competitor and platform bars preserve their authored values, relative
+widths and colors; genuine zero scores stay empty. Ordinary report animations
+are unchanged. The preview imports `rav-core.js?v=booth-preview-bars-1`, and the
+Worker revalidates both the preview runtime and visibility helper with `no-cache`.
+This correction is local and requires review/merge plus a Worker deployment;
+the production version above does not yet include it.
 
 ### Industry demo fallback and fresh booth requests (October 7 historical)
 

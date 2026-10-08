@@ -77,6 +77,12 @@ export function mountBooth(root = document) {
     if (name === 'finish') step = 3;
     else if (['picker', 'demos'].includes(name)) step = 2;
     stage.dataset.step = step;
+    stage.dataset.screen = name;
+    const staffExit = root.getElementById('staff-exit');
+    if (staffExit) {
+      staffExit.textContent = name === 'demos'
+        ? 'Staff: Sign out and leave booth mode' : 'Staff: sign out this device';
+    }
     root.querySelectorAll('.booth-progress li').forEach((item, index) => {
       item.classList.toggle('complete', index < step);
       if (index === step - 1) item.setAttribute('aria-current', 'step');
@@ -236,6 +242,8 @@ export function mountBooth(root = document) {
       schedule(cleared);
       const recoveryCopy = root.getElementById('demo-recovery-copy');
       if (recoveryCopy) recoveryCopy.hidden = cleared.unmatched !== true;
+      const intro = root.getElementById('demo-intro');
+      if (intro) intro.hidden = cleared.unmatched === true;
       const result = await perform('demos');
       if (current !== revision) return;
       if (!Array.isArray(result.demos) || !result.demos.length) throw new Error('Industry demos are unavailable. Ask the booth team.');
@@ -244,11 +252,20 @@ export function mountBooth(root = document) {
         const button = root.createElement('button');
         button.type = 'button';
         button.className = 'demo-option';
+        const icon = root.createElement('img');
+        icon.className = 'demo-icon';
+        icon.src = `/img/booth/industry-${encodeURIComponent(demo.id)}.svg`;
+        icon.alt = '';
+        icon.width = 64;
+        icon.height = 64;
+        const copy = root.createElement('div');
+        copy.className = 'demo-copy';
         const industry = root.createElement('strong');
         industry.textContent = demo.industry;
         const company = root.createElement('span');
         company.textContent = demo.company;
-        button.append(industry, company);
+        copy.append(industry, company);
+        button.append(icon, copy);
         button.addEventListener('click', async () => {
           if (busy || resetting || !ready) return;
           busy = true;

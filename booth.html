@@ -9,8 +9,8 @@
   <link rel="icon" href="/img/icons/adobe-logo.svg">
   <link rel="stylesheet" href="https://use.typekit.net/hah7vzn.css">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <link rel="stylesheet" href="/styles/booth.css?v=booth-final-figma-1">
-  <script type="module" src="/scripts/booth.js?v=booth-recovery-2"></script>
+  <link rel="stylesheet" href="/styles/booth.css?v=booth-industry-figma-1">
+  <script type="module" src="/scripts/booth.js?v=booth-industry-figma-1"></script>
 </head>
 <body class="booth">
   <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="6" data-notice-version="booth-privacy-v1" aria-busy="true">
@@ -65,11 +65,10 @@
           <button class="secondary booth-alternative" data-reset type="button">Try another email</button>
         </div>
       </section>
-      <section class="panel recovery-panel" data-panel="demos" aria-labelledby="demos-heading" hidden>
-        <div class="eyebrow">Example reports</div>
+      <section class="panel recovery-panel industry-panel" data-panel="demos" aria-labelledby="demos-heading" hidden>
         <h2 id="demos-heading" tabindex="-1">Choose an industry.</h2>
         <p class="lead" id="demo-recovery-copy" hidden>We don't have a report available for your email yet. Explore an example from your industry with our booth team.</p>
-        <p class="lead">These are demo companies, not a report for your company.</p>
+        <p class="lead" id="demo-intro">Explore an example from your industry with our booth team.</p>
         <div id="demo-options" class="demo-options"></div>
         <p id="demo-status" class="notice" role="status" aria-live="polite" hidden></p>
         <div class="recovery-actions">
@@ -102,6 +101,7 @@
     </div>
 
     <footer class="stage-footer">
+      <p class="demo-footer-note">Available company reports only. Ask our booth team for help.</p>
       <ol class="booth-progress" aria-label="Report progress">
         <li aria-current="step">Enter email</li>
         <li>View report</li>

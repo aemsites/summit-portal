@@ -13,8 +13,8 @@ const report = `<main><div class="report-hero insight"><div><div>
   <div><div>AI Visibility Trend</div><div>+8</div><div>vs. previous month</div><div>positive</div><div>Increased from 53 to 61.</div><div></div></div>
   </div><div class="report-ai-visibility">
   <div><div>stats</div><div>AI visibility score</div><div><p>61</p><p>Up from 53</p></div><div>out of 100</div></div>
-  <div><div>competitors</div><div><h3>Competitive landscape</h3><p>Actual competitor narrative.</p></div><div><p>horizontalbars</p><p>Actual selected brand | 61</p><p>Competitor | 49</p></div><div></div></div>
-  <div><div>competitors</div><div><h3>Platform visibility</h3></div><div><p>horizontalbars</p><p>ChatGPT | 61</p></div><div></div></div>
+  <div><div>competitors</div><div><h3>Competitive landscape</h3><p>Actual competitor narrative.</p></div><div><p>horizontalbars</p><p>Actual selected brand | 61 | #e60000</p><p>Competitor | 49 | #94a3b8</p></div><div></div></div>
+  <div><div>comparison</div><div><h3>Platform visibility</h3></div><div><p>platformbars</p><p>ChatGPT | 61 | #e60000</p><p>Gemini | 49 | #e60000</p></div><div></div></div>
   </div><div class="report-carousel">
   <div><div>Executive overview</div><div>Search &amp; AI visibility</div><div>Site experience</div><div><a href="/report.pdf">Download full report</a></div></div>
   <div><div>Top insight</div><div><h3>Actual briefing title</h3><p>Actual briefing narrative.</p></div><div><p>columnchart</p><p>Actual growth | 73</p><p>Actual visibility | 61</p></div><div></div></div>
@@ -24,8 +24,22 @@ describe('selected report preview', () => {
   let sandbox;
   let target;
   let retry;
+  const styles = [];
   const context = () => ({ state: 'report', selectedPath: path, expiresAt: Date.now() + 600000 });
   const response = (html = report) => new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
+  before(async () => {
+    await Promise.all(['/styles/styles.css', '/blocks/report-ai-visibility/report-ai-visibility.css'].map((href) => new Promise((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = resolve;
+      link.onerror = reject;
+      styles.push(link);
+      document.head.append(link);
+    })));
+  });
+  after(() => styles.forEach((style) => style.remove()));
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -34,7 +48,7 @@ describe('selected report preview', () => {
     retry.hidden = true;
     sandbox.stub(console, 'warn');
   });
-  afterEach(() => { sandbox.restore(); });
+  afterEach(() => { target.remove(); sandbox.restore(); });
 
   it('renders actual hero, date, illustration and metrics using static shared renderers', async () => {
     target.append(...await renderBoothPreview(report, path));
@@ -53,6 +67,43 @@ describe('selected report preview', () => {
     expect(target.querySelector('.rc-desc').textContent).to.include('Actual briefing narrative.');
     expect([...target.querySelectorAll('.preview-surface')].every((surface) => surface.inert)).to.equal(true);
     expect(window.unwantedReportScript).to.equal(undefined);
+  });
+
+  it('paints competitor and platform bars at their data widths without scroll activation', async () => {
+    const observer = sandbox.stub(window, 'IntersectionObserver');
+    target.style.width = '1000px';
+    target.append(...await renderBoothPreview(report, path));
+    document.body.append(target);
+    const rows = [...target.querySelectorAll('.rav-hbar-row')];
+    expect(rows).to.have.length(4);
+    expect(target.querySelectorAll('.rav-platform-row')).to.have.length(2);
+    rows.forEach((row, index) => {
+      const fill = row.querySelector('.rav-hbar-fill');
+      const track = row.querySelector('.rav-hbar-track');
+      const value = parseFloat(row.querySelector('.rav-hbar-val').textContent);
+      const trackWidth = parseFloat(getComputedStyle(track).width);
+      const fillWidth = parseFloat(getComputedStyle(fill).width);
+      expect(value).to.equal(index % 2 === 0 ? 61 : 49);
+      expect(trackWidth).to.be.greaterThan(0);
+      expect(fillWidth).to.be.closeTo(trackWidth * (value / 61), 0.05);
+      if (index !== 1) expect(getComputedStyle(fill).backgroundColor).to.equal('rgb(230, 0, 0)');
+    });
+    expect(observer.called).to.equal(false);
+  });
+
+  it('keeps actual zero-valued bars empty rather than inventing a visible score', async () => {
+    const source = new DOMParser().parseFromString(report, 'text/html');
+    source.querySelectorAll('.report-ai-visibility > div:not(:first-child) > div:nth-child(3) p:not(:first-child)')
+      .forEach((row) => { row.textContent = row.textContent.replace(/(\|\s*)\d+/, (match, prefix) => `${prefix}0`); });
+    target.style.width = '1000px';
+    target.append(...await renderBoothPreview(source.documentElement.outerHTML, path));
+    document.body.append(target);
+    const fills = [...target.querySelectorAll('.rav-hbar-fill')];
+    expect(fills).to.have.length(4);
+    fills.forEach((fill) => {
+      expect(fill.style.getPropertyValue('--bar-w')).to.equal('0%');
+      expect(parseFloat(getComputedStyle(fill).width)).to.equal(0);
+    });
   });
 
   it('copies only approved content and treats source metadata and score labels as text', async () => {
