@@ -26,7 +26,7 @@ export default async function verifyBoothRecovery(page, root = 'http://localhost
     check(await page.locator('#registration-email').inputValue() === '', 'Timeout retains visitor email');
     check(await page.locator('#email-form button').isDisabled(), 'Timeout enables another visitor before reset');
     check((await page.locator('#booth-status').textContent()).includes('timed out'), 'Timeout lacks visible recovery');
-    await page.clock.fastForward(601000);
+    await page.clock.fastForward(901000);
     await page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
     check(resets > 0, 'Idle reset still waits indefinitely for lookup');
     await held.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"Late lookup failure"}' });
@@ -112,7 +112,7 @@ export async function verifyBoothReportRecovery(page, root = 'http://localhost:3
         await page.clock.install();
         await page.reload();
         await page.locator('#booth-return').waitFor();
-        await page.clock.fastForward(120001);
+        await page.clock.fastForward(900001);
         await page.clock.resume();
       } else {
         rejectReset = journey === 'failed-reset';
