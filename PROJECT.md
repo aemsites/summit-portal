@@ -118,6 +118,33 @@ merge/AEM Code Sync publishes it; no Worker deployment is required.
 fixture, not real authentication. Layout/error/submission regressions live in
 `test/blocks/portal-login.test.js`; real staff credentials were not used.
 
+**Figma report picker (branch, not deployed):** the multi-report selection screen
+matches frame `404:1500` in Adobe Brand Visibility UI, including the black
+marquee, exact heading/subtitle, two-column gray cards, website icons and
+outlined return pill. At 2160px wide the marquee starts at y277 and is 963px
+tall; cards start at y1352 and are 928 × 180 with 64px icons. The same layout
+supports the reference 2160 × 2881 and native 2160 × 3840, with scaled/mobile
+adaptations. A single 280KB composite Figma export preserves the illustration
+and its effects instead of rebuilding them from multi-megabyte source layers.
+The shell uses `?v=booth-picker-figma-1`; earlier deployed versions above are
+historical, not this branch's rollout.
+
+Icons load independently through staff-gated, private/no-store
+`GET /auth/booth/icon?path=...`. The Worker revalidates the current visitor's
+original candidate set and fresh CUG/mapping authorization before and after
+loading, without renewing inactivity expiry. Internal picker snapshots are
+not public HTTP actions; sheet and favicon requests stay outside the actor's
+selection/reset queue. Changing selection or visitor discards pending icons.
+Amazon/Unity use exact Figma exports; other valid trusted-index website hosts
+use bounded HTTPS favicon requests without visitor or origin credentials.
+Remote SVG/HTML, private literal hosts, cross-host redirects and oversized
+images are rejected. Missing icons retain a globe and visible availability
+hint without blocking selection. Host validation does not pin DNS.
+The local synthetic `figma-picker@example.test` lookup and
+`test/fixtures/booth-picker-browser.js` verify geometry, icons and recovery;
+they do not query customers or send email. This branch includes the approved
+portrait-login fix and needs merge plus a separate matching Worker deployment.
+
 ### Touchscreen keyboard and navigation hardening
 
 `scripts/booth-keyboard.js` and `styles/booth-keyboard.css` are shared by the

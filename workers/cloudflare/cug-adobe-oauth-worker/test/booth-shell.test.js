@@ -32,8 +32,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-final-figma-4');
-    expect(html).toContain('/styles/booth.css?v=booth-final-figma-4');
+    expect(html).toContain('/scripts/booth.js?v=booth-picker-figma-1');
+    expect(html).toContain('/styles/booth.css?v=booth-picker-figma-1');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
@@ -68,6 +68,7 @@ describe('bundled booth shell and exact report injection', () => {
     const images = [
       'action-arrow.svg', 'finish-open-in.svg', 'finish-glow.svg',
       'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
+      'picker-artwork.png', 'picker-amazon.svg', 'picker-unity.svg',
       ...BOOTH_DEMOS.map(({ id }) => `industry-${id}.svg`),
     ];
     for (const name of images) {

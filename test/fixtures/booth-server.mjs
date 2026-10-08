@@ -22,8 +22,13 @@ const fixtures = new Map();
 const reportPath = '/accounts/e/example/insights/example-com/portal-landing/';
 const otherReportPath = '/accounts/e/example/insights/example-org/portal-landing/';
 const candidates = [
-  { path: reportPath, label: 'Example.com' },
-  { path: otherReportPath, label: 'Example.org' },
+  { path: reportPath, label: 'Example.com', websiteHost: 'example.com' },
+  { path: otherReportPath, label: 'Example.org', websiteHost: 'example.org' },
+];
+const designCandidates = [
+  { path: '/accounts/a/amazon/insights/amazon-com/portal-landing/', label: 'Amazon — amazon.com', websiteHost: 'amazon.com' },
+  { path: '/accounts/a/amazon/insights/amazon-co-uk/portal-landing/', label: 'Amazon — amazon.co.uk', websiteHost: 'amazon.co.uk' },
+  { path: '/accounts/u/unity/insights/unity-com/portal-landing/', label: 'Unity — unity.com', websiteHost: 'unity.com' },
 ];
 const types = {
   '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -90,8 +95,8 @@ const server = createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'];
-    if (!known.includes(action) || request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
+    const known = ['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'];
+    if (!known.includes(action) || request.method !== (['status', 'icon', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
       return;
@@ -113,6 +118,29 @@ const server = createServer(async (request, response) => {
       response.end(JSON.stringify({ demos: BOOTH_DEMOS }));
       return;
     }
+    if (action === 'icon') {
+      const candidate = context.state === 'picker'
+        && context.candidates?.find((item) => item.path === url.searchParams.get('path'));
+      if (!candidate) {
+        response.writeHead(403, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Choose an authorized local fixture report icon."}');
+        return;
+      }
+      const icons = {
+        'amazon.com': 'img/booth/picker-amazon.svg',
+        'amazon.co.uk': 'img/booth/picker-amazon.svg',
+        'unity.com': 'img/booth/picker-unity.svg',
+      };
+      const file = icons[candidate.websiteHost] || 'img/icons/globe.svg';
+      response.writeHead(200, {
+        'Content-Type': 'image/svg+xml',
+        'Cache-Control': 'private, no-store',
+        'Referrer-Policy': 'no-referrer',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      response.end(await readFile(resolve(root, file)));
+      return;
+    }
     if (action === 'lookup') {
       if (typeof body.email !== 'string' || !body.email.trim()) {
         response.writeHead(400, { 'Content-Type': 'application/json' });
@@ -120,7 +148,7 @@ const server = createServer(async (request, response) => {
         return;
       }
       const email = body.email.trim().toLowerCase();
-      if (!['visitor@example.test', 'multi@example.test'].includes(email)) {
+      if (!['visitor@example.test', 'multi@example.test', 'figma-picker@example.test'].includes(email)) {
         Object.keys(context).forEach((key) => { delete context[key]; });
         const missing = email !== 'service-error@example.test';
         Object.assign(context, { state: missing ? 'unavailable' : 'entry', unmatched: missing, expiresAt: Date.now() + BOOTH_INACTIVITY_MS });
@@ -130,9 +158,12 @@ const server = createServer(async (request, response) => {
         return;
       }
       Object.keys(context).forEach((key) => { delete context[key]; });
+      let selectedCandidates = candidates.slice(0, 1);
+      if (email === 'multi@example.test') selectedCandidates = candidates;
+      if (email === 'figma-picker@example.test') selectedCandidates = designCandidates;
       Object.assign(context, {
         state: 'picker',
-        candidates: email === 'multi@example.test' ? candidates : candidates.slice(0, 1),
+        candidates: selectedCandidates,
         reports: {},
         expiresAt: Date.now() + BOOTH_INACTIVITY_MS,
       });

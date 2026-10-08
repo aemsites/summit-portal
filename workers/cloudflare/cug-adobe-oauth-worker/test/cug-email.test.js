@@ -82,7 +82,7 @@ describe('exact-email CUG integration', () => {
 
   it('discovers an exact authorized email without authorizing its neighboring address or domain', async () => {
     expect(await discoverReports(` ${email.toUpperCase()} `, env)).toEqual([
-      { path, label: 'Example — example.com', company: 'Example' },
+      { path, label: 'Example — example.com', company: 'Example', websiteHost: 'example.com' },
     ]);
     expect(await discoverReports(neighbor, env)).toEqual([]);
     rows['/closed-user-groups-mapping.json'][0].group = neighbor;

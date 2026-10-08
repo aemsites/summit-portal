@@ -130,6 +130,70 @@ describe('booth runtime boundary', () => {
     expect(root.getElementById('picker-status').textContent).to.equal('Selection unavailable');
   });
 
+  it('reserves website icon slots and loads only same-origin authorized icon URLs', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    sandbox.stub(window, 'fetch').resolves({
+      ok: true,
+      json: async () => ({
+        state: 'picker',
+        candidates: [{ label: 'Unity — unity.com', websiteHost: 'www.unity.com', path: '/accounts/u/unity/insights/unity-com/portal-landing/' }],
+      }),
+    });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    const button = root.querySelector('.report-option');
+    const icon = button.querySelector('.report-icon');
+    const image = button.querySelector('.report-site-icon');
+    expect(button.querySelector('.report-label').textContent).to.equal('Unity — unity.com');
+    expect(button.disabled).to.equal(false);
+    expect(icon.classList.contains('report-icon-loading')).to.equal(true);
+    expect(icon.classList.contains('report-icon-unity')).to.equal(true);
+    expect(image.width).to.equal(64);
+    expect(image.height).to.equal(64);
+    expect(image.referrerPolicy).to.equal('no-referrer');
+    expect(image.getAttribute('src')).to.equal('/auth/booth/icon?path=%2Faccounts%2Fu%2Funity%2Finsights%2Funity-com%2Fportal-landing%2F');
+    image.dispatchEvent(new Event('load'));
+    expect(image.hidden).to.equal(false);
+    expect(button.querySelector('.report-icon-fallback').hidden).to.equal(true);
+    expect(icon.classList.contains('report-icon-loading')).to.equal(false);
+  });
+
+  it('keeps missing website icons nonblocking and ignores old image events after reset', async () => {
+    const root = await productionFixture();
+    const clock = sandbox.useFakeTimers();
+    const warning = sandbox.stub(console, 'warn');
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.onFirstCall().resolves({
+      ok: true,
+      json: async () => ({
+        state: 'picker',
+        candidates: [
+          { label: '<img src=x> Website', websiteHost: 'example.com', path: '/accounts/e/example/insights/example-com/portal-landing/' },
+          { label: 'No website metadata', path: '/accounts/e/example/insights/example-org/portal-landing/' },
+        ],
+      }),
+    });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    mountBooth(root);
+    await clock.tickAsync(0);
+    const icon = root.querySelector('.report-icon');
+    const image = icon.querySelector('.report-site-icon');
+    expect(root.querySelector('img[src="x"]')).to.equal(null);
+    expect(root.querySelectorAll('.report-option')[1].querySelector('.report-site-icon').hasAttribute('src')).to.equal(false);
+    image.dispatchEvent(new Event('error'));
+    expect(warning.calledOnce).to.equal(true);
+    expect(image.hidden).to.equal(true);
+    expect(icon.querySelector('.report-icon-fallback').hidden).to.equal(false);
+    expect(icon.title).to.equal('Website icon unavailable');
+    expect(root.querySelector('.report-option').disabled).to.equal(false);
+    root.querySelector('[data-panel="picker"] [data-reset]').click();
+    await clock.tickAsync(0);
+    image.dispatchEvent(new Event('load'));
+    expect(image.hidden).to.equal(true);
+    expect(root.querySelectorAll('.report-option')).to.have.length(0);
+  });
+
   it('recovers an initial status failure only after a confirmed retry/clear request', async () => {
     const root = recoveryFixture();
     const clock = sandbox.useFakeTimers();
@@ -776,7 +840,8 @@ describe('booth runtime boundary', () => {
       await clock.tickAsync(0);
       expect(root.querySelector('[data-panel="picker"]').hidden).to.equal(false);
       expect(root.getElementById('report-options').children).to.have.length(2);
-      expect(root.getElementById('report-options').querySelector('img')).to.equal(null);
+      expect(root.getElementById('report-options').querySelector('img[src="x"]')).to.equal(null);
+      expect(root.querySelectorAll('#report-options .report-icon')).to.have.length(2);
       expect(root.getElementById('registration-email').value).to.equal('');
       expect(window.location.pathname + window.location.search).to.equal('/booth?step=picker&brand=semrush');
       expect(fetchStub.getCalls().some((call) => /lookup|send/.test(call.args[0]))).to.equal(false);

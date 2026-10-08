@@ -25,7 +25,7 @@ describe('real workerd early HTML concealment', () => {
       plugins: [{
         name: 'fixture-only-booth-assets',
         setup(builder) {
-          builder.onLoad({ filter: /\/(?:booth\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+)$/ }, async ({ path: asset }) => ({
+          builder.onLoad({ filter: /\/(?:booth\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+|img\/icons\/globe\.svg)$/ }, async ({ path: asset }) => ({
             contents: `export default ${JSON.stringify(await readFile(asset, 'utf8'))};`,
             loader: 'js',
           }));
