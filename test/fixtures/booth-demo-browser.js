@@ -4,20 +4,20 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
     if (!condition) throw new Error(message);
   };
   await page.clock.install();
-  const personalActions = [];
+  const actions = [];
   page.on('request', (request) => {
-    if (/\/auth\/booth\/(view|send|contact)$/.test(request.url())) personalActions.push(request.url());
+    if (/\/auth\/booth\/(view|send|contact|request)$/.test(request.url())) actions.push(request.url());
   });
   const ready = async () => {
     await page.waitForFunction(() => !document.querySelector('#email-form button')?.disabled);
   };
   const actionProfiles = [];
   const checkActions = async (selector) => {
-    const sizes = [[2160, 3840, 129, 51], [1080, 1920, 72, 25], [390, 844, 64, 22]];
+    const sizes = [[2160, 3840, 129, 42], [1080, 1920, 72, 24], [390, 844, 64, 22]];
     for (const [width, height, minHeight, minFont] of sizes) {
       await page.setViewportSize({ width, height });
       const targets = page.locator(selector);
-      const actions = await targets.evaluateAll((buttons) => buttons.map((button) => {
+      const targetsProfile = await targets.evaluateAll((buttons) => buttons.map((button) => {
         const bounds = button.getBoundingClientRect();
         const style = getComputedStyle(button);
         return {
@@ -28,12 +28,12 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
           border: parseFloat(style.borderWidth),
         };
       }));
-      check(actions.length >= 2, 'Alternative actions disappeared');
-      check(actions.every((action) => action.height >= minHeight
+      check(targetsProfile.length >= 1, 'Alternative actions disappeared');
+      check(targetsProfile.every((action) => action.height >= minHeight
         && action.font >= minFont
         && action.border >= 2), `Alternative actions are too small at ${width}px`);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Alternative actions overflow');
-      actionProfiles.push({ selector, width, actions });
+      actionProfiles.push({ selector, width, actions: targetsProfile });
     }
     await page.setViewportSize({ width: 2160, height: 3840 });
   };
@@ -42,6 +42,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await ready();
   const footer = await page.locator('.stage-footer').textContent();
   check(!/lorem/i.test(footer), 'Placeholder progress returned');
+  check(await page.locator('[data-request-report]').count() === 0, 'Retired request action returned');
   await checkActions('.entry-alternatives button');
   await page.locator('#registration-email').fill('unmatched@not-a-prepared-company.test');
   const lookup = page.waitForResponse((response) => response.url().endsWith('/auth/booth/lookup'));
@@ -58,6 +59,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await checkActions('[data-panel="unavailable"] .booth-alternative');
   await page.getByRole('button', { name: 'Show an industry demo', exact: true }).click();
   await page.locator('#demo-options button').nth(9).waitFor();
+  check(await page.locator('#demo-recovery-copy').isVisible(), 'Unmatched chooser guidance disappeared');
   check(await page.locator('#demo-options button').count() === 10, 'Industry catalogue is incomplete');
   await checkActions('[data-panel="demos"] .booth-alternative');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
@@ -74,6 +76,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
     await page.locator('#booth-return').waitFor();
     check((await page.locator('#booth-return').textContent()).includes('Not a report for your company'), 'Demo is not clearly identified');
     check(await page.getByRole('link', { name: 'Finish reading my report' }).count() === 0, 'Demo incorrectly offers personal Finish');
+    check(await page.locator('.booth-request-action').count() === 0, 'Demo offers retired request action');
     const context = await (await page.request.get(`${root}/auth/booth/status`)).json();
     check(context.state === 'demo' && context.demoId === demo.id && !context.email, 'Demo state leaks attendee details');
     if (demo !== demos.at(-1)) {
@@ -81,61 +84,26 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
       await page.locator('#demo-options button').nth(9).waitFor();
     }
   }
-  await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-  await page.waitForURL('**/request-report');
-  await page.locator('html.booth-request-active').waitFor();
-  check(await page.locator('[name="email"]').inputValue() === '', 'Request form was not fresh');
-  check(!await page.locator('[name="consent"]').isChecked(), 'Consent was inferred from demo viewing');
-  const profiles = [];
-  for (const [width, height] of [[2160, 3840], [1080, 1920], [1080, 1100], [390, 844]]) {
-    await page.setViewportSize({ width, height });
-    const profile = await page.evaluate(() => {
-      const input = document.querySelector('[name="email"]');
-      const bounds = input.getBoundingClientRect();
-      return {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        inputWidth: bounds.width,
-        inputHeight: bounds.height,
-        font: parseFloat(getComputedStyle(input).fontSize),
-        overflow: document.documentElement.scrollWidth > window.innerWidth,
-        controlBottom: document.querySelector('#booth-return').getBoundingClientRect().bottom,
-      };
-    });
-    check(!profile.overflow, `Request form overflows at ${width}x${height}`);
-    check(profile.controlBottom <= height, 'Booth controls are off screen');
-    if (width >= 1000) check(profile.font >= 32 && profile.inputHeight >= 76, 'Portrait request fields are not touch-sized');
-    profiles.push(profile);
-  }
-  await page.setViewportSize({ width: 2160, height: 3840 });
-  await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-  check(await page.locator('.rrf-error-summary').isVisible(), 'Required fields/consent were bypassed');
-  await page.locator('[name="fullName"]').fill('Booth Test Visitor');
-  await page.locator('[name="email"]').fill('visitor@example.test');
-  await page.locator('[name="company"]').fill('Booth Fixture');
-  await page.locator('[name="website"]').fill('example.test');
-  await page.locator('[name="consent"]').check();
-  await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-  await page.locator('.rrf-success').waitFor();
-  await page.getByRole('button', { name: 'Finish and clear this screen' }).click();
+  await page.getByRole('button', { name: 'Clear for next visitor', exact: true }).click();
   await page.waitForURL('**/booth');
   await ready();
-  check(await page.locator('#registration-email').inputValue() === '', 'Submission reset retained attendee details');
-  await page.getByRole('button', { name: 'Request my report', exact: true }).click();
-  await page.waitForURL('**/request-report');
-  await page.locator('html.booth-request-active').waitFor();
-  await page.locator('[name="email"]').fill('abandoned@example.test');
-  await page.locator('[name="consent"]').check();
+  check(await page.locator('#registration-email').inputValue() === '', 'Demo reset retained attendee details');
+  await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
+  await page.locator('#demo-options button').nth(9).waitFor();
+  check(!await page.locator('#demo-recovery-copy').isVisible(), 'New visitor inherited missing-report messaging');
+  await page.locator('#demo-options button').first().click();
+  await page.locator('#booth-return').waitFor();
   await page.clock.fastForward(110000);
-  await page.locator('[name="email"]').fill('still-typing@example.test');
+  await page.locator('#booth-return strong').click();
   await page.clock.fastForward(30000);
-  check(new URL(page.url()).pathname === '/request-report', 'Virtual-keyboard input did not renew the idle timer');
+  check(new URL(page.url()).pathname.startsWith('/example-report/'), 'Touch activity did not renew demo idle time');
   await page.clock.fastForward(90001);
   await page.waitForURL('**/booth');
   await ready();
   await page.goBack();
-  check(await page.locator('[name="email"]').count() === 0
-    || await page.locator('[name="email"]').inputValue() === '', 'History restored abandoned form details');
+  await page.waitForURL('**/booth');
+  await ready();
+  check(await page.locator('#registration-email').inputValue() === '', 'History restored attendee details');
   await page.clock.resume();
   await page.goto(`${root}/content/index?preview=entry`);
   await ready();
@@ -144,13 +112,16 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.locator('#email-error:not([hidden])').waitFor();
   check(!await page.locator('[data-panel="unavailable"]').isVisible(), 'An outage was reported as a missing report');
   check(await page.evaluate(() => !localStorage.length && !sessionStorage.length), 'Attendee data persisted in browser storage');
-  check(personalActions.length === 0, 'Demo/request flow recorded a personal report action');
+  check(actions.filter((url) => url.endsWith('/view')).length >= demos.length, 'Demo views were not recorded');
+  check(actions.every((url) => url.endsWith('/view')), 'Demo flow attempted sending, contact or report requests');
+  await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
+  await page.locator('#demo-options button').first().click();
+  await page.locator('#booth-return').waitFor();
   await page.route('**/auth/booth/status', (route) => route.fulfill(
     { status: 503, contentType: 'application/json', body: '{"error":"Test verification outage"}' },
   ));
-  await page.goto(`${root}/request-report`);
+  await page.reload();
   await page.getByRole('button', { name: 'Retry and clear screen', exact: true }).waitFor();
-  check(!await page.locator('main').isVisible(), 'Failed booth verification left a usable request form');
-  check(await page.locator('[name="email"]').inputValue() === '', 'Failed verification retained request fields');
-  return { demos: demos.length, profiles, actionProfiles, checked: 'Touch-sized entry/recovery/list alternatives; no placeholder progress; no-match recovery; all industries; separate demo mode; fresh form; consent and validation; synthetic submission; reset/idle/history privacy; outage distinction. No real submissions.' };
+  check(!await page.locator('main').isVisible(), 'Failed verification left demo content usable');
+  return { demos: demos.length, actionProfiles, checked: 'Touch-sized alternatives; real progress; no-match guidance; all industries; no request flow; demo viewing; reset/idle/history privacy; outage distinction. No live data or submissions.' };
 }

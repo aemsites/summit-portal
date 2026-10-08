@@ -1,6 +1,6 @@
 import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
-import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-1';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-recovery-2';
 
 export async function boothRequest(action, body) {
   const controller = new AbortController();
@@ -73,6 +73,15 @@ export function mountBooth(root = document) {
 
   function show(name) {
     panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
+    let step = 1;
+    if (name === 'finish') step = 3;
+    else if (['picker', 'demos'].includes(name)) step = 2;
+    stage.dataset.step = step;
+    root.querySelectorAll('.booth-progress li').forEach((item, index) => {
+      item.classList.toggle('complete', index < step);
+      if (index === step - 1) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+    });
   }
 
   function scrub(clearTimers = true) {
@@ -164,7 +173,7 @@ export function mountBooth(root = document) {
 
   function apply(result, finishing = false) {
     schedule(result);
-    if (['demo', 'request'].includes(result.state)) {
+    if (result.state === 'demo') {
       window.location.assign(withBoothPresentation(result.selectedPath, presentation));
       return;
     }
@@ -210,25 +219,7 @@ export function mountBooth(root = document) {
         });
         options.append(button);
       });
-    } else show('welcome');
-  }
-
-  async function openRequest() {
-    if (busy || resetting || !ready) return;
-    busy = true;
-    const current = revision;
-    email.blur();
-    email.value = '';
-    notice('booth-status', 'Opening a fresh report request...');
-    try {
-      const result = await perform('request', {});
-      if (result.state !== 'request') throw new Error('The report request could not be opened.');
-      if (current === revision) apply(result);
-    } catch (error) {
-      if (current === revision) notice('booth-status', error.message);
-    } finally {
-      busy = false;
-    }
+    } else show(result.state === 'unavailable' ? 'unavailable' : 'welcome');
   }
 
   async function showDemos() {
@@ -239,9 +230,12 @@ export function mountBooth(root = document) {
     show('demos');
     notice('demo-status', 'Loading industry demos...');
     try {
-      const cleared = await perform('reset', {});
+      const cleared = await perform('demo-picker', {});
       if (current !== revision) return;
-      if (cleared.state !== 'entry') throw new Error('The previous visitor could not be cleared.');
+      if (cleared.state !== 'demos') throw new Error('The industry chooser could not be opened.');
+      schedule(cleared);
+      const recoveryCopy = root.getElementById('demo-recovery-copy');
+      if (recoveryCopy) recoveryCopy.hidden = cleared.unmatched !== true;
       const result = await perform('demos');
       if (current !== revision) return;
       if (!Array.isArray(result.demos) || !result.demos.length) throw new Error('Industry demos are unavailable. Ask the booth team.');
@@ -285,7 +279,6 @@ export function mountBooth(root = document) {
   }
 
   root.querySelectorAll('[data-show-demos]').forEach((button) => button.addEventListener('click', showDemos));
-  root.querySelectorAll('[data-request-report]').forEach((button) => button.addEventListener('click', openRequest));
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

@@ -54,7 +54,7 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
   });
 
   it.each([
-    ['report', path], ['demo', '/example-report/luma/'], ['request', '/request-report'],
+    ['report', path], ['demo', '/example-report/luma/'],
   ])('conceals %s before company content and declares its exact mode and deadline', async (mode, selected) => {
     const response = await runtime.dispatchFetch(`https://portal.example${selected}?mode=${mode}`, { headers: { Cookie: cookie } });
     expect(response.status).toBe(200);
@@ -78,5 +78,11 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
     const response = await runtime.dispatchFetch(`https://portal.example${path}?malformed=1`, { headers: { Cookie: cookie } });
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain('Fixture private company');
+  });
+
+  it('rejects the retired booth request document', async () => {
+    const response = await runtime.dispatchFetch('https://portal.example/request-report?mode=request', { headers: { Cookie: cookie }, redirect: 'manual' });
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/booth');
   });
 });

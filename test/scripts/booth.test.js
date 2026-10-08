@@ -35,7 +35,7 @@ describe('booth runtime boundary', () => {
       const pending = new Promise(() => {});
       const fetchStub = sandbox.stub(window, 'fetch').returns(phase === 'fetch'
         ? pending : Promise.resolve({ ok: true, json: () => pending }));
-      const actions = ['status', 'lookup', 'demos', 'demo', 'select', 'send', 'request', 'picker', 'reset', 'exit'];
+      const actions = ['status', 'lookup', 'demo-picker', 'demos', 'demo', 'select', 'send', 'picker', 'reset', 'exit'];
       const failures = actions.map((action) => boothRequest(action, {}).catch((error) => error));
       await clock.tickAsync(10001);
       const errors = await Promise.all(failures);
@@ -175,7 +175,7 @@ describe('booth runtime boundary', () => {
     expect(root.querySelector('#email-form button').disabled).to.equal(false);
   });
 
-  ['status', 'request', 'select', 'demos', 'demo', 'picker', 'exit'].forEach((action) => {
+  ['status', 'demo-picker', 'select', 'demos', 'demo', 'picker', 'exit'].forEach((action) => {
     it(`exposes fail-closed recovery for stalled ${action} without replaying the operation`, async () => {
       const root = await productionFixture();
       root.getElementById('report-preview').remove();
@@ -196,6 +196,9 @@ describe('booth runtime boundary', () => {
             }),
           };
         }
+        if (url.endsWith('/demo-picker')) {
+          return { ok: true, json: async () => ({ state: 'demos', expiresAt: Date.now() + 600000, unmatched: true }) };
+        }
         return {
           ok: true,
           json: async () => (
@@ -206,9 +209,8 @@ describe('booth runtime boundary', () => {
       try {
         mountBooth(root);
         await clock.tickAsync(0);
-        if (action === 'request') root.querySelector('[data-request-report]').click();
         if (action === 'select') root.querySelector('#report-options button').click();
-        if (['demos', 'demo'].includes(action)) {
+        if (['demo-picker', 'demos', 'demo'].includes(action)) {
           root.querySelector('[data-show-demos]').click();
           await clock.tickAsync(0);
           if (action === 'demo') root.querySelector('#demo-options button').click();
@@ -252,7 +254,7 @@ describe('booth runtime boundary', () => {
     expect(root.querySelector('#email-form button').disabled).to.equal(false);
   });
 
-  it('does not continue loading demos after their clearing request was superseded by reset', async () => {
+  it('does not continue loading demos after their chooser request was superseded by reset', async () => {
     const root = await productionFixture();
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch');
@@ -265,10 +267,10 @@ describe('booth runtime boundary', () => {
     root.querySelector('[data-show-demos]').click();
     root.querySelector('[data-reset]').click();
     await clock.tickAsync(1001);
-    clearDemos({ ok: true, json: async () => ({ state: 'entry' }) });
+    clearDemos({ ok: true, json: async () => ({ state: 'demos', unmatched: true, expiresAt: Date.now() + 600000 }) });
     await clock.tickAsync(0);
     expect(fetchStub.getCalls().map((call) => call.args[0])).to.deep.equal([
-      '/auth/booth/status', '/auth/booth/reset', '/auth/booth/reset',
+      '/auth/booth/status', '/auth/booth/demo-picker', '/auth/booth/reset',
     ]);
     expect(root.querySelector('[data-panel="welcome"]').hidden).to.equal(false);
   });
@@ -354,7 +356,7 @@ describe('booth runtime boundary', () => {
     return { ok: status < 400, status, json: async () => body };
   }
 
-  it('offers explicit demo/request recovery only for a confirmed no-report lookup', async () => {
+  it('offers explicit demo recovery without a request form for a confirmed no-report lookup', async () => {
     const root = await productionFixture();
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch');
@@ -368,7 +370,7 @@ describe('booth runtime boundary', () => {
     expect(root.querySelector('[data-panel="unavailable"]').hidden).to.equal(false);
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.querySelector('[data-panel="unavailable"] [data-show-demos]')).to.exist;
-    expect(root.querySelector('[data-panel="unavailable"] [data-request-report]')).to.exist;
+    expect(root.querySelector('[data-request-report]')).to.equal(null);
   });
 
   it('does not describe a lookup outage as a missing report', async () => {
@@ -390,7 +392,7 @@ describe('booth runtime boundary', () => {
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch');
     fetchStub.onFirstCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
-    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
+    fetchStub.onSecondCall().resolves({ ok: true, json: async () => ({ state: 'demos', unmatched: true }) });
     fetchStub.onThirdCall().resolves({
       ok: true,
       json: async () => ({ demos: [{ id: 'luma', industry: 'Retail / apparel', company: '<img src=x> Luma' }] }),
@@ -400,12 +402,13 @@ describe('booth runtime boundary', () => {
     root.getElementById('registration-email').value = 'previous@example.com';
     root.querySelector('[data-show-demos]').click();
     await clock.tickAsync(0);
-    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/reset');
+    expect(fetchStub.secondCall.args[0]).to.equal('/auth/booth/demo-picker');
     expect(fetchStub.thirdCall.args[0]).to.equal('/auth/booth/demos');
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.getElementById('demo-options').querySelector('img')).to.equal(null);
     expect(root.getElementById('demo-options').textContent).to.include('Retail / apparel');
     expect(root.querySelector('[data-panel="demos"]').hidden).to.equal(false);
+    expect(root.getElementById('demo-recovery-copy').hidden).to.equal(false);
   });
 
   it('hides attendee panels before scripts load and while Finish status is pending', async () => {
@@ -448,13 +451,13 @@ describe('booth runtime boundary', () => {
 
   it('retains approved copy, accessible attribution and accurate business-email lookup without review chrome', async () => {
     const root = await productionFixture();
-    expect(root.querySelector('.brand span').textContent).to.equal('Adobe Brand Visibility');
+    expect(root.querySelector('.brand span').textContent).to.equal('Amplify your brand visibility');
     expect(root.querySelector('.brand-icon').alt).to.equal('Adobe');
     expect(root.getElementById('welcome-heading').textContent).to.equal('Turn your brand content into an AI search advantage.');
     expect(root.querySelector('.hero-bottom p').textContent).to.equal('See where your brand appears in AI search.');
     expect(root.querySelector('.welcome-entry .lead').textContent).to.equal('Open your customized report.');
-    expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Business email');
-    expect(root.getElementById('email-help').textContent).to.include('This is not a sign-in.');
+    expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Registration email');
+    expect(root.getElementById('email-help').textContent).to.equal('Use the same address you used for this event.');
     expect(root.querySelector('.review, #motion-toggle, .signal-field, #step-index')).to.equal(null);
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch').resolves({ ok: true, json: async () => ({ state: 'entry' }) });
@@ -521,7 +524,8 @@ describe('booth runtime boundary', () => {
       expect(finish.querySelector('.finish-artwork')).to.equal(null);
       expect(finish.querySelector('#report-preview').compareDocumentPosition(root.getElementById('send-report'))).to.equal(Node.DOCUMENT_POSITION_FOLLOWING);
       expect(root.querySelector('#request-contact, #contact-privacy, #contact-status')).to.equal(null);
-      expect(root.querySelector('.finish-guidance').textContent).to.include('Ask the team about a follow-up conversation.');
+      expect(root.querySelector('.finish-guidance, .finish-step')).to.equal(null);
+      expect(root.querySelector('.booth-progress [aria-current]').textContent).to.equal('Save and share');
       expect(fetchStub.callCount).to.equal(2);
       root.getElementById('send-report').click();
       await clock.tickAsync(0);
@@ -560,10 +564,10 @@ describe('booth runtime boundary', () => {
       expect(root.getElementById('search-privacy').querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
       mountBooth(root);
       await clock.tickAsync(0);
-      root.querySelector('.finish-guidance').click();
+      root.querySelector('.booth-progress').click();
       await clock.tickAsync(0);
       expect(fetchStub.callCount).to.equal(2);
-      expect(root.querySelector('.finish-guidance button, .finish-guidance a')).to.equal(null);
+      expect(root.querySelector('.finish-guidance')).to.equal(null);
       expect(root.getElementById('send-report').disabled).to.equal(false);
     } finally {
       window.history.replaceState(null, '', previousUrl);

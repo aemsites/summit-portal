@@ -226,7 +226,7 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'demos', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'authorize'].includes(action)
+  if (!['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'authorize'].includes(action)
     || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
@@ -411,7 +411,7 @@ export class BoothCoordinator {
       return reply({ error: 'Staff authentication required' }, 401);
     }
     const binding = await staffBinding(request, this.env);
-    if (!['status', 'authorize', 'demo', 'request', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
+    if (!['status', 'authorize', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     let record = await storage.get('context');
@@ -419,6 +419,10 @@ export class BoothCoordinator {
       return reply({ error: 'Booth context belongs to another staff session' }, 403);
     }
     if (record && record.expiresAt <= Date.now()) {
+      await this.clear(record, timing);
+      record = null;
+    }
+    if (record?.mode === 'request') {
       await this.clear(record, timing);
       record = null;
     }
@@ -435,35 +439,69 @@ export class BoothCoordinator {
         return reply({ error: 'Invalid JSON body' }, 400);
       }
     }
-    if (['demo', 'request'].includes(action)) {
-      const demo = action === 'demo' ? findBoothDemo(body.id) : null;
-      if (Object.keys(body).some((key) => action !== 'demo' || key !== 'id')
-        || (action === 'demo' && !demo)) {
+    if (action === 'demo-picker') {
+      if (Object.keys(body).length) return reply({ error: 'Invalid industry chooser request' }, 400);
+      const unmatched = ['unavailable', 'demo'].includes(record?.mode) && !!record.flowId;
+      if (record && !unmatched) {
+        await this.clear(record, timing);
+        record = null;
+      } else if (record) {
+        record = { mode: 'unavailable', binding, expiresAt: record.expiresAt, flowId: record.flowId, email: record.email };
+        await storage.put('context', record);
+      }
+      return reply({ state: 'demos', unmatched, expiresAt: record?.expiresAt });
+    }
+    if (action === 'demo') {
+      const demo = findBoothDemo(body.id);
+      if (Object.keys(body).some((key) => key !== 'id') || !demo) {
         return reply({ error: 'Choose one of the available industry demos.' }, 400);
       }
+      const correlation = ['unavailable', 'demo'].includes(record?.mode) && record.flowId
+        ? { flowId: record.flowId, email: record.email } : {};
       await this.clear(record, timing);
       record = {
         mode: action,
         binding,
         expiresAt: Date.now() + TTL * 1000,
-        selectedPath: demo?.path || '/request-report',
-        ...(demo ? { demoId: demo.id, industry: demo.industry, company: demo.company } : {}),
+        selectedPath: demo.path,
+        demoId: demo.id,
+        industry: demo.industry,
+        company: demo.company,
+        ...correlation,
       };
       await storage.put('context', record);
       if (!await storage.get('activity')) await storage.setAlarm(record.expiresAt);
-      return reply({ ...record, binding: undefined, state: record.mode });
+      if (record.flowId) {
+        await this.activity([createBoothActivity('demo_selected', record.flowId, record.email, { path: demo.path, company: demo.company, label: demo.industry })], record, timing);
+      }
+      return reply({
+        state: 'demo', selectedPath: demo.path, demoId: demo.id, industry: demo.industry, company: demo.company, expiresAt: record.expiresAt,
+      });
     }
     if (record?.mode) {
       if (['status', 'authorize'].includes(action)) {
         return reply({
-          ...record,
-          binding: undefined,
+          selectedPath: record.selectedPath,
+          demoId: record.demoId,
+          industry: record.industry,
+          company: record.company,
+          expiresAt: record.expiresAt,
           state: record.mode,
           canChooseAnother: false,
         });
       }
+      if (action === 'view' && record.mode === 'demo') {
+        if (Object.keys(body).some((key) => key !== 'path') || body.path !== record.selectedPath) {
+          return reply({ error: 'Only the selected industry demo can be recorded as opened.' }, 400);
+        }
+        if (record.flowId && !record.viewed) {
+          record.viewed = true;
+          await this.activity([createBoothActivity('demo_viewed', record.flowId, record.email, { path: record.selectedPath, company: record.company, label: record.industry })], record, timing);
+        } else await this.flushActivity(timing);
+        return reply({ viewed: true });
+      }
       if (action !== 'lookup') {
-        return reply({ error: 'Demo and request screens cannot send or select a personal report.' }, 409);
+        return reply({ error: 'Industry demos cannot send or select a personal report.' }, 409);
       }
     }
     const data = record?.key ? await timing.measure('booth_kv_read', () => this.env.SESSIONS.get(`booth:${record.key}`, 'json')) : null;
@@ -553,6 +591,14 @@ export class BoothCoordinator {
         return reply({ error: 'Prepared reports cannot be checked right now. Ask the booth team.' }, 502);
       }
       if (!candidates.length) {
+        record = {
+          mode: 'unavailable',
+          flowId: key,
+          email,
+          binding,
+          expiresAt: Date.now() + TTL * 1000,
+        };
+        await this.activity([createBoothActivity('no_report', key, email)], record, timing);
         return reply({ code: 'no_report', error: 'No prepared report is authorized for this email domain. Ask the booth team.' }, 404);
       }
       await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${key}`, JSON.stringify({ email, candidates }), { expirationTtl: TTL }));

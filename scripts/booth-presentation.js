@@ -1,4 +1,4 @@
-const defaultHeading = 'Adobe Brand Visibility';
+const defaultHeading = 'Amplify your brand visibility';
 
 /** Cosmetic URL settings never provide report access or select a report. */
 export function readBoothPresentation(search = '') {
