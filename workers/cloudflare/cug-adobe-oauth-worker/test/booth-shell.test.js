@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFile, unlink } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdtemp, readFile, readdir, rm, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
@@ -271,4 +272,25 @@ describe('Digital Opportunity Report review naming', () => {
       });
     }
   });
+});
+
+describe('production booth stylesheet packaging', () => {
+  it('includes exact loading CSS as a text module in the real Wrangler bundle', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'booth-css-bundle-'));
+    const worker = fileURLToPath(new URL('../', import.meta.url));
+    try {
+      execFileSync(execPath, [
+        resolve(worker, 'node_modules/wrangler/bin/wrangler.js'),
+        'deploy', '--env', 'summit', '--dry-run', '--outdir', directory,
+      ], { cwd: worker, timeout: 60000 });
+      const files = await readdir(directory);
+      const stylesheet = files.find((name) => name.endsWith('-booth-loading.css'));
+      expect(stylesheet, 'Loading CSS must be a Wrangler Text asset, not an empty CSS-module object').toBeDefined();
+      const source = await readFile(new URL('../../../../styles/booth-loading.css', import.meta.url), 'utf8');
+      expect(await readFile(join(directory, stylesheet), 'utf8')).toBe(source);
+      expect(await readFile(join(directory, 'index.js'), 'utf8')).toContain(stylesheet);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 70000);
 });

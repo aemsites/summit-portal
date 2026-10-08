@@ -33,7 +33,7 @@ lookup. It revokes the active selection, keeps the current inactivity expiry and
 permissions on selection; send/view outcomes remain independent per report.
 Sent and uncertain outcomes cannot become retryable by switching.
 
-**Inactivity policy (October 8, local; not deployed):** the screen and attendee
+**Inactivity policy (October 8, deployed):** the screen and attendee
 access now expire together after **15 minutes without visitor interaction**.
 Touch/pointer, scrolling, keyboard and input/change events renew the existing
 visit through same-origin `POST /auth/booth/activity`. Active reports can remain
@@ -44,8 +44,8 @@ staff/device binding and personal-report permissions before refreshing Durable
 Object expiry, KV retention and the context cookie. Passive status, view and
 asset requests never renew access. Failed renewal keeps the screen fail-closed;
 expired/reset visits cannot be revived. Manual clear/history safeguards and
-the **four-day staff login** are unchanged. Deploy the Worker and matching
-bundled assets together after review, then close old report tabs and reload.
+the **four-day staff login** are unchanged. The Worker and matching bundled
+assets were deployed together at 13:48 UTC; close old report tabs and reload.
 
 **Security hardening is deployed; see the October 8 rollout below.** Dashboard navigation cannot exit
 booth restrictions. Staff administration uses a **separate browser/device**.
@@ -122,7 +122,7 @@ and matching adapter import. `verifyBoothReportRecovery` in
 checks personal/demo return, legacy documents, Finish-to-entry, failed reset,
 failed verification and idle cleanup against synthetic local data only.
 
-### Report opening and Finish loading (October 8, local; not deployed)
+### Report opening and Finish loading (October 8, deployed)
 
 The picker retains its centered outlined **Back to email lookup** treatment.
 Selection displays a full-screen loader immediately and makes covered controls
@@ -147,9 +147,9 @@ concealment markup; no-JavaScript instructions remain readable. The local fixtur
 now replays that Worker markup. `test/fixtures/booth-loading-browser.js` covers
 pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
-local only; the deployed version described below has not changed.
+included in the 13:48 UTC Worker rollout below.
 
-### Latest Figma Entry, Industry and Finish (October 8, branch; not deployed)
+### Latest Figma Entry, Industry and Finish (October 8, deployed)
 
 The current branch matches Figma nodes `320:136`, `328:112` and `320:2475`
 at 2160 by 2881px and scales to the taller touchscreen. Shared header, gutters,
@@ -173,6 +173,23 @@ The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in
 `test/fixtures/booth-final-design-browser.js` and `booth-demo-browser.js`.
 Merging/pushing frontend code is not a Worker deployment.
+
+Wrangler must explicitly include `styles/booth-loading.css` in its Text-module
+rules. Its default CSS loader exports an object, not a stylesheet string, which
+would serve/inject `[object Object]` despite the Vitest text-asset mocks passing.
+The shell packaging regression runs the actual summit dry-run build and checks
+the emitted loading stylesheet against the source before deployment.
+
+Deployed latest merged main `49309aeba5918b6e80f002121eb8144220a10afc` (PR #163),
+then the required packaging correction
+`261d9592897e00e2d1680a768cc17f2fd3b344db`, on October 8 at 13:48 UTC.
+Final `summit-portal` version `d7fe9620-1e83-4354-825b-bd8292efd450` serves
+100% of traffic. It supersedes the first deployment's
+`9a905781-f270-4d24-94c2-e0e93bd97f8c`, whose loading CSS was invalid.
+The correction is pushed to `josec-adobe-booth-loading` for follow-up merge.
+Live runtime, stylesheet and image bytes match the corrected source; staff
+login remains required. No real visitor search or email was performed.
+Close old report tabs, reload the managed booth, then reopen reports.
 
 ### Final industry chooser (October 8, deployed)
 
