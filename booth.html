@@ -9,8 +9,8 @@
   <link rel="icon" href="/img/icons/adobe-logo.svg">
   <link rel="stylesheet" href="https://use.typekit.net/hah7vzn.css">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <link rel="stylesheet" href="/styles/booth.css?v=booth-final-figma-4">
-  <script type="module" src="/scripts/booth.js?v=booth-final-figma-4"></script>
+  <link rel="stylesheet" href="/styles/booth.css?v=booth-picker-figma-1">
+  <script type="module" src="/scripts/booth.js?v=booth-picker-figma-1"></script>
 </head>
 <body class="booth">
   <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="6" data-notice-version="booth-privacy-v1" aria-busy="true">
@@ -77,13 +77,22 @@
           <button class="primary" data-reset type="button">Try another email</button>
         </div>
       </section>
-      <section class="panel welcome-entry picker-panel" data-panel="picker" aria-labelledby="picker-heading" hidden>
-        <h2 id="picker-heading">Choose your report.</h2>
-        <p class="lead">Several customized company reports are authorized for your business email.</p>
-        <div id="report-options" class="finish-actions"></div>
-        <p id="picker-status" class="notice" role="alert" hidden></p>
-        <div class="recovery-actions">
-          <button class="secondary booth-alternative" data-reset type="button">Back to email lookup</button>
+      <section class="panel picker-panel" data-panel="picker" aria-labelledby="picker-heading" hidden>
+        <div class="picker-marquee">
+          <div class="picker-intro">
+            <h2 id="picker-heading">Several customized company reports are authorized for your business email.</h2>
+            <p>Choose your report.</p>
+          </div>
+          <div class="picker-illustration" aria-hidden="true">
+            <img src="/img/booth/picker-artwork.png" alt="" width="1140" height="963" loading="lazy">
+          </div>
+        </div>
+        <div class="picker-body">
+          <div id="report-options" class="report-options"></div>
+          <p id="picker-status" class="notice" role="alert" hidden></p>
+          <div class="recovery-actions">
+            <button class="secondary booth-alternative" data-reset type="button">Back to email lookup</button>
+          </div>
         </div>
       </section>
       <section class="panel" data-panel="finish" aria-labelledby="finish-heading" hidden>

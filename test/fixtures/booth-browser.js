@@ -151,7 +151,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.locator('#registration-email').fill('visitor@example.com');
   await page.locator('#email-form button[type="submit"]').click();
   await page.locator('[data-panel="picker"]:not([hidden])').waitFor();
-  check(await page.locator('#report-options img').count() === 0, 'Picker label became executable HTML');
+  check(await page.locator('#report-options img[src="x"]').count() === 0, 'Picker label became executable HTML');
   await page.locator('#report-options button').nth(1).click();
   await page.waitForURL(`**${other}`);
   await page.locator('#booth-return').waitFor();

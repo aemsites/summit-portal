@@ -7,7 +7,8 @@ export default defineConfig({
     name: 'booth-text-assets',
     enforce: 'pre',
     resolveId(source, importer) {
-      if (importer?.endsWith('/src/booth-shell.js') && /\/img\/booth\/[^/]+\.(png|jpg|svg)$/.test(source)) {
+      if (['/src/booth-shell.js', '/src/booth-icons.js'].some((file) => importer?.endsWith(file))
+        && /\/img\/(?:booth\/[^/]+|icons\/globe)\.(png|jpg|svg)$/.test(source)) {
         const type = source.endsWith('.svg') ? 'text' : 'data';
         return `${resolve(dirname(importer), source)}.booth-${type}`;
       }

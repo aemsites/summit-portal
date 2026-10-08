@@ -77,9 +77,9 @@ Server-marked report and demo documents are concealed before rendering and remai
 
 **Booth report focus:** if activating the exact composition moves a focused analysis descendant, only its disclosure opens and the same element is refocused after attachment. Without analysis focus the overview stays closed. Exiting restores original positions, listeners and focus, without additional timers.
 
-**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions are **not deployed**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report after the matching Worker deployment; existing tabs do not hot-reload modules.
+**Booth report asset freshness:** Worker injection and the shared lazy import use the matching `?v=booth-controls-1` adapter URL. Entry JS/CSS use `?v=booth-final-figma-4`; the keyboard import retains `?v=booth-recovery-2`. These control/seam revisions were deployed **October 8 at 14:07 UTC**. Entry, preview, visibility-helper, report-adapter, keyboard, loading styles and booth images receive `no-cache` revalidation. The previous screens, loading and session renewal were deployed October 8 at 13:48 UTC, including the corrected loading-CSS Text-module rule. A newly authorized adapter upgrades an older Finish control without duplicating reset timers or bottom padding. Close existing report documents, reload `/booth` and reopen the selected report; existing tabs do not hot-reload modules.
 
-**Booth seam and compact controls (branch, not deployed):** the desktop Entry
+**Booth seam and compact controls (October 8, deployed):** the desktop Entry
 layout paints dark only through the hero/rounded-notch region, then white
 behind the white panel. This removes the subpixel gray seam at the fractional
 panel boundary without rounding geometry or moving approved Figma coordinates.
@@ -92,6 +92,58 @@ on Entry, Industry and Finish. Presentation now belongs to the authorized
 report stylesheet rather than an injected duplicate style. The local synthetic
 `test/fixtures/booth-controls-browser.js` checks screenshot pixels at DPR 0.4,
 native/half-size/mobile controls, menu reservation and demo clearing.
+
+**Control rollout, October 8 at 14:07 UTC:** deployed merged main
+`d2752a61d40b42e9632cbf3fad135cef73e6fa35` (PR #165) to `summit-portal`.
+Worker version `1af6ce7f-89d2-4a92-bc64-08c57fd344e7` serves 100% of traffic,
+superseding `d7fe9620-1e83-4354-825b-bd8292efd450`. Live Entry/report JS and
+CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-byte.
+The unauthenticated `/booth` route still redirects to `/login?staff` with a
+private, no-store response. No customer lookup or email was performed.
+
+**Portrait staff login (branch, not deployed):** `/login?staff&redirect=%2Fbooth`
+keeps the existing username/password authentication and redirect flow, with a
+staff-only portrait profile in `blocks/portal-login/portal-login.css`.
+At 2160 × 3840 the content/card is 1440px wide, the page heading is 80px,
+field text is 44px, inputs are 144px tall and **Sign in** is a 120px pill.
+Labels, help and error text are 32px. At 1080 × 1920, fields and the submit
+target are 80px with 24px text. The form remains in normal document flow;
+the upper-screen placement leaves space below it for keyboard interaction.
+The profile requires staff-only markup, width >=1000px, height >=1600px and
+aspect ratio <=3:4; customer login, mobile and ordinary desktop sizes retain
+their previous layout. Both wrapper conventions and existing color themes
+are supported. This is origin-served block CSS, **not a Worker asset**:
+merge/AEM Code Sync publishes it; no Worker deployment is required.
+`test/fixtures/portal-login.html?staff&redirect=%2Fbooth` is a local visual
+fixture, not real authentication. Layout/error/submission regressions live in
+`test/blocks/portal-login.test.js`; real staff credentials were not used.
+
+**Figma report picker (branch, not deployed):** the multi-report selection screen
+matches frame `404:1500` in Adobe Brand Visibility UI, including the black
+marquee, exact heading/subtitle, two-column gray cards, website icons and
+outlined return pill. At 2160px wide the marquee starts at y277 and is 963px
+tall; cards start at y1352 and are 928 × 180 with 64px icons. The same layout
+supports the reference 2160 × 2881 and native 2160 × 3840, with scaled/mobile
+adaptations. A single 280KB composite Figma export preserves the illustration
+and its effects instead of rebuilding them from multi-megabyte source layers.
+The shell uses `?v=booth-picker-figma-1`; earlier deployed versions above are
+historical, not this branch's rollout.
+
+Icons load independently through staff-gated, private/no-store
+`GET /auth/booth/icon?path=...`. The Worker revalidates the current visitor's
+original candidate set and fresh CUG/mapping authorization before and after
+loading, without renewing inactivity expiry. Internal picker snapshots are
+not public HTTP actions; sheet and favicon requests stay outside the actor's
+selection/reset queue. Changing selection or visitor discards pending icons.
+Amazon/Unity use exact Figma exports; other valid trusted-index website hosts
+use bounded HTTPS favicon requests without visitor or origin credentials.
+Remote SVG/HTML, private literal hosts, cross-host redirects and oversized
+images are rejected. Missing icons retain a globe and visible availability
+hint without blocking selection. Host validation does not pin DNS.
+The local synthetic `figma-picker@example.test` lookup and
+`test/fixtures/booth-picker-browser.js` verify geometry, icons and recovery;
+they do not query customers or send email. This branch includes the approved
+portrait-login fix and needs merge plus a separate matching Worker deployment.
 
 ### Touchscreen keyboard and navigation hardening
 

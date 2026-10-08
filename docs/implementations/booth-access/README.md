@@ -5,6 +5,71 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
+## Portrait staff setup (branch, not deployed)
+
+The origin-served `portal-login` block adds staff-only large portrait sizing
+for `/login?staff&redirect=%2Fbooth`. At 2160 × 3840: 1440px card, 80px page
+heading, 44px field text, 32px labels/help/errors, 144px input targets and a
+120px **Sign in** pill. At 1080 × 1920, inputs and submit remain 80px tall,
+with 24px field text. The form stays in normal flow with keyboard space below.
+Customer login and regular desktop/mobile layouts do not opt in. Existing
+light/dark colors, credential POST, disabled/error states and return paths
+are unchanged; CSS targets both Author Kit and standard AEM wrappers.
+
+Local visual fixture:
+`http://localhost:3000/test/fixtures/portal-login.html?staff&redirect=%2Fbooth`.
+It has no real authentication backend. The layout and credential-failure
+regressions are in `test/blocks/portal-login.test.js`; browser retry/success
+checks use intercepted synthetic credentials only. Merge/AEM Code Sync
+publishes this frontend CSS; **no Worker deployment is needed**.
+
+## Multi-report picker (branch, not deployed)
+
+The [approved Figma frame](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=404-1500)
+replaces the old website list with a black marquee and the exact copy:
+**Several customized company reports are authorized for your business email.**
+**Choose your report.** At 2160px width the marquee spans y277–1240; the
+two-column cards are 928 × 180, separated by 80px horizontally and 72px
+vertically. Each card reserves a 64px website-icon slot. The centered
+**Back to email lookup** action is a 489 × 120 outlined pill. The native
+2160 × 3840 footer stays at the bottom; reference/half-size/mobile layouts
+remain usable. The 280KB composite illustration is exported directly from
+Figma, including its glow and blur, with no attendee report HTML involved.
+
+Website icons load through the first-party `GET /auth/booth/icon?path=...`
+endpoint, never a third-party favicon service. Staff/device/expiry checks and
+fresh attendee CUG/mapping authorization are required, restricted to the
+visit's original candidates. Before returning bytes the Worker checks that
+the same visitor is still in the picker and the website remains authorized.
+Icons do not renew expiry. Fresh sheet discovery and favicon fetching happen
+outside the Durable Object queue, so slow icons do not delay selection/reset.
+The private `icon-context` actor RPC is unavailable as a public HTTP action.
+
+Amazon.com/Amazon.co.uk and Unity.com use the exact approved SVG exports.
+Other normalized website hosts from the trusted index request HTTPS
+`/favicon.ico`, without forwarding cookies, origin tokens or visitor metadata.
+Requests have a four-second deadline, at most three same-host/www-equivalent
+hops and a streamed 128KiB cap. Only recognized raster formats are served;
+remote SVG/HTML is rejected. Literal private addresses, reserved/local hosts,
+credentials, ports and non-website labels are not fetched. This validates
+host syntax/redirects, not DNS resolution or rebinding. Replies remain
+private/no-store, no-referrer and nosniff. A missing icon keeps the globe,
+availability hint and enabled selection card; stale loads cannot revive a
+cleared picker.
+
+Run `npm run preview:booth -- --port 3000`, open `/booth` and enter
+`figma-picker@example.test` for the synthetic three-card design fixture.
+`test/fixtures/booth-picker-browser.js` verifies reference/native/half-size/mobile
+geometry, the pill, icon failure, selection-error recovery and reset scrubbing.
+Worker regressions cover stale authorization, blocked discovery/downloads and
+visitor replacement. Final checks passed: 182 booth/login frontend tests,
+456 Worker tests (one existing skip), changed-file ESLint/Stylelint, actual
+Wrangler dry-run packaging and native browser picker/report/loading/recovery
+journeys. Repository-wide lint still reports unrelated existing violations;
+they are not fixed by this branch. The branch includes the portrait staff-login fix above.
+No deployment is performed: merge/AEM Code Sync publishes login CSS; the
+booth shell, assets and icon endpoint require a separate Worker deployment.
+
 ## Approved scope
 
 `/booth` requires staff setup through `/login?staff&redirect=%2Fbooth`, then
@@ -149,7 +214,7 @@ pending/failed selection, access/CSS gating, responsive return controls, stable
 preview loading, concurrent downloads and reduced motion. These changes are
 included in the 13:48 UTC Worker rollout below.
 
-### Entry seam and compact controls (branch, not deployed)
+### Entry seam and compact controls (October 8, deployed)
 
 The Entry backing changes from dark to white at the hero's lower edge, retaining
 the dark rounded-notch corners but eliminating the fractional-pixel gray seam
@@ -165,9 +230,14 @@ The authorized stylesheet owns menu presentation and upgrades older controls
 without duplicating timers or padding. Hidden picker/status elements stay hidden.
 
 Entry assets now use `booth-final-figma-4`; Worker injection and the origin
-lazy import both use `booth-controls-1`. These revisions require review,
-merge and a matching Worker deployment; the rollout recorded below remains
-the previous deployed version. The synthetic local browser regression is
+lazy import both use `booth-controls-1`. These revisions were deployed from
+merged main `d2752a61d40b42e9632cbf3fad135cef73e6fa35` (PR #165) on October 8
+at 14:07 UTC. Worker version `1af6ce7f-89d2-4a92-bc64-08c57fd344e7` serves
+100% of traffic, superseding `d7fe9620-1e83-4354-825b-bd8292efd450`.
+Live Entry/report JS and CSS, loading CSS and origin `scripts/lazy.js` match
+merged source byte-for-byte; unauthenticated `/booth` remains staff-gated
+with a private, no-store redirect. Close old report tabs and reload the kiosk.
+The synthetic local browser regression is
 `test/fixtures/booth-controls-browser.js` (2160×3840, 1080×1920, 390×844 and
 screenshot-pixel verification at DPR 0.4). No real lookup or email is performed.
 

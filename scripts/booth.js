@@ -177,9 +177,50 @@ export function mountBooth(root = document) {
       options.replaceChildren();
       result.candidates.forEach((candidate) => {
         const button = root.createElement('button');
-        button.className = 'primary';
+        button.className = 'report-option';
         button.type = 'button';
-        button.textContent = candidate.label;
+        const icon = root.createElement('span');
+        icon.className = 'report-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        if (['unity.com', 'www.unity.com'].includes(candidate.websiteHost)) {
+          icon.classList.add('report-icon-unity');
+        }
+        const fallback = root.createElement('img');
+        fallback.className = 'report-icon-fallback';
+        fallback.src = '/img/icons/globe.svg';
+        fallback.alt = '';
+        fallback.width = 64;
+        fallback.height = 64;
+        const image = root.createElement('img');
+        image.className = 'report-site-icon';
+        image.alt = '';
+        image.width = 64;
+        image.height = 64;
+        image.hidden = true;
+        image.referrerPolicy = 'no-referrer';
+        const iconRevision = revision;
+        image.addEventListener('load', () => {
+          if (iconRevision !== revision) return;
+          image.hidden = false;
+          fallback.hidden = true;
+          icon.classList.remove('report-icon-loading');
+        }, { once: true });
+        image.addEventListener('error', () => {
+          if (iconRevision !== revision) return;
+          icon.classList.remove('report-icon-loading');
+          icon.title = 'Website icon unavailable';
+          // eslint-disable-next-line no-console
+          console.warn('[booth] Website icon unavailable; report selection is still available.');
+        }, { once: true });
+        if (candidate.websiteHost) {
+          icon.classList.add('report-icon-loading');
+          image.src = `/auth/booth/icon?path=${encodeURIComponent(candidate.path)}`;
+        } else icon.title = 'Website icon unavailable';
+        icon.append(fallback, image);
+        const label = root.createElement('span');
+        label.className = 'report-label';
+        label.textContent = candidate.label;
+        button.append(icon, label);
         button.addEventListener('click', async () => {
           if (busy || resetting || !ready) return;
           busy = true;

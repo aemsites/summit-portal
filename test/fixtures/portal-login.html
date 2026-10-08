@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local portal login fixture</title>
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/styles/fonts.css">
+  <link rel="stylesheet" href="/blocks/portal-login/portal-login.css">
+  <script type="module">
+    import init from '/blocks/portal-login/portal-login.js';
+    init(document.querySelector('.portal-login'));
+  </script>
+</head>
+<body>
+  <main>
+    <div class="section">
+      <div class="default-content">
+        <h1>Insights Portal Login</h1>
+        <p>Welcome to the Adobe Insights Portal. Log in with one of the two options to get your brand visibility report.</p>
+      </div>
+      <div class="block-content">
+        <div class="portal-login">
+          <div>
+            <div><h3>Adobe ID</h3><p><strong><a href="/auth/portal">Login with Adobe ID</a></strong></p></div>
+            <div><h3>One Time Login</h3></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -13,6 +13,7 @@ import {
 } from './booth-activity.js';
 import createBoothTiming from './booth-timing.js';
 import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
+import { websiteHost, fetchWebsiteIcon } from './booth-icons.js';
 
 const TTL = 15 * 60;
 const COOKIE = 'booth_context';
@@ -181,6 +182,7 @@ export async function discoverReports(
           ? row.Customers.trim().slice(0, 240) : path.split('/')[3],
         label: [row.Customers, row.Report].filter((text) => typeof text === 'string' && text.trim())
           .join(' — ').slice(0, 240) || website,
+        websiteHost: websiteHost(row.Report),
         portal: path.endsWith('/portal-landing/'),
         created: created(row.Created),
         grantGroups: matchGroups(path).filter((group) => matchesCugGroup(group, email)),
@@ -203,6 +205,7 @@ export async function discoverReports(
       path,
       label,
       company,
+      websiteHost: host,
       grantGroups,
       org,
       resourceAuthorized,
@@ -210,9 +213,62 @@ export async function discoverReports(
       path,
       label,
       company,
+      ...(host ? { websiteHost: host } : {}),
       ...(grants ? { grantGroups, org, resourceAuthorized: !!resourceAuthorized } : {}),
     }));
   });
+}
+
+async function pickerIcon(request, stub, env, timing) {
+  const url = new URL(request.url);
+  const path = url.searchParams.get('path');
+  if (!path || reportPath(path) !== path || url.searchParams.size !== 1) {
+    return reply({ error: 'Choose an authorized report icon.' }, 400);
+  }
+  const snapshotRequest = new Request(new URL('/auth/booth/icon-context', request.url), { headers: { Cookie: request.headers.get('Cookie') || '' } });
+  const authorize = async () => {
+    const response = await stub.fetch(snapshotRequest.clone());
+    if (!response.ok) return null;
+    const context = await response.json();
+    if (context.expiresAt <= Date.now()
+      || !context.candidates.some((item) => item.path === path)) return null;
+    // Network revalidation stays outside the actor queue; selection/reset must not wait for icons.
+    const reports = await discoverReports(context.email, env, timing);
+    const candidate = reports.find((item) => item.path === path);
+    if (!candidate) return null;
+    const latest = await stub.fetch(snapshotRequest.clone());
+    if (!latest.ok) return null;
+    const active = await latest.json();
+    if (active.visitKey !== context.visitKey || active.expiresAt <= Date.now()) return null;
+    return { ...candidate, visitKey: context.visitKey };
+  };
+  let before;
+  try {
+    before = await authorize();
+  } catch (error) {
+    discoveryFailure(error);
+    return reply({ error: 'Report icon authorization cannot be checked right now.' }, 502);
+  }
+  if (!before) return reply({ error: 'Report icon is no longer authorized.' }, 403);
+  if (!before.websiteHost) return reply({ error: 'Website icon is unavailable.' }, 404);
+  let icon;
+  try {
+    icon = await fetchWebsiteIcon(before.websiteHost);
+  } catch (error) {
+    operationalError(`Website icon unavailable: ${error.message}`);
+    return reply({ error: 'Website icon is unavailable.' }, 404);
+  }
+  let after;
+  try {
+    after = await authorize();
+  } catch (error) {
+    discoveryFailure(error);
+    return reply({ error: 'Report icon authorization cannot be checked right now.' }, 502);
+  }
+  if (!after || after.websiteHost !== before.websiteHost || after.visitKey !== before.visitKey) {
+    return reply({ error: 'Report icon is no longer authorized.' }, 403);
+  }
+  return new Response(icon.body, { headers: { ...ASSET_HEADERS, 'Content-Type': icon.type } });
 }
 
 export async function handleBooth(request, env) {
@@ -226,11 +282,11 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
+  if (!['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
     || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
-  if (request.method !== (['status', 'demos'].includes(action) ? 'GET' : 'POST')) {
+  if (request.method !== (['status', 'icon', 'demos'].includes(action) ? 'GET' : 'POST')) {
     return finish(reply({ error: 'Method not allowed' }, 405));
   }
   if (request.method === 'POST' && (request.headers.get('Origin') !== new URL(request.url).origin
@@ -240,8 +296,10 @@ export async function handleBooth(request, env) {
   if (!env.BOOTH_COORDINATOR) return finish(reply({ error: 'Booth service is not configured' }, 503));
   if (action === 'demos') return finish(reply({ demos: BOOTH_DEMOS }));
   if (action === 'status' && !contextId(request)) return finish(reply({ state: 'entry', canChooseAnother: false }));
+  if (action === 'icon' && !contextId(request)) return finish(reply({ error: 'Report icon is no longer authorized.' }, 403));
   const id = contextId(request) || crypto.randomUUID();
   const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
+  if (action === 'icon') return finish(await pickerIcon(request, stub, env, timing));
   const upstream = await timing.measure('booth_rpc', () => stub.fetch(request));
   const response = new Response(upstream.body, upstream);
   const maxAge = ['reset', 'exit'].includes(action) && response.ok ? 0 : TTL;
@@ -424,7 +482,7 @@ export class BoothCoordinator {
       return reply({ error: 'Staff authentication required' }, 401);
     }
     const binding = await staffBinding(request, this.env);
-    if (!['status', 'authorize', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'].includes(action)) {
+    if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     let record = await storage.get('context');
@@ -445,7 +503,7 @@ export class BoothCoordinator {
     }
     let body;
     let activityAt;
-    if (!['status', 'authorize'].includes(action)) {
+    if (!['status', 'authorize', 'icon-context'].includes(action)) {
       try {
         body = await request.json();
         if (!body || Array.isArray(body) || typeof body !== 'object') throw new Error('Invalid body');
@@ -531,6 +589,15 @@ export class BoothCoordinator {
     if (record?.key && !data) {
       await this.clear(record, timing);
       return reply({ error: 'Booth context expired. Start again.' }, 410);
+    }
+    if (action === 'icon-context') {
+      if (!record || record.selectedPath) return reply({ error: 'An active report picker is required.' }, 403);
+      return reply({
+        email: data.email,
+        candidates: data.candidates,
+        visitKey: record.key,
+        expiresAt: record.expiresAt,
+      });
     }
     if (['status', 'authorize', 'picker', 'activity'].includes(action)) {
       if (!record) {

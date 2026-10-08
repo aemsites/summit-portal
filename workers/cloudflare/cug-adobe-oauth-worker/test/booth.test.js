@@ -78,6 +78,7 @@ describe('booth isolated context', () => {
     expect((await request('reset', {}, { 'Content-Type': 'text/plain' })).status).toBe(403);
     expect((await request('send')).status).toBe(405);
     expect((await request('other', {})).status).toBe(404);
+    expect((await request('icon-context')).status).toBe(404);
     env.BOOTH_COORDINATOR = null;
     expect((await request('status')).status).toBe(503);
   });
@@ -91,6 +92,107 @@ describe('booth isolated context', () => {
     expect(response.headers.get('Set-Cookie')).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...env.SESSIONS.store.values()].join()).toContain('visitor@example.com');
+  });
+
+  it('staff-gates icons and binds them to fresh authorized picker candidates without renewing expiry', async () => {
+    data['/data/insights-list.json'].push({ ...data['/data/insights-list.json'][0], Folder: second, Report: 'example.org' });
+    const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+    expect(lookup.candidates[0].websiteHost).toBe('example.com');
+    const originFetch = globalThis.fetch.getMockImplementation();
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, options) => (
+      new URL(url).hostname === 'example.com' ? new Response(png) : originFetch(url, options)
+    ));
+    const action = `icon?path=${encodeURIComponent(path)}`;
+    expect((await request(action, undefined, { Cookie: '' })).status).toBe(401);
+    expect((await request('icon?path=https://evil.example/')).status).toBe(400);
+    expect((await request(`icon?path=${encodeURIComponent('/accounts/x/no-access/insights/no-access/portal-landing/')}`)).status).toBe(403);
+    const icon = await request(action);
+    expect(icon.status).toBe(200);
+    expect(icon.headers.get('Content-Type')).toBe('image/png');
+    expect(icon.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(icon.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(icon.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(new Uint8Array(await icon.arrayBuffer())).toEqual(png);
+    const external = vi.mocked(globalThis.fetch).mock.calls.filter(([url]) => new URL(url).hostname === 'example.com');
+    expect(external).toHaveLength(1);
+    expect(external[0][1].headers).toEqual({ Accept: 'image/*', 'Cache-Control': 'no-store' });
+    expect((await state.storage.get('context')).expiresAt).toBe(lookup.expiresAt);
+    data['/closed-user-groups-mapping.json'] = [];
+    expect((await request(action)).status).toBe(403);
+    expect(vi.mocked(globalThis.fetch).mock.calls.filter(([url]) => new URL(url).hostname === 'example.com')).toHaveLength(1);
+  });
+
+  it('does not let a stalled favicon block selection, and discards bytes after leaving the picker', async () => {
+    data['/data/insights-list.json'].push({ ...data['/data/insights-list.json'][0], Folder: second, Report: 'example.org' });
+    await request('lookup', { email: 'visitor@example.com' });
+    const originFetch = globalThis.fetch.getMockImplementation();
+    let release;
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, options) => (
+      new URL(url).hostname === 'example.com' ? new Promise((resolve) => { release = resolve; }) : originFetch(url, options)
+    ));
+    const pending = request(`icon?path=${encodeURIComponent(path)}`);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    const selected = await (await request('select', { path })).json();
+    expect(selected.selectedPath).toBe(path);
+    release(new Response(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])));
+    expect((await pending).status).toBe(403);
+    expect((await request(`icon?path=${encodeURIComponent(path)}`)).status).toBe(403);
+    await request('reset', {});
+    expect((await request(`icon?path=${encodeURIComponent(path)}`)).status).toBe(403);
+  });
+
+  it('uses the approved design icons and never turns arbitrary report labels into fetch hosts', async () => {
+    data['/data/insights-list.json'][0].Report = 'amazon.com';
+    data['/data/insights-list.json'].push({ ...data['/data/insights-list.json'][0], Folder: second, Report: '<img src=x>' });
+    const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
+    expect(lookup.candidates[1]).not.toHaveProperty('websiteHost');
+    const calls = globalThis.fetch.mock.calls.length;
+    const icon = await request(`icon?path=${encodeURIComponent(path)}`);
+    expect(icon.status).toBe(200);
+    expect(icon.headers.get('Content-Type')).toBe('image/svg+xml');
+    expect(await icon.text()).toContain('<svg');
+    expect(globalThis.fetch.mock.calls.length - calls).toBe(6);
+    expect((await request(`icon?path=${encodeURIComponent(second)}`)).status).toBe(404);
+  });
+
+  it('keeps stalled icon discovery outside the selection queue and rechecks the visit afterward', async () => {
+    data['/data/insights-list.json'][0].Report = 'amazon.com';
+    data['/data/insights-list.json'].push({ ...data['/data/insights-list.json'][0], Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    const originFetch = globalThis.fetch.getMockImplementation();
+    let release;
+    let blocked = false;
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, options) => {
+      if (!blocked && new URL(url).pathname === '/data/insights-list.json') {
+        blocked = true;
+        await new Promise((resolve) => { release = resolve; });
+      }
+      return originFetch(url, options);
+    });
+    const pending = request(`icon?path=${encodeURIComponent(path)}`);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    const selected = await (await request('select', { path })).json();
+    expect(selected.selectedPath).toBe(path);
+    release();
+    expect((await pending).status).toBe(403);
+  });
+
+  it('discards downloaded icons when reset starts another visitor with the same candidate', async () => {
+    data['/data/insights-list.json'].push({ ...data['/data/insights-list.json'][0], Folder: second });
+    await request('lookup', { email: 'visitor@example.com' });
+    const originFetch = globalThis.fetch.getMockImplementation();
+    let release;
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, options) => (
+      new URL(url).hostname === 'example.com'
+        ? new Promise((resolve) => { release = resolve; }) : originFetch(url, options)
+    ));
+    const pending = request(`icon?path=${encodeURIComponent(path)}`);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    await request('reset', {});
+    await request('lookup', { email: 'another@example.com' });
+    release(new Response(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])));
+    expect((await pending).status).toBe(403);
   });
 
   it('uses a fifteen-minute inactivity expiry and refreshes KV, cookies and alarm only for visitor input', async () => {
@@ -330,7 +432,7 @@ describe('booth isolated context', () => {
       { Folder: '/adobe/data/customer/other/', Report: 'Internal' },
       { Folder: '/accounts/e/example/insights/example-com/', Created: '3.10.2026' },
     );
-    expect(await discoverReports('visitor@example.com', env)).toEqual([{ path, label: 'Example — example.com', company: 'Example' }]);
+    expect(await discoverReports('visitor@example.com', env)).toEqual([{ path, label: 'Example — example.com', company: 'Example', websiteHost: 'example.com' }]);
     expect(await discoverReports('operator@adobe.com', env)).toEqual([]);
     expect(await discoverReports('nobody@unknown.example', env)).toEqual([]);
   });
