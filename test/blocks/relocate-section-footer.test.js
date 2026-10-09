@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import decorateScores from '../../blocks/report-scores/report-scores.js';
 import decorateCallout from '../../blocks/report-callout/report-callout.js';
+import decorateStats from '../../blocks/report-stats/report-stats.js';
 import {
   relocateAllSectionFooters,
   scheduleRelocateSectionFooter,
@@ -88,5 +89,51 @@ describe('performance section footer decoration order', () => {
     expect([...scores.children]).to.deep.equal(rows);
     expect(callout.parentElement.className).to.equal('block-content');
     expect(source.parentElement.className).to.equal('section');
+  });
+
+  for (const early of [true, false]) {
+    it(`retains the original stats callout and source when relocation runs ${early ? 'before' : 'after'} stats decoration`, async () => {
+      const stats = document.querySelector('.report-scores');
+      stats.className = 'report-stats dark';
+      stats.innerHTML = '<div><div>AI Visibility</div><div>61/100</div><div>positive</div><div>Improved</div><div>Original insight.</div></div>';
+      const callout = document.querySelector('.report-callout');
+      const source = document.querySelector('.default-content');
+      const clicked = sinon.spy();
+      callout.addEventListener('click', clicked);
+      decorateCallout(callout);
+      if (early) {
+        flushFrames();
+        relocateAllSectionFooters();
+        expect(stats.contains(callout)).to.equal(true);
+      }
+      await decorateStats(stats);
+      flushFrames();
+      relocateAllSectionFooters();
+      expect(stats.querySelectorAll('.rs-dark-card')).to.have.length(1);
+      expect(stats.contains(callout)).to.equal(true);
+      expect(stats.contains(source)).to.equal(true);
+      expect(document.querySelectorAll('.report-callout')).to.have.length(1);
+      expect(callout.textContent).to.include('Keep this authentic callout.');
+      callout.click();
+      expect(clicked.calledOnce).to.equal(true);
+    });
+  }
+
+  it('retains a footer relocated while insight stats await their stylesheet', async () => {
+    const stats = document.querySelector('.report-scores');
+    stats.className = 'report-stats';
+    stats.innerHTML = '<div><div>AI Visibility</div><div>61/100</div><div>positive</div><div>Improved</div><div>Original insight.</div></div>';
+    const callout = document.querySelector('.report-callout');
+    const source = document.querySelector('.default-content');
+    decorateCallout(callout);
+    const decoration = decorateStats(stats);
+    flushFrames();
+    relocateAllSectionFooters();
+    expect(stats.contains(callout)).to.equal(true);
+    await decoration;
+    flushFrames();
+    expect(stats.contains(callout)).to.equal(true);
+    expect(stats.contains(source)).to.equal(true);
+    expect(stats.querySelectorAll('.rav-stat-card')).to.have.length(1);
   });
 });

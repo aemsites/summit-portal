@@ -74,7 +74,10 @@ async function markedDocument(html, context) {
     .replace('</body>', `</div>${recovery}</body>`);
 }
 
-function simulatorDocument(html) {
+function simulatorDocument(html, url) {
+  if (url.searchParams.getAll('touchscreen').length === 1 && url.searchParams.get('touchscreen') === 'frame') {
+    return html.replace('<head>', '<head><script src="/scripts/booth-touchscreen-device.js"></script>');
+  }
   return simulator ? html.replace('<head>', '<head><script src="/test/fixtures/booth-touchscreen-device.js"></script>') : html;
 }
 
@@ -91,7 +94,10 @@ const server = createServer(async (request, response) => {
     }
   }
   if (preview && path === '/') path = '/test/fixtures/booth-touchscreen.html';
-  if (path === '/booth' || path === '/content/index') path = '/booth.html';
+  if (path === '/booth' || path === '/content/index') {
+    path = url.searchParams.getAll('touchscreen').length === 1 && url.searchParams.get('touchscreen') === '1'
+      ? '/booth-touchscreen.html' : '/booth.html';
+  }
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
@@ -258,7 +264,7 @@ const server = createServer(async (request, response) => {
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const context = fixtureContext(request, response);
-    response.end(simulatorDocument(await markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context)));
+    response.end(simulatorDocument(await markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context), url));
     return;
   }
   if (preview && path === '/request-report') {
@@ -278,7 +284,7 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     const context = preview ? fixtureContext(request, response) : null;
-    response.end(simulatorDocument(context ? await markedDocument(html, context) : html));
+    response.end(simulatorDocument(context ? await markedDocument(html, context) : html, url));
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);
@@ -290,7 +296,7 @@ const server = createServer(async (request, response) => {
   try {
     const bytes = await readFile(file);
     response.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream' });
-    if (path === '/booth.html') response.end(simulatorDocument(bytes.toString()));
+    if (path === '/booth.html') response.end(simulatorDocument(bytes.toString(), url));
     else if (path === '/test/fixtures/booth-touchscreen.html') {
       response.end(bytes.toString().replace('<body>', `<body data-simulator="${simulator}">`));
     } else response.end(bytes);

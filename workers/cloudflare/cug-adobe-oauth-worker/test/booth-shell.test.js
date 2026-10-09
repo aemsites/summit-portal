@@ -101,7 +101,7 @@ describe('bundled booth shell and exact report injection', () => {
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
     }
     const unchanged = await serveBooth(new Request('https://portal.example/scripts/booth-presentation.js'), env);
-    expect(unchanged.headers.has('Cache-Control')).toBe(false);
+    expect(unchanged.headers.get('Cache-Control')).toBe('no-cache');
     const preview = await serveBooth(new Request('https://portal.example/scripts/booth-preview.js'), env);
     expect(await preview.text()).toContain("import('../blocks/report-ai-visibility/rav-core.js?v=booth-preview-bars-1')");
   });
@@ -124,6 +124,40 @@ describe('bundled booth shell and exact report injection', () => {
       ['brand', 'semrush'],
     ]);
     expect(response.headers.has('Set-Cookie')).toBe(false);
+  });
+
+  it('requires staff for the live frame and preserves only a single opt-in through top-level sign-in', async () => {
+    for (const mode of ['1', 'frame']) {
+      const anonymous = await serveBooth(new Request(`https://portal.example/booth?touchscreen=${mode}&step=finish&email=private`), env);
+      expect(anonymous.status).toBe(302);
+      expect(anonymous.headers.get('Location')).toBe('/login?staff&redirect=%2Fbooth%3Ftouchscreen%3D1');
+    }
+    for (const query of ['touchscreen=yes', 'touchscreen=1&touchscreen=frame']) {
+      const response = await serveBooth(new Request(`https://portal.example/booth?${query}`), env);
+      expect(response.headers.get('Location')).toBe('/login?staff&redirect=%2Fbooth');
+    }
+  });
+
+  it('bundles a minimal frame only for opted-in authorized staff; inner and ordinary booth share the shell', async () => {
+    const request = (query) => new Request(`https://portal.example/booth${query}`, { headers: { Cookie: cookie } });
+    const ordinary = await (await serveBooth(request(''), env)).text();
+    const framed = await (await serveBooth(request('?touchscreen=frame'), env)).text();
+    const outer = await serveBooth(request('?touchscreen=1'), env);
+    const wrapper = await outer.text();
+    expect(wrapper).toContain('id="booth-screen"');
+    expect(wrapper).not.toContain('id="email-form"');
+    expect(wrapper).not.toMatch(/test\/fixtures|data-email|show-entry|show-finish|settings/i);
+    expect(outer.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(framed.replace('<script src="/scripts/booth-touchscreen-device.js"></script>', '')).toBe(ordinary);
+    expect(framed.indexOf('booth-touchscreen-device.js')).toBeLessThan(framed.indexOf('src="/scripts/booth.js'));
+    expect(await (await serveBooth(request('?touchscreen=1&touchscreen=frame'), env)).text()).toBe(ordinary);
+    for (const path of ['/scripts/booth-touchscreen.js', '/scripts/booth-touchscreen-device.js', '/styles/booth-touchscreen.css']) {
+      const asset = await serveBooth(new Request(`https://portal.example${path}`), env);
+      expect(asset.headers.get('Cache-Control')).toBe('no-cache');
+      expect(asset.headers.get('X-Content-Type-Options')).toBe('nosniff');
+      expect(asset.headers.get('Content-Type')).toBe(path.endsWith('.css') ? 'text/css' : 'text/javascript');
+      expect((await serveBooth(new Request(`https://portal.example${path}`, { method: 'HEAD' }), env)).body).toBeNull();
+    }
   });
 
   it.each([
@@ -290,6 +324,11 @@ describe('production booth stylesheet packaging', () => {
       const source = await readFile(new URL('../../../../styles/booth-loading.css', import.meta.url), 'utf8');
       expect(await readFile(join(directory, stylesheet), 'utf8')).toBe(source);
       expect(await readFile(join(directory, 'index.js'), 'utf8')).toContain(stylesheet);
+      for (const name of ['booth-touchscreen.html', 'booth-touchscreen.js', 'booth-touchscreen-device.js', 'booth-touchscreen.css']) {
+        const asset = files.find((file) => file.endsWith(`-${name}`));
+        expect(asset, `Missing production presentation asset ${name}`).toBeDefined();
+      }
+      expect(files.some((name) => name.includes('fixture'))).toBe(false);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

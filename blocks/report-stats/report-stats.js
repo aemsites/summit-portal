@@ -538,31 +538,26 @@ function ensureCannesStatsPanelsOuter(el) {
 }
 
 export default async function init(el) {
-  // Only the AUTHORED stat rows. Blocks in a section load in parallel, so a
-  // sibling report-callout's footer may already have been relocated INTO this
-  // block (see relocate-section-footer.js) before we run — never treat that as
-  // a stat row, or the at-a-glance callout renders as a stray KPI card on first
-  // load (it self-corrects on refresh once the relocate runs after build).
-  const rows = [...el.querySelectorAll(':scope > div')].filter(
-    (row) => !row.classList.contains('report-callout')
-      && !row.classList.contains('rpt-widget-footer')
-      && !row.classList.contains('rav-panels-outer'),
-  );
+  const insight = !el.classList.contains('dark') && isInsightReportPage();
+  if (insight) {
+    await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
+  }
+  // Sibling decoration can relocate footers here, including during loadStyle.
+  // Keep the original nodes separate from authored stats across the rebuild.
+  const footers = [...el.children].filter((row) => row.matches('.report-callout, .rpt-widget-footer, .rav-panels-outer'));
+  const rows = [...el.querySelectorAll(':scope > div')].filter((row) => !footers.includes(row));
 
   if (el.classList.contains('dark')) {
     buildDarkStats(el, rows);
-    // Re-run footer relocation AFTER the strip is built. buildDarkStats clears
-    // el (textContent = ''), which would wipe a callout relocated in before us;
-    // scheduling here guarantees the at-a-glance banner lands under the strip
-    // regardless of block-load order.
+    el.append(...footers);
     scheduleRelocateSectionFooter(el);
     return;
   }
 
-  if (isInsightReportPage()) {
-    await loadStyle(`${getConfig().codeBase}/blocks/report-ai-visibility/report-ai-visibility.css`);
+  if (insight) {
     el.textContent = '';
     el.append(buildInsightStatsStrip(rows));
+    el.append(...footers);
     ensureCannesStatsPanelsOuter(el);
     scheduleRelocateSectionFooter(el);
     return;
@@ -595,6 +590,6 @@ export default async function init(el) {
   });
 
   el.textContent = '';
-  el.append(grid);
+  el.append(grid, ...footers);
   scheduleRelocateSectionFooter(el);
 }

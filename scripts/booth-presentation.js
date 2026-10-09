@@ -9,11 +9,14 @@ export function readBoothPresentation(search = '') {
     && !/[\p{C}\p{Zl}\p{Zp}<>]/u.test(value);
   const brand = params.getAll('brand').length === 1 && params.get('brand') === 'semrush'
     ? 'semrush' : 'adobe';
+  const touchscreen = params.getAll('touchscreen').length === 1
+    && ['1', 'frame'].includes(params.get('touchscreen')) ? params.get('touchscreen') : '';
   return {
     heading: validHeading ? heading : '',
     brand,
     entry: '3',
     finish: '6',
+    ...(touchscreen ? { touchscreen } : {}),
   };
 }
 
@@ -27,8 +30,18 @@ export function withBoothPresentation(path, presentation) {
   }
   if (presentation.heading) params.set('heading', presentation.heading);
   if (presentation.brand === 'semrush') params.set('brand', 'semrush');
+  if (['1', 'frame'].includes(presentation.touchscreen)) params.set('touchscreen', presentation.touchscreen);
+  if (pathname === '/booth' && new URLSearchParams(query).get('recover') === '1') params.set('recover', '1');
   const search = params.toString();
   return `${pathname}${search ? `?${search}` : ''}`;
+}
+
+export function boothStaffLogin(presentation) {
+  const setup = {
+    ...presentation,
+    ...(presentation.touchscreen ? { touchscreen: '1' } : {}),
+  };
+  return `/login?staff&redirect=${encodeURIComponent(withBoothPresentation('/booth', setup))}`;
 }
 
 export function applyBoothPresentation(root, presentation) {
@@ -40,6 +53,6 @@ export function applyBoothPresentation(root, presentation) {
   if (heading) heading.textContent = presentation.heading || defaultHeading;
   const login = root.getElementById('staff-login');
   if (login) {
-    login.href = `/login?staff&redirect=${encodeURIComponent(withBoothPresentation('/booth', presentation))}`;
+    login.href = boothStaffLogin(presentation);
   }
 }
