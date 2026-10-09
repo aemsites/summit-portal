@@ -5,7 +5,7 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
-## Same-hostname portal isolation (October 9, not deployed)
+## Same-hostname portal isolation (October 9, deployed)
 
 José approved removing the browser-wide booth lock, not adding a separate
 hostname. Ordinary page, guide, report and asset links now use normal portal
@@ -40,13 +40,13 @@ touchscreen must use a **dedicated browser profile without a portal sign-in**
 and managed browser/OS kiosk settings. Multiple booth tabs still share one
 attendee visit. Existing private guide payloads/screenshots are unchanged.
 The browser-wide behavior described in historical deployment sections below is
-superseded by this change only after rollout.
+superseded by the coordinated October 9 renewal/isolation rollout below.
 
-Publish the changed origin frontend (especially the explicit staff-login intent)
-and deploy the matching Worker/bundled runtime as a coordinated release, then
-reload old booth/login/report tabs. Do not treat AEM Code Sync alone as deployment
-of this routing fix. No hostname, binding, secret, schema or migration changes
-are required. Production deployment remains a separate approval boundary.
+The changed origin frontend, including explicit staff-login intent, matched
+merged main before deploying the Worker/bundled runtime. Reload old
+booth/login/report tabs and reopen the booth so report URLs use explicit mode.
+AEM Code Sync alone is not a Worker deployment. No hostname, binding, secret,
+schema or migration changes were needed.
 
 ## Portrait staff setup (merged, live)
 
@@ -328,7 +328,7 @@ Expired/reset visits cannot be revived. Manual clear/history safeguards and
 the **four-day staff login** are unchanged. The Worker and matching bundled
 assets were deployed together at 13:48 UTC; close old report tabs and reload.
 
-**Renewal refinement (October 9, review branch; not deployed):**
+**Renewal refinement (October 9, deployed):**
 real input is reported only when three minutes remain before the confirmed
 expiry, normally twelve minutes into a fresh fifteen-minute session.
 Report/shell verification is not visitor activity. Successful renewals do not
@@ -344,15 +344,27 @@ be parsed; no client-only authorization extension or silent-success fallback
 is introduced. Initial verification and lookup/send/reset failures retain their
 existing recovery and delivery semantics.
 
-The shared helper and changed shell/report assets require a matching Worker
-deployment before this behavior is live. Unit/integration regressions cover
+The shared helper and changed shell/report assets were deployed together.
+Unit/integration regressions cover
 timing, transient fetch/body failures, denied/malformed responses, expired/late
 results, passive boot, Finish preservation and concurrent reset waiting.
 `test/fixtures/booth-renewal-browser.js` verifies the real touchscreen frame
 against public sample markup and local synthetic access: a 502 leaves reading
 and Finish available, and the scheduled retry recovers without clearing.
-Review branch: `josec-adobe-booth-renewal-recovery`. It incorporates current
-main's explicit booth/portal isolation contract; deployment remains separate.
+Review branch `josec-adobe-booth-renewal-recovery` was merged in PR #176.
+The coordinated rollout also includes PR #175's booth/portal isolation.
+
+**Production rollout, October 9 at 23:33 UTC:** exact merged main
+`333b91c38a9fcd338ab39c5d746aa9d9445f8e0a` deployed to `summit-portal` as
+`ed1309ca-c719-4425-a428-2ac4a1eea51b`, receiving 100% of traffic.
+Five required origin modules matched before activation; eight bundled assets
+matched afterward, including the five changed renewal JS/CSS files with
+revalidation. Staff-gated booth entry and ordinary-report sign-in separation
+were confirmed with read-only requests, including a legacy kiosk marker.
+Existing variables/secrets/bindings are preserved; no migrations, private data
+uploads or attendee actions were performed. Close old report/login tabs and
+reopen `/booth?touchscreen=1`; refreshing an old unmarked report URL uses normal
+portal authorization, not the booth.
 
 **Security hardening is deployed; see the October 8 rollout below.** Dashboard navigation cannot exit
 booth restrictions. Staff administration uses a **separate browser/device**.
