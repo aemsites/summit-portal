@@ -30,7 +30,7 @@ export default async function verifyBoothRenewal(page, root = 'http://localhost:
     const path = visit.selectedPath;
     visit.expiresAt = Date.now() + 120000;
     await context.route(`${root}/auth/booth/status*`, (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(visit) }));
-    const template = await (await context.request.get(root + path)).text();
+    const template = await (await context.request.get(`${root}${path}?booth=1`)).text();
     const safety = template.match(/<style id="booth-report-concealment">[\s\S]*?<\/style>/)?.[0];
     const recovery = template.match(/<aside id="booth-recovery">[\s\S]*?<\/aside><noscript>[\s\S]*?<\/noscript>/)?.[0];
     if (!safety || !recovery) throw new Error('Missing Worker concealment contract.');
