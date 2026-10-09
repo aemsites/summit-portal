@@ -82,16 +82,26 @@ describe('Adobe employee booth guide', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('keeps every guide route unavailable in booth-restricted browsers', async () => {
+  it('keeps explicit booth requests out of every guide route', async () => {
     for (const auth of ['booth_kiosk=1', await createMockBoothCookie(env)]) {
       for (const path of [PATH, DATA, IMAGE]) {
-        const response = await worker.fetch(request(path, 'GET', auth), env);
+        const response = await worker.fetch(request(`${path}?booth=1`, 'GET', auth), env);
         expect(response.status).toBe(302);
         expect(response.headers.get('Location')).toBe('/booth');
       }
     }
     expect(storage).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('lets normal guide requests use Adobe OAuth alongside existing booth cookies', async () => {
+    for (const booth of ['booth_kiosk=1', await createMockBoothCookie(env)]) {
+      for (const path of [PATH, DATA, IMAGE]) {
+        const response = await worker.fetch(request(path, 'GET', `${cookie}; ${booth}`), env);
+        expect(response.status).toBe(200);
+        expect(response.headers.has('Location')).toBe(false);
+      }
+    }
   });
 
   it('does not proxy alternate formats, unknown images, stale revisions or path lookalikes', async () => {

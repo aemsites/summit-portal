@@ -84,6 +84,7 @@ function simulatorDocument(html, url) {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
   let path = url.pathname;
+  const boothDocument = url.searchParams.has('booth') || url.searchParams.get('touchscreen') === 'frame';
   response.setHeader('Cache-Control', 'no-store');
   if (preview && (path === '/booth' || path === '/content/index')) {
     const context = fixtureContext(request, response);
@@ -264,16 +265,18 @@ const server = createServer(async (request, response) => {
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const context = fixtureContext(request, response);
-    response.end(simulatorDocument(await markedDocument(html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`), context), url));
+    const report = html.replace('Example prepared report — test fixture', `${demo.company} — local demo fixture`);
+    response.end(boothDocument
+      ? simulatorDocument(await markedDocument(report, context), url) : report);
     return;
   }
-  if (preview && path === '/request-report') {
+  if (preview && path === '/request-report' && boothDocument) {
     response.writeHead(302, { Location: '/booth' });
     response.end();
     return;
   }
   if (path.startsWith('/accounts/')) {
-    if (preview) {
+    if (preview && boothDocument) {
       const context = fixtureContext(request, response);
       if (context.state !== 'report' || context.selectedPath !== path) {
         response.writeHead(302, { Location: '/booth' });
@@ -283,8 +286,8 @@ const server = createServer(async (request, response) => {
     }
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     const html = await readFile(resolve(root, 'test/fixtures/booth-preview-report.html'), 'utf8');
-    const context = preview ? fixtureContext(request, response) : null;
-    response.end(simulatorDocument(context ? await markedDocument(html, context) : html, url));
+    const context = preview && boothDocument ? fixtureContext(request, response) : null;
+    response.end(context ? simulatorDocument(await markedDocument(html, context), url) : html);
     return;
   }
   const file = resolve(root, `.${decodeURIComponent(path)}`);

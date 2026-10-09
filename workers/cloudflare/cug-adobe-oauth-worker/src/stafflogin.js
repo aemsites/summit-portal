@@ -1,6 +1,6 @@
 import {
   createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL,
-  hasBoothBoundary, boothSessionCookies, clearSessionCookie, clearSignedInMarkerCookie,
+  hasBoothBoundary, boothSessionCookies,
 } from './session.js';
 import { jsonResponse } from './magiclink.js';
 import { resetBeforeBoothLogin } from './booth.js';
@@ -55,7 +55,7 @@ export function parseCredentials(env) {
 }
 
 /**
- * Staff credentials. POST { username, password, action?: 'exit-booth' }.
+ * Staff credentials. POST { username, password, action?: 'booth-login' | 'exit-booth' }.
  *
  * Verifies against the EVENT_STAFF_CREDENTIALS secret and, on success, mints a
  * full 4-day staff session (groups adobe.com + semrush.com → opens every
@@ -75,18 +75,20 @@ export async function handleStaffLoginRequest(request, env) {
   let username;
   let password;
   let exitBooth = false;
+  let boothLogin = false;
   try {
     const body = await request.json();
     username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     password = typeof body.password === 'string' ? body.password : '';
     exitBooth = body.action === 'exit-booth';
-    if (body.action !== undefined && !exitBooth) {
+    boothLogin = body.action === 'booth-login';
+    if (body.action !== undefined && !exitBooth && !boothLogin) {
       return reply({ error: 'Unsupported staff action' }, 400);
     }
   } catch {
     return reply({ error: 'Invalid request' }, 400);
   }
-  if (exitBooth && (request.headers.get('Origin') !== new URL(request.url).origin
+  if ((exitBooth || boothLogin) && (request.headers.get('Origin') !== new URL(request.url).origin
     || request.headers.get('Content-Type')?.split(';')[0] !== 'application/json')) {
     return reply({ error: 'Same-origin JSON request required' }, 403);
   }
@@ -110,7 +112,7 @@ export async function handleStaffLoginRequest(request, env) {
     method: 'staff',
     gen_epoch: String((env && env.EVENT_CRED_EPOCH) ?? ''),
   };
-  if (exitBooth || hasBoothBoundary(request)) {
+  if (exitBooth || boothLogin || hasBoothBoundary(request)) {
     const resetFailure = await resetBeforeBoothLogin(request, env, email, exitBooth);
     if (resetFailure) return resetFailure;
     const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
@@ -118,8 +120,6 @@ export async function handleStaffLoginRequest(request, env) {
       ['booth_context', 'booth_session', 'booth_device', 'booth_kiosk'].forEach((name) => {
         headers.append('Set-Cookie', `${name}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
       });
-      headers.append('Set-Cookie', clearSessionCookie());
-      headers.append('Set-Cookie', clearSignedInMarkerCookie());
       return new Response(JSON.stringify({ result: 'exited' }), { headers });
     }
     (await boothSessionCookies({

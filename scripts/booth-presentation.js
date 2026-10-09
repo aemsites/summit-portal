@@ -24,6 +24,7 @@ export function readBoothPresentation(search = '') {
 export function withBoothPresentation(path, presentation) {
   const [pathname, query] = path.split('?');
   const params = new URLSearchParams();
+  if (pathname.startsWith('/accounts/') || pathname.startsWith('/example-report/')) params.set('booth', '1');
   const step = new URLSearchParams(query).get('step');
   if (pathname === '/booth' && ['finish', 'demos', 'picker'].includes(step)) {
     params.set('step', step);

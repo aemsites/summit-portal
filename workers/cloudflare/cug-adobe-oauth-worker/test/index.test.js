@@ -65,12 +65,20 @@ describe('index (request routing)', () => {
   });
 
   describe('booth login navigation fragments', () => {
+    it.each(['closed booth tab', 'another tab with a booth login'])('keeps the guide destination after %s', async (scenario) => {
+      const cookie = scenario === 'closed booth tab'
+        ? 'booth_kiosk=1' : await createMockBoothCookie(env);
+      const response = await worker.fetch(new Request('https://mysite.com/adobe/booth-guide', { headers: { Cookie: cookie } }), env);
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toBe('/auth/portal?redirect=%2Fadobe%2Fbooth-guide');
+    });
+
     it('serves the real header, footer and language menu without redirecting booth browsers', async () => {
       const cookies = ['booth_kiosk=1', await createMockBoothCookie(env)];
       for (const cookie of cookies) {
         for (const path of ['/fragments/nav/header', '/fragments/nav/footer', '/fragments/nav/header/languages']) {
           vi.stubGlobal('fetch', mockOriginFetch('<main><div><p>Navigation fragment</p></div></main>'));
-          const response = await worker.fetch(new Request(`https://mysite.com${path}`, { headers: { Cookie: cookie } }), env);
+          const response = await worker.fetch(new Request(`https://mysite.com${path}?booth=1`, { headers: { Cookie: cookie } }), env);
           expect(response.status).toBe(200);
           expect(response.headers.has('Location')).toBe(false);
           expect(response.headers.get('Cache-Control')).toBe('private, no-store');
@@ -84,7 +92,7 @@ describe('index (request routing)', () => {
     it('does not allow other fragments, private documents or navigation lookalikes', async () => {
       vi.stubGlobal('fetch', vi.fn());
       for (const path of ['/fragments/private', '/fragments/nav/header.json', '/fragments/nav/footer/secret', '/fragments/nav/header/languages/private', '/adobe/dashboard']) {
-        const response = await worker.fetch(new Request(`https://mysite.com${path}`, { headers: { Cookie: 'booth_kiosk=1' } }), env);
+        const response = await worker.fetch(new Request(`https://mysite.com${path}?booth=1`, { headers: { Cookie: 'booth_kiosk=1' } }), env);
         expect(response.status).toBe(302);
         expect(response.headers.get('Location')).toBe('/booth');
       }

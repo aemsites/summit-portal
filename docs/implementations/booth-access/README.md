@@ -5,6 +5,49 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
+## Same-hostname portal isolation (October 9, not deployed)
+
+José approved removing the browser-wide booth lock, not adding a separate
+hostname. Ordinary page, guide, report and asset links now use normal portal
+authorization regardless of existing `booth_session`, `booth_device`,
+`booth_context` or legacy `booth_kiosk` cookies. Closing a booth tab requires
+no cleanup to resume ordinary browsing. Booth credentials never substitute for
+the portal's `auth_token`; missing portal access leads to the requested page's
+normal sign-in, not `/booth`.
+
+`/booth`, `/auth/booth/*`, explicit `booth=1` navigation and booth-targeted
+login routes select the restricted request boundary. Same-origin subresources
+may inherit mode from their referring document; ordinary document/iframe
+navigations do not. Company and industry report navigation, Finish preview
+fetches and selected report rendering URLs are explicitly marked so a
+no-referrer policy does not lose authorization. The marker selects the boundary,
+not permission: staff/device binding, current selected path, fresh attendee
+CUGs, reset/expiry/race checks, no-store responses and download restrictions
+remain authoritative. Unmarked reports never mount booth controls just because
+the browser also has a booth visit. Booth telemetry does not use a separate
+portal identity.
+
+The staff form sends `action:"booth-login"` with same-origin JSON and mints
+only booth credentials. OAuth uses its saved return destination to distinguish
+booth from ordinary sign-in. Entering or freshly authenticating the booth
+preserves any separate portal session; booth exit confirms visitor revocation
+and removes booth cookies without signing the portal out. Ordinary portal login
+and logout do not reset the booth visit. Legacy kiosk markers are ignored for
+ordinary requests and expired on authenticated booth entry.
+
+This deliberately removes website-enforced browser lockdown. A shared
+touchscreen must use a **dedicated browser profile without a portal sign-in**
+and managed browser/OS kiosk settings. Multiple booth tabs still share one
+attendee visit. Existing private guide payloads/screenshots are unchanged.
+The browser-wide behavior described in historical deployment sections below is
+superseded by this change only after rollout.
+
+Publish the changed origin frontend (especially the explicit staff-login intent)
+and deploy the matching Worker/bundled runtime as a coordinated release, then
+reload old booth/login/report tabs. Do not treat AEM Code Sync alone as deployment
+of this routing fix. No hostname, binding, secret, schema or migration changes
+are required. Production deployment remains a separate approval boundary.
+
 ## Portrait staff setup (merged, live)
 
 The origin-served `portal-login` block adds staff-only large portrait sizing

@@ -19,7 +19,8 @@ let cached;
  */
 export default function getViewerIdentity() {
   if (cached) return cached;
-  cached = fetch('/auth/me', { credentials: 'same-origin' })
+  const endpoint = document.querySelector('script[data-booth-mode]') ? '/auth/me?booth=1' : '/auth/me';
+  cached = fetch(endpoint, { credentials: 'same-origin' })
     .then((resp) => (resp.ok ? resp.json() : null))
     .then((data) => {
       if (!data?.authenticated) return { method: null };
