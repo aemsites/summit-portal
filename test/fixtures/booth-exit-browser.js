@@ -121,5 +121,40 @@ export default async function runBoothExit(page, origin = 'http://localhost:3000
       await context.close();
     }
   }
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  try {
+    await context.route((url) => url.origin === origin && url.pathname === '/login', (route) => (
+      route.fulfill({ status: 200, contentType: 'text/html', body: fixture })
+    ));
+    await context.route('**/auth/staff-login', (route) => {
+      check(route.request().postDataJSON().action === 'exit-booth', 'Framed exit must require fresh staff authentication');
+      return route.fulfill({ contentType: 'application/json', body: '{"result":"exited"}' });
+    });
+    const screen = await context.newPage();
+    const frame = screen.frameLocator('#booth-screen');
+    const entryReady = () => frame.locator('#email-form button[type="submit"]:not([disabled])').waitFor();
+    const exitReady = () => screen.waitForURL((url) => url.pathname === '/login' && url.searchParams.has('exit-booth'));
+    await screen.goto(`${origin}/booth?touchscreen=1&brand=semrush`);
+    await entryReady();
+    await frame.locator('#staff-exit').click();
+    await exitReady();
+    const cancel = screen.getByRole('link', { name: 'Back to booth' });
+    const destination = new URL(await cancel.getAttribute('href'), origin);
+    check(destination.pathname === '/booth' && destination.searchParams.get('touchscreen') === '1'
+      && destination.searchParams.get('brand') === 'semrush', 'Cancellation lost the touchscreen presentation');
+    await cancel.click();
+    await entryReady();
+    await frame.locator('#staff-exit').click();
+    await exitReady();
+    await screen.locator('#pl-staff-user').fill('fixture-staff');
+    await screen.locator('#pl-staff-pass').fill('synthetic-password');
+    await screen.getByRole('button', { name: 'Sign out and exit booth' }).click();
+    await screen.waitForURL(`${origin}/login`);
+    await screen.locator('#pl-email').waitFor();
+    check(await screen.locator('#booth-screen').count() === 0, 'Confirmed exit retained the presentation frame');
+    results.push({ touchscreenCancellation: true, normalLogin: true });
+  } finally {
+    await context.close();
+  }
   return results;
 }

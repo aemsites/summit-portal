@@ -1,6 +1,10 @@
 /* global HTMLRewriter */
 /* eslint-disable import/no-relative-packages */
 import shell from '../../../../booth.html';
+import touchscreenShell from '../../../../booth-touchscreen.html';
+import touchscreen from '../../../../scripts/booth-touchscreen.js';
+import touchscreenDevice from '../../../../scripts/booth-touchscreen-device.js';
+import touchscreenCss from '../../../../styles/booth-touchscreen.css';
 import runtime from '../../../../scripts/booth.js';
 import report from '../../../../scripts/booth-report.js';
 import presentation from '../../../../scripts/booth-presentation.js';
@@ -47,6 +51,9 @@ import {
 import { findBoothDemo } from './booth-demos.js';
 
 const assets = new Map([
+  ['/scripts/booth-touchscreen.js', [touchscreen, 'text/javascript']],
+  ['/scripts/booth-touchscreen-device.js', [touchscreenDevice, 'text/javascript']],
+  ['/styles/booth-touchscreen.css', [touchscreenCss, 'text/css']],
   ['/scripts/booth.js', [runtime, 'text/javascript']],
   ['/scripts/booth-report.js', [report, 'text/javascript']],
   ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
@@ -116,15 +123,23 @@ export function isBoothSharedAsset(path) {
   return isSharedAsset(path);
 }
 
-function recoveryPage(headers) {
-  return new Response(`<!doctype html><html><head><title>Booth recovery</title></head><body>
+const deviceBridge = '<script src="/scripts/booth-touchscreen-device.js"></script>';
+
+function touchscreenMode(request) {
+  const params = new URL(request.url).searchParams;
+  return params.getAll('touchscreen').length === 1 ? params.get('touchscreen') : '';
+}
+
+function recoveryPage(headers, request) {
+  const framed = touchscreenMode(request) === 'frame';
+  return new Response(`<!doctype html><html><head>${framed ? deviceBridge : ''}<title>Booth recovery</title></head><body>
 <main><h1>Reset this booth visit</h1><p>No company content is shown here.</p>
 <button id="reset" type="button">Clear visit and return to entry</button><p id="result" role="status"></p>
 <noscript>Ask staff to enable JavaScript and reset this visit. Do not reopen the report.</noscript></main>
 <script>document.getElementById('reset').onclick=async function(){this.disabled=true;try{
 const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
 if(!r.ok||(await r.json()).state!=='entry')throw Error();
-location.replace('/booth');
+location.replace(${JSON.stringify(framed ? '/booth?touchscreen=frame' : '/booth')});
 }catch{document.getElementById('result').textContent='Reset could not be confirmed. Ask staff for help.';this.disabled=false;}};</script>
 </body></html>`, { headers });
 }
@@ -135,7 +150,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (pathname.startsWith('/img/booth/') || ['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
+    if (pathname.startsWith('/img/booth/') || pathname.includes('/booth-touchscreen') || ['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });
@@ -161,12 +176,13 @@ export async function serveBooth(request, env) {
     const brands = params.getAll('brand');
     const invalidBrand = params.has('brand') && (brands.length !== 1 || !['adobe', 'semrush'].includes(brands[0]));
     if (params.has('brand') && !invalidBrand) setup.searchParams.set('brand', brands[0]);
+    if (['1', 'frame'].includes(touchscreenMode(request))) setup.searchParams.set('touchscreen', '1');
     if (invalidHeading || invalidBrand) {
       // eslint-disable-next-line no-console
       console.warn('[booth] Ignored invalid presentation parameters on staff login redirect');
     }
     if (new URL(request.url).searchParams.has('recover')) {
-      return recoveryPage(headers);
+      return recoveryPage(headers, request);
     }
     const redirect = encodeURIComponent(`${setup.pathname}${setup.search}`);
     return new Response(null, { status: 302, headers: { Location: `/login?staff&redirect=${redirect}`, 'Cache-Control': 'private, no-store' } });
@@ -174,8 +190,10 @@ export async function serveBooth(request, env) {
   if (!scoped) {
     (await boothSessionCookies(session, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
   } else headers.append('Set-Cookie', clearSessionCookie());
-  if (new URL(request.url).searchParams.has('recover')) return recoveryPage(headers);
-  return new Response(shell, { headers });
+  if (new URL(request.url).searchParams.has('recover')) return recoveryPage(headers, request);
+  const mode = touchscreenMode(request);
+  const html = mode === '1' ? touchscreenShell : shell;
+  return new Response(mode === 'frame' ? html.replace('<head>', `<head>${deviceBridge}`) : html, { headers });
 }
 
 /** Central kiosk allowlist, before ANY private representation or privileged route. */
@@ -229,7 +247,7 @@ export async function injectBoothReturn(response, request, env) {
   }).on('head', {
     element(element) {
       marked.head = true;
-      element.prepend(`<style id="booth-report-concealment">
+      element.prepend(`${touchscreenMode(request) === 'frame' ? deviceBridge : ''}<style id="booth-report-concealment">
 ${loadingCss}
 html:is(.booth-report-pending,.booth-report-clearing) body { zoom: 1 !important; }
 html:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery):not(noscript),

@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from '../../scripts/booth-presentation.js';
+import { readBoothPresentation, withBoothPresentation, applyBoothPresentation, boothStaffLogin } from '../../scripts/booth-presentation.js';
 
 describe('cosmetic booth presentation', () => {
   const canonicalReport = '/accounts/e/example/insights/example-com/portal-landing/';
@@ -85,5 +85,29 @@ describe('cosmetic booth presentation', () => {
     expect(root.querySelector('.brand span').children.length).to.equal(0);
     expect(root.getElementById('stage').dataset.brand).to.equal('adobe');
     expect(root.getElementById('staff-login').getAttribute('href')).to.equal('/login?staff&redirect=%2Fbooth');
+  });
+
+  it('carries explicit frame mode through real report, picker, Finish, reset and recovery URLs', () => {
+    const presentation = readBoothPresentation('?touchscreen=frame&email=private&token=private');
+    [canonicalReport, '/booth', '/booth?step=finish', '/booth?step=picker', '/booth?step=demos', '/booth?recover=1'].forEach((path) => {
+      const url = new URL(withBoothPresentation(path, presentation), 'https://portal.example');
+      expect(url.searchParams.get('touchscreen')).to.equal('frame');
+      expect(url.searchParams.has('email')).to.equal(false);
+      expect(url.searchParams.has('token')).to.equal(false);
+    });
+    expect(withBoothPresentation('/booth?recover=1', presentation)).to.equal('/booth?touchscreen=frame&recover=1');
+    const login = new URL(boothStaffLogin(presentation), 'https://portal.example');
+    expect(login.searchParams.get('redirect')).to.equal('/booth?touchscreen=1');
+    ['?touchscreen=yes', '?touchscreen=1&touchscreen=frame'].forEach((search) => {
+      expect(readBoothPresentation(search)).not.to.have.property('touchscreen');
+    });
+  });
+
+  it('heading customizes the brand label and leaves the hero heading unchanged', () => {
+    const root = document.implementation.createHTMLDocument();
+    root.body.innerHTML = '<main id="stage"><div class="brand"><span></span></div><h1 id="welcome-heading">Original hero</h1></main>';
+    applyBoothPresentation(root, readBoothPresentation('?heading=Team%20demo'));
+    expect(root.querySelector('.brand span').textContent).to.equal('Team demo');
+    expect(root.getElementById('welcome-heading').textContent).to.equal('Original hero');
   });
 });

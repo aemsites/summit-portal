@@ -152,10 +152,17 @@ describe('portal-login recovery', () => {
     expect(block.querySelector('.pl-magic-form')).to.equal(null);
   });
 
+  it('preserves the touchscreen presentation when staff cancel exit', () => {
+    window.history.replaceState(null, '', '/login?staff&exit-booth&redirect=%2Fbooth%3Ftouchscreen%3D1%26brand%3Dsemrush');
+    init(block);
+    expect(block.querySelector('.pl-staff-cancel').getAttribute('href')).to.equal('/booth?touchscreen=1&brand=semrush');
+  });
+
   it('rejects a login-shaped success rather than treating it as a confirmed exit', async () => {
     window.history.replaceState(null, '', '/login?exit-booth&redirect=%2Fadobe%2Fdashboard');
     fetchStub.resolves(Response.json({ result: 'ok' }));
     init(block);
+    expect(block.querySelector('.pl-staff-cancel').getAttribute('href')).to.equal('/booth');
     block.querySelector('#pl-staff-user').value = 'fixture-staff';
     block.querySelector('#pl-staff-pass').value = 'synthetic-password';
     block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));

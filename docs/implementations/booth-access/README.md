@@ -136,9 +136,11 @@ submission, cancellation and stalled fetch/body recovery. The synthetic
 2160 x 3840, 1080 x 1920 and mobile sizes without real credentials or customer
 mutation. It uses `/test/fixtures/portal-login.html?staff&exit-booth` locally.
 
-After integrating latest main, local verification passed: 475 Worker tests
-(one existing skip), 154 related frontend tests, changed-file lint, and the
-three isolated browser journeys. Repository-wide `npm run lint` remains blocked
+After integrating latest main, local verification passed: 478 Worker tests
+(one existing skip), 180 related frontend tests, changed-file lint, and the
+three isolated browser journeys plus touchscreen cancellation/exit.
+Cancellation preserves the live touchscreen presentation; confirmed exit returns
+to ordinary login without its frame. Repository-wide `npm run lint` remains blocked
 by unchanged baseline findings; unrelated files were not reformatted.
 At 2160 x 3840 the password input is 144px tall and the primary action is 120px
 tall with 44px text; half-size and mobile views have no horizontal overflow.
@@ -586,6 +588,54 @@ native/fallback bounds, touch tabs/disclosures, link/download containment,
 the same report's real Finish preview and empty Entry after reset. No lookup,
 email or production booth mutation is performed; never put credentials or
 customer report content in test files.
+
+### Authenticated live touchscreen presentation
+
+After an approved matching Worker deployment, open `/booth?touchscreen=1`
+in a separate browser or private window. Staff sign-in is required and runs
+top-level, not inside the frame. This mode uses **real lookup, authorized
+reports and real email sends**; it is not a training/demo-data sandbox.
+Existing booth credentials, permissions, inactivity expiry, lead disclosures,
+reset and browser-wide kiosk isolation are unchanged. Another tab is not
+isolation for staff administration.
+
+The persistent portrait frame scales to the laptop window without changing
+the inner **2160 × 3840 CSS-pixel** layout. Entry, picker, report, Finish and
+recovery use the same ordinary documents, styles, fonts, modules and endpoints.
+Only the explicitly opted-in inner document gets the pre-init keyboard bridge;
+ordinary visits and a top-level `touchscreen=frame` URL do not. Presentation
+settings follow supported navigation and staff re-login without a stored
+global preference. There are no configuration panels, screen-switchers or
+fixture APIs in the published presentation.
+
+Focusing an editable field opens a schematic email keyboard, overlaying the
+lower 45% of the unchanged viewport. Shift, digits, `@`, `.`, Backspace,
+space and Enter work alongside physical typing; Enter uses native form
+validation/submission. Close ends editing and restores pre-edit scrolling
+without erasing text. Navigation disconnects the old keyboard/listeners and
+cancels pending scroll restoration before the next document connects.
+
+`heading` is **still used** for the small shared brand label (`.brand span`).
+It does not change the Entry hero headline. Existing bounded `heading` and
+`brand=semrush` links remain compatible; neither is needed for the simple URL.
+
+The CSS viewport assumes 100% Windows scaling. Physical resolution alone does
+not prove that viewport, and this web keyboard is not a native Windows replica.
+OS scaling, DPR, touch events, pointer media queries and actual Windows/Edge
+keyboard behavior are not emulated or certified. Rehearse on the real hardware.
+Implementation/push does not deploy the Worker or grant additional access.
+
+Local validation uses `npm run preview:booth -- --port 3003` and
+`http://localhost:3003/booth?touchscreen=1` with the fixture server's synthetic
+APIs. `test/fixtures/booth-live-touchscreen-browser.js` checks native-sized
+direct/framed geometry, native-sized Entry raster/clipping, typing and native
+validation, held-submit single submission, local email-action routing, repeated
+report returns, fail-closed expiry/recovery and isolated ordinary visits. Its optional
+public-report input uses the real public FrescoPa source with branch assets and
+local API replies; it never performs live attendee lookups or email sends.
+These checks exposed a shared stats decoration-order race, now fixed by
+retaining already-relocated callout/source nodes across stats rebuilds. This
+does not claim a reproduced hardware email-form return defect.
 
 ### Local Windows 11 touchscreen simulator
 

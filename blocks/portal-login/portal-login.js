@@ -221,7 +221,8 @@ function createStaffForm(exitBooth) {
   if (exitBooth) {
     const cancel = document.createElement('a');
     cancel.className = 'pl-staff-cancel';
-    cancel.href = '/booth';
+    const redirect = getRedirectPath(true);
+    cancel.href = redirect?.split('?')[0] === '/booth' ? redirect : '/booth';
     cancel.textContent = 'Back to booth';
     section.append(cancel);
     window.addEventListener('pagehide', () => form.reset(), { once: true });
