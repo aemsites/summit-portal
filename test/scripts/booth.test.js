@@ -666,8 +666,10 @@ describe('booth runtime boundary', () => {
     expect(root.getElementById('welcome-heading').textContent).to.equal('Turn your brand content into an AI search advantage.');
     expect(root.querySelector('.hero-bottom p').textContent).to.equal('See where your brand appears in AI search.');
     expect(root.querySelector('.welcome-entry .lead').textContent).to.equal('Open your customized report.');
-    expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Registration email');
-    expect(root.getElementById('email-help').textContent).to.equal('Use the same address you used for this event.');
+    expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Registration email: use the same address you used for this event.');
+    expect(root.getElementById('email-help')).to.equal(null);
+    expect(root.getElementById('registration-email').getAttribute('aria-describedby')).to.equal('search-privacy email-error');
+    expect(root.getElementById('search-privacy').nextElementSibling.className).to.equal('entry-actions');
     expect(root.querySelector('.review, #motion-toggle, .signal-field, #step-index')).to.equal(null);
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch').resolves({ ok: true, json: async () => ({ state: 'entry' }) });

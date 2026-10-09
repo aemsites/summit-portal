@@ -85,7 +85,7 @@ cron are unchanged. Login CSS is origin-served and was published by
 merge/AEM Code Sync, not by the Worker upload. Close old report tabs and reload
 `/booth` on the kiosk; existing documents do not hot-reload modules.
 
-## Staff exit from booth mode (not deployed)
+## Staff exit from booth mode (October 9, deployed)
 
 Visitor reset and timeout are not staff signout. **Clear for next visitor** and
 the fifteen-minute inactivity policy still clear attendee access while retaining
@@ -147,13 +147,12 @@ tall with 44px text; half-size and mobile views have no horizontal overflow.
 The original native report-transition check also retains identical loader
 metrics across navigation and stable report bounds while dependencies are held.
 
-Review branch: **`josec-adobe-booth-transitions-exit`**. This implementation is
-**not deployed**. Publish the changed portal-login block
-before deploying the matching bundled Worker/booth shell; preserve the origin
-readiness publication order in the transition section below. Production still
-uses the previously deployed soft-signout behavior until that coordinated rollout.
+Review branch: **`josec-adobe-booth-transitions-exit`**, merged in PR #170.
+The changed portal-login block was verified live before deploying the matching
+bundled Worker/booth shell. Freshly authenticated full exit is now deployed;
+ordinary reset and legacy logout remain kiosk-preserving.
 
-## Report transitions (not deployed)
+## Report transitions (October 9, deployed)
 
 The Entry and report overlays share system-font typography that does not change
 when Typekit arrives. Pending/clearing reports are excluded from ordinary
@@ -182,7 +181,31 @@ HAR's font request redirect into booth HTML. The HAR is private and uncommitted.
 
 Publish the origin `scripts/scripts.js` and block changes via merge/AEM Code
 Sync **before** deploying the matching Worker (`booth-transitions-1` in both
-injection and lazy import). No Worker deployment is included in branch publication.
+injection and lazy import). Branch publication was separate from the approved
+October 9 Worker activation recorded below.
+
+### Coordinated production rollout, October 9
+
+Deployed exact merged main `dd561f9f343202e87ddfe20d803060821b39e2e3`
+(PR #170) at **11:31 UTC** to `summit-portal`. Active Worker version:
+**`1b8c740b-c465-4b36-8313-5b29e2d9f71b`**, receiving **100%** of traffic and
+replacing `d5bfbf68-7e17-4cb2-b256-9921271da433`.
+
+The seven required origin-served frontend dependencies matched merged source
+byte-for-byte before activation; eleven bundled JS/CSS assets matched afterward.
+The exact merged Worker suite passed 478 tests with one existing skip; the dry
+run preserved existing KV/D1/Durable Object bindings and staff epoch. No new
+migration or secret rotation was needed.
+
+Live read-only checks confirmed private/no-store booth and touchscreen staff
+redirects, ordinary report-targeted login without a kiosk marker, and the
+restricted report-to-booth-to-staff-login chain with one. The shared
+`/styles/fonts/montserrat.woff2` returned a real font, not redirected booth HTML.
+At 2160 x 3840 the production exit form has one staff-only form, 144px password
+input, 120px submit action, 44px text and no horizontal overflow.
+No staff credentials, attendee lookup, email send or visitor reset was performed
+in production; full authenticated exit and transition journeys were verified
+with the isolated local regressions. Close old report tabs and reload the booth.
 
 ## Report stylesheet readiness correction (October 9, not deployed)
 
@@ -404,10 +427,25 @@ Staff demos, privacy disclosure, conditional no-match guidance, loading/errors,
 live selected-report data and swipe interactions remain required runtime
 additions. No Figma sample report is substituted for an attendee report.
 The Entry staff shortcut uses a white fill, gray text and gray outline to
-de-emphasize it. It shares the lookup action row, aligned to the right, and wraps
-to a right-aligned second row on mobile. Native height remains 120px and the
+de-emphasize it. The October 9 refinement places it immediately beside the lookup
+action, wrapping to a left-aligned second row on mobile. Native height is 120px and the
 mobile touch target at least 64px. Its `type="button"` opens demos without
-submitting the email form, and the privacy disclosure remains below the row.
+submitting the email form. The unchanged privacy disclosure now sits between the
+input and action row, with lighter, larger text and a blue policy link. Registration
+instructions form one label above the field rather than a duplicated help line.
+The updated `320:136` form positions are covered by exact geometry assertions.
+
+The Entry-only responsive profiles also implement Figma `401:144` (2048 x 2732,
+compact 3:4 portrait below 2100px) and `351:1522` (2732 x 2048, landscape).
+Their own design units scale from the existing 1000px desktop boundary; the
+2160 x 2881 reference and native 2160 x 3840 retain the main portrait profile.
+Header, artwork, body/form and footer follow their respective frames. Profiles
+do not restyle Industry, report picker or Finish. The new exact exported glows
+are committed and Worker-bundled; the existing webpage asset is byte-identical to Figma.
+Unlike two defects in the mockups, the 2048px form respects the right gutter
+and the landscape Privacy Policy link is blue, not invisible white on white.
+No tracking text, notice version, retention period or permission behavior changes.
+These corrections are pending review and a matching Worker deployment.
 Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
 The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in
@@ -625,7 +663,7 @@ customer report content in test files.
 
 ### Authenticated live touchscreen presentation
 
-After an approved matching Worker deployment, open `/booth?touchscreen=1`
+Deployed in the October 9 coordinated rollout. Open `/booth?touchscreen=1`
 in a separate browser or private window. Staff sign-in is required and runs
 top-level, not inside the frame. This mode uses **real lookup, authorized
 reports and real email sends**; it is not a training/demo-data sandbox.
@@ -657,7 +695,7 @@ The CSS viewport assumes 100% Windows scaling. Physical resolution alone does
 not prove that viewport, and this web keyboard is not a native Windows replica.
 OS scaling, DPR, touch events, pointer media queries and actual Windows/Edge
 keyboard behavior are not emulated or certified. Rehearse on the real hardware.
-Implementation/push does not deploy the Worker or grant additional access.
+This presentation grants no additional access.
 
 Local validation uses `npm run preview:booth -- --port 3003` and
 `http://localhost:3003/booth?touchscreen=1` with the fixture server's synthetic
@@ -1255,6 +1293,39 @@ chart observer; no additional idle/reset/expiry timers are added.
 The original broad portrait date/touch query stays separate. The 2:3, 3:4,
 landscape, mobile and nearby non-exact viewports retain the preceding layout.
 
+### Portrait layout corrections, October 9 (pending review and Worker deployment)
+
+The exact-ratio composition now keeps each KPI's full authored explanation in a
+native **View insight** / **Hide insight** disclosure. Closed copy no longer
+inflates the four-column overview; controls are at least 96px tall at native
+resolution and 64px in the fallback. Touch, Enter and Space work without hover.
+The original nodes are moved, not shortened or cloned. Existing mobile card
+button semantics are temporarily removed to avoid a nested interactive control,
+then restored alongside the original nodes and focus on profile exit. Later
+cards use the existing observer; no timers or stored visitor state are added.
+
+Within the broader authorized portrait profile, summary and brand callout prose
+are no longer constrained by the shared `65ch` reading-width rule. The callout
+fills its own parent, including the flex-start Performance insights **How to
+act** card, while keeping its padding, icons and the outer report-column limit.
+Heading strips and carousel tabs use a consistent inset: 48px horizontally
+and 24px vertically at native resolution, approximately half in the fallback.
+Performance gauge verdicts use centered rather than right-edge flex alignment,
+including labels wider or narrower than the ring. Ordinary report styles,
+authored report text, field/lab score semantics and report navigation are unchanged.
+
+`test/scripts/booth-report.test.js` covers long-copy disclosure behavior,
+available narrative width, title padding, gauge centering and reversible nodes,
+attributes, listeners and focus. `test/fixtures/booth-layout-browser.js` checks
+complete decorated public report markup in a local synthetic booth visit,
+including touch and keyboard operation at both portrait sizes. The 2160 x 3840
+touchscreen iframe passes the same geometry and interaction checks; resizing
+back to mobile restores the original KPI buttons and working insight sheet.
+The public FrescoPa report reproduced the shared CSS issues; the protected Unity
+report was not fetched without authentication. No production lookup, email or visitor
+state mutation was performed. Matching Worker asset deployment is still required
+after merge; publishing this branch does not update production.
+
 Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
 month/year lines, retaining the original date in an accessible label; this
 avoids the original overlapping dates without changing chart values. A scoped
@@ -1454,7 +1525,7 @@ session and bind to the same random identifier. The HttpOnly/Secure
 scoped credentials are restricted even without that marker. **Staff: sign out
 this device** in the deployed legacy version clears attendee state and credentials
 but does not unlock dashboard access. The new fresh-authenticated exit described
-above is a separate intentional exception pending rollout. Re-login stays scoped;
+above is a deployed intentional exception. Re-login stays scoped;
 staff administration belongs on a
 separate browser/device. Unmarked ordinary staff/customer browsers are unchanged.
 The server allowlist permits shared static assets and selected rendering

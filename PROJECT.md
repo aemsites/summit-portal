@@ -33,11 +33,11 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a right-aligned white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
-- `/booth?touchscreen=1` — **authenticated live presentation** (implemented, not deployed): a persistent, laptop-fit portrait frame around the ordinary booth/report documents, with automatic schematic email keyboard and no operator controls. Staff sign-in escapes to the top-level page and returns to this presentation; lookup and email use the real production APIs after rollout. The inner layout stays **2160 × 3840 CSS pixels**; its explicit `touchscreen=frame` flag follows report, picker, Finish, reset and recovery without changing authorization. Keyboard Close blurs the field, preserves its text and restores pre-edit scrolling; document changes cancel old listeners and pending scroll restoration. Repeated report returns preserve Entry's resting bounds. This assumes 100% Windows scaling, not a measured hardware viewport or native Windows keyboard/DPR emulation. Use a separate browser/private window because the existing kiosk restriction is browser-wide. Matching Worker deployment requires approval; the local diagnostic simulator remains separate. `heading` still changes the small shared brand label, not the Entry hero headline.
+- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and readable privacy notices, adds an adjacent white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
+- `/booth?touchscreen=1` — **authenticated live presentation** (October 9, deployed): a persistent, laptop-fit portrait frame around the ordinary booth/report documents, with automatic schematic email keyboard and no operator controls. Staff sign-in escapes to the top-level page and returns to this presentation; lookup and email use the real production APIs. The inner layout stays **2160 × 3840 CSS pixels**; its explicit `touchscreen=frame` flag follows report, picker, Finish, reset and recovery without changing authorization. Keyboard Close blurs the field, preserves its text and restores pre-edit scrolling; document changes cancel old listeners and pending scroll restoration. Repeated report returns preserve Entry's resting bounds. This assumes 100% Windows scaling, not a measured hardware viewport or native Windows keyboard/DPR emulation. Use a separate browser/private window because the existing kiosk restriction is browser-wide. The matching Worker is deployed; the local diagnostic simulator remains separate. `heading` still changes the small shared brand label, not the Entry hero headline.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
-**Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a booth-bound HttpOnly context with a renewable fifteen-minute inactivity expiry. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records each report's attempts before APO; uncertain delivery is explicit and non-retryable even after switching away and back. Reset clears attendee access but retains the scoped booth login, persistent kiosk restriction and separately disclosed lead history. The dedicated `booth_session` credential and signed `booth_device` are not general staff authentication. Selected HTML and rendering dependencies require the live selection and attendee permissions before origin fetch and again before return, including reset races. Private indexes/APIs, alternate report formats, PDFs, general sharing and unrelated reports are denied. Fresh report navigation and browser Back after reset return to Entry. Staff signout removes credentials but does not unlock the kiosk browser. Ordinary staff/customer browsing on unmarked browsers is unchanged. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; web code cannot protect against deliberate cookie deletion, developer tools, OS access or files previously downloaded.
+**Booth Finish UX decision:** **Email my report** sends only the report link. Finish 6 removes **Please contact me** in favor of static guidance to speak to the team; it records no contact consent and books no meeting. Searching, opening a report and emailing its link never imply sales-contact consent. Recipient/path come solely from a booth-bound HttpOnly context with a renewable fifteen-minute inactivity expiry. Existing **30-day authored email/domain CUG grants** stay in use; an exact-address grant never adds an unauthorized domain. Durable Object serialization records each report's attempts before APO; uncertain delivery is explicit and non-retryable even after switching away and back. Reset clears attendee access but retains the scoped booth login, persistent kiosk restriction and separately disclosed lead history. The dedicated `booth_session` credential and signed `booth_device` are not general staff authentication. Selected HTML and rendering dependencies require the live selection and attendee permissions before origin fetch and again before return, including reset races. Private indexes/APIs, alternate report formats, PDFs, general sharing and unrelated reports are denied. Fresh report navigation and browser Back after reset return to Entry. Legacy signout removes credentials but does not unlock the kiosk browser; the freshly authenticated full exit below deliberately clears kiosk mode. Ordinary staff/customer browsing on unmarked browsers is unchanged. Physical touchscreen validation and managed kiosk lockdown remain rollout requirements; web code cannot protect against deliberate cookie deletion, developer tools, OS access or files previously downloaded.
 
 **Booth inactivity policy (October 8, deployed):** Jose approved one **15-minute inactivity window**, replacing the two-minute screen reset and fixed ten-minute visit limit. Entry, picker, Finish, personal reports and industry demos share `scripts/booth-session.js`. Pointer/touch movement, scrolling, keyboard input and virtual-keyboard input/change renew the visitor deadline; active reading can continue beyond the original deadline. Same-origin `POST /auth/booth/activity` carries only elapsed idle milliseconds, rechecks staff/device binding and current personal-report permissions, and renews Durable Object expiry, KV retention and the context cookie. Input renewals are batched at most every 30 seconds (sooner near expiry); trailing renewals subtract time since the actual input rather than granting another fifteen minutes from the delayed request. A no-report response supplies its deadline so the fallback screen also renews consistently. KV's 60-second minimum retention never extends the authoritative visitor deadline. Passive status/asset/view requests do not renew access. Expired or cleared visits cannot be revived; failed renewal conceals/scrubs visitor content and exposes recovery. Clear waits for every in-flight operation, even when another operation has failed. Both screen cleanup and server expiry end the attendee visit, **not the four-day staff login**. Worker and matching bundled assets were deployed together at 13:48 UTC; close old report tabs and reload the kiosk before use.
 
@@ -69,11 +69,11 @@ production dashboard or authenticated-data fixture. No DA content change or
 new import infrastructure is needed. This frontend change requires merge/code
 sync; it does not deploy or alter the Worker.
 
-**Booth security hardening (deployed):** entering `/booth` replaces broad `auth_token` access with a signed `booth_session` (`booth-session` purpose), a bound `booth_device` (`booth-device` purpose) and persistent `booth_kiosk=1`. Scoped credentials preserve the original absolute staff expiry and epoch revocation; the kiosk marker lasts one year and survives reset, signout, OAuth and re-login. Fresh authentication remains booth-scoped and must revoke the old visit before replacing credentials. Legacy staff/device contexts migrate only through `/booth`; dashboard navigation cannot clear the boundary. **Staff administration must use a separate browser/device.** The marker is not authorization, and its absence does not unlock a browser still carrying scoped credentials. The Worker and matching report adapter are deployed; close old report tabs and reload the actual managed touchscreen before attendees use it.
+**Booth security hardening (deployed):** entering `/booth` replaces broad `auth_token` access with a signed `booth_session` (`booth-session` purpose), a bound `booth_device` (`booth-device` purpose) and persistent `booth_kiosk=1`. Scoped credentials preserve the original absolute staff expiry and epoch revocation; the kiosk marker lasts one year and survives reset, legacy signout, OAuth and re-login. Fresh sign-in remains booth-scoped and must revoke the old visit before replacing credentials. Legacy staff/device contexts migrate only through `/booth`; dashboard navigation cannot clear the boundary. **Staff administration must use a separate browser/device.** The marker is not authorization, and its absence does not unlock a browser still carrying scoped credentials. The Worker and matching report adapter are deployed; close old report tabs and reload the actual managed touchscreen before attendees use it.
 
 **Booth reporting outages:** subsequent valid searches append to the durable outbox even while D1 is unavailable; expired entries are removed independently of D1 recovery. Retrying a saved selection may open the same authorized report; switching to another requires the deliberate picker transition and fresh revalidation. Confirmed send/contact outcomes remain explicit and do not become resend requests.
 
-**Staff exit from booth mode (not deployed):** **Staff: Sign out and exit
+**Staff exit from booth mode (October 9, deployed):** **Staff: Sign out and exit
 booth** first scrubs visitor details, waits for pending operations and confirms
 a serialized reset, then opens `/login?staff&exit-booth`. This portrait-responsive
 staff-only form requires credentials again; it offers **Back to booth** and does
@@ -94,11 +94,10 @@ touchscreen presentation; confirmed exit leaves it for ordinary login.
 Expired staff credentials can still be
 freshly verified to complete exit. Ordinary reset, inactivity, `/auth/logout`
 and legacy `/auth/booth/exit` remain kiosk-preserving. This deliberately
-supersedes the deployed soft-signout behavior above **only after publication
-and matching Worker deployment**. Review branch:
-`josec-adobe-booth-transitions-exit`; Worker deployment remains pending.
+supersedes legacy soft signout for the explicit exit action. Merged in PR #170
+and activated with the coordinated Worker rollout below.
 
-**Booth transition stability (not deployed):** the shared loader uses a
+**Booth transition stability (October 9, deployed):** the shared loader uses a
 fixed system face instead of swapping to a downloaded webfont, and pending/reset
 documents cannot inherit the ordinary native report's 1.6× zoom. Pending content
 lays out invisibly behind the overlay; clearing still removes it from layout.
@@ -115,6 +114,18 @@ limit visible layout shift to 0.001 with first-screen bounds stable within 1px.
 Merge/AEM Code Sync must publish `scripts/scripts.js` and block changes before
 deploying the matching Worker adapter (`booth-transitions-1`).
 
+**Coordinated booth rollout, October 9 at 11:31 UTC:** deployed merged main
+`dd561f9f343202e87ddfe20d803060821b39e2e3` (PR #170) to `summit-portal`.
+Worker version `1b8c740b-c465-4b36-8313-5b29e2d9f71b` serves 100% of traffic,
+superseding `d5bfbf68-7e17-4cb2-b256-9921271da433`. Seven required origin
+frontend files matched before activation; eleven bundled JS/CSS assets matched
+afterward. Ordinary and kiosk report-login redirect chains, touchscreen staff
+setup, the shared font under a kiosk marker, and the native-resolution exit form
+were verified live. Production checks were read-only: no staff credentials,
+customer lookup, email send or visitor reset was used. KV/D1/Durable Object
+bindings, staff epoch and secrets were preserved; no new migration was needed.
+Close old report tabs and reload the booth before use.
+
 **Booth stylesheet readiness correction (October 9, not deployed):** the shared
 report adapter now awaits required stylesheet load/error events rather than
 treating an in-flight stylesheet as a failure. This fixes the reproduced Cannes
@@ -130,6 +141,26 @@ hero geometry; failure/timeout checks never reveal the report afterward. No
 protected customer data or live attendee mutations were used. The fix requires
 merge and matching Worker deployment; pushing the branch alone is not rollout.
 
+**Booth report layout corrections (October 9, pending review/deployment):**
+at the authorized 2160 x 3840 and 1080 x 1920 exact portrait viewports, KPI
+explanations start behind a native **View insight** disclosure, with full,
+unchanged text available by touch or keyboard. No hover is required. Leaving
+the profile restores the original description nodes, card semantics, listeners
+and focus; ordinary reports and mobile KPI sheets remain unchanged. Summary
+and brand callout text use the available padded width instead of a 65-character
+cap, and the Performance insights **How to act** bar fills its parent rather
+than shrinking to its content. The briefing, LLM visibility, search performance
+and performance headings share 48px horizontal/24px vertical native padding,
+scaled for the fallback; carousel tabs share the same horizontal inset.
+Performance verdict labels are centered under their gauges regardless of label
+width. Local real-public-report and long-copy regressions cover geometry,
+touch/keyboard operation, responsive restoration and preserved booth flows.
+The 2160 x 3840 touchscreen iframe passes the same checks; returning to mobile
+restores the original KPI buttons and working insight sheet.
+The authenticated Unity report was not retrieved; no live attendee operations
+were performed. Merge and deploy the matching bundled report adapter/CSS before
+these corrections become live.
+
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.
@@ -137,7 +168,7 @@ The lead-history privacy exclusions apply to the new **server-side action events
 
 **Booth network recovery:** initial status or idle/reset failures keep lookup blocked and display a visible **Retry and clear screen** action. Entry API fetches **and JSON bodies share a ten-second deadline**, covering status, lookup, demo chooser/catalogue/selection, personal selection, picker, send, reset and exit. Timeout aborts the transport, invalidates stale UI callbacks, scrubs visitor details/previews and blocks new actions until server-confirmed clearing. Existing idle/absolute deadlines remain in force; reset still waits for the bounded prior operation and displays **Clearing this visit...** while waiting. Failed or timed-out reset stays fail-closed with manual recovery. Client abort cannot undo a server mutation or prove email delivery: timed-out send is explicitly uncertain, never automatically replayed or reported as successful. The server's existing serialized visit mutations and per-report delivery outcomes remain unchanged. The isolated `/booth?recover=1` reset also has a ten-second fetch/body deadline.
 
-Server-marked report and demo documents are concealed before rendering and remain hidden until the adapter verifies their exact path and original expiry. Historical request documents fail closed and return to Entry; request mode is no longer supported. Deadline, idle and history cleanup are installed before verification, including when its request times out. After verification, the temporary server concealment wrapper is removed without replacing its nodes, preserving direct-body layout selectors and listeners. Recovery scrubs visitor fields and reveals Entry only after the server confirms a successful reset, never a blind local clear. The recovery target is 62px tall on portrait and mobile screens. These hardening changes are local and require the matching Worker/asset rollout.
+Server-marked report and demo documents are concealed before rendering and remain hidden until the adapter verifies their exact path and original expiry. Historical request documents fail closed and return to Entry; request mode is no longer supported. Deadline, idle and history cleanup are installed before verification, including when its request times out. After verification, the temporary server concealment wrapper is removed without replacing its nodes, preserving direct-body layout selectors and listeners. Recovery scrubs visitor fields and reveals Entry only after the server confirms a successful reset, never a blind local clear. The recovery target is 62px tall on portrait and mobile screens. These hardening changes are included in the coordinated October 9 Worker/asset rollout.
 
 **Booth report switching and exports:** **Choose another report** on a report or Finish returns to the same attendee's authorized picker without another email lookup. It revokes the active selection before showing candidates, preserves the current inactivity deadline unless renewed by visitor input, and revalidates permissions on the next selection. Delivery outcomes remain separate per report; switching does not make a sent or uncertain send retryable. Touchscreen PDF/download controls are hidden and disabled, including late-decorated carousel/download controls and opaque export links. Attendees open PDFs through their emailed report on their own device; ordinary staff/customer downloads are unchanged. Booth links and forms no longer open separate tabs.
 
@@ -173,7 +204,7 @@ CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-b
 The unauthenticated `/booth` route still redirects to `/login?staff` with a
 private, no-store response. No customer lookup or email was performed.
 
-**Login fragment routing (October 9, merged, Worker not deployed):** booth-restricted
+**Login fragment routing (October 9, deployed):** booth-restricted
 browsers may fetch the exact public `/fragments/nav/header`,
 `/fragments/nav/footer` and `/fragments/nav/header/languages` dependencies.
 Previously those requests redirected through `/booth`; the fragment loader
@@ -454,10 +485,10 @@ The hero uses the current exported art/glow with the design's clipped image fram
 The staff's **Industry demos** action and disclosed private email tracking remain
 intentional additions absent from Figma. The subsequent requested refinement
 uses a white background, #505050 text and #8f8f8f outline rather than a dark fill.
-It sits at the right edge of the lookup action row, opposite **View my report**,
-with a 120px native height. On narrow screens it wraps to a right-aligned second
-row with a minimum 64px touch target. The privacy notice remains below both
-actions; the staff button is explicitly non-submitting.
+The October 9 refinement places it immediately beside **View my report**, with
+a 120px native height and a left-aligned second row on narrow screens.
+The privacy notice now sits between the email field and actions; the staff
+button remains explicitly non-submitting.
 
 The chooser supersedes the older node documented below: white 950 by 165px
 cards, 1px black borders, 10px corners, 36px column/54px row gaps and 24px
@@ -500,6 +531,32 @@ pushed to `josec-adobe-booth-loading` for follow-up merge, and redeployed
 Live runtime/CSS/artwork hashes, including the loading stylesheet, match source;
 the unauthenticated staff gate remains intact. No customer lookup or email was
 performed. Close old report tabs and reload the actual booth before use.
+
+### October 9 entry refinement (pending review and Worker deployment)
+
+The current Figma registration label is one sentence above the input, with no
+duplicated help line below. The unchanged 90-day tracking/no-sales-contact
+disclosure moves below the field and above both actions, with 30px lighter
+gray portrait text and a blue underlined Privacy Policy link. Native portrait
+positions follow the updated `320:136` frame, not the preceding form spacing.
+The link retains Adobe's global policy URL; notice version/consent semantics
+are unchanged. Small viewports retain readable contrast and wrapping.
+
+Entry also follows the new `401:144` 2048 x 2732 stacked-art portrait and
+`351:1522` 2732 x 2048 landscape frames. The compact 3:4 portrait selects below
+2100px; landscape selects at aspect ratio at least 1. Both scale their own
+design units from the existing 1000px desktop boundary. The layout keeps all
+controls in view at the three designed resolutions and at 2160 x 3840,
+with the existing half-size/mobile fallbacks. Frame-specific changes apply
+only while Entry is visible, preserving Industry/picker/Finish layouts.
+The exact exported glows are committed and Worker-bundled; the webpage image
+bytes were already identical. Two intentional Figma corrections preserve usability:
+the compact portrait field respects both gutters rather than overflowing the right
+edge, and the landscape policy link remains visible instead of white on white.
+Local geometry/typography checks match the designed content positions within
+one pixel, with adjacent touch-sized demos and unchanged Finish behavior.
+This ships with the portrait report-layout fixes; merge and matching Worker
+deployment are still required.
 
 ### Final Figma industry chooser (October 8, deployed)
 

@@ -27,11 +27,11 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   await match('.brand-icon', { x: 100, y: 64, width: 264.858, height: 64 });
   await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 285 });
   await match('.hero-bottom p', { x: 100, y: 880.5, width: 840, height: 150 });
-  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1667, width: 1936, height: 97 });
-  await match('.email-form label', { x: 112, y: 1820, width: 1936, height: 66 });
-  await match('.email-form input', { x: 112, y: 1904, width: 1936, height: 144 });
-  await match('.form-help', { x: 112, y: 2066, width: 1936, height: 66 });
-  await match('.email-form .primary', { x: 112, y: 2212, width: 454, height: 120 });
+  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 97 });
+  await match('.email-form label', { x: 112, y: 1660, width: 1936, height: 66 });
+  await match('.email-form input', { x: 112, y: 1756, width: 1936, height: 144 });
+  await match('#search-privacy', { x: 112, y: 1950, width: 1936, height: 38 });
+  await match('.email-form .primary', { x: 112, y: 2068, width: 454, height: 120 });
   await match('.stage-footer', { x: 0, y: 2652, width: 2160, height: 229 });
   const field = await page.locator('.email-form input').evaluate((element) => {
     const style = getComputedStyle(element);
@@ -55,8 +55,40 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     && staffStyle.color === 'rgb(80, 80, 80)'
     && staffStyle.border === 'rgb(143, 143, 143)', 'Staff shortcut is not a quiet outlined action');
   const staff = await bounds('.entry-alternatives button');
-  check(Math.abs(staff.y - 2212) < 1 && staff.height === 120
-    && Math.abs(staff.x + staff.width - 2048) < 1, 'Staff shortcut is not aligned to the right of the lookup action');
+  check(Math.abs(staff.y - 2068) < 1 && staff.height === 120
+    && Math.abs(staff.x - 590) < 1, 'Industry demos is not adjacent to the lookup action');
+  const profiles = [
+    {
+      width: 2048,
+      height: 2732,
+      headline: { x: 100, y: 374, width: 1041, height: 342 },
+      lead: { x: 112, y: 1621, width: 1824, height: 97 },
+      input: { x: 112, y: 1870, width: 1824, height: 144 },
+      privacy: { x: 112, y: 2064, width: 1824, height: 38 },
+      action: { x: 112, y: 2182, width: 454, height: 120 },
+      footer: 2503,
+    },
+    {
+      width: 2732,
+      height: 2048,
+      headline: { x: 100, y: 514, width: 1308, height: 190 },
+      lead: { x: 112, y: 1187.6, width: 2508, height: 80 },
+      input: { x: 112, y: 1406.6, width: 2312, height: 132.9 },
+      privacy: { x: 112, y: 1562.1, width: 2312, height: 45 },
+      action: { x: 112, y: 1667.1, width: 454, height: 120 },
+      footer: 1819,
+    },
+  ];
+  for (const profile of profiles) {
+    await page.setViewportSize({ width: profile.width, height: profile.height });
+    await match('.stage-header', { height: 277 });
+    await match('.welcome-intro h1', profile.headline);
+    await match('.welcome-entry .lead', profile.lead);
+    await match('.email-form input', profile.input);
+    await match('#search-privacy', profile.privacy);
+    await match('.email-form .primary', profile.action);
+    await match('.stage-footer', { y: profile.footer, height: 229 });
+  }
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Entry overflows horizontally');
@@ -64,9 +96,8 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     check(input.height >= 64, 'Entry field is too small for touch');
     const primary = await bounds('.email-form .primary');
     const alternative = await bounds('.entry-alternatives button');
-    const row = await bounds('.entry-actions');
     check(alternative.height >= 64
-      && Math.abs(alternative.x + alternative.width - row.x - row.width) < 1, 'Staff shortcut loses its right alignment or touch target');
+      && Math.abs(alternative.x - (width < 1000 ? primary.x : primary.x + primary.width + 24)) < 1, 'Industry demos loses its adjacency or touch target');
     const aligned = width < 1000
       ? alternative.y >= primary.y + primary.height : Math.abs(alternative.y - primary.y) < 1;
     check(aligned, 'Entry actions do not adapt from a shared desktop row to stacked mobile rows');

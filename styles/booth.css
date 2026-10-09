@@ -203,7 +203,6 @@
     color: #717171;
   }
 
-  .form-help,
   .privacy-note {
     margin: 14px 0 24px;
     color: var(--muted);
@@ -212,12 +211,12 @@
   }
 
   .privacy-note a {
-    color: inherit;
+    color: var(--action);
     text-underline-offset: 3px;
   }
 
   .email-form .privacy-note {
-    color: #5b5b5b;
+    color: #717171;
     font-size: 14px;
     line-height: 1.4;
   }
@@ -458,9 +457,9 @@
     }
 
     .welcome-intro {
-      --art-unit: calc(100vw / 2160);
+      --art-unit: var(--entry-unit, calc(100vw / 2160));
 
-      min-height: calc(1302 * var(--art-unit));
+      min-height: calc(1142 * var(--art-unit));
       margin-bottom: calc(-136 * var(--art-unit));
       padding: calc(278.5 * var(--art-unit)) calc(100 * var(--art-unit)) calc(296 * var(--art-unit));
     }
@@ -512,16 +511,13 @@
 
     .welcome-entry {
       margin-top: 0;
-      min-height: 55.9722vw;
+      min-height: 63.3796vw;
       border-radius: 6.2963vw 6.2963vw 0 0;
       padding: 10.3704vw 5.1852vw 1.4815vw;
     }
 
     .welcome-layout {
-      background: linear-gradient(
-        #1d1d1d calc(1302 * 100vw / 2160),
-        #fff calc(1302 * 100vw / 2160)
-      );
+      background: var(--ink);
     }
 
     .welcome-entry .lead {
@@ -532,7 +528,7 @@
     }
 
     .email-form label {
-      margin-bottom: .8333vw;
+      margin-bottom: 1.3889vw;
       font-size: 2.5vw;
       line-height: 3.0556vw;
     }
@@ -545,13 +541,6 @@
       padding: 1.5278vw 2.5vw;
       font-size: 2.5vw;
       line-height: 3.0556vw;
-    }
-
-    .form-help {
-      margin: .8333vw 0 3.7037vw;
-      font-size: 2.5vw;
-      line-height: 3.0556vw;
-      color: #505050;
     }
 
     .primary,
@@ -579,7 +568,10 @@
     }
 
     .email-form .privacy-note {
-      font-size: max(14px, .926vw);
+      margin: 2.3148vw 0 3.7037vw;
+      color: #8f8f8f;
+      font-size: max(24px, 1.3889vw);
+      line-height: 1.2667;
     }
 
     .finish-content {
@@ -665,18 +657,234 @@
     }
   }
 
+  @media (width >= 1000px) {
+    .stage:has([data-panel="welcome"]:not([hidden])) {
+      --entry-unit: calc(100vw / 2160);
+
+      .stage-header {
+        height: calc(277 * var(--entry-unit));
+        min-height: calc(277 * var(--entry-unit));
+        padding: calc(64 * var(--entry-unit)) calc(100 * var(--entry-unit)) calc(56 * var(--entry-unit));
+      }
+
+      .brand {
+        gap: calc(32 * var(--entry-unit));
+        font-size: calc(64 * var(--entry-unit));
+      }
+
+      .brand-icon {
+        width: calc(264.858 * var(--entry-unit));
+        height: calc(64 * var(--entry-unit));
+      }
+
+      .welcome-entry {
+        min-height: calc(1369 * var(--entry-unit));
+        border-radius: calc(136 * var(--entry-unit)) calc(136 * var(--entry-unit)) 0 0;
+        padding: calc(224 * var(--entry-unit)) calc(112 * var(--entry-unit)) calc(32 * var(--entry-unit));
+      }
+
+      .welcome-entry .lead {
+        margin-bottom: calc(56 * var(--entry-unit));
+        font-size: calc(102 * var(--entry-unit));
+      }
+
+      .email-form label {
+        margin-bottom: calc(30 * var(--entry-unit));
+        font-size: calc(54 * var(--entry-unit));
+        line-height: calc(66 * var(--entry-unit));
+      }
+
+      .email-form input {
+        height: calc(144 * var(--entry-unit));
+        min-height: max(68px, calc(144 * var(--entry-unit)));
+        border-width: calc(6 * var(--entry-unit));
+        border-radius: calc(30 * var(--entry-unit));
+        padding: calc(33 * var(--entry-unit)) calc(54 * var(--entry-unit));
+        font-size: calc(54 * var(--entry-unit));
+        line-height: calc(66 * var(--entry-unit));
+      }
+
+      .email-form .privacy-note {
+        margin: calc(50 * var(--entry-unit)) 0 calc(80 * var(--entry-unit));
+        font-size: max(24px, calc(30 * var(--entry-unit)));
+      }
+
+      .email-form :is(.primary, .secondary) {
+        gap: calc(15 * var(--entry-unit));
+        min-height: max(72px, calc(120 * var(--entry-unit)));
+        padding: 12px calc(45 * var(--entry-unit));
+        font-size: max(24px, calc(45 * var(--entry-unit)));
+        line-height: calc(55 * var(--entry-unit));
+        white-space: nowrap;
+      }
+
+      .email-form .primary {
+        width: max(260px, calc(454 * var(--entry-unit)));
+      }
+
+      .arrow {
+        width: calc(55 * var(--entry-unit));
+        height: calc(55 * var(--entry-unit));
+      }
+
+      .stage-footer {
+        padding: calc(40 * var(--entry-unit)) calc(112 * var(--entry-unit)) calc(112 * var(--entry-unit));
+      }
+
+      .booth-progress {
+        gap: calc(80 * var(--entry-unit));
+      }
+
+      .booth-progress li {
+        gap: calc(24 * var(--entry-unit));
+        font-size: calc(28 * var(--entry-unit));
+        line-height: calc(35 * var(--entry-unit));
+        letter-spacing: calc(3 * var(--entry-unit));
+      }
+
+      .booth-progress li::after {
+        height: calc(18 * var(--entry-unit));
+      }
+
+      .stage-footer .staff-button {
+        right: calc(112 * var(--entry-unit));
+      }
+    }
+  }
+
+  @media (1000px <= width < 2100px) and (7/10 <= aspect-ratio <= 3/4) {
+    .stage:has([data-panel="welcome"]:not([hidden])) {
+      --entry-unit: calc(100vw / 2048);
+
+      .welcome-intro {
+        min-height: calc(1312.09 * var(--art-unit));
+        margin-bottom: calc(-96 * var(--art-unit));
+        padding-block: calc(97 * var(--art-unit)) calc(160 * var(--art-unit));
+      }
+
+      .welcome-intro h1 {
+        width: calc(1041 * var(--art-unit));
+        font-size: calc(120 * var(--art-unit));
+      }
+
+      .hero-bottom p {
+        width: calc(821 * var(--art-unit));
+        font-size: calc(70 * var(--art-unit));
+        line-height: 1.25;
+      }
+
+      .welcome-intro::before,
+      .welcome-intro::after {
+        top: calc(307 * var(--art-unit));
+        left: calc(828 * var(--art-unit));
+        width: calc(1319 * var(--art-unit));
+        height: calc(907.608 * var(--art-unit));
+      }
+
+      .welcome-intro::before {
+        background-image: url("/img/booth/entry-portrait-glow.svg");
+        background-size: calc(1356.26 * var(--art-unit)) calc(919.026 * var(--art-unit));
+        background-position: calc(-19.442 * var(--art-unit)) calc(52.201 * var(--art-unit));
+      }
+
+      .welcome-intro::after {
+        background-size: calc(1148.267 * var(--art-unit)) calc(831.05 * var(--art-unit));
+        background-position: calc(37.815 * var(--art-unit)) calc(5.221 * var(--art-unit));
+      }
+
+      .welcome-entry {
+        min-height: calc(1009.91 * var(--entry-unit));
+        padding-top: calc(128 * var(--entry-unit));
+      }
+    }
+  }
+
+  @media (width >= 1000px) and (aspect-ratio >= 1) {
+    .stage:has([data-panel="welcome"]:not([hidden])) {
+      --entry-unit: calc(100vw / 2732);
+
+      .welcome-intro {
+        min-height: calc(878.596 * var(--art-unit));
+        margin-bottom: calc(-96 * var(--art-unit));
+        padding-block: calc(237 * var(--art-unit)) calc(128 * var(--art-unit));
+      }
+
+      .welcome-intro h1,
+      .hero-bottom p {
+        width: calc(1308 * var(--art-unit));
+      }
+
+      .hero-bottom p {
+        font-size: calc(60 * var(--art-unit));
+        line-height: 1.25;
+      }
+
+      .welcome-intro::before,
+      .welcome-intro::after {
+        top: 0;
+        left: calc(1488 * var(--art-unit));
+        width: calc(1244 * var(--art-unit));
+        height: calc(856 * var(--art-unit));
+      }
+
+      .welcome-intro::before {
+        background-image: url("/img/booth/entry-landscape-glow.svg");
+        background-size: calc(1279.14 * var(--art-unit)) calc(866.769 * var(--art-unit));
+        background-position: calc(-18.339 * var(--art-unit)) calc(49.232 * var(--art-unit));
+      }
+
+      .welcome-intro::after {
+        background-size: calc(1082.976 * var(--art-unit)) calc(783.796 * var(--art-unit));
+        background-position: calc(35.666 * var(--art-unit)) calc(4.926 * var(--art-unit));
+      }
+
+      .welcome-entry {
+        min-height: calc(759.404 * var(--entry-unit));
+        padding-top: calc(128 * var(--entry-unit));
+      }
+
+      .welcome-entry .lead {
+        font-size: calc(84 * var(--entry-unit));
+      }
+
+      .email-form {
+        max-width: calc(2312 * var(--entry-unit));
+      }
+
+      .email-form label {
+        margin-bottom: calc(17 * var(--entry-unit));
+      }
+
+      .email-form input {
+        height: calc(132.904 * var(--entry-unit));
+        min-height: max(68px, calc(132.904 * var(--entry-unit)));
+        border-width: calc(5.531 * var(--entry-unit));
+        border-radius: calc(27.656 * var(--entry-unit));
+        padding: calc(30.5 * var(--entry-unit)) calc(49.78 * var(--entry-unit));
+        font-size: calc(49.78 * var(--entry-unit));
+        line-height: calc(60.842 * var(--entry-unit));
+      }
+
+      .email-form .privacy-note {
+        margin: calc(22.59 * var(--entry-unit)) 0 calc(60 * var(--entry-unit));
+        color: #505050;
+        font-size: max(24px, calc(33.19 * var(--entry-unit)));
+        line-height: 1.356;
+      }
+    }
+  }
+
   .entry-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: start;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 24px;
   }
 
   .entry-alternatives {
     display: flex;
     gap: 16px;
-    margin-inline-start: auto;
   }
 
   .booth-alternative {

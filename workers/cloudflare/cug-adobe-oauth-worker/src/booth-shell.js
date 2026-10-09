@@ -25,6 +25,8 @@ import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import wordmark from '../../../../img/booth/adobe-wordmark.svg';
 import finalGlow from '../../../../img/booth/entry-final-glow.svg';
+import landscapeGlow from '../../../../img/booth/entry-landscape-glow.svg';
+import portraitGlow from '../../../../img/booth/entry-portrait-glow.svg';
 import finishGlow from '../../../../img/booth/finish-glow.svg';
 import finalWebpage from '../../../../img/booth/entry-final-webpage.png';
 import pickerArtwork from '../../../../img/booth/picker-artwork.png';
@@ -74,6 +76,8 @@ const assets = new Map([
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
   ['/img/booth/entry-final-glow.svg', [finalGlow, 'image/svg+xml']],
+  ['/img/booth/entry-landscape-glow.svg', [landscapeGlow, 'image/svg+xml']],
+  ['/img/booth/entry-portrait-glow.svg', [portraitGlow, 'image/svg+xml']],
   ['/img/booth/finish-glow.svg', [finishGlow, 'image/svg+xml']],
   ['/img/booth/entry-final-webpage.png', [finalWebpage, 'image/png']],
   ['/img/booth/picker-artwork.png', [pickerArtwork, 'image/png']],
