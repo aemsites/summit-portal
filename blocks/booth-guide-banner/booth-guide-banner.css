@@ -1,0 +1,79 @@
+.booth-guide-banner {
+  margin-block: 24px;
+}
+
+.booth-guide-banner .bgb-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 68px;
+  align-items: center;
+  gap: 16px;
+  border-block: 1px solid var(--color-border);
+  padding: 28px 20px;
+  background: light-dark(#f3ede5, #2e2723);
+  color: var(--color-text-body);
+}
+
+.booth-guide-banner .bgb-eyebrow {
+  margin: 0 0 14px;
+  color: var(--color-adobe-red);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.booth-guide-banner h2 {
+  margin: 0 0 16px;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.booth-guide-banner .bgb-description {
+  max-width: 65ch;
+  margin: 0 0 24px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.booth-guide-banner .bgb-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+  border-radius: 6px;
+  padding: 12px 18px;
+  background: var(--color-adobe-red);
+  color: #fff8f5;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.booth-guide-banner .bgb-action:hover {
+  background: var(--color-adobe-red-dark);
+}
+
+.booth-guide-banner .bgb-action:focus-visible {
+  outline: 3px solid var(--color-adobe-red-dark);
+  outline-offset: 4px;
+}
+
+.booth-guide-banner .bgb-screen {
+  width: 100%;
+  height: auto;
+  color: var(--color-adobe-red);
+}
+
+@media (width >= 1000px) {
+  .booth-guide-banner .bgb-content {
+    grid-template-columns: minmax(0, 1fr) 140px;
+    gap: 48px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 36px 40px;
+  }
+}

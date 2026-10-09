@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Amplify your brand visibility — Staff guide</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><img src="icons/icon48.png" width="24" height="24" alt="Adobe"><span>Staff companion</span><strong>CONFIDENTIAL</strong></div>
+    <h1>Amplify your<br>brand visibility</h1>
+    <div class="sync"><label><input id="follow" type="checkbox" checked disabled> Follow screen</label><span id="screen-status" role="status">Connecting…</span></div>
+    <label class="field-label" for="section-select">Guide section</label>
+    <select id="section-select" aria-controls="guide" disabled><option>Loading guide…</option></select>
+    <label class="field-label" for="search">Find an answer</label>
+    <input id="search" type="search" placeholder="Score, INP, objections, setup…" autocomplete="off" disabled>
+  </header>
+  <div id="notice" class="notice" role="status" hidden></div>
+  <main id="main">
+    <section id="search-results" aria-label="Search results" hidden></section>
+    <article id="guide" aria-label="Guide content" tabindex="-1"></article>
+  </main>
+  <footer>
+    <button id="previous" type="button" disabled>Previous</button>
+    <span id="position"></span>
+    <button id="next" type="button" disabled>Next</button>
+  </footer>
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

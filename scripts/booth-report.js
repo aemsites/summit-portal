@@ -315,8 +315,41 @@ export function formatBoothChartDates(root, portrait) {
   });
 }
 
+function requiredReportStyles() {
+  return [...document.querySelectorAll('link[rel="stylesheet"]')].filter((link) => {
+    const { origin, pathname } = new URL(link.href, window.location.href);
+    return (origin === window.location.origin
+      && (pathname === '/styles/styles.css' || pathname.startsWith('/blocks/')))
+      || link.hasAttribute('data-booth-report-layout')
+      || link.href === 'https://use.typekit.net/pbq1nqa.css';
+  });
+}
+
+function waitForReportStyles(signal) {
+  return Promise.all(requiredReportStyles().map((link) => {
+    if (signal.aborted) return Promise.reject(signal.reason);
+    if (link.sheet) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const complete = (event) => {
+        link.removeEventListener('load', complete);
+        link.removeEventListener('error', complete);
+        signal.removeEventListener('abort', complete);
+        if (signal.aborted) reject(signal.reason);
+        else if (event?.type === 'error') {
+          reject(new Error('The report styles could not be loaded. Retry and clear the screen.'));
+        } else resolve();
+      };
+      link.addEventListener('load', complete, { once: true });
+      link.addEventListener('error', complete, { once: true });
+      signal.addEventListener('abort', complete, { once: true });
+      if (signal.aborted || link.sheet) complete();
+    });
+  }));
+}
+
 async function waitForReportContent() {
   if (!document.querySelector('script[src="/scripts/scripts.js"]')) return;
+  const controller = new AbortController();
   let timer;
   let onReady;
   const decorated = document.documentElement.dataset.boothContentReady !== 'true'
@@ -326,15 +359,7 @@ async function waitForReportContent() {
     }) : Promise.resolve();
   const ready = async () => {
     await decorated;
-    const styles = [...document.querySelectorAll('link[rel="stylesheet"]')].filter((link) => (
-      link.getAttribute('href') === '/styles/styles.css'
-      || link.getAttribute('href')?.startsWith('/blocks/')
-      || link.dataset.boothReportLayout
-      || link.href === 'https://use.typekit.net/pbq1nqa.css'
-    ));
-    if (styles.some((link) => !link.sheet)) {
-      throw new Error('The report styles could not be loaded. Retry and clear the screen.');
-    }
+    await waitForReportStyles(controller.signal);
     // Hidden content must request its actual faces before the first visible paint.
     await Promise.all([
       document.fonts.load('400 36px adobe-clean'),
@@ -352,9 +377,13 @@ async function waitForReportContent() {
         console.warn('[booth] Report image unavailable; retaining its reserved layout.');
       }
     }));
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
+    // Lazy report enhancements can add styles while fonts and images settle.
+    do {
+      await waitForReportStyles(controller.signal);
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    } while (requiredReportStyles().some((link) => !link.sheet));
   };
   try {
     await Promise.race([
@@ -364,6 +393,7 @@ async function waitForReportContent() {
       }),
     ]);
   } finally {
+    controller.abort();
     clearTimeout(timer);
     if (onReady) document.removeEventListener('booth-content-ready', onReady);
   }
