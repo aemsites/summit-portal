@@ -10,6 +10,11 @@ fallthrough = true
 [[rules]]
 type = "Text"
 globs = ["**/booth.html", "**/scripts/booth.js", "**/scripts/booth-report.js", "**/scripts/booth-session.js", "**/scripts/booth-presentation.js", "**/scripts/booth-preview.js", "**/scripts/booth-keyboard.js", "**/blocks/report-hero/report-hero.js", "**/blocks/report-stats/report-stats.js", "**/blocks/report-carousel/report-carousel.js", "**/blocks/report-ai-visibility/rav-core.js", "**/blocks/report-carousel/report-carousel.css", "**/blocks/report-ai-visibility/report-ai-visibility.css", "**/styles/booth.css", "**/styles/booth-report.css", "**/styles/booth-keyboard.css", "**/styles/booth-loading.css", "**/img/booth/*.svg", "**/img/icons/globe.svg"]
+fallthrough = true
+
+[[rules]]
+type = "Text"
+globs = ["**/booth-guide.html", "**/scripts/booth-guide.js", "**/styles/booth-guide.css"]
 fallthrough = false
 
 [[rules]]

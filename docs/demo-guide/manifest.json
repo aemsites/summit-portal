@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Amplify your brand visibility — Staff guide",
+  "version": "1.1.1",
+  "minimum_chrome_version": "116",
+  "description": "Confidential booth-staff companion: the complete demo guide, screen sync, signal definitions and setup checks.",
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["https://act.aem.now/*"],
+  "side_panel": { "default_path": "plugin/sidepanel.html" },
+  "background": { "service_worker": "plugin/background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["https://act.aem.now/*"],
+    "js": ["plugin/bridge.js"],
+    "run_at": "document_idle"
+  }],
+  "action": {
+    "default_title": "Open confidential staff guide",
+    "default_icon": {
+      "16": "plugin/icons/icon16.png",
+      "48": "plugin/icons/icon48.png",
+      "128": "plugin/icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "plugin/icons/icon16.png",
+    "48": "plugin/icons/icon48.png",
+    "128": "plugin/icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'"
+  }
+}

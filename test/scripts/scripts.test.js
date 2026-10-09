@@ -47,6 +47,9 @@ describe('scripts.js', () => {
     await ensureRequiredRouteBlocks('/adobe/dashboard/');
     await ensureRequiredRouteBlocks('/adobe/dashboard');
     expect(main.querySelectorAll('.dashboard-tools')).to.have.length(1);
+    expect(main.querySelectorAll('.booth-guide-banner')).to.have.length(1);
+    expect(main.querySelector('.customer-picker').previousElementSibling.className).to.equal('booth-guide-banner');
+    expect(main.querySelector('.booth-guide-banner a').getAttribute('href')).to.equal('/adobe/booth-guide');
     expect(main.querySelector('.dt-usage').open).to.equal(false);
     expect(main.querySelector('.customer-picker').nextElementSibling.className).to.equal('dashboard-tools');
     expect(main.querySelector('.customer-picker .dashboard-tools')).to.equal(null);
@@ -64,6 +67,7 @@ describe('scripts.js', () => {
     document.body.append(main);
     await ensureRequiredRouteBlocks('/accounts/e/example/portal-landing/');
     expect(main.querySelector('.dashboard-tools')).to.equal(null);
+    expect(main.querySelector('.booth-guide-banner')).to.equal(null);
     main.replaceChildren();
     await ensureRequiredRouteBlocks('/adobe/dashboard');
     expect(main.querySelector('.dashboard-tools')).to.equal(null);

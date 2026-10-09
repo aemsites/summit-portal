@@ -5,3 +5,5 @@ package.json
 package-lock.json
 test/
 workers/
+docs/demo-guide/
+booth-guide.html

@@ -29,6 +29,7 @@ import { handleReportRequests } from './report-requests.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
 import { serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset } from './booth-shell.js';
+import { serveBoothGuide } from './booth-guide.js';
 
 export { BoothCoordinator } from './booth.js';
 
@@ -112,6 +113,8 @@ const handleRequest = async (request, env) => {
   const url = new URL(request.url);
   const boothRestriction = await protectBoothDocument(request, env);
   if (boothRestriction) return boothRestriction;
+  const guideResponse = await serveBoothGuide(request, env);
+  if (guideResponse) return guideResponse;
   if (url.pathname.startsWith('/auth/booth/')) return handleBooth(request, env);
   const boothResponse = await serveBooth(request, env);
   if (boothResponse) return boothResponse;

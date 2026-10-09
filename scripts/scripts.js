@@ -37,6 +37,12 @@ export async function ensureRequiredRouteBlocks(pathname = window.location.pathn
   if (pathname.replace(/\/$/, '') === '/adobe/dashboard') {
     const main = document.querySelector('main');
     const picker = main?.querySelector('.customer-picker');
+    if (picker && !main.querySelector('.booth-guide-banner')) {
+      const banner = document.createElement('div');
+      banner.className = 'booth-guide-banner';
+      picker.before(banner);
+      await loadBlock(banner);
+    }
     if (picker && !main.querySelector('.dashboard-tools')) {
       const block = document.createElement('div');
       block.className = 'dashboard-tools';
