@@ -229,6 +229,55 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   return guard;
 }
 
+/** Keep full KPI copy in reversible native disclosures on portrait booth reports. */
+export function createBoothKpiLayout(root) {
+  const cards = new Map();
+  const attributes = ['role', 'tabindex', 'aria-expanded'];
+  return (active) => {
+    cards.forEach(({ details, description, marker, original }, card) => {
+      if (active && root.contains(card)) return;
+      const focused = document.activeElement;
+      const restoreFocus = details.contains(focused);
+      marker.replaceWith(description);
+      details.remove();
+      original.forEach(([name, value]) => {
+        if (value === null) card.removeAttribute(name);
+        else card.setAttribute(name, value);
+      });
+      cards.delete(card);
+      if (restoreFocus) {
+        (focused === details.firstElementChild ? card : focused).focus({ preventScroll: true });
+      }
+    });
+    if (!active) return;
+    root.querySelectorAll('.report-stats.dark .rs-dark-card').forEach((card) => {
+      if (cards.has(card)) return;
+      const description = card.querySelector('.rs-dark-desc');
+      const name = card.querySelector('.rs-dark-label')?.textContent;
+      if (!name || !description?.textContent.trim()) return;
+      const details = document.createElement('details');
+      details.className = 'booth-kpi-insight';
+      const focused = document.activeElement;
+      details.open = description.contains(focused);
+      const summary = document.createElement('summary');
+      const label = () => {
+        summary.textContent = details.open ? 'Hide insight' : 'View insight';
+        summary.setAttribute('aria-label', `${summary.textContent} for ${name}`);
+      };
+      label();
+      details.addEventListener('toggle', label);
+      const marker = document.createComment('Original KPI explanation position');
+      description.before(marker);
+      details.append(summary, description);
+      marker.after(details);
+      const original = attributes.map((attribute) => [attribute, card.getAttribute(attribute)]);
+      attributes.forEach((attribute) => card.removeAttribute(attribute));
+      cards.set(card, { details, description, marker, original });
+      if (details.open) focused.focus({ preventScroll: true });
+    });
+  };
+}
+
 /** Move the original analysis nodes into native disclosures, reversibly. */
 export function createBoothPerformanceLayout(root) {
   const cards = new Map();
@@ -517,6 +566,7 @@ export default async function mountBoothReturn() {
   const composition = window.matchMedia(compositionQuery);
   const root = document.querySelector('main') || document.body;
   const layout = createBoothPerformanceLayout(root);
+  const kpiLayout = createBoothKpiLayout(root);
   const reconcile = () => {
     restrictBoothLinks(document);
     formatBoothChartDates(root, portrait.matches);
@@ -524,6 +574,7 @@ export default async function mountBoothReturn() {
       && !html.classList.contains('booth-report-clearing');
     html.classList.toggle('booth-report-composition', active);
     layout(active);
+    kpiLayout(active);
   };
   const charts = new MutationObserver(reconcile);
   charts.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'target', 'download'] });

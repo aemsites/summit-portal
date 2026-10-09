@@ -75,6 +75,7 @@ describe('bundled booth shell and exact report injection', () => {
     const images = [
       'action-arrow.svg', 'finish-open-in.svg', 'finish-glow.svg',
       'adobe-wordmark.svg', 'entry-final-glow.svg', 'entry-final-webpage.png',
+      'entry-landscape-glow.svg', 'entry-portrait-glow.svg',
       'picker-artwork.png', 'picker-amazon.svg', 'picker-unity.svg',
       ...BOOTH_DEMOS.map(({ id }) => `industry-${id}.svg`),
     ];

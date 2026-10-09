@@ -427,10 +427,25 @@ Staff demos, privacy disclosure, conditional no-match guidance, loading/errors,
 live selected-report data and swipe interactions remain required runtime
 additions. No Figma sample report is substituted for an attendee report.
 The Entry staff shortcut uses a white fill, gray text and gray outline to
-de-emphasize it. It shares the lookup action row, aligned to the right, and wraps
-to a right-aligned second row on mobile. Native height remains 120px and the
+de-emphasize it. The October 9 refinement places it immediately beside the lookup
+action, wrapping to a left-aligned second row on mobile. Native height is 120px and the
 mobile touch target at least 64px. Its `type="button"` opens demos without
-submitting the email form, and the privacy disclosure remains below the row.
+submitting the email form. The unchanged privacy disclosure now sits between the
+input and action row, with lighter, larger text and a blue policy link. Registration
+instructions form one label above the field rather than a duplicated help line.
+The updated `320:136` form positions are covered by exact geometry assertions.
+
+The Entry-only responsive profiles also implement Figma `401:144` (2048 x 2732,
+compact 3:4 portrait below 2100px) and `351:1522` (2732 x 2048, landscape).
+Their own design units scale from the existing 1000px desktop boundary; the
+2160 x 2881 reference and native 2160 x 3840 retain the main portrait profile.
+Header, artwork, body/form and footer follow their respective frames. Profiles
+do not restyle Industry, report picker or Finish. The new exact exported glows
+are committed and Worker-bundled; the existing webpage asset is byte-identical to Figma.
+Unlike two defects in the mockups, the 2048px form respects the right gutter
+and the landscape Privacy Policy link is blue, not invisible white on white.
+No tracking text, notice version, retention period or permission behavior changes.
+These corrections are pending review and a matching Worker deployment.
 Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
 The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in
@@ -1277,6 +1292,39 @@ positions, event listeners and focus. Later-rendered cards share the existing
 chart observer; no additional idle/reset/expiry timers are added.
 The original broad portrait date/touch query stays separate. The 2:3, 3:4,
 landscape, mobile and nearby non-exact viewports retain the preceding layout.
+
+### Portrait layout corrections, October 9 (pending review and Worker deployment)
+
+The exact-ratio composition now keeps each KPI's full authored explanation in a
+native **View insight** / **Hide insight** disclosure. Closed copy no longer
+inflates the four-column overview; controls are at least 96px tall at native
+resolution and 64px in the fallback. Touch, Enter and Space work without hover.
+The original nodes are moved, not shortened or cloned. Existing mobile card
+button semantics are temporarily removed to avoid a nested interactive control,
+then restored alongside the original nodes and focus on profile exit. Later
+cards use the existing observer; no timers or stored visitor state are added.
+
+Within the broader authorized portrait profile, summary and brand callout prose
+are no longer constrained by the shared `65ch` reading-width rule. The callout
+fills its own parent, including the flex-start Performance insights **How to
+act** card, while keeping its padding, icons and the outer report-column limit.
+Heading strips and carousel tabs use a consistent inset: 48px horizontally
+and 24px vertically at native resolution, approximately half in the fallback.
+Performance gauge verdicts use centered rather than right-edge flex alignment,
+including labels wider or narrower than the ring. Ordinary report styles,
+authored report text, field/lab score semantics and report navigation are unchanged.
+
+`test/scripts/booth-report.test.js` covers long-copy disclosure behavior,
+available narrative width, title padding, gauge centering and reversible nodes,
+attributes, listeners and focus. `test/fixtures/booth-layout-browser.js` checks
+complete decorated public report markup in a local synthetic booth visit,
+including touch and keyboard operation at both portrait sizes. The 2160 x 3840
+touchscreen iframe passes the same geometry and interaction checks; resizing
+back to mobile restores the original KPI buttons and working insight sheet.
+The public FrescoPa report reproduced the shared CSS issues; the protected Unity
+report was not fetched without authentication. No production lookup, email or visitor
+state mutation was performed. Matching Worker asset deployment is still required
+after merge; publishing this branch does not update production.
 
 Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
 month/year lines, retaining the original date in an accessible label; this

@@ -1,10 +1,11 @@
 import { expect } from '@esm-bundle/chai';
 import { setViewport } from '@web/test-runner-commands';
 import sinon from 'sinon';
-import mountBoothReturn, { createBoothPerformanceLayout, formatBoothChartDates, restrictBoothLinks } from '../../scripts/booth-report.js';
+import mountBoothReturn, { createBoothKpiLayout, createBoothPerformanceLayout, formatBoothChartDates, restrictBoothLinks } from '../../scripts/booth-report.js';
 import decorateCarousel from '../../blocks/report-carousel/report-carousel.js';
 import decorateScores from '../../blocks/report-scores/report-scores.js';
 import decorateHero from '../../blocks/report-hero/report-hero.js';
+import { buildDarkStats } from '../../blocks/report-stats/report-stats.js';
 import { parseVisibilityRows, renderPanel } from '../../blocks/report-ai-visibility/rav-core.js';
 
 class TestObserver {
@@ -32,6 +33,8 @@ describe('confirmed booth report portrait layout', () => {
       '/blocks/report-carousel/report-carousel.css', '/blocks/report-scores/report-scores.css',
       '/blocks/report-ai-visibility/report-ai-visibility.css',
       '/blocks/report-stats/report-stats.css',
+      '/blocks/report-callout/report-callout.css',
+      '/blocks/report-ai-section-head/report-ai-section-head.css',
     ].map((href) => new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -179,6 +182,126 @@ describe('confirmed booth report portrait layout', () => {
     getComputedStyle(document.querySelector(selector)).fontSize,
   );
   const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
+
+  async function layoutFixture() {
+    const main = await reportFixture();
+    const stats = main.querySelector('.report-stats.dark');
+    const description = 'A detailed explanation of the measured pillar and its opportunities. '.repeat(8);
+    stats.innerHTML = ['AI visibility', 'Organic growth', 'Site performance', 'Visibility trend']
+      .map((name) => `<div><div>${name}</div><div>61/100</div><div>Measured change</div><div>positive</div><div>${description}</div><div>speedometer</div></div>`).join('');
+    buildDarkStats(stats, [...stats.children], { animate: false });
+    const narrative = `<div class="report-callout"><div class="rcl-bar"><span class="rcl-icon">*</span><p class="rcl-text">${description}</p></div></div>`;
+    stats.insertAdjacentHTML('beforeend', `<div class="rpt-widget-footer">${narrative}</div>`);
+    main.querySelector('.report-carousel').insertAdjacentHTML('beforebegin', '<div class="report-ai-section-head"><div class="rai-section-head-strip"><h2 class="rai-section-head-title">Your briefing</h2></div></div>');
+    main.querySelector('.report-carousel').insertAdjacentHTML('afterend', `${narrative}<div class="report-ai-section-head"><div class="rai-section-head-strip"><h2 class="rai-section-head-title">Search performance</h2></div></div>`);
+    const scores = main.querySelector('.report-scores');
+    scores.insertAdjacentHTML('beforeend', `${narrative}`);
+    const howTo = scores.lastElementChild;
+    howTo.style.display = 'flex';
+    howTo.style.alignItems = 'flex-start';
+    const card = scores.querySelector('.rsc-card');
+    card.classList.remove('rsc-field');
+    card.querySelector('.rsc-hero').innerHTML = '<div class="rsc-ring"><span class="rsc-ring-num">37</span></div><div class="rsc-verdict">Poor</div>';
+    return main;
+  }
+
+  for (const [width, height, inset] of [[2160, 3840, 48], [1080, 1920, 24]]) {
+    it(`keeps long KPI insights touch-expandable and lossless at ${width}x${height}`, async () => {
+      await setViewport({ width, height });
+      const main = await layoutFixture();
+      const description = main.querySelector('.rs-dark-desc');
+      const original = description.textContent;
+      await mount();
+      const details = description.closest('.booth-kpi-insight');
+      expect(details, 'KPI explanation uses a native disclosure').not.to.equal(null);
+      expect(details.open).to.equal(false);
+      expect(description.checkVisibility()).to.equal(false);
+      expect(rect('.rs-dark-strip').height).to.be.lessThan(width === 2160 ? 600 : 450);
+      const summary = details.querySelector('summary');
+      expect(summary.getBoundingClientRect().height).to.be.at.least(width === 2160 ? 96 : 64);
+      expect(summary.textContent).to.equal('View insight');
+      expect(summary.getAttribute('aria-label')).to.include('AI visibility');
+      expect(summary.closest('.rs-dark-card').hasAttribute('role')).to.equal(false);
+      summary.click();
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(details.open).to.equal(true);
+      expect(description.getBoundingClientRect().height).to.be.greaterThan(0);
+      expect(description.textContent).to.equal(original);
+      expect(summary.textContent).to.equal('Hide insight');
+      expect(description.scrollWidth).to.be.at.most(description.clientWidth + 1);
+      summary.click();
+      expect(details.open).to.equal(false);
+      expect(document.documentElement.scrollWidth).to.equal(width);
+    });
+
+    it(`uses full narrative width, padded card headings and centered verdicts at ${width}x${height}`, async () => {
+      await setViewport({ width, height });
+      const main = await layoutFixture();
+      await mount();
+      main.querySelectorAll('.rcl-bar').forEach((bar) => {
+        const bounds = bar.getBoundingClientRect();
+        const parent = bar.parentElement.getBoundingClientRect();
+        expect(bounds.width, 'How to act card fills its parent').to.be.closeTo(parent.width, 1);
+        const text = bar.querySelector('.rcl-text').getBoundingClientRect();
+        expect(text.right, 'Narrative reaches the padded right edge').to.be.closeTo(bounds.right - inset, 1);
+      });
+      main.querySelectorAll('.rai-section-head-title, .rav-section-title').forEach((heading) => {
+        const bounds = heading.getBoundingClientRect();
+        const parent = heading.parentElement.getBoundingClientRect();
+        expect(bounds.left - parent.left).to.be.at.least(inset - 1);
+        expect(bounds.top - parent.top).to.be.at.least(inset / 2 - 1);
+      });
+      const gauge = rect('.rsc-ring');
+      const verdict = rect('.rsc-verdict');
+      expect(gauge.left + gauge.width / 2).to.be.closeTo(verdict.left + verdict.width / 2, 1);
+      expect(document.documentElement.scrollWidth).to.equal(width);
+    });
+  }
+
+  it('restores KPI nodes, button semantics, focus and listeners when leaving the booth profile', async () => {
+    const main = await layoutFixture();
+    const layout = createBoothKpiLayout(main);
+    const card = main.querySelector('.rs-dark-card');
+    const original = card.cloneNode(true);
+    const description = card.querySelector('.rs-dark-desc');
+    const clicked = sandbox.spy();
+    description.addEventListener('click', clicked);
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      layout(true);
+      layout(true);
+      expect(card.querySelectorAll('.booth-kpi-insight')).to.have.length(1);
+      expect(card.hasAttribute('tabindex')).to.equal(false);
+      const summary = card.querySelector('summary');
+      summary.focus();
+      layout(false);
+      expect(document.activeElement).to.equal(card);
+      expect(card.isEqualNode(original)).to.equal(true);
+      expect(card.querySelector('.rs-dark-desc')).to.equal(description);
+    }
+    description.dispatchEvent(new Event('click'));
+    expect(clicked.calledOnce).to.equal(true);
+    expect(main.querySelectorAll('.booth-kpi-insight')).to.have.length(0);
+  });
+
+  it('handles late and removed KPI cards without adding empty or duplicate disclosures', async () => {
+    const main = await layoutFixture();
+    const layout = createBoothKpiLayout(main);
+    const card = main.querySelector('.rs-dark-card');
+    const original = card.cloneNode(true);
+    const late = card.cloneNode(true);
+    layout(true);
+    card.parentElement.append(late);
+    layout(true);
+    expect(late.querySelectorAll('.booth-kpi-insight')).to.have.length(1);
+    card.remove();
+    layout(true);
+    expect(card.isEqualNode(original)).to.equal(true);
+    layout(false);
+    late.querySelector('.rs-dark-desc').remove();
+    layout(true);
+    expect(late.querySelector('.booth-kpi-insight')).to.equal(null);
+    layout(false);
+  });
 
   it('mounts demo controls without a personal Finish or request action and records demo viewing', async () => {
     const previous = window.location.href;

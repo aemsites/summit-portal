@@ -188,13 +188,33 @@ html.booth-report-active.booth-keyboard-active #booth-return {
 
   html.booth-report-active body main:has(.report-hero.insight) :is(
     .rh-insight-text p, .rs-dark-desc, .rc-desc, .rsc-summary,
-    .rsc-suggestion-text, .rcl-text, .rd-desc, .rav-panel-desc,
+    .rsc-suggestion-text, .rd-desc, .rav-panel-desc,
     .rav-gap-content, .rav-insight-content, .rav-rec-detail, .rc-rec-detail,
     .rav-cta-left p, .rav-panel-sub
   ) {
     font-size: var(--booth-body);
     line-height: 1.5;
     max-width: 65ch;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .report-callout .rcl-bar {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) .rcl-text {
+    min-width: 0;
+    max-width: none;
+    font-size: var(--booth-body);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  html.booth-report-active body main:has(.report-hero.insight) :is(
+    .rai-section-head-strip, .rav-section-head, .rc-tab-bar
+  ) {
+    padding: calc(var(--booth-space) / 2) var(--booth-space);
   }
 
   html.booth-report-active body main:has(.report-hero.insight) :is(.rh-insight-text .rh-insight-scope, .rh-insight-badge-date) {
@@ -446,6 +466,45 @@ html.booth-report-active.booth-keyboard-active #booth-return {
       font-size: clamp(52px, 3.704vw, 80px);
     }
 
+    .report-stats.dark .booth-kpi-insight {
+      width: 100%;
+      min-width: 0;
+      border-top: 1px solid rgb(255 255 255 / 25%);
+      margin-top: var(--booth-space-small);
+
+      > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--booth-space-small);
+        padding: 16px 0;
+        list-style: none;
+        font-size: var(--booth-detail);
+        font-weight: 600;
+        cursor: pointer;
+
+        &::-webkit-details-marker {
+          display: none;
+        }
+
+        &::after {
+          content: "+";
+        }
+      }
+
+      &[open] > summary::after {
+        content: "-";
+      }
+
+      .rs-dark-desc {
+        margin: 0;
+        padding: var(--booth-space-small) 0;
+        font-size: var(--booth-copy);
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+      }
+    }
+
     .report-ai-visibility {
       .rav-section-head {
         padding: var(--booth-space-small) var(--booth-space-medium);
@@ -606,7 +665,7 @@ html.booth-report-active.booth-keyboard-active #booth-return {
 
       .rsc-hero {
         grid-area: hero;
-        align-items: flex-end;
+        align-items: center;
         justify-content: flex-start;
         gap: 16px;
       }

@@ -33,7 +33,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 
 - `/docs/sales-playbook` — **internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only, linked from the staff dashboard (`/adobe/dashboard`). Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and compact privacy notices, adds a right-aligned white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
+- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and readable privacy notices, adds an adjacent white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
 - `/booth?touchscreen=1` — **authenticated live presentation** (October 9, deployed): a persistent, laptop-fit portrait frame around the ordinary booth/report documents, with automatic schematic email keyboard and no operator controls. Staff sign-in escapes to the top-level page and returns to this presentation; lookup and email use the real production APIs. The inner layout stays **2160 × 3840 CSS pixels**; its explicit `touchscreen=frame` flag follows report, picker, Finish, reset and recovery without changing authorization. Keyboard Close blurs the field, preserves its text and restores pre-edit scrolling; document changes cancel old listeners and pending scroll restoration. Repeated report returns preserve Entry's resting bounds. This assumes 100% Windows scaling, not a measured hardware viewport or native Windows keyboard/DPR emulation. Use a separate browser/private window because the existing kiosk restriction is browser-wide. The matching Worker is deployed; the local diagnostic simulator remains separate. `heading` still changes the small shared brand label, not the Entry hero headline.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
@@ -140,6 +140,26 @@ delayed-CSS checks in direct and production-frame views with identical 2160 × 3
 hero geometry; failure/timeout checks never reveal the report afterward. No
 protected customer data or live attendee mutations were used. The fix requires
 merge and matching Worker deployment; pushing the branch alone is not rollout.
+
+**Booth report layout corrections (October 9, pending review/deployment):**
+at the authorized 2160 x 3840 and 1080 x 1920 exact portrait viewports, KPI
+explanations start behind a native **View insight** disclosure, with full,
+unchanged text available by touch or keyboard. No hover is required. Leaving
+the profile restores the original description nodes, card semantics, listeners
+and focus; ordinary reports and mobile KPI sheets remain unchanged. Summary
+and brand callout text use the available padded width instead of a 65-character
+cap, and the Performance insights **How to act** bar fills its parent rather
+than shrinking to its content. The briefing, LLM visibility, search performance
+and performance headings share 48px horizontal/24px vertical native padding,
+scaled for the fallback; carousel tabs share the same horizontal inset.
+Performance verdict labels are centered under their gauges regardless of label
+width. Local real-public-report and long-copy regressions cover geometry,
+touch/keyboard operation, responsive restoration and preserved booth flows.
+The 2160 x 3840 touchscreen iframe passes the same checks; returning to mobile
+restores the original KPI buttons and working insight sheet.
+The authenticated Unity report was not retrieved; no live attendee operations
+were performed. Merge and deploy the matching bundled report adapter/CSS before
+these corrections become live.
 
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
@@ -465,10 +485,10 @@ The hero uses the current exported art/glow with the design's clipped image fram
 The staff's **Industry demos** action and disclosed private email tracking remain
 intentional additions absent from Figma. The subsequent requested refinement
 uses a white background, #505050 text and #8f8f8f outline rather than a dark fill.
-It sits at the right edge of the lookup action row, opposite **View my report**,
-with a 120px native height. On narrow screens it wraps to a right-aligned second
-row with a minimum 64px touch target. The privacy notice remains below both
-actions; the staff button is explicitly non-submitting.
+The October 9 refinement places it immediately beside **View my report**, with
+a 120px native height and a left-aligned second row on narrow screens.
+The privacy notice now sits between the email field and actions; the staff
+button remains explicitly non-submitting.
 
 The chooser supersedes the older node documented below: white 950 by 165px
 cards, 1px black borders, 10px corners, 36px column/54px row gaps and 24px
@@ -511,6 +531,32 @@ pushed to `josec-adobe-booth-loading` for follow-up merge, and redeployed
 Live runtime/CSS/artwork hashes, including the loading stylesheet, match source;
 the unauthenticated staff gate remains intact. No customer lookup or email was
 performed. Close old report tabs and reload the actual booth before use.
+
+### October 9 entry refinement (pending review and Worker deployment)
+
+The current Figma registration label is one sentence above the input, with no
+duplicated help line below. The unchanged 90-day tracking/no-sales-contact
+disclosure moves below the field and above both actions, with 30px lighter
+gray portrait text and a blue underlined Privacy Policy link. Native portrait
+positions follow the updated `320:136` frame, not the preceding form spacing.
+The link retains Adobe's global policy URL; notice version/consent semantics
+are unchanged. Small viewports retain readable contrast and wrapping.
+
+Entry also follows the new `401:144` 2048 x 2732 stacked-art portrait and
+`351:1522` 2732 x 2048 landscape frames. The compact 3:4 portrait selects below
+2100px; landscape selects at aspect ratio at least 1. Both scale their own
+design units from the existing 1000px desktop boundary. The layout keeps all
+controls in view at the three designed resolutions and at 2160 x 3840,
+with the existing half-size/mobile fallbacks. Frame-specific changes apply
+only while Entry is visible, preserving Industry/picker/Finish layouts.
+The exact exported glows are committed and Worker-bundled; the webpage image
+bytes were already identical. Two intentional Figma corrections preserve usability:
+the compact portrait field respects both gutters rather than overflowing the right
+edge, and the landscape policy link remains visible instead of white on white.
+Local geometry/typography checks match the designed content positions within
+one pixel, with adjacent touch-sized demos and unchanged Finish behavior.
+This ships with the portrait report-layout fixes; merge and matching Worker
+deployment are still required.
 
 ### Final Figma industry chooser (October 8, deployed)
 

@@ -139,7 +139,39 @@ describe('Figma booth artwork', () => {
     expect(notice.querySelector('a').href).to.equal('https://www.adobe.com/privacy/policy.html');
     expect(notice.getBoundingClientRect().height).to.be.at.most(parseFloat(style.lineHeight) + 1);
     expect(style.overflow).to.equal('visible');
-    expect(parseFloat(style.fontSize)).to.be.at.least(19.9);
-    expect(style.color).to.equal('rgb(91, 91, 91)');
+    close(style.fontSize, 30);
+    expect(style.color).to.equal('rgb(143, 143, 143)');
+    expect(frame.contentWindow.getComputedStyle(notice.querySelector('a')).color).to.equal('rgb(59, 99, 251)');
+  });
+
+  it('keeps the registration label, disclosure and adjacent actions usable across all designed sizes', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stage.replaceWith(source.querySelector('.stage').cloneNode(true));
+    stage = frame.contentDocument.querySelector('.stage');
+    stage.querySelector('[data-panel="welcome"]').hidden = false;
+    stage.querySelector('#booth-status').hidden = true;
+    const sizes = [
+      [2160, 2881], [2048, 2732], [2732, 2048], [2160, 3840], [1080, 1920], [390, 844],
+    ];
+    for (const [width, height] of sizes) {
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      const input = stage.querySelector('#registration-email').getBoundingClientRect();
+      const notice = stage.querySelector('#search-privacy').getBoundingClientRect();
+      const primary = stage.querySelector('.entry-actions .primary').getBoundingClientRect();
+      const demo = stage.querySelector('.entry-alternatives button').getBoundingClientRect();
+      expect(notice.y).to.be.at.least(input.bottom);
+      expect(notice.bottom).to.be.at.most(primary.y);
+      expect(primary.height).to.be.at.least(width >= 1000 ? 72 : 62);
+      expect(demo.height).to.be.at.least(width >= 1000 ? 72 : 64);
+      expect(demo.x).to.be.closeTo(width >= 1000 ? primary.right + 24 : primary.x, 1);
+      expect(demo.y).to.be.at.least(primary.y);
+      expect(frame.contentDocument.documentElement.scrollWidth).to.be.at.most(width);
+      if (width >= 1000) {
+        expect(demo.y).to.be.closeTo(primary.y, 1);
+        expect(primary.bottom).to.be.below(height - 100);
+      }
+    }
   });
 });
