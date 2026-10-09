@@ -61,6 +61,7 @@ describe('confirmed booth report portrait layout', () => {
     document.querySelector('style[data-booth-report-safety]')?.remove();
     document.querySelectorAll('script[data-booth-mode]').forEach((marker) => marker.remove());
     document.querySelector('script[data-booth-test-boot]')?.remove();
+    document.querySelectorAll('link[data-booth-test-style]').forEach((link) => link.remove());
     delete document.documentElement.dataset.boothContentReady;
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
@@ -879,6 +880,174 @@ describe('confirmed booth report portrait layout', () => {
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(getComputedStyle(main).display).to.equal('none');
     expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(true);
+  });
+
+  async function startDecoratedReport() {
+    const main = await reportFixture();
+    sandbox.stub(window, 'MutationObserver').value(TestObserver);
+    sandbox.stub(window, 'ResizeObserver').value(TestObserver);
+    sandbox.stub(document, 'addEventListener');
+    sandbox.stub(window, 'addEventListener');
+    const boot = document.createElement('script');
+    boot.type = 'application/json';
+    boot.src = '/scripts/scripts.js';
+    boot.dataset.boothTestBoot = 'true';
+    document.head.append(boot);
+    document.documentElement.dataset.boothContentReady = 'true';
+    markReport();
+    sandbox.stub(window, 'fetch').resolves(Response.json({
+      state: 'report',
+      selectedPath: window.location.pathname,
+      expiresAt: Date.now() + 600000,
+    }));
+    const fonts = sandbox.stub(document.fonts, 'load').resolves([]);
+    return { main, fonts, mounted: mountBoothReturn() };
+  }
+
+  function pendingReportStyle(href) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    // Keep the network inert; exercise native load/error events deterministically.
+    link.type = 'text/plain';
+    link.href = href;
+    link.dataset.boothTestStyle = 'true';
+    let loaded = false;
+    sandbox.stub(link, 'sheet').get(() => (loaded ? {} : null));
+    let listening;
+    const attached = new Promise((resolve) => { listening = resolve; });
+    const add = link.addEventListener.bind(link);
+    sandbox.stub(link, 'addEventListener').callsFake((type, ...args) => {
+      add(type, ...args);
+      if (type === 'load') listening();
+    });
+    const removed = sandbox.spy(link, 'removeEventListener');
+    document.head.append(link);
+    return {
+      link,
+      removed,
+      listening: (mounted) => Promise.race([
+        attached,
+        mounted.then(() => { throw new Error('Report completed before the stylesheet settled.'); }),
+      ]),
+      load: () => {
+        loaded = true;
+        link.dispatchEvent(new Event('load'));
+      },
+    };
+  }
+
+  [
+    '/blocks/cannes-stripe/cannes-stripe.css',
+    new URL('/blocks/report-stats/report-stats.css', window.location.href).href,
+    '/styles/styles.css?v=readiness-test',
+    'https://use.typekit.net/pbq1nqa.css',
+  ].forEach((href) => {
+    it(`waits for a pending required stylesheet instead of failing: ${href}`, async () => {
+      const style = pendingReportStyle(href);
+      const { main, fonts, mounted } = await startDecoratedReport();
+      try {
+        await style.listening(mounted);
+        expect(getComputedStyle(main).visibility).to.equal('hidden');
+        expect(document.querySelector('.booth-recovery-actions').hidden).to.equal(true);
+        expect(fonts.called).to.equal(false);
+      } finally {
+        style.load();
+        await mounted;
+      }
+      expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
+      expect(document.documentElement.classList.contains('booth-report-pending')).to.equal(false);
+      expect(document.querySelector('#booth-recovery').hidden).to.equal(true);
+      expect(getComputedStyle(main).visibility).to.equal('visible');
+      expect(fonts.callCount).to.equal(3);
+      expect(style.removed.calledWith('load')).to.equal(true);
+      expect(style.removed.calledWith('error')).to.equal(true);
+    });
+  });
+
+  it('also waits for required styles added while the initial stylesheet is loading', async () => {
+    const first = pendingReportStyle('/blocks/cannes-stripe/cannes-stripe.css');
+    const { main, mounted } = await startDecoratedReport();
+    let late;
+    try {
+      await first.listening(mounted);
+      late = pendingReportStyle('/blocks/report-feedback/report-feedback.css');
+      first.load();
+      await late.listening(mounted);
+      expect(getComputedStyle(main).visibility).to.equal('hidden');
+      expect(document.querySelector('.booth-recovery-actions').hidden).to.equal(true);
+    } finally {
+      first.load();
+      late?.load();
+      await mounted;
+    }
+    expect(document.querySelector('#booth-recovery').hidden).to.equal(true);
+    expect(getComputedStyle(main).visibility).to.equal('visible');
+  });
+
+  it('does not wait for another load event on an already loaded stylesheet', async () => {
+    const style = pendingReportStyle('/blocks/cannes-stripe/cannes-stripe.css');
+    style.load();
+    const { main, mounted } = await startDecoratedReport();
+    await mounted;
+    expect(style.link.addEventListener.calledWith('load')).to.equal(false);
+    expect(getComputedStyle(main).visibility).to.equal('visible');
+    expect(document.querySelector('#booth-recovery').hidden).to.equal(true);
+  });
+
+  it('does not block report readiness on unrelated styles', async () => {
+    const style = pendingReportStyle('https://example.test/blocks/unrelated.css');
+    const { main, mounted } = await startDecoratedReport();
+    await mounted;
+    expect(style.link.addEventListener.calledWith('load')).to.equal(false);
+    expect(getComputedStyle(main).visibility).to.equal('visible');
+    expect(document.querySelector('#booth-recovery').hidden).to.equal(true);
+  });
+
+  it('keeps content concealed on a genuine stylesheet error and removes pending listeners', async () => {
+    const style = pendingReportStyle('/blocks/cannes-stripe/cannes-stripe.css');
+    const other = pendingReportStyle('/blocks/report-feedback/report-feedback.css');
+    const { main, mounted } = await startDecoratedReport();
+    try {
+      await Promise.all([style.listening(mounted), other.listening(mounted)]);
+      style.link.dispatchEvent(new Event('error'));
+      await mounted;
+      expect(getComputedStyle(main).display).to.equal('none');
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('styles could not be loaded');
+      expect(document.querySelector('.booth-recovery-actions').hidden).to.equal(false);
+      expect(style.removed.calledWith('load')).to.equal(true);
+      expect(style.removed.calledWith('error')).to.equal(true);
+      expect(other.removed.calledWith('load')).to.equal(true);
+      expect(other.removed.calledWith('error')).to.equal(true);
+    } finally {
+      style.load();
+      other.load();
+      await mounted;
+    }
+    expect(getComputedStyle(main).display).to.equal('none');
+  });
+
+  it('times out an indefinitely pending stylesheet without retaining listeners or revealing it later', async () => {
+    const style = pendingReportStyle('/blocks/cannes-stripe/cannes-stripe.css');
+    timers.restore();
+    const { setTimeout } = window;
+    timers = sandbox.stub(window, 'setTimeout').callsFake((callback, delay, ...args) => setTimeout(
+      callback,
+      String(callback).includes('report content timed out') ? 30 : delay,
+      ...args,
+    ));
+    const { main, mounted } = await startDecoratedReport();
+    try {
+      await style.listening(mounted);
+      await mounted;
+      expect(getComputedStyle(main).display).to.equal('none');
+      expect(document.querySelector('#booth-recovery p').textContent).to.include('content timed out');
+      expect(style.removed.calledWith('load')).to.equal(true);
+      expect(style.removed.calledWith('error')).to.equal(true);
+    } finally {
+      style.load();
+      await mounted;
+    }
+    expect(getComputedStyle(main).display).to.equal('none');
   });
 
   ['http', 'network', 'invalid-json', 'entry', 'expired', 'wrong-path'].forEach((failure) => {

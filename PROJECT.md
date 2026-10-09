@@ -103,6 +103,21 @@ limit visible layout shift to 0.001 with first-screen bounds stable within 1px.
 Merge/AEM Code Sync must publish `scripts/scripts.js` and block changes before
 deploying the matching Worker adapter (`booth-transitions-1`).
 
+**Booth stylesheet readiness correction (October 9, not deployed):** the shared
+report adapter now awaits required stylesheet load/error events rather than
+treating an in-flight stylesheet as a failure. This fixes the reproduced Cannes
+stripe race in both direct booth reports and the live touchscreen presentation.
+Same-origin global/block styles are matched by normalized URL, including absolute
+and cache-busted links. Readiness rechecks late-added styles before reveal and
+removes pending listeners on completion, failure or the existing ten-second
+deadline. Authorization, concealment, fonts/images and recovery remain intact:
+genuine outages and indefinitely stalled resources still require safe recovery.
+Real published FrescoPa markup with local synthetic personal/demo contexts passes
+delayed-CSS checks in direct and production-frame views with identical 2160 × 3840
+hero geometry; failure/timeout checks never reveal the report afterward. No
+protected customer data or live attendee mutations were used. The fix requires
+merge and matching Worker deployment; pushing the branch alone is not rollout.
+
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.

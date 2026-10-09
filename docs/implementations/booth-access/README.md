@@ -184,6 +184,40 @@ Publish the origin `scripts/scripts.js` and block changes via merge/AEM Code
 Sync **before** deploying the matching Worker (`booth-transitions-1` in both
 injection and lazy import). No Worker deployment is included in branch publication.
 
+## Report stylesheet readiness correction (October 9, not deployed)
+
+The deployed readiness check can mistake a still-loading stylesheet for a
+failed one. Delaying the existing Cannes stripe CSS reproduces the exact
+**The report styles could not be loaded** recovery screen on real public-report
+markup, both directly and inside a frame, despite subsequent successful loading.
+This is shared report behavior, not a simulator-only failure. It does not establish
+which resource failed in a particular attendee visit without that visit's trace.
+
+`scripts/booth-report.js` now waits for load/error events for pending required
+styles and checks again for late-added styles before revealing the report.
+Normalized same-origin URLs include absolute block links and cache-busted global
+styles. Already loaded styles do not wait for another event. Completion, failure
+and the existing ten-second content deadline remove pending event listeners.
+The report remains concealed behind its loading overlay throughout the wait.
+Genuinely failed or indefinitely stalled resources still fail closed; this is not
+a promise that network outages cannot happen or permission to show an unstyled
+report. Exact-path authorization, expiry/reset, font/image preparation and
+ordinary reports are unchanged. Neither core Author Kit nor the simulation is
+modified to conceal the problem.
+
+`test/scripts/booth-report.test.js` locks down delayed relative/absolute/font and
+cache-busted styles, already-loaded/unrelated styles, late insertion, real error
+handling and timeout/late-load cleanup. `test/fixtures/booth-styles-browser.js`
+accepts published FrescoPa HTML and an isolated local fixture server. It holds
+actual Cannes stripe requests in synthetic personal and demo visits, in direct
+documents and the production touchscreen wrapper. Matching 2160 × 3840 hero
+geometry, genuine CSS failure and a stalled request followed by late success are
+verified. All mutations stay local; personal-mode checks replay public content
+and do not certify an authenticated customer's report or native Windows hardware.
+
+Publish the reviewed branch and deploy the matching Worker report adapter after
+merge. No deployment is included in this fix.
+
 ## Approved scope
 
 `/booth` requires staff setup through `/login?staff&redirect=%2Fbooth`, then
