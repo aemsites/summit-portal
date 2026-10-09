@@ -17,7 +17,7 @@ import { redirectToLogin, handleCallback } from './oauth.js';
 import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, verifyShareLink,
   signedInMarkerCookie, clearSignedInMarkerCookie, sessionTtlForEmail, isVerifiedMethod,
-  hasBoothBoundary, boothSessionCookies, boothKioskCookie, isStaffEmail,
+  hasBoothBoundary, isBoothUrl, boothSessionCookies, clearBoothKioskCookie, isStaffEmail,
 } from './session.js';
 import { checkCugAccess } from './cug.js';
 import { normalizeCugGroup } from './cug-group.js';
@@ -71,6 +71,12 @@ async function proxyToOrigin(request, env, url) {
 
   url.hostname = env.ORIGIN_HOSTNAME;
   const req = new Request(url, request);
+  const cookies = req.headers.get('Cookie');
+  if (cookies) {
+    const portalCookies = cookies.split(';').filter((cookie) => !/^\s*booth_/.test(cookie)).join(';');
+    if (portalCookies.trim()) req.headers.set('Cookie', portalCookies);
+    else req.headers.delete('Cookie');
+  }
   if (hasBoothBoundary(request)) {
     ['if-none-match', 'if-modified-since', 'range', 'if-range'].forEach((header) => req.headers.delete(header));
     req.headers.delete('Cookie');
@@ -204,11 +210,15 @@ const handleRequest = async (request, env) => {
     }
 
     const ttl = sessionTtlForEmail(result.userInfo.email, env);
-    if (hasBoothBoundary(request)) {
+    const originalUrl = URL.canParse(result.originalUrl, url.origin)
+      ? new URL(result.originalUrl, url.origin) : null;
+    const destination = originalUrl?.origin === url.origin
+      ? safeRedirectPath(`${originalUrl.pathname}${originalUrl.search}`) : null;
+    if (destination && isBoothUrl(new URL(destination, request.url))) {
       if (!isStaffEmail(result.userInfo.email, env)) return new Response('Booth staff authentication required', { status: 403 });
       const resetFailure = await resetBeforeBoothLogin(request, env, result.userInfo.email);
       if (resetFailure) return resetFailure;
-      const headers = new Headers({ Location: '/booth', 'Cache-Control': 'private, no-store' });
+      const headers = new Headers({ Location: destination, 'Cache-Control': 'private, no-store' });
       (await boothSessionCookies({
         email: result.userInfo.email,
         exp: Math.floor(Date.now() / 1000) + ttl,
@@ -234,7 +244,7 @@ const handleRequest = async (request, env) => {
         if (!reset.ok) return reset;
       }
       const headers = new Headers({ Location: '/booth', 'Cache-Control': 'private, no-store' });
-      [clearSessionCookie(), clearSignedInMarkerCookie(), boothKioskCookie(),
+      [clearBoothKioskCookie(),
         'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       ].forEach((cookie) => headers.append('Set-Cookie', cookie));
       return new Response(null, { status: 302, headers });
@@ -249,9 +259,10 @@ const handleRequest = async (request, env) => {
   // Portal redirect: authenticate then redirect based on group mapping
   if (url.pathname === '/auth/portal') {
     if (hasBoothBoundary(request)) {
+      const target = safeRedirectPath(url.searchParams.get('redirect')) || '/booth';
       return await boothStaff(request, env)
-        ? new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } })
-        : redirectToLogin(new URL('/booth', request.url).href, env);
+        ? new Response(null, { status: 302, headers: { Location: target, 'Cache-Control': 'private, no-store' } })
+        : redirectToLogin(new URL(target, request.url).href, env);
     }
     const session = await getSession(request, env);
     if (!session) {

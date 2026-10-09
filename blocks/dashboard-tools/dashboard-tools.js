@@ -16,7 +16,7 @@ export default function init(el) {
     <details class="dt-usage">
       <summary>Booth usage export <span class="dt-summary-meta">CSV / 90-day history</span></summary>
       <p class="dt-description">Download business emails and recorded actions from the booth touchscreen experience.</p>
-      <p class="dt-description"><a href="/booth" aria-describedby="booth-experience-warning">View the booth experience</a>. <span id="booth-experience-warning">Use a separate browser or private window; opening the live booth restricts that browser to kiosk mode.</span></p>
+      <p class="dt-description"><a href="/booth" aria-describedby="booth-experience-warning">View the booth experience</a>. <span id="booth-experience-warning">Booth access is separate from portal access. On shared event devices, use a dedicated browser profile without a portal sign-in.</span></p>
       <form class="dt-export">
         <label for="booth-activity-kind">Activity to include</label>
         <div class="dt-export-controls">

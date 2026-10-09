@@ -1,6 +1,5 @@
 import {
-  getBoothSession, staffDomains, boothKioskCookie,
-  clearSessionCookie, clearSignedInMarkerCookie,
+  getBoothSession, staffDomains, clearBoothKioskCookie,
   createBoothRevocationToken, verifyBoothRevocationToken,
 } from './session.js';
 import { EMAIL_RE, jsonResponse } from './magiclink.js';
@@ -308,9 +307,7 @@ export async function handleBooth(request, env) {
   }
   if (action === 'exit' && response.ok) {
     response.headers.append('Set-Cookie', 'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    response.headers.append('Set-Cookie', boothKioskCookie());
-    response.headers.append('Set-Cookie', clearSessionCookie());
-    response.headers.append('Set-Cookie', clearSignedInMarkerCookie());
+    response.headers.append('Set-Cookie', clearBoothKioskCookie());
   }
   return finish(response);
 }

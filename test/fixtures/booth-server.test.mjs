@@ -75,7 +75,9 @@ test('simulator injects a blocking hook only on booth fixture documents', async 
   const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
   const lookup = await fetch(`${root}/auth/booth/lookup`, { method: 'POST', headers, body: '{"email":"visitor@example.test"}' });
   const { selectedPath } = await lookup.json();
-  assert.match(await (await fetch(`${root}${selectedPath}`, { headers })).text(), /booth-touchscreen-device/);
+  assert.match(await (await fetch(`${root}${selectedPath}?booth=1`, { headers })).text(), /booth-touchscreen-device/);
+  const ordinary = await (await fetch(`${root}${selectedPath}`, { headers })).text();
+  assert.doesNotMatch(ordinary, /data-booth-mode|booth-touchscreen-device/);
   const send = await fetch(`${root}/auth/booth/send`, { method: 'POST', headers, body: '{}' });
   assert.equal((await send.json()).delivery, 'sent');
   const reset = await fetch(`${root}/auth/booth/reset`, { method: 'POST', headers, body: '{}' });

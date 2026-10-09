@@ -3,12 +3,36 @@ import {
   createSession, getSession, sessionCookie, clearSessionCookie, verifyMagicLink, createMagicLinkToken,
   createShareLinkToken, verifyShareLink, signedInMarkerCookie, clearSignedInMarkerCookie,
   EVENT_SESSION_TTL, staffDomains, isStaffEmail, sessionTtlForEmail, isVerifiedMethod,
+  hasBoothBoundary, isBoothUrl,
 } from '../src/session.js';
 import { createMockEnv, signedJwt } from './helpers.js';
 
 function payloadOf(token) {
   return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
 }
+
+describe('explicit booth request boundary', () => {
+  const origin = 'https://portal.example';
+  const cookie = 'booth_kiosk=1; booth_session=expired; booth_device=legacy; booth_context=old';
+
+  it.each(['/adobe/booth-guide', '/adobe/dashboard', '/accounts/e/example/', '/auth/me', '/auth/portal', '/auth/callback?state=test'])('does not classify %s by old or current booth cookies', (path) => {
+    expect(hasBoothBoundary(new Request(`${origin}${path}`, { headers: { Cookie: cookie } }))).toBe(false);
+  });
+
+  it.each(['/booth', '/auth/booth/status', '/accounts/e/example/?booth=1', '/login?staff&redirect=%2Fbooth', '/auth/portal?redirect=%2Fbooth%3Ftouchscreen%3D1', '/login?exit-booth'])('restricts explicit booth request %s without requiring cookies', (path) => {
+    expect(hasBoothBoundary(new Request(`${origin}${path}`))).toBe(true);
+  });
+
+  it('inherits booth mode for same-origin subresources, never a new document or foreign referrer', () => {
+    const headers = { Cookie: cookie, Referer: `${origin}/accounts/e/example/?booth=1` };
+    expect(hasBoothBoundary(new Request(`${origin}/auth/me`, { headers }))).toBe(true);
+    expect(hasBoothBoundary(new Request(`${origin}/adobe/booth-guide`, { headers: { ...headers, 'Sec-Fetch-Mode': 'navigate' } }))).toBe(false);
+    expect(hasBoothBoundary(new Request(`${origin}/adobe/booth-guide`, { headers: { ...headers, 'Sec-Fetch-Dest': 'document' } }))).toBe(false);
+    expect(hasBoothBoundary(new Request(`${origin}/auth/me`, { headers: { Referer: 'https://foreign.example/booth' } }))).toBe(false);
+    expect(isBoothUrl(new URL(`${origin}/login?redirect=//foreign.example/booth`))).toBe(false);
+    expect(isBoothUrl(new URL(`${origin}/login?redirect=%2F%5Cforeign.example%2Fbooth`))).toBe(false);
+  });
+});
 
 describe('staff-domain helpers', () => {
   it('treats adobe.com and semrush.com as staff by default', () => {

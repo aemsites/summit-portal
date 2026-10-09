@@ -148,7 +148,7 @@ describe('selected report preview', () => {
     const preview = createBoothPreview(target, retry);
     await preview.load(context());
     expect(fetchStub.calledOnce).to.equal(true);
-    expect(fetchStub.firstCall.args[0]).to.equal(path);
+    expect(fetchStub.firstCall.args[0]).to.equal(`${path}?booth=1`);
     expect(fetchStub.firstCall.args[1]).to.include({ credentials: 'same-origin', cache: 'no-store', redirect: 'error' });
     expect(fetchStub.firstCall.args[1].signal).to.be.instanceOf(AbortSignal);
     expect(target.getAttribute('aria-busy')).to.equal('false');

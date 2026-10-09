@@ -48,7 +48,7 @@ import {
   hasBoothBoundary,
   getBoothBootstrapStaff,
   boothSessionCookies,
-  clearSessionCookie,
+  clearBoothKioskCookie,
 } from './session.js';
 import { findBoothDemo } from './booth-demos.js';
 
@@ -123,6 +123,16 @@ function allowedContextPath(path, context) {
     && /^[a-zA-Z0-9_/-]+\.(?:png|jpe?g|webp|gif|avif|svg|css|js)$/.test(path.slice(selected.length));
 }
 
+function boothAssetURL(value, request) {
+  if (!value || !URL.canParse(value, request.url)) return value;
+  const url = new URL(value, request.url);
+  if (url.origin !== new URL(request.url).origin
+    || !(/^\/accounts\/.*\.(?:png|jpe?g|webp|gif|avif|svg|css|js)$/.test(url.pathname)
+      || /^\/media_[0-9a-f]{40,}[/a-zA-Z0-9_-]*\.(?:png|jpe?g|webp|gif|avif|svg)$/.test(url.pathname))) return value;
+  url.searchParams.set('booth', '1');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function isBoothSharedAsset(path) {
   return isSharedAsset(path);
 }
@@ -193,14 +203,14 @@ export async function serveBooth(request, env) {
   }
   if (!scoped) {
     (await boothSessionCookies(session, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
-  } else headers.append('Set-Cookie', clearSessionCookie());
+  } else headers.append('Set-Cookie', clearBoothKioskCookie());
   if (new URL(request.url).searchParams.has('recover')) return recoveryPage(headers, request);
   const mode = touchscreenMode(request);
   const html = mode === '1' ? touchscreenShell : shell;
   return new Response(mode === 'frame' ? html.replace('<head>', `<head>${deviceBridge}`) : html, { headers });
 }
 
-/** Central kiosk allowlist, before ANY private representation or privileged route. */
+/** Booth-only allowlist, before any private representation or privileged route. */
 export async function protectBoothDocument(request, env) {
   if (!hasBoothBoundary(request)) return null;
   const url = new URL(request.url);
@@ -269,6 +279,22 @@ html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-conten
       element.append('</div>', { html: true });
     },
   })
+    .on('img, source, link, script', {
+      element(element) {
+        ['src', 'href'].forEach((name) => {
+          const value = element.getAttribute(name);
+          const scoped = boothAssetURL(value, request);
+          if (scoped !== value) element.setAttribute(name, scoped);
+        });
+        const srcset = element.getAttribute('srcset');
+        if (srcset && !srcset.includes('data:')) {
+          element.setAttribute('srcset', srcset.split(',').map((candidate) => {
+            const [src, ...descriptor] = candidate.trim().split(/\s+/);
+            return [boothAssetURL(src, request), ...descriptor].join(' ');
+          }).join(', '));
+        }
+      },
+    })
     .transform(privateResponse);
   // Do not stream any company bytes until the early concealment really exists.
   const html = await transformed.text();

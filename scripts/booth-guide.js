@@ -143,7 +143,7 @@ export default async function init(root = document.querySelector('.booth-guide')
       if (url.hostname === 'act.aem.now' && ['/booth', '/login'].includes(url.pathname)) {
         link.insertAdjacentText(
           'afterend',
-          ' (use a separate browser or private window for the booth)',
+          ' (on shared event devices, use a dedicated browser profile without a portal sign-in)',
         );
       }
     });
