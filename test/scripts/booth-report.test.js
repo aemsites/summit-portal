@@ -1323,6 +1323,44 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
   });
 
+  it('does not treat report verification near expiry as visitor input', async () => {
+    await reportFixture();
+    const clock = sandbox.useFakeTimers({ now: Date.now() });
+    const expiresAt = Date.now() + 120000;
+    markReport(expiresAt);
+    await mount({ expiresAt });
+    await clock.tickAsync(0);
+    expect(window.fetch.getCalls().some(({ args }) => args[0] === '/auth/booth/activity'))
+      .to.equal(false);
+    expect(document.querySelector('[data-booth-connection]').hidden).to.equal(true);
+  });
+
+  it('keeps verified content readable during a stalled renewal and clears reconnection status after retry', async () => {
+    const main = await reportFixture();
+    const clock = sandbox.useFakeTimers({ now: Date.now() });
+    const expiresAt = Date.now() + 900000;
+    markReport(expiresAt);
+    await mount({ expiresAt });
+    const statusCall = window.fetch.callCount;
+    window.fetch.callsFake((url) => (
+      url.endsWith('/activity') ? new Promise(() => {})
+        : Promise.resolve(Response.json({ error: 'Synthetic reset failure' }, { status: 503 }))
+    ));
+    const touch = document.addEventListener.getCalls().find(({ args }) => args[0] === 'pointerdown');
+    touch.args[1]();
+    await clock.tickAsync(719999);
+    expect(window.fetch.callCount).to.equal(statusCall);
+    await clock.tickAsync(10002);
+    expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
+    expect(getComputedStyle(main).display).not.to.equal('none');
+    expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
+    expect(document.querySelector('[data-booth-connection]').textContent).to.include('Reconnecting');
+    window.fetch.callsFake(async () => Response.json({ expiresAt: Date.now() + 900000 }));
+    await clock.tickAsync(30000);
+    expect(document.querySelector('[data-booth-connection]').hidden).to.equal(true);
+    expect(getComputedStyle(main).display).not.to.equal('none');
+  });
+
   it('conceals a report immediately if activity renewal loses staff authentication', async () => {
     const main = await reportFixture();
     const clock = sandbox.useFakeTimers({ now: Date.now() });
@@ -1335,7 +1373,7 @@ describe('confirmed booth report portrait layout', () => {
     }));
     const input = document.addEventListener.getCalls().find(({ args }) => args[0] === 'input');
     input.args[1]();
-    await clock.tickAsync(10);
+    await clock.tickAsync(720000);
     expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
     expect(document.querySelector('#booth-recovery p').textContent).to.equal('Staff authentication required');
     expect(getComputedStyle(main).display).to.equal('none');

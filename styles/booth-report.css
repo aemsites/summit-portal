@@ -91,6 +91,12 @@ html.booth-report-active #booth-return p {
   margin: 0;
 }
 
+html.booth-report-active #booth-return [data-booth-connection] {
+  color: #505050;
+  font-size: 0.8em;
+  font-weight: 400;
+}
+
 html.booth-report-active #booth-return .booth-demo-notice {
   display: grid;
   flex: 1 1 320px;

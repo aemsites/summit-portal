@@ -21,6 +21,12 @@ export function mountBooth(root = document) {
   const loading = root.getElementById('booth-loading');
   const previewTarget = root.getElementById('report-preview');
   const preview = previewTarget ? createBoothPreview(previewTarget, root.getElementById('preview-retry')) : null;
+  const connection = root.createElement('p');
+  connection.className = 'booth-connection-note';
+  connection.dataset.boothConnection = 'true';
+  connection.setAttribute('role', 'status');
+  connection.hidden = true;
+  (root.querySelector('.stage-footer') || stage).append(connection);
   const keyboard = mountBoothKeyboard(root);
   let ready = false;
   let busy = false;
@@ -75,6 +81,8 @@ export function mountBooth(root = document) {
       chooseAnother.disabled = false;
     }
     retry.hidden = true;
+    connection.hidden = true;
+    connection.textContent = '';
     root.getElementById('staff-login').hidden = true;
     if (clearTimers) {
       inactivity.stop();
@@ -329,6 +337,10 @@ export function mountBooth(root = document) {
       scrub(false);
       recovery(error);
     },
+    onConnectionChange(error) {
+      connection.textContent = error ? 'Connection interrupted. Reconnecting without clearing this visit.' : '';
+      connection.hidden = !error;
+    },
     track(operation) {
       settled = Promise.allSettled([settled, operation]).then(() => undefined);
     },
@@ -440,7 +452,7 @@ export function mountBooth(root = document) {
     if (initialRevision !== revision) return;
     recovery(error);
   });
-  activity();
+  inactivity.activity(false);
 }
 
 if (document.body.classList.contains('booth')) mountBooth();

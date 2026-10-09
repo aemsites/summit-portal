@@ -230,6 +230,52 @@ preserved, with no migration or private-content update. The review branch still
 needs merging so future main-based deployments retain these fixes. Close old
 report tabs and reload the booth before the demo.
 
+**Mid-report recovery diagnosis (October 9, fix implemented locally; not deployed):**
+the previously deployed `createBoothInactivity` path treats every renewal error as fatal.
+Touch/scroll activity renews through `/auth/booth/activity`, throttled to 30
+seconds; the shared request deadline is ten seconds for fetch and JSON body.
+A timeout disables renewal and calls the report guard's fatal `fail()` handler,
+which stops activity tracking, conceals the already-verified report and offers
+**Retry and clear screen**. That action resets the visit rather than reconnecting
+the current report. A local reproduction reaches this white recovery screen
+at 40 seconds while the original 15-minute authorization still has over 14
+minutes left. Both deployed source files match the diagnosed code.
+Worker activity renewal also performs report discovery and can return 502 for
+temporary discovery failure without revoking the record, but the client still
+conceals it. Genuine revoked/expired access remains a distinct fatal case.
+The demonstrated demo incident's exact failed request/status is not known.
+The implemented correction below uses non-destructive retry within the last confirmed
+expiry, with visible reconnection status, retaining immediate clearing for
+confirmed authorization loss, real expiry and visitor reset. No production
+behavior has changed as part of this diagnosis.
+
+**Renewal timing/recovery refinement (October 9, review branch; not deployed):**
+normal input-based renewals now wait until three minutes remain on the last
+server-confirmed expiry, typically twelve minutes into a fresh fifteen-minute
+session. No request is queued just by verifying/loading a report or shell.
+Renewals use elapsed time since real input, not the delayed request time, and
+do not repeat after success unless further visitor input needs reporting.
+
+Network errors, request/body timeouts, malformed JSON, 408/429 and 5xx responses
+retain already-confirmed access and show a quiet reconnecting message. Only
+failed requests retry with a thirty-second backoff, bounded by the original
+confirmed deadline. Success clears that message. No local grace extends
+authorization; persistent failure still clears at confirmed expiry.
+Definitive 401/403/410 and other non-transient errors retain fatal recovery.
+HTTP denial status survives malformed or stalled error bodies, preventing
+authentication loss from being mistaken for a network problem.
+
+The shared policy covers Entry/picker/Finish, personal reports and demos.
+Lookup/send/reset deadlines, uncertain delivery, staff/device checks, idle
+cleanup and serialized reset waiting are unchanged. Late responses cannot
+revive cleared or expired access. The real 2160 x 3840 touchscreen frame,
+using public report markup and synthetic local access, retained the visible
+report and enabled Finish during a 502, then recovered after its thirty-second
+retry without reset or page errors. This refinement has not been deployed.
+Review branch: `josec-adobe-booth-renewal-recovery`, including the latest
+main's explicit booth/portal navigation boundary. Merge and a matching Worker
+deployment are still required.
+
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.

@@ -322,10 +322,37 @@ The shared frontend helper batches input renewals, subtracts elapsed idle time,
 and updates its deadline only after server confirmation. The Worker rechecks
 staff/device binding and personal-report permissions before refreshing Durable
 Object expiry, KV retention and the context cookie. Passive status, view and
-asset requests never renew access. Failed renewal keeps the screen fail-closed;
-expired/reset visits cannot be revived. Manual clear/history safeguards and
+asset requests never renew access. The initial all-error renewal recovery is
+superseded by the local refinement below; genuine access loss remains fail-closed.
+Expired/reset visits cannot be revived. Manual clear/history safeguards and
 the **four-day staff login** are unchanged. The Worker and matching bundled
 assets were deployed together at 13:48 UTC; close old report tabs and reload.
+
+**Renewal refinement (October 9, review branch; not deployed):**
+real input is reported only when three minutes remain before the confirmed
+expiry, normally twelve minutes into a fresh fifteen-minute session.
+Report/shell verification is not visitor activity. Successful renewals do not
+poll again without new input; payloads retain the real input's elapsed idle time.
+
+Temporary network/body failures, malformed JSON, 408/429 and server errors
+show a non-blocking reconnecting note without concealing a verified report or
+scrubbing the current shell. Failed attempts retry after thirty seconds, never
+past the last confirmed deadline and never concurrently. A valid renewal hides
+the note. Confirmed expiry, explicit reset and definitive authorization loss
+still clear content. HTTP denial status is preserved even when its body cannot
+be parsed; no client-only authorization extension or silent-success fallback
+is introduced. Initial verification and lookup/send/reset failures retain their
+existing recovery and delivery semantics.
+
+The shared helper and changed shell/report assets require a matching Worker
+deployment before this behavior is live. Unit/integration regressions cover
+timing, transient fetch/body failures, denied/malformed responses, expired/late
+results, passive boot, Finish preservation and concurrent reset waiting.
+`test/fixtures/booth-renewal-browser.js` verifies the real touchscreen frame
+against public sample markup and local synthetic access: a 502 leaves reading
+and Finish available, and the scheduled retry recovers without clearing.
+Review branch: `josec-adobe-booth-renewal-recovery`. It incorporates current
+main's explicit booth/portal isolation contract; deployment remains separate.
 
 **Security hardening is deployed; see the October 8 rollout below.** Dashboard navigation cannot exit
 booth restrictions. Staff administration uses a **separate browser/device**.
