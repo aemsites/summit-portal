@@ -267,7 +267,7 @@ export default function decorate(block) {
   if (isInsight) {
     buildInsightHero(block, rows);
     const heading = block.querySelector('.rh-insight-text h1, .rh-insight-text h2');
-    if (heading) typeText(heading);
+    if (heading && !document.querySelector('script[data-booth-mode]')) typeText(heading);
   } else if (isDashboard) {
     buildDashboardHero(block, rows);
   } else if (isTransition) {

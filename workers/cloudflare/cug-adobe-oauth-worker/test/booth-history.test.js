@@ -3,7 +3,7 @@ import {
 } from 'vitest';
 import worker from '../src/index.js';
 import { BoothCoordinator } from '../src/booth.js';
-import { createSession, createShareLinkToken, getSession, getBoothSession } from '../src/session.js';
+import { createSession, createShareLinkToken, getSession, getBoothSession, createBoothRevocationToken } from '../src/session.js';
 import { handleCallback } from '../src/oauth.js';
 import { sha256hex } from '../src/stafflogin.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
@@ -199,6 +199,167 @@ describe('persistent booth authorization boundary', () => {
     expect(cookies.has('auth_token')).toBe(false);
     expect(cookies.has('booth_session')).toBe(true);
     expect((await request('/adobe/dashboard')).status).toBe(302);
+  });
+
+  it('fully exits booth mode only after fresh staff credentials and confirmed visit revocation', async () => {
+    await start();
+    cookies.set('signed_in', '1');
+    cookies.set('auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'] }));
+    const visit = await actor.state.storage.get('context');
+    expect(await env.SESSIONS.get(`booth:${visit.key}`)).not.toBeNull();
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const response = await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ result: 'exited' });
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect(await env.SESSIONS.get(`booth:${visit.key}`)).toBeNull();
+    expect([...cookies.keys()]).toEqual([]);
+    const report = await request(other);
+    expect(report.status).toBe(302);
+    expect(report.headers.get('Location')).toContain('/login?redirect=');
+    expect(report.headers.get('Location')).not.toContain('redirect=%2Fbooth');
+    expect(report.headers.get('Location')).toContain(encodeURIComponent(other));
+  });
+
+  it('does not exit or revoke a visit for incorrect reauthentication credentials', async () => {
+    await start();
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const before = new Map(cookies);
+    const context = await actor.state.storage.get('context');
+    const response = await request('/auth/staff-login', { username: 'operator', password: 'incorrect', action: 'exit-booth' });
+    expect(response.status).toBe(401);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(cookies).toEqual(before);
+    expect(await actor.state.storage.get('context')).toEqual(context);
+  });
+
+  it.each(['direct', 'prepared'])('does not let a stale tab recreate the %s exited visit or restore its context cookie', async (mode) => {
+    await start();
+    const staleCookie = [...cookies].map(([key, value]) => `${key}=${value}`).join('; ');
+    if (mode === 'prepared') {
+      expect((await request('/auth/booth/reset', { prepareExit: true })).status).toBe(200);
+    }
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' })).status).toBe(200);
+    const lateLookup = await request('/auth/booth/lookup', { email: 'visitor@example.com' }, 'POST', { Cookie: staleCookie });
+    expect(lateLookup.status).toBe(410);
+    expect(cookies.size).toBe(0);
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect((await request(other)).headers.get('Location')).toContain('/login?redirect=');
+  });
+
+  it('keeps scoped staff authentication usable for a new visitor after cancelling the prepared exit', async () => {
+    await start();
+    const oldId = cookies.get('booth_context');
+    const staff = cookies.get('booth_session');
+    expect((await request('/auth/booth/reset', { prepareExit: true })).status).toBe(200);
+    const nextState = { storage: createMockBoothStorage(), waitUntil: vi.fn() };
+    const nextActor = new BoothCoordinator(nextState, env);
+    env.BOOTH_COORDINATOR.get = (id) => (id === oldId ? actor : nextActor);
+    expect((await request('/booth')).status).toBe(200);
+    expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' })).status).toBe(200);
+    expect(cookies.get('booth_session')).toBe(staff);
+    expect(cookies.get('booth_kiosk')).toBe('1');
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.get('booth_context')).not.toBe(oldId);
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect(await nextActor.state.storage.get('context')).toBeDefined();
+  });
+
+  it('preserves terminal retirement when prepared cleanup fails and is retried as an ordinary reset', async () => {
+    await start();
+    const staleCookie = [...cookies].map(([key, value]) => `${key}=${value}`).join('; ');
+    vi.spyOn(env.SESSIONS, 'delete').mockRejectedValueOnce(new Error('Synthetic cleanup failure'));
+    expect((await request('/auth/booth/reset', { prepareExit: true })).status).toBe(500);
+    expect((await request('/auth/booth/reset', {})).status).toBe(200);
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' })).status).toBe(200);
+    expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' }, 'POST', { Cookie: staleCookie })).status).toBe(410);
+    expect(cookies.size).toBe(0);
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+  });
+
+  it('binds permanent exit revocation to its signed purpose rather than an unsigned intent flag', async () => {
+    await start();
+    const id = cookies.get('booth_context');
+    const context = await actor.state.storage.get('context');
+    const token = await createBoothRevocationToken(id, 'operator@adobe.com', env);
+    const response = await actor.fetch(new Request('https://portal.example/auth/booth/revoke', {
+      method: 'POST',
+      headers: { Cookie: `booth_context=${id}` },
+      body: JSON.stringify({ token, exitBooth: true }),
+    }));
+    expect(response.status).toBe(403);
+    expect(await actor.state.storage.get('context')).toEqual(context);
+    expect(await actor.state.storage.get('retired')).toBeUndefined();
+  });
+
+  it.each([
+    ['cross-origin', { Origin: 'https://untrusted.example' }],
+    ['missing origin', { Origin: '' }],
+    ['non-JSON', { 'Content-Type': 'text/plain' }],
+  ])('rejects %s exit even without a kiosk cookie', async (_name, headers) => {
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const before = new Map(cookies);
+    const response = await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' }, 'POST', headers);
+    expect(response.status).toBe(403);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(cookies).toEqual(before);
+  });
+
+  it.each(['unexpected', 'invalid-json', 'stalled-fetch', 'stalled-body'])('does not clear cookies for %s revocation confirmation', async (failure) => {
+    await start();
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const before = new Map(cookies);
+    let reached;
+    const ready = new Promise((resolve) => { reached = resolve; });
+    vi.spyOn(actor, 'fetch').mockImplementationOnce(async () => {
+      reached();
+      if (failure === 'stalled-fetch') return new Promise(() => {});
+      if (failure === 'stalled-body') return { ok: true, json: async () => new Promise(() => {}) };
+      return failure === 'invalid-json' ? new Response('invalid') : Response.json({ state: 'report' });
+    });
+    vi.useFakeTimers();
+    const operation = request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' });
+    await ready;
+    await vi.advanceTimersByTimeAsync(10001);
+    const response = await operation;
+    expect(response.status).toBe(503);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(cookies).toEqual(before);
+  });
+
+  it('retains the kiosk boundary and all credentials if authenticated exit cleanup fails', async () => {
+    await start();
+    const visit = await actor.state.storage.get('context');
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const before = new Map(cookies);
+    vi.spyOn(env.SESSIONS, 'delete').mockRejectedValueOnce(new Error('Synthetic cleanup failure'));
+    const response = await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' });
+    expect(response.status).toBe(503);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(cookies).toEqual(before);
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect(await actor.state.storage.get('pendingCleanup')).toBe(visit.key);
+    expect((await request(selected)).headers.get('Location')).toBe('/booth');
+    expect((await request(other)).headers.get('Location')).toBe('/booth');
+    const retry = await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' });
+    expect(retry.status).toBe(200);
+    expect(await env.SESSIONS.get(`booth:${visit.key}`)).toBeNull();
+    expect(await actor.state.storage.get('pendingCleanup')).toBeUndefined();
+    expect(cookies.size).toBe(0);
+  });
+
+  it('can finish a freshly authenticated exit after the old booth credential has expired', async () => {
+    await start();
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    cookies.set('booth_session', 'expired');
+    const response = await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ result: 'exited' });
+    expect(await actor.state.storage.get('context')).toBeUndefined();
+    expect(cookies.size).toBe(0);
   });
 
   it('serves a static recovery screen, never the selected report, and requires confirmed reset', async () => {

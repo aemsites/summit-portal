@@ -68,6 +68,11 @@ export async function loadPage() {
   await ensureRequiredRouteBlocks();
 }
 await loadPage();
+if (document.querySelector('script[data-booth-mode]')) {
+  await loadStyle('https://use.typekit.net/pbq1nqa.css');
+  document.documentElement.dataset.boothContentReady = 'true';
+  document.dispatchEvent(new Event('booth-content-ready'));
+}
 
 (function da() {
   loadStyle('https://use.typekit.net/pbq1nqa.css');

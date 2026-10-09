@@ -60,6 +60,46 @@ sync; it does not deploy or alter the Worker.
 
 **Booth reporting outages:** subsequent valid searches append to the durable outbox even while D1 is unavailable; expired entries are removed independently of D1 recovery. Retrying a saved selection may open the same authorized report; switching to another requires the deliberate picker transition and fresh revalidation. Confirmed send/contact outcomes remain explicit and do not become resend requests.
 
+**Staff exit from booth mode (not deployed):** **Staff: Sign out and exit
+booth** first scrubs visitor details, waits for pending operations and confirms
+a serialized reset, then opens `/login?staff&exit-booth`. This portrait-responsive
+staff-only form requires credentials again; it offers **Back to booth** and does
+not expose customer/SSO login or grant portal access. Fresh same-origin
+`POST /auth/staff-login` with `action: "exit-booth"` verifies shared staff
+credentials and confirms visit/KV cleanup before expiring `booth_context`,
+`booth_session`, `booth_device`, `booth_kiosk`, `auth_token` and `signed_in`.
+Success requires an explicit `exited` result and returns to ordinary `/login`;
+subsequent report links use normal report-targeted login, not staff booth login.
+Cleanup failure or timeout sends no clearing cookies; failed KV deletion retains
+its retry key after attendee access is revoked. Fetch and response-body
+waiting are bounded; duplicate submit/cancellation while pending are blocked,
+and entered passwords are cleared after an attempt or navigation. Preparing
+exit permanently retires that visit identifier, preventing late tabs from
+recreating it; cancellation retains scoped staff/kiosk authentication and starts
+the next visitor with a new context. Expired staff credentials can still be
+freshly verified to complete exit. Ordinary reset, inactivity, `/auth/logout`
+and legacy `/auth/booth/exit` remain kiosk-preserving. This deliberately
+supersedes the deployed soft-signout behavior above **only after publication
+and matching Worker deployment**. Review branch:
+`josec-adobe-booth-transitions-exit`; Worker deployment remains pending.
+
+**Booth transition stability (not deployed):** the shared loader uses a
+fixed system face instead of swapping to a downloaded webfont, and pending/reset
+documents cannot inherit the ordinary native report's 1.6× zoom. Pending content
+lays out invisibly behind the overlay; clearing still removes it from layout.
+After exact-path authorization and the portrait stylesheet, the adapter waits
+for Author Kit decoration, required styles, report fonts and first-section image
+decoding before reveal. Readiness has a ten-second deadline and fails into
+concealed recovery; expired/reset documents cannot reappear after a late result.
+Booth headings and headline metrics render their complete values without typing
+or count-up animations; ordinary reports retain those effects. Public fonts under
+`/styles/fonts/` are allowed as rendering dependencies rather than redirected
+to booth HTML. Native, half-size and mobile synthetic navigation checks hold
+decoration, Typekit and images, compare loader metrics across navigation, and
+limit visible layout shift to 0.001 with first-screen bounds stable within 1px.
+Merge/AEM Code Sync must publish `scripts/scripts.js` and block changes before
+deploying the matching Worker adapter (`booth-transitions-1`).
+
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.

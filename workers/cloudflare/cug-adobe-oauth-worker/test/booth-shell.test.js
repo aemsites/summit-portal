@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { serveBooth, injectBoothReturn } from '../src/booth-shell.js';
+import { serveBooth, injectBoothReturn, isBoothSharedAsset } from '../src/booth-shell.js';
 import { createMockEnv, createMockBoothCookie } from './helpers.js';
 import { BOOTH_DEMOS } from '../src/booth-demos.js';
 
@@ -14,6 +14,13 @@ describe('bundled booth shell and exact report injection', () => {
   let cookie;
   let expiresAt;
   const selectedPath = '/accounts/e/example/insights/example-com/portal-landing/';
+
+  it('allows public font dependencies without redirecting them into booth HTML', () => {
+    expect(isBoothSharedAsset('/styles/fonts/montserrat.woff2')).toBe(true);
+    expect(isBoothSharedAsset('/fonts/report.woff2')).toBe(true);
+    expect(isBoothSharedAsset('/styles/fonts/private.html')).toBe(false);
+    expect(isBoothSharedAsset('/accounts/private.woff2')).toBe(false);
+  });
 
   beforeEach(async () => {
     env = createMockEnv();
@@ -32,7 +39,7 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-picker-figma-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-exit-reauth-1');
     expect(html).toContain('/styles/booth.css?v=booth-picker-figma-1');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
@@ -180,10 +187,12 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-controls-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-transitions-1');
+    expect(injected[1][1]).toContain('visibility: hidden !important');
+    expect(injected[1][1]).toContain('zoom: 1 !important');
     expect(injected[1][1]).toContain('.booth-loading.booth-loading-overlay');
     expect(await readFile(new URL('../../../../scripts/lazy.js', import.meta.url), 'utf8'))
-      .toContain("import('./booth-report.js?v=booth-controls-1')");
+      .toContain("import('./booth-report.js?v=booth-transitions-1')");
     expect(injected[2][1]).toContain('Opening your report...');
     expect(injected[2][1]).toContain('class="booth-recovery-actions" hidden');
     expect(injected[2][1]).toContain('/booth?recover=1');

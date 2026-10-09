@@ -550,7 +550,7 @@ export default async function init(el) {
   );
 
   if (el.classList.contains('dark')) {
-    buildDarkStats(el, rows);
+    buildDarkStats(el, rows, { animate: !document.querySelector('script[data-booth-mode]') });
     // Re-run footer relocation AFTER the strip is built. buildDarkStats clears
     // el (textContent = ''), which would wipe a callout relocated in before us;
     // scheduling here guarantees the at-a-glance banner lands under the strip
