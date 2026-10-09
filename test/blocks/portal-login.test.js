@@ -132,6 +132,88 @@ describe('portal-login recovery', () => {
     expect(block.querySelector('.pl-error').hidden).to.equal(false);
     expect(block.querySelector('.pl-submit').disabled).to.equal(false);
   });
+
+  it('presents an explicit reauthenticated exit without customer login or new access grants', async () => {
+    window.history.replaceState(null, '', '/login?staff&exit-booth');
+    fetchStub.resolves(Response.json({ error: 'Booth reset could not be confirmed' }, { status: 503 }));
+    init(block);
+    expect(block.querySelector('.pl-staff-title').textContent).to.equal('Sign out and exit booth');
+    expect(block.querySelector('.pl-submit').textContent).to.equal('Sign out and exit booth');
+    expect(block.querySelector('.pl-staff-hint').textContent).to.include('staff credentials again');
+    expect(block.querySelector('.pl-staff-cancel').getAttribute('href')).to.equal('/booth');
+    block.querySelector('#pl-staff-user').value = 'fixture-staff';
+    block.querySelector('#pl-staff-pass').value = 'synthetic-password';
+    block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(JSON.parse(fetchStub.firstCall.args[1].body)).to.deep.equal({ username: 'fixture-staff', password: 'synthetic-password', action: 'exit-booth' });
+    expect(block.querySelector('.pl-error').textContent).to.include('could not be confirmed');
+    expect(block.querySelector('.pl-submit').disabled).to.equal(false);
+    expect(block.querySelector('#pl-staff-pass').value).to.equal('');
+    expect(block.querySelector('.pl-magic-form')).to.equal(null);
+  });
+
+  it('preserves the touchscreen presentation when staff cancel exit', () => {
+    window.history.replaceState(null, '', '/login?staff&exit-booth&redirect=%2Fbooth%3Ftouchscreen%3D1%26brand%3Dsemrush');
+    init(block);
+    expect(block.querySelector('.pl-staff-cancel').getAttribute('href')).to.equal('/booth?touchscreen=1&brand=semrush');
+  });
+
+  it('rejects a login-shaped success rather than treating it as a confirmed exit', async () => {
+    window.history.replaceState(null, '', '/login?exit-booth&redirect=%2Fadobe%2Fdashboard');
+    fetchStub.resolves(Response.json({ result: 'ok' }));
+    init(block);
+    expect(block.querySelector('.pl-staff-cancel').getAttribute('href')).to.equal('/booth');
+    block.querySelector('#pl-staff-user').value = 'fixture-staff';
+    block.querySelector('#pl-staff-pass').value = 'synthetic-password';
+    block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(block.querySelector('.pl-error').textContent).to.include('exit could not be confirmed');
+    expect(block.querySelector('.pl-error').hidden).to.equal(false);
+    expect(window.location.pathname).to.equal('/login');
+  });
+
+  it('shows credential-specific exit feedback without removing the cancel action', async () => {
+    window.history.replaceState(null, '', '/login?staff&exit-booth');
+    fetchStub.resolves(Response.json({ error: 'Incorrect credentials' }, { status: 401 }));
+    init(block);
+    block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(block.querySelector('.pl-error').textContent).to.include('Incorrect username or password');
+    expect(block.querySelector('.pl-error').textContent).to.include('still active');
+    expect(block.querySelector('.pl-staff-cancel').href).to.include('/booth');
+  });
+
+  ['fetch', 'body'].forEach((phase) => {
+    it(`bounds exit ${phase} waiting and ignores duplicate submission`, async () => {
+      window.history.replaceState(null, '', '/login?staff&exit-booth');
+      const clock = sinon.useFakeTimers();
+      fetchStub.callsFake(() => (phase === 'fetch' ? new Promise(() => {})
+        : Promise.resolve({ ok: true, json: () => new Promise(() => {}) })));
+      try {
+        init(block);
+        block.querySelector('#pl-staff-user').value = 'fixture-staff';
+        block.querySelector('#pl-staff-pass').value = 'synthetic-password';
+        const form = block.querySelector('form');
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        expect(fetchStub.callCount).to.equal(1);
+        const cancel = block.querySelector('.pl-staff-cancel');
+        const cancelClick = new MouseEvent('click', { cancelable: true });
+        cancel.dispatchEvent(cancelClick);
+        expect(cancelClick.defaultPrevented).to.equal(true);
+        expect(cancel.getAttribute('aria-disabled')).to.equal('true');
+        await clock.tickAsync(10001);
+        expect(fetchStub.firstCall.args[1].signal.aborted).to.equal(true);
+        expect(block.querySelector('.pl-submit').disabled).to.equal(false);
+        expect(cancel.hasAttribute('aria-disabled')).to.equal(false);
+        expect(block.querySelector('.pl-error').textContent).to.include('exit timed out');
+        expect(block.querySelector('#pl-staff-pass').value).to.equal('');
+        expect(window.location.pathname).to.equal('/login');
+      } finally {
+        clock.restore();
+      }
+    });
+  });
 });
 
 describe('portrait staff login layout', () => {

@@ -548,7 +548,7 @@ export default async function init(el) {
   const rows = [...el.querySelectorAll(':scope > div')].filter((row) => !footers.includes(row));
 
   if (el.classList.contains('dark')) {
-    buildDarkStats(el, rows);
+    buildDarkStats(el, rows, { animate: !document.querySelector('script[data-booth-mode]') });
     el.append(...footers);
     scheduleRelocateSectionFooter(el);
     return;

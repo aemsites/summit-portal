@@ -1,6 +1,6 @@
 import {
   createSession, sessionCookie, signedInMarkerCookie, EVENT_SESSION_TTL,
-  hasBoothBoundary, boothSessionCookies,
+  hasBoothBoundary, boothSessionCookies, clearSessionCookie, clearSignedInMarkerCookie,
 } from './session.js';
 import { jsonResponse } from './magiclink.js';
 import { resetBeforeBoothLogin } from './booth.js';
@@ -10,6 +10,12 @@ const FAILED_LOGIN_DELAY_MS = 350; // blunt brute-forcing
 
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[stafflogin]', ...args);
+
+function reply(body, status = 200) {
+  const response = jsonResponse(body, status);
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
+}
 
 /** Lowercase hex SHA-256 of a string. */
 export async function sha256hex(str) {
@@ -49,12 +55,13 @@ export function parseCredentials(env) {
 }
 
 /**
- * Generic staff credential login. POST { username, password }.
+ * Staff credentials. POST { username, password, action?: 'exit-booth' }.
  *
  * Verifies against the EVENT_STAFF_CREDENTIALS secret and, on success, mints a
  * full 4-day staff session (groups adobe.com + semrush.com → opens every
  * customer page) carrying the current EVENT_CRED_EPOCH as a kill-switch claim.
- * Designed for non-managed event iPads that cannot do Adobe SSO/Okta.
+ * Booth login stays scoped; explicit exit revokes the visit and clears cookies,
+ * without minting a portal session.
  */
 export async function handleStaffLoginRequest(request, env) {
   if (request.method !== 'POST') {
@@ -62,17 +69,26 @@ export async function handleStaffLoginRequest(request, env) {
   }
   if (hasBoothBoundary(request) && (request.headers.get('Origin') !== new URL(request.url).origin
     || request.headers.get('Content-Type')?.split(';')[0] !== 'application/json')) {
-    return jsonResponse({ error: 'Same-origin JSON request required' }, 403);
+    return reply({ error: 'Same-origin JSON request required' }, 403);
   }
 
   let username;
   let password;
+  let exitBooth = false;
   try {
     const body = await request.json();
     username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     password = typeof body.password === 'string' ? body.password : '';
+    exitBooth = body.action === 'exit-booth';
+    if (body.action !== undefined && !exitBooth) {
+      return reply({ error: 'Unsupported staff action' }, 400);
+    }
   } catch {
-    return jsonResponse({ error: 'Invalid request' }, 400);
+    return reply({ error: 'Invalid request' }, 400);
+  }
+  if (exitBooth && (request.headers.get('Origin') !== new URL(request.url).origin
+    || request.headers.get('Content-Type')?.split(';')[0] !== 'application/json')) {
+    return reply({ error: 'Same-origin JSON request required' }, 403);
   }
 
   const expected = parseCredentials(env).get(username);
@@ -83,7 +99,7 @@ export async function handleStaffLoginRequest(request, env) {
   if (!ok) {
     log(`rejected username=${username || '(empty)'}`);
     await new Promise((resolve) => { setTimeout(resolve, FAILED_LOGIN_DELAY_MS); });
-    return jsonResponse({ error: 'Incorrect username or password' }, 401);
+    return reply({ error: 'Incorrect username or password' }, 401);
   }
 
   const email = `${username}@adobe.com`;
@@ -94,10 +110,18 @@ export async function handleStaffLoginRequest(request, env) {
     method: 'staff',
     gen_epoch: String((env && env.EVENT_CRED_EPOCH) ?? ''),
   };
-  if (hasBoothBoundary(request)) {
-    const resetFailure = await resetBeforeBoothLogin(request, env, email);
+  if (exitBooth || hasBoothBoundary(request)) {
+    const resetFailure = await resetBeforeBoothLogin(request, env, email, exitBooth);
     if (resetFailure) return resetFailure;
     const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
+    if (exitBooth) {
+      ['booth_context', 'booth_session', 'booth_device', 'booth_kiosk'].forEach((name) => {
+        headers.append('Set-Cookie', `${name}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+      });
+      headers.append('Set-Cookie', clearSessionCookie());
+      headers.append('Set-Cookie', clearSignedInMarkerCookie());
+      return new Response(JSON.stringify({ result: 'exited' }), { headers });
+    }
     (await boothSessionCookies({
       email,
       exp: Math.floor(Date.now() / 1000) + EVENT_SESSION_TTL,
@@ -107,7 +131,7 @@ export async function handleStaffLoginRequest(request, env) {
   const token = await createSession(env, userInfo, EVENT_SESSION_TTL);
   log(`session minted for ${username} (4-day, epoch=${userInfo.gen_epoch})`);
 
-  const headers = new Headers({ 'Content-Type': 'application/json' });
+  const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
   headers.append('Set-Cookie', sessionCookie(token, EVENT_SESSION_TTL));
   headers.append('Set-Cookie', signedInMarkerCookie());
   return new Response(JSON.stringify({ result: 'ok' }), { status: 200, headers });

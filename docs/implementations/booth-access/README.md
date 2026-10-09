@@ -5,7 +5,7 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
-## Portrait staff setup (branch, not deployed)
+## Portrait staff setup (merged, live)
 
 The origin-served `portal-login` block adds staff-only large portrait sizing
 for `/login?staff&redirect=%2Fbooth`. At 2160 × 3840: 1440px card, 80px page
@@ -23,7 +23,7 @@ regressions are in `test/blocks/portal-login.test.js`; browser retry/success
 checks use intercepted synthetic credentials only. Merge/AEM Code Sync
 publishes this frontend CSS; **no Worker deployment is needed**.
 
-## Multi-report picker (branch, not deployed)
+## Multi-report picker (October 8, deployed)
 
 The [approved Figma frame](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=404-1500)
 replaces the old website list with a black marquee and the exact copy:
@@ -66,9 +66,123 @@ visitor replacement. Final checks passed: 182 booth/login frontend tests,
 456 Worker tests (one existing skip), changed-file ESLint/Stylelint, actual
 Wrangler dry-run packaging and native browser picker/report/loading/recovery
 journeys. Repository-wide lint still reports unrelated existing violations;
-they are not fixed by this branch. The branch includes the portrait staff-login fix above.
-No deployment is performed: merge/AEM Code Sync publishes login CSS; the
-booth shell, assets and icon endpoint require a separate Worker deployment.
+they are not fixed by this change. The merge includes the portrait staff-login fix above.
+
+Merged main `d91bf81` (PR #167) was deployed to `summit-portal` on October 8
+at **16:11 UTC**. Worker version `fc171729-76d0-4d59-9b58-3418964e8e84`
+serves **100% of traffic**, superseding `9d1d86b2-673a-4af9-8b86-fd9dab65a8df`.
+Live picker JS/CSS, loading CSS, composite artwork, icons/globe and origin
+staff-login CSS match the merged files byte-for-byte. Anonymous booth access
+keeps the staff redirect; icon, internal-context and status requests are
+staff-gated with private/no-store replies. Authenticated exclusion of the
+internal context RPC is covered by the Worker tests, not a live visitor session.
+No customer lookup, reset or email was performed.
+
+The merge contains no schema migrations. The remote D1 migration-list request
+was denied with Cloudflare code 7403; no unrelated migration status is asserted
+and no migration was applied. Existing bindings, credential epoch and hourly
+cron are unchanged. Login CSS is origin-served and was published by
+merge/AEM Code Sync, not by the Worker upload. Close old report tabs and reload
+`/booth` on the kiosk; existing documents do not hot-reload modules.
+
+## Staff exit from booth mode (not deployed)
+
+Visitor reset and timeout are not staff signout. **Clear for next visitor** and
+the fifteen-minute inactivity policy still clear attendee access while retaining
+scoped staff credentials and kiosk restriction. Generic `/auth/logout` and
+legacy `/auth/booth/exit` also remain kiosk-preserving.
+
+The new **Staff: Sign out and exit booth** action scrubs the UI, waits for all
+bounded pending operations, and confirms `POST /auth/booth/reset` with
+`{"prepareExit":true}` before opening `/login?staff&exit-booth`. Reset serializes
+cleanup and retires this context identifier: stale tabs cannot recreate its
+visit, and their 410 responses do not issue a context cookie. A current failed
+cleanup keeps its existing handle for retry; late requests cannot reissue one
+after successful exit. Retirement is persisted before cleanup, so failure and
+ordinary-reset recovery cannot lose the terminal intent.
+**Back to booth** keeps staff/kiosk authentication and creates a new visitor
+context when needed. An expired staff login can go directly to reauthentication;
+other reset failures remain blocked in recovery.
+
+The portrait-responsive, staff-only exit form requires fresh shared credentials
+and submits `{username,password,action:"exit-booth"}` to `/auth/staff-login`.
+Same-origin JSON is mandatory even without a kiosk marker. Successful validation
+does **not** mint broad or replacement staff access. A separate signed
+`booth-exit` purpose authorizes terminal cleanup of a remaining context; ordinary
+fresh login uses its existing nonterminal revocation purpose. The Durable Object
+confirms cleanup through `state:"entry"` before any cookies are removed.
+Transport failure, malformed/unexpected confirmation and the ten-second
+fetch/body deadline return 503 without clearing credentials or kiosk restriction.
+Cleanup persists the pending KV deletion key before removing the active context,
+so a failed deletion cannot lose its retry handle or falsely confirm cleanup.
+Attendee access stays revoked while that deletion is retried.
+Successful exit expires all six booth/auth cookies (`booth_context`,
+`booth_session`, `booth_device`, `booth_kiosk`, `auth_token`, `signed_in`) and
+returns `{result:"exited"}` with `private, no-store`.
+
+The client requires that explicit result before replacing the page with normal
+`/login`, ignoring any supplied redirect. It blocks duplicate submit and the
+cancel link during an active attempt, disables autocomplete for reauthentication,
+and clears the password after an attempt or page navigation. Timeouts are
+uncertain outcomes, not claimed failures or success; retry and return actions
+remain available. Managed devices must not save shared staff credentials.
+
+Worker cookie-jar/actor regressions cover cleanup, ordinary report routing after
+exit, wrong credentials, same-origin protection, expired staff, terminal-token
+purpose binding, stale lookup, cancel/new-visitor flow and cleanup failures.
+Frontend regressions cover form/payload isolation, unexpected success, duplicate
+submission, cancellation and stalled fetch/body recovery. The synthetic
+`test/fixtures/booth-exit-browser.js` journey exercises real UI navigation at
+2160 x 3840, 1080 x 1920 and mobile sizes without real credentials or customer
+mutation. It uses `/test/fixtures/portal-login.html?staff&exit-booth` locally.
+
+After integrating latest main, local verification passed: 478 Worker tests
+(one existing skip), 180 related frontend tests, changed-file lint, and the
+three isolated browser journeys plus touchscreen cancellation/exit.
+Cancellation preserves the live touchscreen presentation; confirmed exit returns
+to ordinary login without its frame. Repository-wide `npm run lint` remains blocked
+by unchanged baseline findings; unrelated files were not reformatted.
+At 2160 x 3840 the password input is 144px tall and the primary action is 120px
+tall with 44px text; half-size and mobile views have no horizontal overflow.
+The original native report-transition check also retains identical loader
+metrics across navigation and stable report bounds while dependencies are held.
+
+Review branch: **`josec-adobe-booth-transitions-exit`**. This implementation is
+**not deployed**. Publish the changed portal-login block
+before deploying the matching bundled Worker/booth shell; preserve the origin
+readiness publication order in the transition section below. Production still
+uses the previously deployed soft-signout behavior until that coordinated rollout.
+
+## Report transitions (not deployed)
+
+The Entry and report overlays share system-font typography that does not change
+when Typekit arrives. Pending/clearing reports are excluded from ordinary
+2160 × 3840 zoom. During opening, the private wrapper stays invisible but
+participates in layout, allowing charts, fonts and images to initialize before
+the first visible paint. Reset/error content remains removed from layout.
+
+Authorization still precedes portrait setup. `scripts/scripts.js` signals
+`booth-content-ready` after Author Kit finishes decoration and the Adobe font
+stylesheet loads. The adapter checks required stylesheet success, waits for
+fonts and first-section image decoding, then reveals the completed report.
+The readiness deadline is ten seconds; failures retain concealment and recovery.
+An unavailable image logs a warning while retaining its layout. Expiry, reset,
+history cleanup and CUG checks remain unchanged. Booth headings and metric
+values render immediately rather than typing/counting up after reveal; those
+animations remain available outside the booth.
+
+`test/fixtures/booth-transition-browser.js` uses the real Author Kit boot
+sequence with synthetic data, holds decoration/Typekit/the first image, and
+checks identical loader bounds and typography across navigation. It checks
+first-screen geometry within 1px and visible layout shift at most 0.001 at
+2160 × 3840, 1080 × 1920 and mobile, including single-report email navigation.
+The existing loading fixture covers selection errors, recovery and Finish.
+The Worker now allows known font paths under `/styles/fonts/`, fixing the
+HAR's font request redirect into booth HTML. The HAR is private and uncommitted.
+
+Publish the origin `scripts/scripts.js` and block changes via merge/AEM Code
+Sync **before** deploying the matching Worker (`booth-transitions-1` in both
+injection and lazy import). No Worker deployment is included in branch publication.
 
 ## Approved scope
 
@@ -1302,10 +1416,12 @@ then rehearse reset and back/idle behavior on the final screen/network.
 Shared-device browser lockdown is an **operational gate**, not a UI security
 promise. The dedicated credentials expire no later than the original staff
 session and bind to the same random identifier. The HttpOnly/Secure
-`booth_kiosk=1` cookie lasts one year and persists through reset and signout;
+`booth_kiosk=1` cookie lasts one year and persists through reset and legacy signout;
 scoped credentials are restricted even without that marker. **Staff: sign out
-this device** clears attendee state and credentials but does not unlock
-dashboard access. Re-login stays scoped; staff administration belongs on a
+this device** in the deployed legacy version clears attendee state and credentials
+but does not unlock dashboard access. The new fresh-authenticated exit described
+above is a separate intentional exception pending rollout. Re-login stays scoped;
+staff administration belongs on a
 separate browser/device. Unmarked ordinary staff/customer browsers are unchanged.
 The server allowlist permits shared static assets and selected rendering
 dependencies, not private indexes, arbitrary report formats or PDFs. A MIME,

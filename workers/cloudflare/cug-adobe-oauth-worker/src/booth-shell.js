@@ -99,7 +99,7 @@ function returnToBooth() {
 function isSharedAsset(path) {
   return assets.has(path)
     || /^\/(?:scripts|styles|blocks)\/[a-zA-Z0-9_./-]+\.(?:js|css)$/.test(path)
-    || /^\/fonts\/[a-zA-Z0-9_./-]+\.(?:woff2?|otf|ttf)$/.test(path)
+    || /^\/(?:fonts|styles\/fonts)\/[a-zA-Z0-9_./-]+\.(?:woff2?|otf|ttf)$/.test(path)
     || /^\/(?:icons|img)\/[a-zA-Z0-9_./-]+\.(?:svg|png|jpe?g|webp|gif|avif)$/.test(path)
     || [
       '/favicon.ico', '/nav', '/nav.plain.html', '/footer', '/footer.plain.html',
@@ -249,12 +249,14 @@ export async function injectBoothReturn(response, request, env) {
       marked.head = true;
       element.prepend(`${touchscreenMode(request) === 'frame' ? deviceBridge : ''}<style id="booth-report-concealment">
 ${loadingCss}
-html.booth-report-pending body > :not(#booth-return):not(#booth-recovery):not(noscript),
+html:is(.booth-report-pending,.booth-report-clearing) body { zoom: 1 !important; }
+html:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery):not(noscript),
+html:is(.booth-report-pending,.booth-report-clearing) body > :not(#booth-recovery):not(noscript) * { visibility: hidden !important; pointer-events: none !important; }
+html.booth-report-pending:not(.booth-report-clearing) #booth-report-content[hidden] { display: block !important; }
 html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(noscript) { display: none !important; }
-html.booth-report-pending #booth-return,html.booth-report-clearing #booth-return { display: block !important; visibility: visible !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-controls-1"></script>`, { html: true });
+</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-transitions-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {

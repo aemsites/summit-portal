@@ -61,6 +61,48 @@ sync; it does not deploy or alter the Worker.
 
 **Booth reporting outages:** subsequent valid searches append to the durable outbox even while D1 is unavailable; expired entries are removed independently of D1 recovery. Retrying a saved selection may open the same authorized report; switching to another requires the deliberate picker transition and fresh revalidation. Confirmed send/contact outcomes remain explicit and do not become resend requests.
 
+**Staff exit from booth mode (not deployed):** **Staff: Sign out and exit
+booth** first scrubs visitor details, waits for pending operations and confirms
+a serialized reset, then opens `/login?staff&exit-booth`. This portrait-responsive
+staff-only form requires credentials again; it offers **Back to booth** and does
+not expose customer/SSO login or grant portal access. Fresh same-origin
+`POST /auth/staff-login` with `action: "exit-booth"` verifies shared staff
+credentials and confirms visit/KV cleanup before expiring `booth_context`,
+`booth_session`, `booth_device`, `booth_kiosk`, `auth_token` and `signed_in`.
+Success requires an explicit `exited` result and returns to ordinary `/login`;
+subsequent report links use normal report-targeted login, not staff booth login.
+Cleanup failure or timeout sends no clearing cookies; failed KV deletion retains
+its retry key after attendee access is revoked. Fetch and response-body
+waiting are bounded; duplicate submit/cancellation while pending are blocked,
+and entered passwords are cleared after an attempt or navigation. Preparing
+exit permanently retires that visit identifier, preventing late tabs from
+recreating it; cancellation retains scoped staff/kiosk authentication and starts
+the next visitor with a new context. Cancellation also preserves the live
+touchscreen presentation; confirmed exit leaves it for ordinary login.
+Expired staff credentials can still be
+freshly verified to complete exit. Ordinary reset, inactivity, `/auth/logout`
+and legacy `/auth/booth/exit` remain kiosk-preserving. This deliberately
+supersedes the deployed soft-signout behavior above **only after publication
+and matching Worker deployment**. Review branch:
+`josec-adobe-booth-transitions-exit`; Worker deployment remains pending.
+
+**Booth transition stability (not deployed):** the shared loader uses a
+fixed system face instead of swapping to a downloaded webfont, and pending/reset
+documents cannot inherit the ordinary native report's 1.6× zoom. Pending content
+lays out invisibly behind the overlay; clearing still removes it from layout.
+After exact-path authorization and the portrait stylesheet, the adapter waits
+for Author Kit decoration, required styles, report fonts and first-section image
+decoding before reveal. Readiness has a ten-second deadline and fails into
+concealed recovery; expired/reset documents cannot reappear after a late result.
+Booth headings and headline metrics render their complete values without typing
+or count-up animations; ordinary reports retain those effects. Public fonts under
+`/styles/fonts/` are allowed as rendering dependencies rather than redirected
+to booth HTML. Native, half-size and mobile synthetic navigation checks hold
+decoration, Typekit and images, compare loader metrics across navigation, and
+limit visible layout shift to 0.001 with first-screen bounds stable within 1px.
+Merge/AEM Code Sync must publish `scripts/scripts.js` and block changes before
+deploying the matching Worker adapter (`booth-transitions-1`).
+
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
 - `/adobe/report-requests` — Adobe-IMS-only Sales follow-up list, authored in DA with an empty `report-requests-list` block and linked prominently from `/adobe/dashboard`. The existing `/adobe**` CUG rule protects the page; the Worker additionally enforces real Adobe OAuth plus an `@adobe.com` identity before exposing lead data.
@@ -104,7 +146,7 @@ CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-b
 The unauthenticated `/booth` route still redirects to `/login?staff` with a
 private, no-store response. No customer lookup or email was performed.
 
-**Login fragment routing (October 9, branch, not deployed):** booth-restricted
+**Login fragment routing (October 9, merged, Worker not deployed):** booth-restricted
 browsers may fetch the exact public `/fragments/nav/header`,
 `/fragments/nav/footer` and `/fragments/nav/header/languages` dependencies.
 Previously those requests redirected through `/booth`; the fragment loader
@@ -118,7 +160,7 @@ disappearing. Routing and browser regressions cover stale kiosk markers, scoped
 booth credentials and redirected login markup. This fix requires both frontend
 merge/AEM Code Sync and a separate matching Worker deployment.
 
-**Portrait staff login (branch, not deployed):** `/login?staff&redirect=%2Fbooth`
+**Portrait staff login (merged, live):** `/login?staff&redirect=%2Fbooth`
 keeps the existing username/password authentication and redirect flow, with a
 staff-only portrait profile in `blocks/portal-login/portal-login.css`.
 At 2160 × 3840 the content/card is 1440px wide, the page heading is 80px,
@@ -135,7 +177,7 @@ merge/AEM Code Sync publishes it; no Worker deployment is required.
 fixture, not real authentication. Layout/error/submission regressions live in
 `test/blocks/portal-login.test.js`; real staff credentials were not used.
 
-**Figma report picker (branch, not deployed):** the multi-report selection screen
+**Figma report picker (October 8, deployed):** the multi-report selection screen
 matches frame `404:1500` in Adobe Brand Visibility UI, including the black
 marquee, exact heading/subtitle, two-column gray cards, website icons and
 outlined return pill. At 2160px wide the marquee starts at y277 and is 963px
@@ -144,7 +186,7 @@ supports the reference 2160 × 2881 and native 2160 × 3840, with scaled/mobile
 adaptations. A single 280KB composite Figma export preserves the illustration
 and its effects instead of rebuilding them from multi-megabyte source layers.
 The shell uses `?v=booth-picker-figma-1`; earlier deployed versions above are
-historical, not this branch's rollout.
+historical and superseded by this rollout.
 
 Icons load independently through staff-gated, private/no-store
 `GET /auth/booth/icon?path=...`. The Worker revalidates the current visitor's
@@ -159,8 +201,18 @@ images are rejected. Missing icons retain a globe and visible availability
 hint without blocking selection. Host validation does not pin DNS.
 The local synthetic `figma-picker@example.test` lookup and
 `test/fixtures/booth-picker-browser.js` verify geometry, icons and recovery;
-they do not query customers or send email. This branch includes the approved
-portrait-login fix and needs merge plus a separate matching Worker deployment.
+they do not query customers or send email. Merged main
+`d91bf81` (PR #167) includes the approved
+portrait-login fix. On October 8 at **16:11 UTC**, the matching `summit-portal`
+Worker was deployed as version `fc171729-76d0-4d59-9b58-3418964e8e84`,
+serving **100% of traffic** and superseding `9d1d86b2-673a-4af9-8b86-fd9dab65a8df`.
+Live picker JS/CSS, loading CSS, artwork, icons/globe and origin login CSS
+match merged source byte-for-byte. Anonymous booth access redirects to staff
+login; icon/internal/status APIs reject anonymous callers with private/no-store
+responses. No customer lookup, reset or email was performed. The merge adds no
+schema migrations; a remote D1 migration-list query was denied (7403), so no
+claim is made about unrelated pending migrations. Bindings, epoch and hourly
+cron are unchanged. Close old report tabs and reload `/booth`.
 
 ### Touchscreen keyboard and navigation hardening
 

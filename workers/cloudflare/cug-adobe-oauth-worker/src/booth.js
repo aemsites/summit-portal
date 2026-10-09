@@ -303,7 +303,9 @@ export async function handleBooth(request, env) {
   const upstream = await timing.measure('booth_rpc', () => stub.fetch(request));
   const response = new Response(upstream.body, upstream);
   const maxAge = ['reset', 'exit'].includes(action) && response.ok ? 0 : TTL;
-  response.headers.set('Set-Cookie', `${COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
+  if (response.status !== 410) {
+    response.headers.set('Set-Cookie', `${COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
+  }
   if (action === 'exit' && response.ok) {
     response.headers.append('Set-Cookie', 'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     response.headers.append('Set-Cookie', boothKioskCookie());
@@ -321,24 +323,44 @@ export async function authorizeBoothContext(request, env) {
   const url = new URL('/auth/booth/authorize', request.url);
   url.searchParams.set('resource', new URL(request.url).pathname);
   const response = await stub.fetch(new Request(url, { headers }));
+  if (response.status === 410) return null;
   if (!response.ok) throw new Error('Booth authorization unavailable');
   const context = await response.json();
   return context.expiresAt > Date.now() ? context : null;
 }
 
-/** Called only after fresh staff authentication, before replacing kiosk credentials. */
-export async function resetBeforeBoothLogin(request, env, email) {
+/** Called only after fresh staff authentication, before replacing or removing kiosk credentials. */
+export async function resetBeforeBoothLogin(request, env, email, exitBooth = false) {
   const id = contextId(request);
   if (!id) return null;
   if (!env.BOOTH_COORDINATOR) return reply({ error: 'Booth reset unavailable' }, 503);
-  const token = await createBoothRevocationToken(id, email, env);
-  const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
-  const response = await stub.fetch(new Request(new URL('/auth/booth/revoke', request.url), {
-    method: 'POST',
-    headers: { Cookie: request.headers.get('Cookie') || '', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
-  }));
-  return response.ok ? null : reply({ error: 'Booth reset could not be confirmed' }, 503);
+  let timer;
+  try {
+    const confirmed = await Promise.race([
+      (async () => {
+        const token = await createBoothRevocationToken(id, email, env, exitBooth);
+        const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(id));
+        const response = await stub.fetch(new Request(new URL('/auth/booth/revoke', request.url), {
+          method: 'POST',
+          headers: { Cookie: request.headers.get('Cookie') || '', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, exitBooth }),
+        }));
+        return response.ok && (await response.json()).state === 'entry';
+      })(),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Booth revocation timed out')), 10000);
+      }),
+    ]);
+    if (confirmed) return null;
+    // eslint-disable-next-line no-console
+    console.error('[booth] Fresh-auth visit revocation was not confirmed');
+  } catch {
+    // eslint-disable-next-line no-console
+    console.error('[booth] Fresh-auth visit revocation failed');
+  } finally {
+    clearTimeout(timer);
+  }
+  return reply({ error: 'Booth reset could not be confirmed' }, 503);
 }
 
 /** Durable serialization + persistent send outcomes; KV is not a lock. */
@@ -398,8 +420,13 @@ export class BoothCoordinator {
   async clear(record, timing = createBoothTiming()) {
     const storage = timing.storage(this.state.storage);
     // Pending lead records survive a privacy reset, but attendee access does not.
+    const key = record?.key || await storage.get('pendingCleanup');
+    if (key) await storage.put('pendingCleanup', key);
     await storage.delete('context');
-    if (record?.key) await timing.measure('booth_kv_delete', () => this.env.SESSIONS.delete(`booth:${record.key}`));
+    if (key) {
+      await timing.measure('booth_kv_delete', () => this.env.SESSIONS.delete(`booth:${key}`));
+      await storage.delete('pendingCleanup');
+    }
     if (await storage.get('activity')) {
       await storage.setAlarm(Date.now() + 60000);
     }
@@ -466,15 +493,18 @@ export class BoothCoordinator {
     const action = new URL(request.url).pathname.split('/').pop();
     if (action === 'revoke') {
       let token;
+      let exitBooth;
       try {
-        ({ token } = await request.json());
+        ({ token, exitBooth } = await request.json());
       } catch {
         return reply({ error: 'Invalid revocation request' }, 400);
       }
+      const id = contextId(request);
       if (request.method !== 'POST'
-        || !await verifyBoothRevocationToken(token, contextId(request), this.env)) {
+        || !await verifyBoothRevocationToken(token, id, this.env, exitBooth === true)) {
         return reply({ error: 'Revocation authentication required' }, 403);
       }
+      if (exitBooth === true) await storage.put('retired', true);
       await this.clear(await storage.get('context'), timing);
       return reply({ state: 'entry' });
     }
@@ -484,6 +514,9 @@ export class BoothCoordinator {
     const binding = await staffBinding(request, this.env);
     if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
+    }
+    if (!['reset', 'exit'].includes(action) && await storage.get('retired')) {
+      return reply({ error: 'This booth visit has ended. Return to the booth entry screen.' }, 410);
     }
     let record = await storage.get('context');
     if (record && record.binding !== binding) {
@@ -498,6 +531,15 @@ export class BoothCoordinator {
       record = null;
     }
     if (['reset', 'exit'].includes(action)) {
+      let prepareExit = false;
+      if (action === 'reset') {
+        try {
+          prepareExit = (await request.json()).prepareExit === true;
+        } catch {
+          return reply({ error: 'Invalid reset request' }, 400);
+        }
+      }
+      if (prepareExit) await storage.put('retired', true);
       await this.clear(record, timing);
       return reply({ state: 'entry' });
     }

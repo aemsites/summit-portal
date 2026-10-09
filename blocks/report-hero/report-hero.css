@@ -806,14 +806,14 @@ body:has(.report-hero.insight) main > .section:last-of-type > .block-content {
 /* Enlarge the existing composition only on the native portrait display.
    Authorized booth reports already have their own large-format layout. */
 @media (width = 2160px) and (height = 3840px) {
-  html:not(.booth-report-active) body:has(.report-hero.insight) {
+  html:not(.booth-report-active, .booth-report-pending, .booth-report-clearing) body:has(.report-hero.insight) {
     --rpt-display-scale: 1.6;
 
     zoom: var(--rpt-display-scale);
   }
 
   /* Viewport units do not shrink with CSS zoom; keep the stripe full-bleed. */
-  html:not(.booth-report-active) body:has(.report-hero.insight) main > .cannes-stripe {
+  html:not(.booth-report-active, .booth-report-pending, .booth-report-clearing) body:has(.report-hero.insight) main > .cannes-stripe {
     width: calc(100vw / var(--rpt-display-scale));
     margin-inline: calc(50% - 50vw / var(--rpt-display-scale));
   }

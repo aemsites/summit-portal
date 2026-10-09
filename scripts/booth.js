@@ -1,4 +1,4 @@
-import { readBoothPresentation, withBoothPresentation, applyBoothPresentation, boothStaffLogin } from './booth-presentation.js';
+import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
 import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 import { boothRequest, createBoothInactivity } from './booth-session.js';
@@ -51,10 +51,7 @@ export function mountBooth(root = document) {
     stage.dataset.step = step;
     stage.dataset.screen = name;
     const staffExit = root.getElementById('staff-exit');
-    if (staffExit) {
-      staffExit.textContent = name === 'demos'
-        ? 'Staff: Sign out and leave booth mode' : 'Staff: sign out this device';
-    }
+    if (staffExit) staffExit.textContent = 'Staff: Sign out and exit booth';
     root.querySelectorAll('.booth-progress li').forEach((item, index) => {
       item.classList.toggle('complete', index < step);
       if (index === step - 1) item.setAttribute('aria-current', 'step');
@@ -120,10 +117,10 @@ export function mountBooth(root = document) {
     notice('booth-status', 'Clearing this visit...');
     try {
       await settled;
-      const result = await boothRequest(action, {});
+      const result = await boothRequest('reset', action === 'exit' ? { prepareExit: true } : {});
       if (result.state !== 'entry') throw new Error('This screen could not be cleared. Retry or ask the booth team.');
       if (action === 'exit') {
-        window.location.replace(boothStaffLogin(presentation));
+        window.location.replace('/login?staff&exit-booth');
         return;
       }
       window.history.replaceState(null, '', withBoothPresentation('/booth', presentation));
@@ -133,7 +130,9 @@ export function mountBooth(root = document) {
       notice('booth-status', '');
       form.querySelector('button').disabled = false;
     } catch (error) {
-      recovery(error);
+      if (action === 'exit' && error.status === 401) {
+        window.location.replace('/login?staff&exit-booth');
+      } else recovery(error);
     } finally {
       resetting = false;
     }

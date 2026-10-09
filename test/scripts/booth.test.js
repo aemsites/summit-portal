@@ -287,8 +287,9 @@ describe('booth runtime boundary', () => {
       const previousUrl = window.location.href;
       window.history.replaceState(null, '', action === 'picker' ? '/booth?step=finish' : '/booth');
       const clock = sandbox.useFakeTimers();
+      const operation = action === 'exit' ? 'reset' : action;
       const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url) => {
-        if (url.endsWith(`/${action}`)) return new Promise(() => {});
+        if (url.endsWith(`/${operation}`)) return new Promise(() => {});
         if (url.endsWith('/status')) {
           return {
             ok: true,
@@ -329,7 +330,8 @@ describe('booth runtime boundary', () => {
         expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(true);
         expect(root.getElementById('report-options').children).to.have.length(0);
         expect(root.getElementById('demo-options').children).to.have.length(0);
-        expect(fetchStub.getCalls().filter((call) => call.args[0].endsWith(`/${action}`))).to.have.length(1);
+        expect(fetchStub.getCalls().filter((call) => call.args[0].endsWith(`/${operation}`))).to.have.length(1);
+        fetchStub.callsFake(async () => ({ ok: true, json: async () => ({ state: 'entry' }) }));
         root.getElementById('booth-retry').click();
         await clock.tickAsync(0);
         expect(root.querySelector('#email-form button').disabled).to.equal(false);
@@ -592,7 +594,7 @@ describe('booth runtime boundary', () => {
     expect(root.getElementById('demo-recovery-copy').hidden).to.equal(false);
     expect(root.getElementById('demo-intro').hidden).to.equal(true);
     expect(root.getElementById('stage').dataset.screen).to.equal('demos');
-    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: Sign out and leave booth mode');
+    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: Sign out and exit booth');
   });
 
   it('keeps staff shortcut guidance truthful and restores the Entry footer after clearing', async () => {
@@ -616,7 +618,7 @@ describe('booth runtime boundary', () => {
     root.querySelector('[data-panel="demos"] [data-reset]').click();
     await clock.tickAsync(0);
     expect(root.getElementById('stage').dataset.screen).to.equal('welcome');
-    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: sign out this device');
+    expect(root.getElementById('staff-exit').textContent).to.equal('Staff: Sign out and exit booth');
   });
 
   it('hides attendee panels before scripts load and while Finish status is pending', async () => {

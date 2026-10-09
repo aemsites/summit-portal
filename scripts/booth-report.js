@@ -48,7 +48,11 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     const style = document.createElement('style');
     style.dataset.boothReportSafety = 'true';
     style.textContent = `
-      :is(.booth-report-pending, .booth-report-clearing) body > :not(#booth-return, #booth-recovery) { display: none !important; }
+      :is(.booth-report-pending, .booth-report-clearing) body { zoom: 1 !important; }
+      :is(.booth-report-pending, .booth-report-clearing) body > :not(#booth-recovery),
+      :is(.booth-report-pending, .booth-report-clearing) body > :not(#booth-recovery) * { visibility: hidden !important; pointer-events: none !important; }
+      .booth-report-pending:not(.booth-report-clearing) #booth-report-content[hidden] { display: block !important; }
+      .booth-report-clearing body > :not(#booth-return, #booth-recovery) { display: none !important; }
       :is(.booth-report-active, .booth-report-pending) [data-booth-download-disabled] { display: none !important; }
       #booth-recovery { position: fixed; inset: 0; z-index: 101; padding: 32px; background: #fff; color: #222; font: 700 clamp(22px, 2.6vw, 56px)/1.4 adobe-clean, sans-serif; }
       #booth-recovery[hidden] { display: none !important; }
@@ -311,6 +315,60 @@ export function formatBoothChartDates(root, portrait) {
   });
 }
 
+async function waitForReportContent() {
+  if (!document.querySelector('script[src="/scripts/scripts.js"]')) return;
+  let timer;
+  let onReady;
+  const decorated = document.documentElement.dataset.boothContentReady !== 'true'
+    ? new Promise((resolve) => {
+      onReady = resolve;
+      document.addEventListener('booth-content-ready', onReady, { once: true });
+    }) : Promise.resolve();
+  const ready = async () => {
+    await decorated;
+    const styles = [...document.querySelectorAll('link[rel="stylesheet"]')].filter((link) => (
+      link.getAttribute('href') === '/styles/styles.css'
+      || link.getAttribute('href')?.startsWith('/blocks/')
+      || link.dataset.boothReportLayout
+      || link.href === 'https://use.typekit.net/pbq1nqa.css'
+    ));
+    if (styles.some((link) => !link.sheet)) {
+      throw new Error('The report styles could not be loaded. Retry and clear the screen.');
+    }
+    // Hidden content must request its actual faces before the first visible paint.
+    await Promise.all([
+      document.fonts.load('400 36px adobe-clean'),
+      document.fonts.load('700 36px adobe-clean'),
+      document.fonts.load('900 96px adobe-clean-display'),
+    ]);
+    await document.fonts.ready;
+    const first = document.querySelector('main > .section') || document.querySelector('main');
+    await Promise.all([...(first?.querySelectorAll('img') || [])].map(async (image) => {
+      image.loading = 'eager';
+      try {
+        await image.decode();
+      } catch {
+        // eslint-disable-next-line no-console
+        console.warn('[booth] Report image unavailable; retaining its reserved layout.');
+      }
+    }));
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+  };
+  try {
+    await Promise.race([
+      ready(),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('The report content timed out. Retry and clear the screen.')), 10000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    if (onReady) document.removeEventListener('booth-content-ready', onReady);
+  }
+}
+
 /** Mount only on the server-selected booth document, never a query-string opt-in. */
 export default async function mountBoothReturn() {
   if (document.querySelector('link[data-booth-report-layout]')) return;
@@ -368,9 +426,8 @@ export default async function mountBoothReturn() {
     const complete = () => { clearTimeout(timer); resolve(); };
     stylesheet.addEventListener('load', complete, { once: true });
     stylesheet.addEventListener('error', () => {
-      // eslint-disable-next-line no-console
-      console.warn('Booth portrait layout unavailable.');
-      complete();
+      clearTimeout(timer);
+      reject(new Error('The report layout could not be loaded. Retry and clear the screen.'));
     }, { once: true });
   });
   document.head.append(stylesheet);
@@ -405,6 +462,17 @@ export default async function mountBoothReturn() {
   }
   control.querySelector('a').href = withBoothPresentation(demo ? '/booth?step=demos' : '/booth?step=finish', presentation);
   restrictBoothLinks(document);
+  if (marker) {
+    html.classList.add('booth-report-active');
+    html.classList.toggle('booth-report-composition', window.matchMedia(compositionQuery).matches);
+    try {
+      await waitForReportContent();
+    } catch (error) {
+      if (!guard.interrupted) guard.fail(error);
+      return;
+    }
+    if (guard.interrupted) return;
+  }
   if (!existingControl) {
     guard ||= createReportGuard(control, context.expiresAt, presentation);
     if (!guard.activate(context)) return;

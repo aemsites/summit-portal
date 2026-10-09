@@ -60,6 +60,8 @@ describe('confirmed booth report portrait layout', () => {
     document.querySelector('#booth-recovery')?.remove();
     document.querySelector('style[data-booth-report-safety]')?.remove();
     document.querySelectorAll('script[data-booth-mode]').forEach((marker) => marker.remove());
+    document.querySelector('script[data-booth-test-boot]')?.remove();
+    delete document.documentElement.dataset.boothContentReady;
     document.querySelector('link[href="/styles/booth-report.css"]')?.remove();
     document.querySelectorAll('style[data-booth-test]').forEach((style) => style.remove());
     document.querySelector('main')?.remove();
@@ -790,7 +792,7 @@ describe('confirmed booth report portrait layout', () => {
       expect(recovery.querySelector('.booth-loading-ring')).not.to.equal(null);
       expect(recovery.querySelector('[role="status"]').textContent).to.include('Opening your report');
       expect(recovery.querySelector('.booth-recovery-actions').hidden).to.equal(true);
-      expect(getComputedStyle(main).display).to.equal('none');
+      expect(getComputedStyle(main).visibility).to.equal('hidden');
     } finally {
       finish(new Response('', { status: 503 }));
       await mounted;
@@ -801,7 +803,7 @@ describe('confirmed booth report portrait layout', () => {
     expect(getComputedStyle(main).display).to.equal('none');
   });
 
-  ['timeout', 'expiry'].forEach((failure) => {
+  ['timeout', 'expiry', 'error'].forEach((failure) => {
     it(`keeps a late stylesheet from revealing report content after ${failure}`, async () => {
       const main = await reportFixture();
       const clock = sandbox.useFakeTimers();
@@ -822,19 +824,61 @@ describe('confirmed booth report portrait layout', () => {
       const mounted = mountBoothReturn();
       await clock.tickAsync(0);
       expect(stylesheet).not.to.equal(undefined);
-      expect(getComputedStyle(main).display).to.equal('none');
-      await clock.tickAsync(failure === 'expiry' ? 5001 : 10001);
+      expect(getComputedStyle(main).visibility).to.equal('hidden');
+      if (failure === 'error') stylesheet.dispatchEvent(new Event('error'));
+      else await clock.tickAsync(failure === 'expiry' ? 5001 : 10001);
       if (failure === 'expiry') stylesheet.dispatchEvent(new Event('load'));
       await mounted;
       expect(getComputedStyle(main).display).to.equal('none');
       expect(document.documentElement.classList.contains('booth-report-active')).to.equal(false);
       expect(document.getElementById('booth-return')).to.equal(null);
       expect(document.querySelector('#booth-recovery p').textContent).to.include(
-        failure === 'expiry' ? 'Could not clear' : 'layout timed out',
+        { expiry: 'Could not clear', timeout: 'layout timed out', error: 'layout could not be loaded' }[failure],
       );
       stylesheet.dispatchEvent(new Event('load'));
       expect(getComputedStyle(main).display).to.equal('none');
     });
+  });
+
+  it('keeps an undecorated document concealed after readiness timeout and late readiness', async () => {
+    const main = await reportFixture();
+    const boot = document.createElement('script');
+    boot.type = 'application/json';
+    boot.src = '/scripts/scripts.js';
+    boot.dataset.boothTestBoot = 'true';
+    document.head.append(boot);
+    timers.restore();
+    const { setTimeout } = window;
+    timers = sandbox.stub(window, 'setTimeout').callsFake((callback, delay, ...args) => setTimeout(
+      callback,
+      String(callback).includes('report content timed out') ? 15 : delay,
+      ...args,
+    ));
+    markReport();
+    sandbox.stub(window, 'fetch').resolves({
+      ok: true,
+      json: async () => ({
+        state: 'report',
+        selectedPath: window.location.pathname,
+        expiresAt: Date.now() + 600000,
+      }),
+    });
+    const append = document.head.append.bind(document.head);
+    sandbox.stub(document.head, 'append').callsFake((element) => {
+      if (element.dataset.boothReportLayout) {
+        window.setTimeout(() => element.dispatchEvent(new Event('load')), 0);
+      } else append(element);
+    });
+    const mounted = mountBoothReturn();
+    expect(getComputedStyle(main).visibility).to.equal('hidden');
+    expect(document.documentElement.classList.contains('booth-report-pending')).to.equal(true);
+    await mounted;
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.querySelector('#booth-recovery p').textContent).to.include('content timed out');
+    document.dispatchEvent(new Event('booth-content-ready'));
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(getComputedStyle(main).display).to.equal('none');
+    expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(true);
   });
 
   ['http', 'network', 'invalid-json', 'entry', 'expired', 'wrong-path'].forEach((failure) => {
@@ -855,7 +899,7 @@ describe('confirmed booth report portrait layout', () => {
       else fetchStub.onFirstCall().resolves(Response.json(context, { status: failure === 'http' ? 503 : 200 }));
       fetchStub.onSecondCall().resolves(new Response('', { status: 503 }));
       const mounted = mountBoothReturn();
-      expect(getComputedStyle(main).display).to.equal('none');
+      expect(getComputedStyle(main).visibility).to.equal('hidden');
       await mounted;
       expect(getComputedStyle(main).display).to.equal('none');
       expect(document.getElementById('booth-recovery').hidden).to.equal(false);
@@ -954,7 +998,7 @@ describe('confirmed booth report portrait layout', () => {
     }));
     const mounted = mountBoothReturn();
     await clock.tickAsync(9999);
-    expect(getComputedStyle(main).display).to.equal('none');
+    expect(getComputedStyle(main).visibility).to.equal('hidden');
     expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
     await clock.tickAsync(1);
     await mounted;

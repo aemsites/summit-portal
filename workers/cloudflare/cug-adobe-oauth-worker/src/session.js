@@ -317,10 +317,10 @@ export async function getBoothSession(request, env) {
 }
 
 /** A short-lived, server-only capability can revoke a visit, never read or create one. */
-export async function createBoothRevocationToken(id, email, env) {
+export async function createBoothRevocationToken(id, email, env, exitBooth = false) {
   if (!isStaffEmail(email, env)) throw new Error('Staff authentication required');
   return signJwt({
-    purpose: 'booth-revoke',
+    purpose: exitBooth ? 'booth-exit' : 'booth-revoke',
     context: id,
     email,
     epoch: String(env.EVENT_CRED_EPOCH ?? ''),
@@ -328,10 +328,10 @@ export async function createBoothRevocationToken(id, email, env) {
   }, env.JWT_SECRET);
 }
 
-export async function verifyBoothRevocationToken(token, id, env) {
+export async function verifyBoothRevocationToken(token, id, env, exitBooth = false) {
   if (typeof token !== 'string') return false;
   const payload = await verifyJwt(token, env.JWT_SECRET);
-  return !!payload && payload.purpose === 'booth-revoke' && payload.context === id
+  return !!payload && payload.purpose === (exitBooth ? 'booth-exit' : 'booth-revoke') && payload.context === id
     && isStaffEmail(payload.email, env) && payload.epoch === String(env.EVENT_CRED_EPOCH ?? '')
     && Number.isFinite(payload.exp) && payload.exp > Math.floor(Date.now() / 1000);
 }
