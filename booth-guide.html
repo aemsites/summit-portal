@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Amplify your brand visibility — Booth staff guide</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
+    <link rel="stylesheet" href="/styles/booth-guide.css">
+    <script type="module" src="/scripts/booth-guide.js"></script>
+  </head>
+  <body class="booth-guide">
+    <a class="bg-skip" href="#guide-content">Skip to the guide</a>
+    <header class="bg-header">
+      <a class="bg-back" href="/adobe/dashboard" aria-label="Back to the Adobe dashboard">
+        <img src="/img/booth/adobe-wordmark.svg" width="94" height="25" alt="Adobe">
+        <span>Internal dashboard</span>
+      </a>
+      <span class="bg-confidential">Confidential · Adobe employees</span>
+      <button id="guide-jump" class="bg-jump" type="button" aria-label="Open the guide index and search" disabled>Index</button>
+    </header>
+    <div class="bg-layout">
+      <aside class="bg-sidebar" aria-label="Guide tools">
+        <p class="bg-eyebrow">Booth staff guide</p>
+        <label class="bg-search-label" for="guide-search">Find an answer</label>
+        <div class="bg-search-field">
+          <input id="guide-search" type="search" placeholder="Score, INP, objections, setup…" autocomplete="off" disabled>
+          <button id="guide-clear-search" type="button" hidden>Clear</button>
+        </div>
+        <p id="guide-search-status" role="status"></p>
+        <details class="bg-navigation">
+          <summary>Jump to a section</summary>
+          <nav id="guide-index" aria-label="Guide sections"></nav>
+        </details>
+      </aside>
+      <main id="guide-content" tabindex="-1" aria-busy="true">
+        <p id="guide-load-status" role="status">Loading the staff guide…</p>
+        <button id="guide-retry" type="button" hidden>Try again</button>
+        <noscript>Enable JavaScript to view the illustrated staff guide.</noscript>
+        <div id="guide-sections"></div>
+      </main>
+    </div>
+    <footer class="bg-footer">
+      <p>Staff reference. Keep credentials and customer screenshots away from visitor screens.</p>
+      <a href="#guide-content">Back to the top</a>
+    </footer>
+    <p id="guide-notice" class="bg-notice" role="status" hidden></p>
+  </body>
+</html>
