@@ -206,31 +206,69 @@ describe('confirmed booth report portrait layout', () => {
   }
 
   for (const [width, height, inset] of [[2160, 3840, 48], [1080, 1920, 24]]) {
-    it(`keeps long KPI insights touch-expandable and lossless at ${width}x${height}`, async () => {
+    it(`shows charcoal insight previews with one readable expand-all button at ${width}x${height}`, async () => {
+      await setViewport({ width, height });
+      const main = await layoutFixture();
+      const descriptions = [...main.querySelectorAll('.rs-dark-desc')];
+      const original = descriptions.map((description) => description.textContent);
+      await mount();
+      descriptions.forEach((description) => {
+        expect(description.checkVisibility(), 'Preview must be visible without tapping').to.equal(true);
+        const panel = description.closest('.booth-kpi-insight');
+        expect(panel.getBoundingClientRect().width, 'Reading panel fits inside its KPI column')
+          .to.be.closeTo(panel.parentElement.getBoundingClientRect().width, 1);
+        expect(getComputedStyle(panel).backgroundColor).to.equal('rgb(29, 29, 29)');
+        expect(getComputedStyle(description).color).to.equal('rgb(224, 224, 224)');
+        expect(description.clientHeight).to.be.greaterThan(0);
+        expect(description.clientHeight).to.be.lessThan(description.scrollHeight);
+      });
+      const buttons = main.querySelectorAll('button.booth-kpi-toggle');
+      expect(buttons).to.have.length(1);
+      const button = buttons[0];
+      expect(button.textContent).to.equal('Read full insights');
+      expect(getComputedStyle(button).color).to.equal('rgb(245, 245, 245)');
+      expect(button.getBoundingClientRect().height).to.be.at.least(width === 2160 ? 96 : 64);
+      expect(button.getAttribute('aria-expanded')).to.equal('false');
+      expect(button.getAttribute('aria-controls').split(' ')).to.have.length(4);
+      button.click();
+      expect(button.textContent).to.equal('Show less');
+      expect(button.getAttribute('aria-expanded')).to.equal('true');
+      descriptions.forEach((description, index) => {
+        expect(description.textContent).to.equal(original[index]);
+        expect(description.clientHeight).to.be.closeTo(description.scrollHeight, 1);
+      });
+      button.click();
+      descriptions.forEach((description) => {
+        expect(description.checkVisibility()).to.equal(true);
+        expect(description.clientHeight).to.be.lessThan(description.scrollHeight);
+      });
+    });
+
+    it(`preserves expanded reading state when late KPI content arrives at ${width}x${height}`, async () => {
       await setViewport({ width, height });
       const main = await layoutFixture();
       const description = main.querySelector('.rs-dark-desc');
       const original = description.textContent;
+      const late = main.querySelector('.rs-dark-card').cloneNode(true);
       await mount();
-      const details = description.closest('.booth-kpi-insight');
-      expect(details, 'KPI explanation uses a native disclosure').not.to.equal(null);
-      expect(details.open).to.equal(false);
-      expect(description.checkVisibility()).to.equal(false);
-      expect(rect('.rs-dark-strip').height).to.be.lessThan(width === 2160 ? 600 : 450);
-      const summary = details.querySelector('summary');
-      expect(summary.getBoundingClientRect().height).to.be.at.least(width === 2160 ? 96 : 64);
-      expect(summary.textContent).to.equal('View insight');
-      expect(summary.getAttribute('aria-label')).to.include('AI visibility');
-      expect(summary.closest('.rs-dark-card').hasAttribute('role')).to.equal(false);
-      summary.click();
-      await new Promise((resolve) => { setTimeout(resolve, 0); });
-      expect(details.open).to.equal(true);
-      expect(description.getBoundingClientRect().height).to.be.greaterThan(0);
+      expect(main.querySelectorAll('.booth-kpi-insight')).to.have.length(4);
+      expect(rect('.rs-dark-strip').height).to.be.lessThan(width === 2160 ? 650 : 550);
+      const button = main.querySelector('.booth-kpi-toggle');
+      button.click();
+      main.querySelector('.rs-dark-strip').append(late);
+      TestObserver.instances.forEach((observer) => observer.callback());
+      expect(main.querySelectorAll('.booth-kpi-toggle')).to.have.length(1);
+      expect(button.getAttribute('aria-controls').split(' ')).to.have.length(5);
+      expect(button.getAttribute('aria-expanded')).to.equal('true');
+      expect(late.querySelectorAll('.booth-kpi-insight')).to.have.length(1);
+      expect(late.querySelector('.booth-kpi-insight').dataset.expanded).to.equal('true');
       expect(description.textContent).to.equal(original);
-      expect(summary.textContent).to.equal('Hide insight');
-      expect(description.scrollWidth).to.be.at.most(description.clientWidth + 1);
-      summary.click();
-      expect(details.open).to.equal(false);
+      expect(description.clientHeight).to.be.closeTo(description.scrollHeight, 1);
+      button.click();
+      expect(late.querySelector('.booth-kpi-insight').dataset.expanded).to.equal('false');
+      late.remove();
+      TestObserver.instances.forEach((observer) => observer.callback());
+      expect(button.getAttribute('aria-controls').split(' ')).to.have.length(4);
       expect(document.documentElement.scrollWidth).to.equal(width);
     });
 
@@ -271,8 +309,7 @@ describe('confirmed booth report portrait layout', () => {
       layout(true);
       expect(card.querySelectorAll('.booth-kpi-insight')).to.have.length(1);
       expect(card.hasAttribute('tabindex')).to.equal(false);
-      const summary = card.querySelector('summary');
-      summary.focus();
+      main.querySelector('.booth-kpi-toggle').focus();
       layout(false);
       expect(document.activeElement).to.equal(card);
       expect(card.isEqualNode(original)).to.equal(true);
@@ -281,6 +318,29 @@ describe('confirmed booth report portrait layout', () => {
     description.dispatchEvent(new Event('click'));
     expect(clicked.calledOnce).to.equal(true);
     expect(main.querySelectorAll('.booth-kpi-insight')).to.have.length(0);
+    expect(main.querySelectorAll('.booth-kpi-controls')).to.have.length(0);
+  });
+
+  it('does not cause a mutation reconciliation loop or lose focused insight descendants', async () => {
+    const main = await layoutFixture();
+    const description = main.querySelector('.rs-dark-desc');
+    description.insertAdjacentHTML('beforeend', '<a href="#detail">Read supporting detail</a>');
+    const link = description.querySelector('a');
+    link.focus();
+    const layout = createBoothKpiLayout(main);
+    layout(true);
+    expect(document.activeElement).to.equal(link);
+    expect(main.querySelector('.booth-kpi-toggle').getAttribute('aria-expanded')).to.equal('true');
+    const changed = sandbox.spy();
+    const observer = new MutationObserver(changed);
+    observer.observe(main, { childList: true, subtree: true });
+    layout(true);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    observer.disconnect();
+    expect(changed.called).to.equal(false);
+    layout(false);
+    expect(document.activeElement).to.equal(link);
+    expect(description.querySelector('a')).to.equal(link);
   });
 
   it('handles late and removed KPI cards without adding empty or duplicate disclosures', async () => {

@@ -142,9 +142,10 @@ protected customer data or live attendee mutations were used. The matching
 report adapter is included in the 14:38 UTC Worker rollout recorded below.
 
 **Booth report layout corrections (October 9, deployed):**
-at the authorized 2160 x 3840 and 1080 x 1920 exact portrait viewports, KPI
-explanations start behind a native **View insight** disclosure, with full,
-unchanged text available by touch or keyboard. No hover is required. Leaving
+at the authorized 2160 x 3840 and 1080 x 1920 exact portrait viewports, the
+initial per-KPI disclosures are superseded by the approved preview/shared-button
+revision below. Full, unchanged text remains available by touch or keyboard.
+No hover is required. Leaving
 the profile restores the original description nodes, card semantics, listeners
 and focus; ordinary reports and mobile KPI sheets remain unchanged. Summary
 and brand callout text use the available padded width instead of a 65-character
@@ -174,6 +175,28 @@ preserved. No migration or private guide-content upload was performed.
 Production checks were read-only: no staff credentials, attendee lookup,
 email send or visitor reset was used. Close existing report tabs and reload
 the booth so new documents use the deployed Entry and report assets.
+
+**Approved KPI reading revision (October 9, implemented; rollout pending):**
+Jose approved the attached charcoal reading panels and compact outlined
+**Read full insights** button. Every authored explanation immediately shows
+up to four readable lines; one touch/Space/Enter action expands all pillars
+and **Show less** restores previews without hiding them. Foreground/background
+colors are explicit; the earlier inherited dark control text was not legible
+on the black strip. Original nodes, listeners, card semantics and focused
+descendants are preserved on profile exit. Late cards inherit the current
+reading state, removed cards leave no stale controls, and stable reconciliation
+does not mutate text repeatedly. Panel padding uses border-box sizing so the
+reading surfaces fit their columns rather than overlapping.
+
+The Entry gray line was black backing showing at the white panel's bottom edge
+when the touchscreen iframe is scaled. Native screenshots were clean, but
+1440 x 1100, 1280 x 720 and 1106 x 1080 wrapper captures reproduced a full-width
+gray raster row. Giving the layout the same white backing as the form removes
+that row without changing the independently black hero, notch, geometry or
+footer. Native/half-size and framed public-report checks preserve touch,
+keyboard, mobile-sheet restoration, full-width callouts and padded headings.
+Only local synthetic visits/public report content were used. The throwaway
+design mockup remains local, outside the production change set.
 
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.

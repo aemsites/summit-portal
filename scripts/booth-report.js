@@ -229,51 +229,102 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   return guard;
 }
 
-/** Keep full KPI copy in reversible native disclosures on portrait booth reports. */
+/** Keep readable KPI previews and one reversible control for each overview. */
 export function createBoothKpiLayout(root) {
   const cards = new Map();
+  const groups = new Map();
   const attributes = ['role', 'tabindex', 'aria-expanded'];
+  let sequence = 0;
+
+  const render = (group) => {
+    const members = [...cards].filter(([, entry]) => entry.group === group);
+    members.forEach(([, { panel }]) => { panel.dataset.expanded = String(group.expanded); });
+    group.focusTarget = members[0]?.[0] || group.focusTarget;
+    group.button.setAttribute('aria-controls', members.map(([, { panel }]) => panel.id).join(' '));
+    group.button.setAttribute('aria-expanded', String(group.expanded));
+    group.button.setAttribute('aria-label', group.expanded
+      ? 'Show insight previews for all pillars' : 'Read full insights for all pillars');
+    const label = group.expanded ? 'Show less' : 'Read full insights';
+    const hint = group.expanded
+      ? 'Showing all insights in full' : 'All insights expand together';
+    if (group.button.textContent !== label) group.button.textContent = label;
+    if (group.hint.textContent !== hint) group.hint.textContent = hint;
+  };
+
   return (active) => {
-    cards.forEach(({ details, description, marker, original }, card) => {
-      if (active && root.contains(card)) return;
+    cards.forEach(({ panel, description, marker, original, group }, card) => {
+      if (active && root.contains(card) && group.container.contains(card)
+        && description.textContent.trim()) return;
       const focused = document.activeElement;
-      const restoreFocus = details.contains(focused);
+      const restoreFocus = panel.contains(focused);
       marker.replaceWith(description);
-      details.remove();
+      panel.remove();
       original.forEach(([name, value]) => {
         if (value === null) card.removeAttribute(name);
         else card.setAttribute(name, value);
       });
       cards.delete(card);
-      if (restoreFocus) {
-        (focused === details.firstElementChild ? card : focused).focus({ preventScroll: true });
-      }
+      if (restoreFocus) focused.focus({ preventScroll: true });
     });
-    if (!active) return;
-    root.querySelectorAll('.report-stats.dark .rs-dark-card').forEach((card) => {
-      if (cards.has(card)) return;
-      const description = card.querySelector('.rs-dark-desc');
-      const name = card.querySelector('.rs-dark-label')?.textContent;
-      if (!name || !description?.textContent.trim()) return;
-      const details = document.createElement('details');
-      details.className = 'booth-kpi-insight';
-      const focused = document.activeElement;
-      details.open = description.contains(focused);
-      const summary = document.createElement('summary');
-      const label = () => {
-        summary.textContent = details.open ? 'Hide insight' : 'View insight';
-        summary.setAttribute('aria-label', `${summary.textContent} for ${name}`);
-      };
-      label();
-      details.addEventListener('toggle', label);
-      const marker = document.createComment('Original KPI explanation position');
-      description.before(marker);
-      details.append(summary, description);
-      marker.after(details);
-      const original = attributes.map((attribute) => [attribute, card.getAttribute(attribute)]);
-      attributes.forEach((attribute) => card.removeAttribute(attribute));
-      cards.set(card, { details, description, marker, original });
-      if (details.open) focused.focus({ preventScroll: true });
+    if (active) {
+      root.querySelectorAll('.report-stats.dark .rs-dark-card').forEach((card) => {
+        if (cards.has(card)) return;
+        const description = card.querySelector('.rs-dark-desc');
+        const name = card.querySelector('.rs-dark-label')?.textContent;
+        if (!name || !description?.textContent.trim()) return;
+        const container = card.closest('.report-stats.dark');
+        let group = groups.get(container);
+        if (!group) {
+          const controls = document.createElement('div');
+          controls.className = 'booth-kpi-controls';
+          const hint = document.createElement('p');
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'booth-kpi-toggle';
+          controls.append(hint, button);
+          const strip = container.querySelector(':scope > .rs-dark-strip');
+          if (strip) strip.after(controls);
+          else container.append(controls);
+          group = {
+            container, controls, hint, button, expanded: false, focusTarget: card,
+          };
+          groups.set(container, group);
+          button.addEventListener('click', () => {
+            group.expanded = !group.expanded;
+            render(group);
+          });
+        }
+        const panel = document.createElement('div');
+        panel.className = 'booth-kpi-insight';
+        do {
+          sequence += 1;
+          panel.id = `booth-kpi-insight-${sequence}`;
+        } while (document.getElementById(panel.id));
+        const focused = document.activeElement;
+        const restoreFocus = description.contains(focused);
+        if (restoreFocus) group.expanded = true;
+        const marker = document.createComment('Original KPI explanation position');
+        description.before(marker);
+        panel.append(description);
+        marker.after(panel);
+        const original = attributes.map((attribute) => [attribute, card.getAttribute(attribute)]);
+        attributes.forEach((attribute) => card.removeAttribute(attribute));
+        cards.set(card, { panel, description, marker, original, group });
+        if (restoreFocus) focused.focus({ preventScroll: true });
+      });
+    }
+    groups.forEach((group, container) => {
+      const hasCards = [...cards.values()].some((entry) => entry.group === group);
+      if (active && root.contains(container) && hasCards) {
+        render(group);
+        return;
+      }
+      const restoreFocus = document.activeElement === group.button;
+      group.controls.remove();
+      groups.delete(container);
+      if (restoreFocus && group.focusTarget.isConnected) {
+        group.focusTarget.focus({ preventScroll: true });
+      }
     });
   };
 }

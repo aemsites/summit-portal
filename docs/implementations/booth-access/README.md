@@ -1299,14 +1299,25 @@ landscape, mobile and nearby non-exact viewports retain the preceding layout.
 
 ### Portrait layout corrections, October 9 (deployed)
 
-The exact-ratio composition now keeps each KPI's full authored explanation in a
-native **View insight** / **Hide insight** disclosure. Closed copy no longer
-inflates the four-column overview; controls are at least 96px tall at native
-resolution and 64px in the fallback. Touch, Enter and Space work without hover.
-The original nodes are moved, not shortened or cloned. Existing mobile card
-button semantics are temporarily removed to avoid a nested interactive control,
-then restored alongside the original nodes and focus on profile exit. Later
-cards use the existing observer; no timers or stored visitor state are added.
+The approved follow-up replaces the initial individual disclosures with
+charcoal reading panels: up to four lines of every insight are visible immediately.
+One compact outlined **Read full insights** button expands all pillars;
+**Show less** returns to previews without hiding them. Explicit light text and
+chevron contrast keep the control legible on the black strip. The target remains
+at least 96px tall at native resolution and 64px in the fallback; touch, Enter
+and Space work without hover. The original nodes are moved, not shortened or
+cloned. Existing mobile card button semantics are temporarily removed, then
+restored alongside nodes, listeners and focus on profile exit. Later cards
+inherit the current expanded state; reconciliation is idempotent and empty/
+removed cards do not leave stale controls. No timers or stored visitor state
+are added. Panels include padding in their column width with border-box sizing.
+
+The same revision removes the scaled Entry screen's gray seam. Its white form
+previously sat on black layout backing; rasterization exposed a gray row at its
+fractional scaled edge. The backing now matches the white surface while the hero
+retains its own black background. Native geometry and artwork are unchanged.
+Pixel probes reproduce the line before and verify its absence afterward in
+1440 x 1100, 1280 x 720 and 1106 x 1080 live-wrapper viewports.
 
 Within the broader authorized portrait profile, summary and brand callout prose
 are no longer constrained by the shared `65ch` reading-width rule. The callout
