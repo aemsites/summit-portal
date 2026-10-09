@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from '../src/index.js';
-import { createMockEnv, createMockBoothD1, fakeJwt, signedJwt } from './helpers.js';
+import { createMockEnv, createMockBoothD1, createMockBoothCookie, fakeJwt, signedJwt } from './helpers.js';
 import { createSession as createBoothSession } from '../src/session.js';
 import { createBoothActivity, storeBoothActivity, BOOTH_RETENTION_MS } from '../src/booth-activity.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
@@ -61,6 +61,34 @@ describe('index (request routing)', () => {
       const resp = await worker.fetch(request, env);
 
       expect(resp.status).toBe(404);
+    });
+  });
+
+  describe('booth login navigation fragments', () => {
+    it('serves the real header, footer and language menu without redirecting booth browsers', async () => {
+      const cookies = ['booth_kiosk=1', await createMockBoothCookie(env)];
+      for (const cookie of cookies) {
+        for (const path of ['/fragments/nav/header', '/fragments/nav/footer', '/fragments/nav/header/languages']) {
+          vi.stubGlobal('fetch', mockOriginFetch('<main><div><p>Navigation fragment</p></div></main>'));
+          const response = await worker.fetch(new Request(`https://mysite.com${path}`, { headers: { Cookie: cookie } }), env);
+          expect(response.status).toBe(200);
+          expect(response.headers.has('Location')).toBe(false);
+          expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+          expect(await response.text()).toBe('<main><div><p>Navigation fragment</p></div></main>');
+          const [originRequest] = fetch.mock.calls.find(([input]) => input.url?.endsWith(path));
+          expect(originRequest.headers.has('Cookie')).toBe(false);
+        }
+      }
+    });
+
+    it('does not allow other fragments, private documents or navigation lookalikes', async () => {
+      vi.stubGlobal('fetch', vi.fn());
+      for (const path of ['/fragments/private', '/fragments/nav/header.json', '/fragments/nav/footer/secret', '/fragments/nav/header/languages/private', '/adobe/dashboard']) {
+        const response = await worker.fetch(new Request(`https://mysite.com${path}`, { headers: { Cookie: 'booth_kiosk=1' } }), env);
+        expect(response.status).toBe(302);
+        expect(response.headers.get('Location')).toBe('/booth');
+      }
+      expect(fetch).not.toHaveBeenCalled();
     });
   });
 

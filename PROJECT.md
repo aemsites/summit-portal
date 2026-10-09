@@ -101,6 +101,20 @@ CSS, loading CSS and origin `scripts/lazy.js` match the merged source byte-for-b
 The unauthenticated `/booth` route still redirects to `/login?staff` with a
 private, no-store response. No customer lookup or email was performed.
 
+**Login fragment routing (October 9, branch, not deployed):** booth-restricted
+browsers may fetch the exact public `/fragments/nav/header`,
+`/fragments/nav/footer` and `/fragments/nav/header/languages` dependencies.
+Previously those requests redirected through `/booth`; the fragment loader
+embedded the returned login or booth document as navigation, producing duplicate
+login cards, `undefined` link text or booth setup text in the header.
+Other fragments/private documents remain restricted, and navigation responses
+remain private/no-store with booth credentials stripped before origin fetch.
+The shared fragment loader rejects redirects before parsing or decorating any
+returned page; header failures use the framework logger rather than silently
+disappearing. Routing and browser regressions cover stale kiosk markers, scoped
+booth credentials and redirected login markup. This fix requires both frontend
+merge/AEM Code Sync and a separate matching Worker deployment.
+
 **Portrait staff login (branch, not deployed):** `/login?staff&redirect=%2Fbooth`
 keeps the existing username/password authentication and redirect flow, with a
 staff-only portrait profile in `blocks/portal-login/portal-login.css`.
