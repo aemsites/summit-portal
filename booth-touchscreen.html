@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Digital Opportunity Report / touchscreen</title>
+  <link rel="stylesheet" href="/styles/booth-touchscreen.css">
+  <script type="module" src="/scripts/booth-touchscreen.js"></script>
+</head>
+<body class="booth-touchscreen">
+  <main class="touchscreen-surround" aria-label="Live booth touchscreen presentation">
+    <div class="touchscreen-frame">
+      <div class="touchscreen-display">
+        <iframe id="booth-screen" title="Authenticated booth experience" referrerpolicy="no-referrer"></iframe>
+        <section class="touchscreen-keyboard" aria-label="Schematic on-screen keyboard" hidden>
+          <div class="touchscreen-keyboard-heading">
+            <span>Email keyboard</span>
+            <button type="button" data-key="Hide" aria-label="Close keyboard">Close</button>
+          </div>
+          <div class="touchscreen-key-row" data-keys="1 2 3 4 5 6 7 8 9 0 Backspace"></div>
+          <div class="touchscreen-key-row" data-keys="q w e r t y u i o p"></div>
+          <div class="touchscreen-key-row" data-keys="a s d f g h j k l"></div>
+          <div class="touchscreen-key-row" data-keys="Shift z x c v b n m"></div>
+          <div class="touchscreen-key-row" data-keys="@ . - _ Space Enter"></div>
+        </section>
+      </div>
+    </div>
+    <p class="touchscreen-error" role="alert" hidden></p>
+    <noscript>Enable JavaScript to present the booth touchscreen.</noscript>
+  </main>
+</body>
+</html>

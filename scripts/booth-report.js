@@ -1,5 +1,6 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
 import { createBoothInactivity } from './booth-session.js';
+import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
 const compositionQuery = '(min-width: 1000px) and (min-height: 1600px) and (aspect-ratio: 9/16)';
@@ -63,6 +64,8 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     document.body.append(recovery);
   }
   const recoveryButton = recovery.querySelector('[data-booth-recover]');
+  recovery.querySelector('a[href="/booth?recover=1"]')
+    ?.setAttribute('href', withBoothPresentation('/booth?recover=1', presentation));
   const recoveryMessage = recovery.querySelector('p') || document.createElement('p');
   if (!recoveryMessage.parentElement) {
     recoveryMessage.setAttribute('role', 'alert');
@@ -410,6 +413,8 @@ export default async function mountBoothReturn() {
   if (concealedContent) concealedContent.replaceWith(...concealedContent.childNodes);
   html.classList.add('booth-report-active');
   html.classList.remove('booth-request-pending', 'booth-report-pending');
+  const keyboard = mountBoothKeyboard(document, control);
+  window.addEventListener('pagehide', () => keyboard.destroy(), { once: true });
   const portrait = window.matchMedia(portraitQuery);
   const composition = window.matchMedia(compositionQuery);
   const root = document.querySelector('main') || document.body;
@@ -446,7 +451,8 @@ export default async function mountBoothReturn() {
     if (!html.classList.contains('booth-report-active')) return;
     const link = event.target.closest?.('a[href]');
     if (!link || control.contains(link)) return;
-    if (link.closest('#booth-recovery') && link.getAttribute('href') === '/booth?recover=1') return;
+    if (link.closest('#booth-recovery')
+      && link.getAttribute('href') === withBoothPresentation('/booth?recover=1', presentation)) return;
     if (link.getAttribute('href').trim().startsWith('#')
       && !link.hasAttribute('download') && (!link.target || link.target === '_self')
       && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey

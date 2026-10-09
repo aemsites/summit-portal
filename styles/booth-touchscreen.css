@@ -1,0 +1,115 @@
+.booth-touchscreen {
+  margin: 0;
+  color: #292725;
+  background: #e9e6e2;
+  font-family: system-ui, sans-serif;
+  color-scheme: light;
+  overflow: hidden;
+}
+
+.booth-touchscreen [hidden] {
+  display: none !important;
+}
+
+.booth-touchscreen .touchscreen-surround {
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100dvh;
+}
+
+.booth-touchscreen .touchscreen-frame {
+  position: relative;
+  overflow: hidden;
+  background: #242321;
+  border: 6px solid #242321;
+  border-radius: 6px;
+}
+
+.booth-touchscreen .touchscreen-display {
+  position: relative;
+  width: 2160px;
+  height: 3840px;
+  transform-origin: top left;
+  background: #f7f6f4;
+}
+
+.booth-touchscreen iframe {
+  display: block;
+  width: 2160px;
+  height: 3840px;
+  border: 0;
+}
+
+.booth-touchscreen .touchscreen-keyboard {
+  position: absolute;
+  inset: auto 0 0;
+  height: 1728px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: .55fr repeat(5, 1fr);
+  gap: 18px;
+  padding: 30px;
+  background: #d5d2ce;
+  border-top: 4px solid #96918b;
+}
+
+.booth-touchscreen .touchscreen-keyboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 48px;
+}
+
+.booth-touchscreen .touchscreen-key-row {
+  display: flex;
+  gap: 14px;
+  min-height: 0;
+}
+
+.booth-touchscreen .touchscreen-keyboard button {
+  flex: 1;
+  min-width: 0;
+  padding: 20px;
+  border: 2px solid #bab4ae;
+  border-radius: 12px;
+  color: inherit;
+  background: #f9f8f6;
+  font: inherit;
+  font-size: 68px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.booth-touchscreen .touchscreen-keyboard-heading button {
+  flex: none;
+  font-size: 48px;
+}
+
+.booth-touchscreen [data-key="Space"] {
+  flex: 3;
+}
+
+.booth-touchscreen [data-key="Enter"],
+.booth-touchscreen [data-key="Backspace"],
+.booth-touchscreen [data-key="Shift"] {
+  flex: 2;
+}
+
+.booth-touchscreen .touchscreen-keyboard button:active,
+.booth-touchscreen .touchscreen-keyboard button[aria-pressed="true"] {
+  color: #f9f8f6;
+  background: #57514b;
+}
+
+.booth-touchscreen button:focus-visible {
+  outline: 6px solid #e60000;
+  outline-offset: 4px;
+}
+
+.booth-touchscreen .touchscreen-error {
+  position: absolute;
+  inset: auto 24px 12px;
+  padding: 12px;
+  background: #fff1e5;
+}

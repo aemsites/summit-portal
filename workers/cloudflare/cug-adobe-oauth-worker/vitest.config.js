@@ -13,7 +13,7 @@ export default defineConfig({
         return `${resolve(dirname(importer), source)}.booth-${type}`;
       }
       if (importer?.endsWith('/src/booth-shell.js')
-        && /\/(?:booth\.html|scripts\/booth(?:-report|-presentation|-preview|-keyboard|-session)?\.js|styles\/booth(?:-report|-keyboard|-loading)?\.css|blocks\/report-(hero|stats|carousel)\/report-(hero|stats|carousel)\.(?:js|css)|blocks\/report-ai-visibility\/(?:rav-core\.js|report-ai-visibility\.css))$/.test(source)) {
+        && /\/(?:booth(?:-touchscreen)?\.html|scripts\/booth(?:-report|-presentation|-preview|-keyboard|-session|-touchscreen|-touchscreen-device)?\.js|styles\/booth(?:-report|-keyboard|-loading|-touchscreen)?\.css|blocks\/report-(hero|stats|carousel)\/report-(hero|stats|carousel)\.(?:js|css)|blocks\/report-ai-visibility\/(?:rav-core\.js|report-ai-visibility\.css))$/.test(source)) {
         return `${resolve(dirname(importer), source)}.booth-text`;
       }
       return null;

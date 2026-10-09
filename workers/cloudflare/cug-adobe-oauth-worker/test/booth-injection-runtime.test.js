@@ -25,7 +25,7 @@ describe('real workerd early HTML concealment', () => {
       plugins: [{
         name: 'fixture-only-booth-assets',
         setup(builder) {
-          builder.onLoad({ filter: /\/(?:booth\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+|img\/icons\/globe\.svg)$/ }, async ({ path: asset }) => ({
+          builder.onLoad({ filter: /\/(?:booth(?:-touchscreen)?\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+|img\/icons\/globe\.svg)$/ }, async ({ path: asset }) => ({
             contents: `export default ${JSON.stringify(await readFile(asset, 'utf8'))};`,
             loader: 'js',
           }));
@@ -84,5 +84,23 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
     const response = await runtime.dispatchFetch('https://portal.example/request-report?mode=request', { headers: { Cookie: cookie }, redirect: 'manual' });
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/booth');
+  });
+
+  it('installs the presentation bridge before report modules only inside the authorized frame mode', async () => {
+    const response = await runtime.dispatchFetch(`https://portal.example${path}?touchscreen=frame`, { headers: { Cookie: cookie } });
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html.indexOf('booth-touchscreen-device.js')).toBeGreaterThan(0);
+    expect(html.indexOf('booth-touchscreen-device.js')).toBeLessThan(html.indexOf('src="/scripts/booth-report.js'));
+    expect(html).toContain('booth-report-pending');
+    for (const query of ['', '?touchscreen=1', '?touchscreen=frame&touchscreen=frame']) {
+      const ordinary = await runtime.dispatchFetch(`https://portal.example${path}${query}`, { headers: { Cookie: cookie } });
+      expect(await ordinary.text()).not.toContain('booth-touchscreen-device.js');
+    }
+    const anonymous = await runtime.dispatchFetch(`https://portal.example${path}?touchscreen=frame`);
+    expect(await anonymous.text()).not.toContain('booth-touchscreen-device.js');
+    const unrelated = await runtime.dispatchFetch('https://portal.example/accounts/o/other/?touchscreen=frame', { headers: { Cookie: cookie }, redirect: 'manual' });
+    expect(unrelated.status).toBe(302);
+    expect(await unrelated.text()).not.toContain('Fixture private company');
   });
 });
