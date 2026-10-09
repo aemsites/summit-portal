@@ -85,7 +85,7 @@ cron are unchanged. Login CSS is origin-served and was published by
 merge/AEM Code Sync, not by the Worker upload. Close old report tabs and reload
 `/booth` on the kiosk; existing documents do not hot-reload modules.
 
-## Staff exit from booth mode (not deployed)
+## Staff exit from booth mode (October 9, deployed)
 
 Visitor reset and timeout are not staff signout. **Clear for next visitor** and
 the fifteen-minute inactivity policy still clear attendee access while retaining
@@ -147,13 +147,12 @@ tall with 44px text; half-size and mobile views have no horizontal overflow.
 The original native report-transition check also retains identical loader
 metrics across navigation and stable report bounds while dependencies are held.
 
-Review branch: **`josec-adobe-booth-transitions-exit`**. This implementation is
-**not deployed**. Publish the changed portal-login block
-before deploying the matching bundled Worker/booth shell; preserve the origin
-readiness publication order in the transition section below. Production still
-uses the previously deployed soft-signout behavior until that coordinated rollout.
+Review branch: **`josec-adobe-booth-transitions-exit`**, merged in PR #170.
+The changed portal-login block was verified live before deploying the matching
+bundled Worker/booth shell. Freshly authenticated full exit is now deployed;
+ordinary reset and legacy logout remain kiosk-preserving.
 
-## Report transitions (not deployed)
+## Report transitions (October 9, deployed)
 
 The Entry and report overlays share system-font typography that does not change
 when Typekit arrives. Pending/clearing reports are excluded from ordinary
@@ -182,7 +181,31 @@ HAR's font request redirect into booth HTML. The HAR is private and uncommitted.
 
 Publish the origin `scripts/scripts.js` and block changes via merge/AEM Code
 Sync **before** deploying the matching Worker (`booth-transitions-1` in both
-injection and lazy import). No Worker deployment is included in branch publication.
+injection and lazy import). Branch publication was separate from the approved
+October 9 Worker activation recorded below.
+
+### Coordinated production rollout, October 9
+
+Deployed exact merged main `dd561f9f343202e87ddfe20d803060821b39e2e3`
+(PR #170) at **11:31 UTC** to `summit-portal`. Active Worker version:
+**`1b8c740b-c465-4b36-8313-5b29e2d9f71b`**, receiving **100%** of traffic and
+replacing `d5bfbf68-7e17-4cb2-b256-9921271da433`.
+
+The seven required origin-served frontend dependencies matched merged source
+byte-for-byte before activation; eleven bundled JS/CSS assets matched afterward.
+The exact merged Worker suite passed 478 tests with one existing skip; the dry
+run preserved existing KV/D1/Durable Object bindings and staff epoch. No new
+migration or secret rotation was needed.
+
+Live read-only checks confirmed private/no-store booth and touchscreen staff
+redirects, ordinary report-targeted login without a kiosk marker, and the
+restricted report-to-booth-to-staff-login chain with one. The shared
+`/styles/fonts/montserrat.woff2` returned a real font, not redirected booth HTML.
+At 2160 x 3840 the production exit form has one staff-only form, 144px password
+input, 120px submit action, 44px text and no horizontal overflow.
+No staff credentials, attendee lookup, email send or visitor reset was performed
+in production; full authenticated exit and transition journeys were verified
+with the isolated local regressions. Close old report tabs and reload the booth.
 
 ## Approved scope
 
@@ -591,7 +614,7 @@ customer report content in test files.
 
 ### Authenticated live touchscreen presentation
 
-After an approved matching Worker deployment, open `/booth?touchscreen=1`
+Deployed in the October 9 coordinated rollout. Open `/booth?touchscreen=1`
 in a separate browser or private window. Staff sign-in is required and runs
 top-level, not inside the frame. This mode uses **real lookup, authorized
 reports and real email sends**; it is not a training/demo-data sandbox.
@@ -623,7 +646,7 @@ The CSS viewport assumes 100% Windows scaling. Physical resolution alone does
 not prove that viewport, and this web keyboard is not a native Windows replica.
 OS scaling, DPR, touch events, pointer media queries and actual Windows/Edge
 keyboard behavior are not emulated or certified. Rehearse on the real hardware.
-Implementation/push does not deploy the Worker or grant additional access.
+This presentation grants no additional access.
 
 Local validation uses `npm run preview:booth -- --port 3003` and
 `http://localhost:3003/booth?touchscreen=1` with the fixture server's synthetic
@@ -1420,7 +1443,7 @@ session and bind to the same random identifier. The HttpOnly/Secure
 scoped credentials are restricted even without that marker. **Staff: sign out
 this device** in the deployed legacy version clears attendee state and credentials
 but does not unlock dashboard access. The new fresh-authenticated exit described
-above is a separate intentional exception pending rollout. Re-login stays scoped;
+above is a deployed intentional exception. Re-login stays scoped;
 staff administration belongs on a
 separate browser/device. Unmarked ordinary staff/customer browsers are unchanged.
 The server allowlist permits shared static assets and selected rendering
