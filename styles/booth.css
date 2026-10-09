@@ -517,7 +517,7 @@
     }
 
     .welcome-layout {
-      background: var(--ink);
+      background: var(--surface);
     }
 
     .welcome-entry .lead {

@@ -144,6 +144,34 @@ describe('Figma booth artwork', () => {
     expect(frame.contentWindow.getComputedStyle(notice.querySelector('a')).color).to.equal('rgb(59, 99, 251)');
   });
 
+  it('does not draw a full-width gray separator through the Entry reading area', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stage.replaceWith(source.querySelector('.stage').cloneNode(true));
+    stage = frame.contentDocument.querySelector('.stage');
+    stage.querySelector('[data-panel="welcome"]').hidden = false;
+    stage.querySelector('#booth-status').hidden = true;
+    const { contentWindow } = frame;
+    const sizes = [
+      [2160, 3840], [2160, 2881], [2048, 2732], [2732, 2048], [1080, 1920], [390, 844],
+    ];
+    for (const [width, height] of sizes) {
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      if (width >= 1000) {
+        const style = frame.contentWindow.getComputedStyle(stage.querySelector('.welcome-layout'));
+        expect(style.backgroundColor, 'White form backing must not bleed through at fractional scale')
+          .to.equal('rgb(255, 255, 255)');
+      }
+      stage.querySelectorAll('.stage-main, .welcome-layout, .welcome-entry, .stage-footer')
+        .forEach((element) => {
+          const style = contentWindow.getComputedStyle(element);
+          expect(parseFloat(style.borderTopWidth), `${element.className} top at ${width}`).to.equal(0);
+          expect(parseFloat(style.borderBottomWidth), `${element.className} bottom at ${width}`).to.equal(0);
+        });
+    }
+  });
+
   it('keeps the registration label, disclosure and adjacent actions usable across all designed sizes', async () => {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const source = new DOMParser().parseFromString(await response.text(), 'text/html');

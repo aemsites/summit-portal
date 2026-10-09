@@ -207,10 +207,10 @@ No staff credentials, attendee lookup, email send or visitor reset was performed
 in production; full authenticated exit and transition journeys were verified
 with the isolated local regressions. Close old report tabs and reload the booth.
 
-## Report stylesheet readiness correction (October 9, not deployed)
+## Report stylesheet readiness correction (October 9, deployed)
 
-The deployed readiness check can mistake a still-loading stylesheet for a
-failed one. Delaying the existing Cannes stripe CSS reproduces the exact
+The preceding readiness check could mistake a still-loading stylesheet for a
+failed one. Delaying the existing Cannes stripe CSS reproduced the exact
 **The report styles could not be loaded** recovery screen on real public-report
 markup, both directly and inside a frame, despite subsequent successful loading.
 This is shared report behavior, not a simulator-only failure. It does not establish
@@ -238,8 +238,9 @@ geometry, genuine CSS failure and a stalled request followed by late success are
 verified. All mutations stay local; personal-mode checks replay public content
 and do not certify an authenticated customer's report or native Windows hardware.
 
-Publish the reviewed branch and deploy the matching Worker report adapter after
-merge. No deployment is included in this fix.
+The matching Worker report adapter was deployed from merged main `c56dc1e`
+on October 9 at 14:38 UTC, together with the responsive Entry and portrait
+layout corrections below.
 
 ## Approved scope
 
@@ -445,7 +446,10 @@ are committed and Worker-bundled; the existing webpage asset is byte-identical t
 Unlike two defects in the mockups, the 2048px form respects the right gutter
 and the landscape Privacy Policy link is blue, not invisible white on white.
 No tracking text, notice version, retention period or permission behavior changes.
-These corrections are pending review and a matching Worker deployment.
+These corrections were deployed from merged main `c56dc1e` (PR #173) on
+October 9 at 14:38 UTC. Worker version
+`f45df51b-fde7-4c42-860a-7093bac15501` receives 100% of traffic; live Entry
+CSS and both new glow files match the merged source with `no-cache` revalidation.
 Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
 The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in
@@ -1293,16 +1297,35 @@ chart observer; no additional idle/reset/expiry timers are added.
 The original broad portrait date/touch query stays separate. The 2:3, 3:4,
 landscape, mobile and nearby non-exact viewports retain the preceding layout.
 
-### Portrait layout corrections, October 9 (pending review and Worker deployment)
+### Portrait layout corrections, October 9 (deployed)
 
-The exact-ratio composition now keeps each KPI's full authored explanation in a
-native **View insight** / **Hide insight** disclosure. Closed copy no longer
-inflates the four-column overview; controls are at least 96px tall at native
-resolution and 64px in the fallback. Touch, Enter and Space work without hover.
-The original nodes are moved, not shortened or cloned. Existing mobile card
-button semantics are temporarily removed to avoid a nested interactive control,
-then restored alongside the original nodes and focus on profile exit. Later
-cards use the existing observer; no timers or stored visitor state are added.
+The approved follow-up replaces the initial individual disclosures with
+charcoal reading panels: up to four lines of every insight are visible immediately.
+One compact outlined **Read full insights** button expands all pillars;
+**Show less** returns to previews without hiding them. Explicit light text and
+chevron contrast keep the control legible on the black strip. The target remains
+at least 96px tall at native resolution and 64px in the fallback; touch, Enter
+and Space work without hover. The original nodes are moved, not shortened or
+cloned. Existing mobile card button semantics are temporarily removed, then
+restored alongside nodes, listeners and focus on profile exit. Later cards
+inherit the current expanded state; reconciliation is idempotent and empty/
+removed cards do not leave stale controls. No timers or stored visitor state
+are added. Panels include padding in their column width with border-box sizing.
+
+The same revision removes the scaled Entry screen's gray seam. Its white form
+previously sat on black layout backing; rasterization exposed a gray row at its
+fractional scaled edge. The backing now matches the white surface while the hero
+retains its own black background. Native geometry and artwork are unchanged.
+Pixel probes reproduce the line before and verify its absence afterward in
+1440 x 1100, 1280 x 720 and 1106 x 1080 live-wrapper viewports.
+
+**Demo hotfix rollout, October 9 at 15:11 UTC:** Jose explicitly approved
+deploying tested commit `efb901e` from `josec-adobe-booth-insight-previews`
+before merge. Worker `5aabc51b-5735-432e-94e4-a0e765157910` serves 100% of
+traffic; all three changed live JS/CSS assets match source and touchscreen
+entry remains staff-gated. Variables, secrets and bindings are preserved.
+Merge the review branch before a subsequent main-based deployment; close
+existing report tabs and reload the booth to pick up this version.
 
 Within the broader authorized portrait profile, summary and brand callout prose
 are no longer constrained by the shared `65ch` reading-width rule. The callout
@@ -1323,8 +1346,10 @@ touchscreen iframe passes the same geometry and interaction checks; resizing
 back to mobile restores the original KPI buttons and working insight sheet.
 The public FrescoPa report reproduced the shared CSS issues; the protected Unity
 report was not fetched without authentication. No production lookup, email or visitor
-state mutation was performed. Matching Worker asset deployment is still required
-after merge; publishing this branch does not update production.
+state mutation was performed. The matching Worker assets were deployed from
+merged main `c56dc1e` on October 9 at 14:38 UTC. Live report JS/CSS bytes match
+the merged source, and ordinary/touchscreen unauthenticated entry remains
+staff-gated. Close old report tabs and reload the booth before using the fixes.
 
 Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
 month/year lines, retaining the original date in an accessible label; this

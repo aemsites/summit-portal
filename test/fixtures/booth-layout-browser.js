@@ -59,29 +59,35 @@ export default async function verifyBoothReportLayout(report) {
   });
   check(geometry.gauges.length > 0, 'Use report markup with performance gauges');
   geometry.gauges.forEach((delta) => check(delta <= 1, `Gauge verdict is off-center: ${delta}px`));
-  check(geometry.stripHeight < 600, `Collapsed KPI strip is too dense: ${geometry.stripHeight}px`);
+  check(geometry.stripHeight < 650, `Preview KPI strip is too dense: ${geometry.stripHeight}px`);
   const insights = report.locator('.rs-dark-card .booth-kpi-insight');
-  check(await insights.count() === 4, 'Expected four touch-friendly KPI explanations');
-  for (const details of await insights.all()) {
-    const summary = details.locator('summary');
-    const description = details.locator('.rs-dark-desc');
-    const original = await description.textContent();
-    check(await details.getAttribute('open') === null, 'KPI insight should start closed');
-    check(!(await description.isVisible()), 'Closed insight still displays full copy');
-    const targetHeight = await summary.evaluate((element) => (
-      element.getBoundingClientRect().height
-    ));
-    check(targetHeight >= (geometry.viewport[0] >= 2160 ? 96 : 64), 'KPI disclosure touch target is too small');
-    await summary.tap();
-    await description.waitFor({ state: 'visible' });
-    check(await description.textContent() === original, 'KPI disclosure lost full insight text');
-    check(await description.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), 'Expanded KPI copy overflows');
-    await summary.press('Space');
-    await description.waitFor({ state: 'hidden' });
-    await summary.press('Enter');
-    await description.waitFor({ state: 'visible' });
-    await summary.tap();
-    await description.waitFor({ state: 'hidden' });
+  check(await insights.count() === 4, 'Expected four readable KPI preview panels');
+  for (const panel of await insights.all()) {
+    check(await panel.evaluate((element) => (
+      Math.abs(element.getBoundingClientRect().width
+        - element.parentElement.getBoundingClientRect().width) <= 1
+    )), 'Reading panel overlaps its neighboring KPI column');
+  }
+  const descriptions = report.locator('.booth-kpi-insight .rs-dark-desc');
+  const original = await descriptions.allTextContents();
+  for (const description of await descriptions.all()) {
+    check(await description.isVisible(), 'Insight preview is hidden before tapping');
+    check(await description.evaluate((element) => getComputedStyle(element).color === 'rgb(224, 224, 224)'), 'Insight copy is not legible on its charcoal panel');
+  }
+  const button = report.locator('.booth-kpi-toggle');
+  check(await button.count() === 1, 'Expected one control for all insights');
+  const height = await button.evaluate((element) => element.getBoundingClientRect().height);
+  check(height >= (geometry.viewport[0] >= 2160 ? 96 : 64), 'Shared insight button is too small');
+  for (const operation of ['tap', 'Space', 'Enter', 'tap']) {
+    if (operation === 'tap') await button.tap();
+    else await button.press(operation);
+    const expanded = await button.getAttribute('aria-expanded') === 'true';
+    check(JSON.stringify(await descriptions.allTextContents()) === JSON.stringify(original), 'Full authored insight text was changed');
+    for (const description of await descriptions.all()) {
+      check(await description.isVisible(), 'Insight preview disappeared after collapse');
+      check(await description.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), 'Insight copy overflows');
+      if (expanded) check(await description.evaluate((element) => Math.abs(element.clientHeight - element.scrollHeight) <= 1), 'One tap did not reveal every full insight');
+    }
   }
   await report.evaluate(() => window.scrollTo(0, 0));
   return geometry;
