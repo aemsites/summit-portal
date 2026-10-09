@@ -486,7 +486,7 @@ describe('booth runtime boundary', () => {
     fetchStub.withArgs('/auth/booth/reset').resolves(jsonReply({ state: 'entry' }));
     try {
       mountBooth(root);
-      await clock.tickAsync(0);
+      await clock.tickAsync(720000);
       root.dispatchEvent(new Event('pointerdown'));
       await clock.tickAsync(0);
       root.getElementById('send-report').click();
@@ -503,6 +503,44 @@ describe('booth runtime boundary', () => {
       expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/reset');
       expect(root.querySelector('#email-form button').disabled).to.equal(false);
       expect(clock.countTimers()).to.equal(0);
+    } finally {
+      window.history.replaceState(null, '', previousUrl);
+    }
+  });
+
+  it('does not count initial shell status as visitor interaction near expiry', async () => {
+    const root = recoveryFixture();
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch').resolves(jsonReply({ state: 'picker', candidates: [], expiresAt: 120000 }));
+    mountBooth(root);
+    await clock.tickAsync(60000);
+    expect(fetchStub.calledOnce).to.equal(true);
+    expect(fetchStub.firstCall.args[0]).to.equal('/auth/booth/status');
+  });
+
+  it('retains Finish and shows quiet reconnection status during a transient renewal failure', async () => {
+    const root = await productionFixture();
+    root.getElementById('report-preview').remove();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '/booth?step=finish');
+    const clock = sandbox.useFakeTimers();
+    const fetchStub = sandbox.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/booth/status').resolves(jsonReply({ state: 'report', selectedPath: '/selected/', expiresAt: 900000 }));
+    fetchStub.withArgs('/auth/booth/activity')
+      .onFirstCall().resolves(jsonReply({ error: 'Temporarily unavailable' }, 502));
+    fetchStub.withArgs('/auth/booth/activity')
+      .onSecondCall().resolves(jsonReply({ expiresAt: 900000 }));
+    try {
+      mountBooth(root);
+      await clock.tickAsync(0);
+      root.dispatchEvent(new Event('pointerdown'));
+      await clock.tickAsync(720000);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(false);
+      expect(root.querySelector('[data-booth-connection]').hidden).to.equal(false);
+      expect(root.getElementById('booth-retry').hidden).to.equal(true);
+      await clock.tickAsync(30000);
+      expect(root.querySelector('[data-booth-connection]').hidden).to.equal(true);
+      expect(root.querySelector('[data-panel="finish"]').hidden).to.equal(false);
     } finally {
       window.history.replaceState(null, '', previousUrl);
     }

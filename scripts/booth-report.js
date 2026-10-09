@@ -173,6 +173,13 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   inactivity = createBoothInactivity({
     reset,
     onError: fail,
+    onConnectionChange(error) {
+      const status = document.querySelector('#booth-return [data-booth-connection]');
+      if (status) {
+        status.textContent = error ? 'Connection interrupted. Reconnecting without clearing your report.' : '';
+        status.hidden = !error;
+      }
+    },
     track(operation) {
       pending = Promise.allSettled([pending, operation]).then(() => undefined);
     },
@@ -224,7 +231,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
   window.addEventListener('popstate', reset);
   if (pendingVerification) {
     inactivity.setExpiry(expiresAt, false);
-    activity();
+    inactivity.activity(false);
   }
   return guard;
 }
@@ -589,6 +596,13 @@ export default async function mountBoothReturn() {
     status.setAttribute('role', 'status');
     status.hidden = true;
     control.append(status);
+  }
+  if (!control.querySelector('[data-booth-connection]')) {
+    const connection = document.createElement('p');
+    connection.dataset.boothConnection = 'true';
+    connection.setAttribute('role', 'status');
+    connection.hidden = true;
+    control.append(connection);
   }
   control.querySelector('a').href = withBoothPresentation(demo ? '/booth?step=demos' : '/booth?step=finish', presentation);
   restrictBoothLinks(document);

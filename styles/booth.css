@@ -215,6 +215,13 @@
     text-underline-offset: 3px;
   }
 
+  .booth-connection-note {
+    margin: 16px 0 0;
+    color: #505050;
+    font-size: clamp(14px, 1.1111vw, 24px);
+    line-height: 1.4;
+  }
+
   .email-form .privacy-note {
     color: #717171;
     font-size: 14px;
