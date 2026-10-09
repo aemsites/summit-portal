@@ -43,7 +43,9 @@ const selected=mode==='demo'?'/example-report/luma/':mode==='request'?'/request-
 const context={state:mode,selectedPath:selected,demoId:'luma',expiresAt:${expiresAt}};
 const env={JWT_SECRET:'test-jwt-secret',BOOTH_COORDINATOR:{idFromName:id=>id,get:()=>({fetch:async()=>Response.json(context)})}};
 const source=new URL(request.url).searchParams.has('malformed')?'<main>Fixture private company</main>':'<!doctype html><html><head><title>Report</title></head><body><main>Fixture private company</main></body></html>';
-return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html'}}),request,env);
+const assets='<img src="${path}chart.png" srcset="${path}chart.png?width=100 100w, ${path}chart.png?width=200 200w"><source srcset="/media_${'a'.repeat(40)}.png?width=100 100w"><a href="/adobe/booth-guide">Guide</a>';
+const html=new URL(request.url).searchParams.has('assets')?source.replace('</body>',assets+'</body>'):source;
+return injectBoothReturn(new Response(html,{headers:{'Content-Type':'text/html'}}),request,env);
 }}`,
     });
   }, 30000);
@@ -56,7 +58,7 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
   it.each([
     ['report', path], ['demo', '/example-report/luma/'],
   ])('conceals %s before company content and declares its exact mode and deadline', async (mode, selected) => {
-    const response = await runtime.dispatchFetch(`https://portal.example${selected}?mode=${mode}`, { headers: { Cookie: cookie } });
+    const response = await runtime.dispatchFetch(`https://portal.example${selected}?mode=${mode}&booth=1`, { headers: { Cookie: cookie } });
     expect(response.status).toBe(200);
     const html = await response.text();
     const company = html.indexOf('Fixture private company');
@@ -75,13 +77,32 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
   });
 
   it('refuses malformed origin HTML instead of exposing an unconcealed representation', async () => {
-    const response = await runtime.dispatchFetch(`https://portal.example${path}?malformed=1`, { headers: { Cookie: cookie } });
+    const response = await runtime.dispatchFetch(`https://portal.example${path}?malformed=1&booth=1`, { headers: { Cookie: cookie } });
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain('Fixture private company');
   });
 
+  it('marks selected rendering URLs without relying on referrers or marking ordinary guide links', async () => {
+    const response = await runtime.dispatchFetch(`https://portal.example${path}?booth=1&assets=1`, { headers: { Cookie: cookie } });
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html).toContain(`src="${path}chart.png?booth=1"`);
+    expect(html).toContain(`srcset="${path}chart.png?width=100&booth=1 100w, ${path}chart.png?width=200&booth=1 200w"`);
+    expect(html).toContain(`/media_${'a'.repeat(40)}.png?width=100&booth=1 100w`);
+    expect(html).toContain('href="/adobe/booth-guide"');
+  });
+
+  it('leaves ordinary report HTML untouched even with an active booth credential', async () => {
+    const response = await runtime.dispatchFetch(`https://portal.example${path}`, { headers: { Cookie: cookie } });
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html).not.toContain('data-booth-mode');
+    expect(html).not.toContain('booth-report-pending');
+    expect(html).not.toContain('booth-return');
+  });
+
   it('rejects the retired booth request document', async () => {
-    const response = await runtime.dispatchFetch('https://portal.example/request-report?mode=request', { headers: { Cookie: cookie }, redirect: 'manual' });
+    const response = await runtime.dispatchFetch('https://portal.example/request-report?mode=request&booth=1', { headers: { Cookie: cookie }, redirect: 'manual' });
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/booth');
   });
@@ -97,7 +118,7 @@ return injectBoothReturn(new Response(source,{headers:{'Content-Type':'text/html
       const ordinary = await runtime.dispatchFetch(`https://portal.example${path}${query}`, { headers: { Cookie: cookie } });
       expect(await ordinary.text()).not.toContain('booth-touchscreen-device.js');
     }
-    const anonymous = await runtime.dispatchFetch(`https://portal.example${path}?touchscreen=frame`);
+    const anonymous = await runtime.dispatchFetch(`https://portal.example${path}?touchscreen=frame`, { redirect: 'manual' });
     expect(await anonymous.text()).not.toContain('booth-touchscreen-device.js');
     const unrelated = await runtime.dispatchFetch('https://portal.example/accounts/o/other/?touchscreen=frame', { headers: { Cookie: cookie }, redirect: 'manual' });
     expect(unrelated.status).toBe(302);

@@ -503,49 +503,45 @@ async function waitForReportContent() {
 export default async function mountBoothReturn() {
   if (document.querySelector('link[data-booth-report-layout]')) return;
   const marker = document.querySelector('script[data-booth-mode]');
+  if (!marker) return;
   const presentation = readBoothPresentation(window.location.search);
-  let guard;
-  let response;
-  let context;
-  if (marker) {
-    document.documentElement.classList.add('booth-report-pending');
-    const expiresAt = Number(marker.dataset.boothExpiresAt);
-    guard = createReportGuard(
-      marker,
-      Number.isFinite(expiresAt) ? expiresAt : Date.now(),
-      presentation,
-      true,
-    );
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      guard.fail(new Error('This booth report has expired. Retry and clear the screen.'));
-      return;
-    }
+  document.documentElement.classList.add('booth-report-pending');
+  const expiresAt = Number(marker.dataset.boothExpiresAt);
+  const guard = createReportGuard(
+    marker,
+    Number.isFinite(expiresAt) ? expiresAt : Date.now(),
+    presentation,
+    true,
+  );
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    guard.fail(new Error('This booth report has expired. Retry and clear the screen.'));
+    return;
   }
+  let context;
   try {
-    response = await fetch('/auth/booth/status', {
+    const response = await fetch('/auth/booth/status', {
       credentials: 'same-origin',
       cache: 'no-store',
-      ...(marker ? { signal: AbortSignal.timeout(10000) } : {}),
+      signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) throw new Error('This booth report could not be verified. Retry and clear the screen.');
     context = await response.json();
   } catch (error) {
-    if (guard) guard.fail(error);
-    else if (response?.ok !== false) throw error;
+    guard.fail(error);
     return;
   }
   const demo = context.state === 'demo' && context.demoId
     && context.selectedPath === `/example-report/${context.demoId}/`;
   if ((!demo && context.state !== 'report') || context.selectedPath !== window.location.pathname
     || !Number.isFinite(context.expiresAt) || context.expiresAt <= Date.now()) {
-    guard?.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
-    return;
-  }
-  if (marker && marker.dataset.boothMode !== context.state) {
     guard.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
     return;
   }
-  if (guard?.interrupted) return;
+  if (marker.dataset.boothMode !== context.state) {
+    guard.fail(new Error('This booth report is no longer active. Retry and clear the screen.'));
+    return;
+  }
+  if (guard.interrupted) return;
   if (document.querySelector('link[data-booth-report-layout]')) return;
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
@@ -564,11 +560,10 @@ export default async function mountBoothReturn() {
   try {
     await layoutReady;
   } catch (error) {
-    if (guard) guard.fail(error);
-    else throw error;
+    guard.fail(error);
     return;
   }
-  if (guard?.interrupted) return;
+  if (guard.interrupted) return;
   const existingControl = document.getElementById('booth-return');
   const html = document.documentElement;
   const control = existingControl || document.createElement('aside');
@@ -592,21 +587,15 @@ export default async function mountBoothReturn() {
   }
   control.querySelector('a').href = withBoothPresentation(demo ? '/booth?step=demos' : '/booth?step=finish', presentation);
   restrictBoothLinks(document);
-  if (marker) {
-    html.classList.add('booth-report-active');
-    html.classList.toggle('booth-report-composition', window.matchMedia(compositionQuery).matches);
-    try {
-      await waitForReportContent();
-    } catch (error) {
-      if (!guard.interrupted) guard.fail(error);
-      return;
-    }
-    if (guard.interrupted) return;
+  html.classList.add('booth-report-active');
+  html.classList.toggle('booth-report-composition', window.matchMedia(compositionQuery).matches);
+  try {
+    await waitForReportContent();
+  } catch (error) {
+    if (!guard.interrupted) guard.fail(error);
+    return;
   }
-  if (!existingControl) {
-    guard ||= createReportGuard(control, context.expiresAt, presentation);
-    if (!guard.activate(context)) return;
-  } else if (guard && !guard.activate(context)) return;
+  if (guard.interrupted || !guard.activate(context)) return;
   const concealedContent = document.getElementById('booth-report-content');
   if (concealedContent) concealedContent.replaceWith(...concealedContent.childNodes);
   html.classList.add('booth-report-active');
@@ -711,8 +700,7 @@ export default async function mountBoothReturn() {
   }
 }
 
-if (window.location.pathname.startsWith('/accounts/')
-  || document.querySelector('script[data-booth-mode]')) {
+if (document.querySelector('script[data-booth-mode]')) {
   mountBoothReturn().catch((error) => {
     const marker = document.querySelector('script[data-booth-mode]');
     if (marker) guards.get(marker)?.fail(error);

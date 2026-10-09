@@ -58,13 +58,13 @@ describe('dashboard-tools', () => {
     expect(fetchStub.called).to.equal(false);
   });
 
-  it('links to the live booth with its browser restriction warning, without redundant sign-in copy', () => {
+  it('links to the live booth with shared-device guidance, without a browser-wide restriction warning', () => {
     const link = block.querySelector('.dt-description a');
     expect(link.getAttribute('href')).to.equal('/booth');
     expect(link.textContent).to.equal('View the booth experience');
     const warning = block.querySelector(`#${link.getAttribute('aria-describedby')}`);
-    expect(warning.textContent).to.include('separate browser or private window');
-    expect(warning.textContent).to.include('kiosk mode');
+    expect(warning.textContent).to.include('dedicated browser profile without a portal sign-in');
+    expect(warning.textContent).not.to.include('kiosk mode');
     expect(block.querySelectorAll('a')).to.have.length(1);
     expect(block.querySelector('.dt-description').textContent).not.to.include('sign-in');
     expect(block.textContent).not.to.include('Adobe employee sign-in with Adobe ID is required');

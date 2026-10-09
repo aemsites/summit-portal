@@ -9,7 +9,7 @@ describe('cosmetic booth presentation', () => {
     const presentation = readBoothPresentation('?event=amplify&email=visitor@example.com&portrait=true&selectedPath=/other/');
     expect(presentation).to.deep.equal({ heading: '', brand: 'adobe', entry: '3', finish: '6' });
     expect(withBoothPresentation('/booth', presentation)).to.equal('/booth');
-    expect(withBoothPresentation(canonicalReport, presentation)).to.equal(canonicalReport);
+    expect(withBoothPresentation(canonicalReport, presentation)).to.equal(`${canonicalReport}?booth=1`);
   });
 
   it('allows trimmed plain Unicode text and enforces the 80-code-point limit', () => {
@@ -63,7 +63,7 @@ describe('cosmetic booth presentation', () => {
   it('preserves only safe cosmetics through canonical report, Finish and reset URLs', () => {
     const presentation = readBoothPresentation('?heading=Amplify%20your%20brand%20visibility&brand=semrush&email=visitor@example.com&redirect=https://example.com');
     const report = withBoothPresentation(canonicalReport, presentation);
-    expect(report).to.equal(`${canonicalReport}?heading=Amplify+your+brand+visibility&brand=semrush`);
+    expect(report).to.equal(`${canonicalReport}?booth=1&heading=Amplify+your+brand+visibility&brand=semrush`);
     expect(new URL(report, 'https://portal.example').pathname).to.equal(canonicalReport);
     expect(withBoothPresentation('/booth?step=finish', presentation)).to.equal('/booth?step=finish&heading=Amplify+your+brand+visibility&brand=semrush');
     expect(withBoothPresentation('/booth?step=picker&email=visitor@example.com', presentation)).to.equal('/booth?step=picker&heading=Amplify+your+brand+visibility&brand=semrush');
@@ -109,5 +109,11 @@ describe('cosmetic booth presentation', () => {
     applyBoothPresentation(root, readBoothPresentation('?heading=Team%20demo'));
     expect(root.querySelector('.brand span').textContent).to.equal('Team demo');
     expect(root.getElementById('welcome-heading').textContent).to.equal('Original hero');
+  });
+
+  it('marks company and industry navigation as booth-only, without marking unrelated pages', () => {
+    const presentation = readBoothPresentation();
+    expect(withBoothPresentation('/example-report/luma/', presentation)).to.equal('/example-report/luma/?booth=1');
+    expect(withBoothPresentation('/adobe/booth-guide', presentation)).to.equal('/adobe/booth-guide');
   });
 });

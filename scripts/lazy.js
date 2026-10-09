@@ -24,7 +24,6 @@ async function loadSidekick() {
 
   if (window.location.pathname.startsWith('/accounts/')) {
     import('./utils/account-resources.js').then(({ default: mount }) => mount());
-    import('./booth-report.js?v=booth-transitions-1');
   }
 
   if (document.querySelector('.report-hero.insight')) {

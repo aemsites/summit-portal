@@ -128,7 +128,7 @@ describe('portal-login recovery', () => {
     await settle();
     expect(fetchStub.firstCall.args[0]).to.equal('/auth/staff-login');
     expect(JSON.parse(fetchStub.firstCall.args[1].body))
-      .to.deep.equal({ username: 'fixture-staff', password: 'synthetic-password' });
+      .to.deep.equal({ username: 'fixture-staff', password: 'synthetic-password', action: 'booth-login' });
     expect(block.querySelector('.pl-error').hidden).to.equal(false);
     expect(block.querySelector('.pl-submit').disabled).to.equal(false);
   });

@@ -14,15 +14,17 @@ vi.mock('../src/oauth.js', async (original) => ({ ...await original(), handleCal
 const selected = '/accounts/e/example/insights/example-com/portal-landing/';
 const other = '/accounts/o/other/insights/other-com/portal-landing/';
 
-describe('persistent booth authorization boundary', () => {
+describe('request-scoped booth authorization boundary', () => {
   let env;
   let cookies;
   let actor;
   let data;
 
-  async function request(path, body, method, headers = {}) {
+  async function request(path, body, method, headers = {}, booth = true) {
     const payload = path === '/auth/booth/lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body;
-    const response = await worker.fetch(new Request(`https://portal.example${path}`, {
+    const url = new URL(path, 'https://portal.example');
+    if (booth && url.pathname !== '/booth' && !url.pathname.startsWith('/auth/booth/')) url.searchParams.set('booth', '1');
+    const response = await worker.fetch(new Request(url, {
       method: method || (body === undefined ? 'GET' : 'POST'),
       headers: {
         Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '),
@@ -72,7 +74,7 @@ describe('persistent booth authorization boundary', () => {
       transform(response) { return response; }
     }
     vi.stubGlobal('HTMLRewriter', Rewriter);
-    handleCallback.mockResolvedValue({ userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] }, originalUrl: '/adobe/dashboard' });
+    handleCallback.mockResolvedValue({ userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] }, originalUrl: '/booth' });
     vi.stubGlobal('fetch', vi.fn(async (input) => {
       const { pathname } = new URL(input instanceof Request ? input.url : input);
       if (data[pathname]) return new Response(JSON.stringify({ data: data[pathname] }));
@@ -91,16 +93,97 @@ describe('persistent booth authorization boundary', () => {
     vi.unstubAllGlobals();
   });
 
-  it('replaces the staff token with a separate, epoch-bound scoped credential never returned by getSession', async () => {
+  it('adds a separate epoch-bound booth credential without replacing the portal session', async () => {
     await start();
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
     expect(cookies.has('booth_session')).toBe(true);
     expect(cookies.has('booth_device')).toBe(true);
-    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
     const headers = { Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; ') };
-    expect(await getSession(new Request('https://portal.example/', { headers }), env)).toBeNull();
+    expect(await getSession(new Request('https://portal.example/?booth=1', { headers }), env)).toBeNull();
+    expect(await getSession(new Request('https://portal.example/', { headers }), env)).toMatchObject({ method: 'oauth' });
     expect(await getBoothSession(new Request('https://portal.example/', { headers }), env)).toMatchObject({ epoch: '1', purpose: 'booth-session' });
     expect(await (await request('/auth/me')).json()).toEqual({ authenticated: false });
+  });
+
+  it('keeps normal report and guide authentication independent of an active booth visit', async () => {
+    await start();
+    cookies.delete('auth_token');
+    cookies.set('booth_kiosk', '1');
+    const context = await actor.state.storage.get('context');
+    expect((await request(selected)).status).toBe(200);
+    const ordinaryReport = await request(selected, undefined, 'GET', {}, false);
+    expect(ordinaryReport.status).toBe(302);
+    expect(ordinaryReport.headers.get('Location')).toContain('/login?redirect=');
+    const guide = await request('/adobe/booth-guide', undefined, 'GET', {
+      Referer: 'https://portal.example/booth',
+      'Sec-Fetch-Mode': 'navigate',
+    }, false);
+    expect(guide.headers.get('Location')).toBe('/auth/portal?redirect=%2Fadobe%2Fbooth-guide');
+    handleCallback.mockResolvedValueOnce({
+      userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] },
+      originalUrl: 'https://portal.example/adobe/booth-guide',
+    });
+    const callback = await request('/auth/callback?code=test&state=test', undefined, 'GET', {}, false);
+    expect(callback.headers.get('Location')).toBe('https://portal.example/adobe/booth-guide');
+    expect((await request('/adobe/booth-guide', undefined, 'GET', {}, false)).status).toBe(200);
+    expect(await actor.state.storage.get('context')).toEqual(context);
+    expect(cookies.has('booth_session')).toBe(true);
+    expect((await request('/adobe/dashboard')).headers.get('Location')).toBe('/booth');
+  });
+
+  it('does not grant portal access when the staff form explicitly signs into the booth', async () => {
+    cookies.clear();
+    cookies.set('booth_kiosk', '1');
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const payload = { username: 'operator', password: 'test-only-password', action: 'booth-login' };
+    const response = await request('/auth/staff-login', payload, 'POST', {}, false);
+    expect(response.status).toBe(200);
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('signed_in')).toBe(false);
+    expect(cookies.has('booth_session')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
+    expect((await request('/adobe/dashboard', undefined, 'GET', {}, false)).headers.get('Location')).toContain('/login?redirect=');
+  });
+
+  it('does not reset the attendee when ordinary portal credentials are refreshed or signed out', async () => {
+    await start();
+    const context = await actor.state.storage.get('context');
+    const boothSession = cookies.get('booth_session');
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const payload = { username: 'operator', password: 'test-only-password' };
+    expect((await request('/auth/staff-login', payload, 'POST', {}, false)).status).toBe(200);
+    expect(cookies.get('booth_session')).toBe(boothSession);
+    expect(await actor.state.storage.get('context')).toEqual(context);
+    const logout = await request('/auth/logout', undefined, 'GET', {}, false);
+    expect(logout.headers.get('Location')).toContain(env.OAUTH_LOGOUT_URL);
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.get('booth_session')).toBe(boothSession);
+    expect(await actor.state.storage.get('context')).toEqual(context);
+    expect((await request(selected)).status).toBe(200);
+  });
+
+  it('preserves the explicitly saved touchscreen setup through scoped OAuth', async () => {
+    cookies.clear();
+    cookies.set('booth_kiosk', '1');
+    handleCallback.mockResolvedValueOnce({
+      userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] },
+      originalUrl: 'https://portal.example/booth?touchscreen=1&brand=semrush',
+    });
+    const response = await request('/auth/callback?code=test&state=test', undefined, 'GET', {}, false);
+    expect(response.headers.get('Location')).toBe('/booth?touchscreen=1&brand=semrush');
+    expect(cookies.has('booth_session')).toBe(true);
+    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('booth_kiosk')).toBe(false);
+  });
+
+  it.each(['', 'https://foreign.example'])('requires same-origin authorization for an explicit booth login from %s', async (origin) => {
+    cookies.clear();
+    env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+    const payload = { username: 'operator', password: 'test-only-password', action: 'booth-login' };
+    const response = await request('/auth/staff-login', payload, 'POST', { Origin: origin }, false);
+    expect(response.status).toBe(403);
+    expect(response.headers.getSetCookie()).toEqual([]);
   });
 
   it('keeps restriction cookies on top-level OAuth callbacks instead of dropping Strict cookies', async () => {
@@ -108,13 +191,13 @@ describe('persistent booth authorization boundary', () => {
     const markers = shell.headers.getSetCookie().filter((value) => (
       /^booth_(?:session|device|kiosk)=/.test(value) && !value.includes('Max-Age=0')
     ));
-    expect(markers).toHaveLength(3);
+    expect(markers).toHaveLength(2);
     markers.forEach((value) => expect(value).toContain('SameSite=Lax'));
     const lookup = await request('/auth/booth/lookup', { email: 'visitor@example.com' });
     expect(lookup.headers.get('Set-Cookie')).toContain('SameSite=Lax');
     const callback = await request('/auth/callback?code=test&state=test', undefined, 'GET', { 'Sec-Fetch-Site': 'cross-site' });
     expect(callback.headers.get('Location')).toBe('/booth');
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
   });
 
   it.each(['/adobe/dashboard', '/adobe/dashboard/', '/adobe/dashboard.html', '/adobe/data/'])('never restores broad staff privileges through %s', async (path) => {
@@ -125,7 +208,7 @@ describe('persistent booth authorization boundary', () => {
     expect(result.headers.get('Location')).toBe('/booth');
     expect(await actor.state.storage.get('context')).toEqual(previous);
     expect((await request(other)).status).toBe(302);
-    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
   });
 
   it.each([
@@ -149,7 +232,7 @@ describe('persistent booth authorization boundary', () => {
     expect(fetch.mock.calls.every(([input]) => !new URL(input instanceof Request ? input.url : input).pathname.startsWith('/accounts/'))).toBe(true);
   });
 
-  it.each(['booth_context', 'booth_device', 'booth_kiosk'])('deleting %s never restores general access', async (name) => {
+  it.each(['booth_context', 'booth_device', 'booth_kiosk'])('deleting %s never grants portal privileges to a booth request', async (name) => {
     await start();
     cookies.delete(name);
     cookies.set('auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' }));
@@ -163,6 +246,7 @@ describe('persistent booth authorization boundary', () => {
     cookies.set('booth_device', value);
     expect((await request(selected)).status).toBe(302);
     expect((await request('/auth/booth/status')).status).toBe(401);
+    cookies.delete('auth_token');
     expect((await request('/booth')).headers.get('Location')).toContain('/login');
   });
 
@@ -183,20 +267,20 @@ describe('persistent booth authorization boundary', () => {
     env.EVENT_CRED_EPOCH = '1';
     expect((await request('/auth/booth/exit', {})).status).toBe(200);
     expect(cookies.has('booth_session')).toBe(false);
-    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
     expect((await request('/adobe/dashboard')).status).toBe(302);
   });
 
-  it('keeps signout and OAuth/SSO re-login booth-only, ignoring a broad callback destination', async () => {
+  it('keeps explicit booth signout and OAuth re-login separate from the portal session', async () => {
     await start();
     expect((await request('/auth/logout')).headers.get('Location')).toBe('/booth');
-    expect(cookies.has('booth_kiosk')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
     expect(cookies.has('booth_session')).toBe(false);
     const portal = await request('/auth/portal?redirect=/adobe/dashboard');
     expect(portal.headers.get('Location')).toContain('https://ims.example.com/authorize');
     const callback = await request('/auth/callback?code=test&state=test');
     expect(callback.headers.get('Location')).toBe('/booth');
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
     expect(cookies.has('booth_session')).toBe(true);
     expect((await request('/adobe/dashboard')).status).toBe(302);
   });
@@ -214,12 +298,8 @@ describe('persistent booth authorization boundary', () => {
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect(await actor.state.storage.get('context')).toBeUndefined();
     expect(await env.SESSIONS.get(`booth:${visit.key}`)).toBeNull();
-    expect([...cookies.keys()]).toEqual([]);
-    const report = await request(other);
-    expect(report.status).toBe(302);
-    expect(report.headers.get('Location')).toContain('/login?redirect=');
-    expect(report.headers.get('Location')).not.toContain('redirect=%2Fbooth');
-    expect(report.headers.get('Location')).toContain(encodeURIComponent(other));
+    expect([...cookies.keys()].sort()).toEqual(['auth_token', 'signed_in']);
+    expect((await request(other, undefined, 'GET', {}, false)).status).toBe(200);
   });
 
   it('does not exit or revoke a visit for incorrect reauthentication credentials', async () => {
@@ -244,9 +324,9 @@ describe('persistent booth authorization boundary', () => {
     expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' })).status).toBe(200);
     const lateLookup = await request('/auth/booth/lookup', { email: 'visitor@example.com' }, 'POST', { Cookie: staleCookie });
     expect(lateLookup.status).toBe(410);
-    expect(cookies.size).toBe(0);
+    expect([...cookies.keys()]).toEqual(['auth_token']);
     expect(await actor.state.storage.get('context')).toBeUndefined();
-    expect((await request(other)).headers.get('Location')).toContain('/login?redirect=');
+    expect((await request(other, undefined, 'GET', {}, false)).status).toBe(200);
   });
 
   it('keeps scoped staff authentication usable for a new visitor after cancelling the prepared exit', async () => {
@@ -260,8 +340,8 @@ describe('persistent booth authorization boundary', () => {
     expect((await request('/booth')).status).toBe(200);
     expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' })).status).toBe(200);
     expect(cookies.get('booth_session')).toBe(staff);
-    expect(cookies.get('booth_kiosk')).toBe('1');
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('booth_kiosk')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
     expect(cookies.get('booth_context')).not.toBe(oldId);
     expect(await actor.state.storage.get('context')).toBeUndefined();
     expect(await nextActor.state.storage.get('context')).toBeDefined();
@@ -276,7 +356,7 @@ describe('persistent booth authorization boundary', () => {
     env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
     expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password', action: 'exit-booth' })).status).toBe(200);
     expect((await request('/auth/booth/lookup', { email: 'visitor@example.com' }, 'POST', { Cookie: staleCookie })).status).toBe(410);
-    expect(cookies.size).toBe(0);
+    expect([...cookies.keys()]).toEqual(['auth_token']);
     expect(await actor.state.storage.get('context')).toBeUndefined();
   });
 
@@ -330,7 +410,7 @@ describe('persistent booth authorization boundary', () => {
     expect(cookies).toEqual(before);
   });
 
-  it('retains the kiosk boundary and all credentials if authenticated exit cleanup fails', async () => {
+  it('retains booth credentials if authenticated exit cleanup fails', async () => {
     await start();
     const visit = await actor.state.storage.get('context');
     env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
@@ -348,7 +428,7 @@ describe('persistent booth authorization boundary', () => {
     expect(retry.status).toBe(200);
     expect(await env.SESSIONS.get(`booth:${visit.key}`)).toBeNull();
     expect(await actor.state.storage.get('pendingCleanup')).toBeUndefined();
-    expect(cookies.size).toBe(0);
+    expect([...cookies.keys()]).toEqual(['auth_token']);
   });
 
   it('can finish a freshly authenticated exit after the old booth credential has expired', async () => {
@@ -359,7 +439,7 @@ describe('persistent booth authorization boundary', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ result: 'exited' });
     expect(await actor.state.storage.get('context')).toBeUndefined();
-    expect(cookies.size).toBe(0);
+    expect([...cookies.keys()]).toEqual(['auth_token']);
   });
 
   it('serves a static recovery screen, never the selected report, and requires confirmed reset', async () => {
@@ -419,7 +499,7 @@ describe('persistent booth authorization boundary', () => {
     env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
     expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password' }, undefined, { Origin: 'https://evil.example' })).status).toBe(403);
     expect((await request('/auth/staff-login', { username: 'operator', password: 'test-only-password' })).status).toBe(200);
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
     expect(cookies.has('booth_session')).toBe(true);
     expect((await request(other)).status).toBe(302);
   });
@@ -432,23 +512,26 @@ describe('persistent booth authorization boundary', () => {
     expect((await request('/auth/magiclink', { email: 'visitor@example.com' })).status).toBe(302);
     expect((await request(`${selected}?token=${token}`)).status).toBe(302);
     expect((await request(`/scripts/booth.js?token=${token}`)).status).toBe(302);
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
   });
 
-  it('legacy marker+staff auth is restricted, migrates only on /booth and never unlocks dashboard', async () => {
+  it('legacy markers do not block portal access and migrate to scoped credentials only on /booth', async () => {
     cookies.set('booth_device', 'legacy-or-expired');
+    cookies.set('booth_kiosk', '1');
     expect((await request('/adobe/dashboard')).status).toBe(302);
     expect((await request(other)).status).toBe(302);
+    expect((await request('/adobe/dashboard', undefined, 'GET', {}, false)).status).toBe(200);
     expect((await request('/booth')).status).toBe(200);
-    expect(cookies.has('auth_token')).toBe(false);
+    expect(cookies.has('auth_token')).toBe(true);
+    expect(cookies.has('booth_kiosk')).toBe(false);
     expect(cookies.has('booth_session')).toBe(true);
   });
 
   it('leaves ordinary staff, customer and unmarked public request browsing unchanged', async () => {
-    expect((await request('/adobe/dashboard')).status).toBe(200);
-    expect((await request(other)).status).toBe(200);
+    expect((await request('/adobe/dashboard', undefined, 'GET', {}, false)).status).toBe(200);
+    expect((await request(other, undefined, 'GET', {}, false)).status).toBe(200);
     cookies.set('auth_token', await createSession(env, { email: 'visitor@example.com', groups: ['example.com'], method: 'sharelink' }));
-    expect((await request(selected)).status).toBe(200);
+    expect((await request(selected, undefined, 'GET', {}, false)).status).toBe(200);
     expect(cookies.has('booth_kiosk')).toBe(false);
   });
 
@@ -535,7 +618,7 @@ describe('persistent booth authorization boundary', () => {
       && new URL(input.url).pathname === pdf
       ? new Response('Fixture private PDF bytes', { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="report.pdf"' } })
       : original(input, options)));
-    const response = await request(pdf);
+    const response = await request(pdf, undefined, 'GET', {}, false);
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/pdf');
     expect(await response.text()).toBe('Fixture private PDF bytes');

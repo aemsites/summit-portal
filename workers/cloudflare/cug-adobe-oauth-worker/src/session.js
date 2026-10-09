@@ -172,28 +172,46 @@ async function readSession(request, env) {
   return payload;
 }
 
-/** Presence, not validity, marks a restricted browser. These are never access grants. */
+/** Explicit navigation selects the booth boundary, never grants access. */
+export function isBoothUrl(url) {
+  if (url.pathname === '/booth' || url.pathname.startsWith('/auth/booth/')
+    || url.searchParams.has('booth') || url.searchParams.get('touchscreen') === 'frame') return true;
+  if (['/login', '/auth/portal'].includes(url.pathname)) {
+    if (url.searchParams.has('exit-booth')) return true;
+    const redirect = url.searchParams.get('redirect');
+    if (redirect?.startsWith('/') && !redirect.startsWith('//')) {
+      const target = new URL(redirect, url);
+      return target.origin === url.origin && (target.pathname === '/booth' || target.searchParams.has('booth'));
+    }
+  }
+  return false;
+}
+
 export function hasBoothBoundary(request) {
-  return /(?:^|;\s*)booth_(?:kiosk|session|device|context)=/.test(request.headers.get('Cookie') || '');
+  const url = new URL(request.url);
+  if (isBoothUrl(url)) return true;
+  // A new page/tab is independent. Only subresources and fetches inherit their document's mode.
+  if (request.headers.get('Sec-Fetch-Mode') === 'navigate'
+    || ['document', 'iframe'].includes(request.headers.get('Sec-Fetch-Dest'))) return false;
+  const referer = request.headers.get('Referer');
+  if (!referer || !URL.canParse(referer)) return false;
+  const source = new URL(referer);
+  return source.origin === url.origin && isBoothUrl(source);
 }
 
 export async function getSession(request, env) {
   return hasBoothBoundary(request) ? null : readSession(request, env);
 }
 
-/** Only /booth may migrate an old device+staff credential into the scoped credential. */
+/** Only /booth may bootstrap a scoped credential from an interactive portal login. */
 export async function getBoothBootstrapStaff(request, env) {
-  const cookie = request.headers.get('Cookie') || '';
-  if (/(?:^|;\s*)booth_(?:kiosk|session)=/.test(cookie)) return null;
   const session = await readSession(request, env);
   return session && isVerifiedMethod(session.method) && isStaffEmail(session.email, env)
     ? session : null;
 }
 
-export function boothKioskCookie() {
-  // This deliberately outlives staff credentials and survives reset/signout.
-  // Lax preserves the restriction on top-level IMS callback navigations.
-  return 'booth_kiosk=1; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000';
+export function clearBoothKioskCookie() {
+  return 'booth_kiosk=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 }
 
 export function sessionCookie(token, maxAge = SESSION_TTL) {
@@ -295,9 +313,7 @@ export async function boothSessionCookies(session, env) {
   return [
     `booth_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`,
     `booth_device=${await createBoothDeviceToken(binding, exp, env)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`,
-    boothKioskCookie(),
-    clearSessionCookie(),
-    clearSignedInMarkerCookie(),
+    clearBoothKioskCookie(),
     'booth_context=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
   ];
 }

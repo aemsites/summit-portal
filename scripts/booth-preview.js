@@ -265,7 +265,8 @@ export function createBoothPreview(target, retry) {
       }
       const [html] = await Promise.all([
         (async () => {
-          const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal });
+          url.searchParams.set('booth', '1');
+          const response = await fetch(`${url.pathname}${url.search}`, { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal });
           if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html')) {
             throw new Error('The selected report preview could not be loaded.');
           }

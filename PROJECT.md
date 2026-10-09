@@ -2,6 +2,26 @@
 
 ## Overview
 
+**Booth/portal isolation (October 9, implemented locally; not deployed):** José
+approved keeping the current hostname and removing the browser-wide kiosk lock.
+Booth cookies no longer redirect ordinary guide, dashboard, report, PDF or asset
+requests, and they never grant ordinary portal access. Booth report/demo URLs
+carry `booth=1`; selected rendering dependencies and Finish preview fetches carry
+the same explicit mode. The Worker still enforces the selected report, live
+visitor permissions, fifteen-minute inactivity, reset races and download
+restrictions for booth requests. Only server-marked documents mount booth controls;
+ordinary reports retain normal links/downloads even with an active booth visit.
+Staff booth sign-in explicitly sends `action:"booth-login"`; OAuth scopes access
+according to its saved destination rather than unrelated booth cookies.
+Existing portal authentication remains separate and survives booth entry/exit.
+Old `booth_kiosk` cookies are ignored for ordinary browsing and expired on
+authenticated booth entry; no new persistent kiosk lock is issued. This supersedes the
+browser-wide restrictions described in historical rollout entries below.
+Shared event hardware must use a dedicated browser profile without a portal
+sign-in and managed browser/OS kiosk lockdown; this is not per-tab visitor
+isolation. Coordinated frontend/Worker publication and reloading old booth/login
+tabs remain required. No production deployment or customer mutation was performed.
+
 A personalized digital performance report delivered to Adobe Summit attendees who are AEM Sites customers. Each report presents site-specific metrics — traffic, performance scores, AI search visibility, and SEO health — in a polished, data-rich single-page format.
 
 The current content is a **sample report for Nike**, used during development. In production, the same block system will generate unique reports for each Summit attendee's site.
@@ -47,8 +67,8 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 adds a closed **Booth usage export** utility below the reports list, as a sibling
 after the picker, rather than a top-of-dashboard banner or an interruption
 between search and results. Expanded content links to `/booth` with a warning
-to use a separate browser or private window: opening the live booth sets a
-browser-wide kiosk restriction, and another tab does not isolate it. The
+that booth and portal access are separate and shared event devices need a
+dedicated browser profile without a portal sign-in. The
 introductory Adobe sign-in requirement is omitted on this authenticated page;
 export authorization and session/permission error handling remain unchanged.
 No copy action, playbook or event-setup promotion is presented: there is not yet usage
@@ -1178,10 +1198,11 @@ The form does not generate a report or add submission telemetry. D1 is provision
 The Config Service still needs an occasional apply for `cug-required` on genuinely new path *shapes* (existing static rules like `/accounts**` already cover every account), and accounts missing a sheet row entirely (e.g. `charter-hall`) still resolve to staff-only — that's a DIH-side data gap, not a config one.
 
 ### On-site event access (generic staff login)
-This describes an ordinary, unmarked staff browser. On a kiosk-marked browser,
-the same login issues only booth-scoped credentials; entering `/booth` also
-migrates an existing broad staff session. The touchscreen cannot be reused as
-a staff dashboard by navigating, signing out or logging in again.
+Ordinary staff login and booth login are separate intents. The booth form
+submits `action:"booth-login"` and issues only scoped booth credentials;
+entering `/booth` can bootstrap those credentials from an interactive staff
+portal session without replacing it. Existing booth cookies do not determine
+ordinary portal login behavior. Event hardware must not carry a portal session.
 
 For non-managed event iPads that can't do Adobe SSO/Okta, `POST /auth/staff-login` (`src/stafflogin.js`) takes `{ username, password }`, verifies it against the **`EVENT_STAFF_CREDENTIALS`** worker secret, and mints a full 4-day staff session (`groups: ['adobe.com','semrush.com']` → opens every customer page; the synthetic `<username>@adobe.com` identity also passes the share-link staff gate). The login UI exposes it as a de-emphasized **"Event staff access"** form in the `portal-login` block, below the Adobe-ID and magic-link options. The credential secret is a newline/comma list of `username:sha256hex(password)` pairs — set it with `wrangler secret put EVENT_STAFF_CREDENTIALS --env summit` (never commit it). **Kill switch:** generic-login tokens carry a `gen_epoch` claim equal to the `EVENT_CRED_EPOCH` var; bumping `EVENT_CRED_EPOCH` (in `wrangler.toml`, then redeploy) instantly revokes every generic session (real-staff OAuth/magic-link sessions carry no `gen_epoch` and are unaffected). After the event, rotate the password and/or bump the epoch.
 

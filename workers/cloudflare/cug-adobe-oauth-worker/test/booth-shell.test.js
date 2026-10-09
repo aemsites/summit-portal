@@ -214,7 +214,7 @@ describe('bundled booth shell and exact report injection', () => {
     }
     vi.stubGlobal('HTMLRewriter', Rewriter);
     const content = () => new Response('<main>Unchanged report</main>', { headers: { 'Content-Type': 'text/html' } });
-    const request = (path) => new Request(`https://portal.example${path}`, { headers: { Cookie: cookie } });
+    const request = (path) => new Request(`https://portal.example${path}?booth=1`, { headers: { Cookie: cookie } });
     const response = await injectBoothReturn(content(), request(selectedPath), env);
     expect(transform).toHaveBeenCalledTimes(1);
     expect(injected[0]).toEqual(['class', 'booth-report-pending']);
@@ -227,7 +227,7 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('zoom: 1 !important');
     expect(injected[1][1]).toContain('.booth-loading.booth-loading-overlay');
     expect(await readFile(new URL('../../../../scripts/lazy.js', import.meta.url), 'utf8'))
-      .toContain("import('./booth-report.js?v=booth-transitions-1')");
+      .not.toContain("import('./booth-report.js");
     expect(injected[2][1]).toContain('Opening your report...');
     expect(injected[2][1]).toContain('class="booth-recovery-actions" hidden');
     expect(injected[2][1]).toContain('/booth?recover=1');
@@ -259,16 +259,16 @@ describe('bundled booth shell and exact report injection', () => {
       for (const mode of ['demo']) {
         const path = mode === 'demo' ? '/example-report/luma/' : '/request-report';
         context = { state: mode, selectedPath: path, demoId: 'luma', expiresAt: Date.now() + 600000 };
-        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withoutDevice } }), env);
+        await injectBoothReturn(content(), new Request(`https://portal.example${path}?booth=1`, { headers: { Cookie: withoutDevice } }), env);
         expect(append).not.toHaveBeenCalled();
-        const enhanced = await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withDevice } }), env);
+        const enhanced = await injectBoothReturn(content(), new Request(`https://portal.example${path}?booth=1`, { headers: { Cookie: withDevice } }), env);
         expect(append.mock.calls[0][0]).toContain(`data-booth-mode="${mode}"`);
         expect(enhanced.headers.get('Cache-Control')).toBe('private, no-store');
         append.mockClear();
-        await injectBoothReturn(content(), new Request('https://portal.example/example-report/carvelo/', { headers: { Cookie: withDevice } }), env);
+        await injectBoothReturn(content(), new Request('https://portal.example/example-report/carvelo/?booth=1', { headers: { Cookie: withDevice } }), env);
         expect(append).not.toHaveBeenCalled();
         context.expiresAt = 1;
-        await injectBoothReturn(content(), new Request(`https://portal.example${path}`, { headers: { Cookie: withDevice } }), env);
+        await injectBoothReturn(content(), new Request(`https://portal.example${path}?booth=1`, { headers: { Cookie: withDevice } }), env);
         expect(append).not.toHaveBeenCalled();
       }
     } finally {

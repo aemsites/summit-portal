@@ -168,7 +168,7 @@ function createStaffForm(exitBooth) {
   const hint = document.createElement('p');
   hint.className = 'pl-staff-hint';
   hint.textContent = exitBooth
-    ? 'Enter the staff credentials again to sign out and remove booth mode from this browser. This does not sign you in to the portal.'
+    ? 'Enter the staff credentials again to sign out of the booth. Your separate portal sign-in is unchanged.'
     : 'For on-site event devices. Use the shared staff credentials.';
 
   section.append(header, hint);
@@ -250,6 +250,7 @@ function attachStaffHandler(form, exitBooth) {
     const controller = new AbortController();
     let timer;
     let exitError = 'Booth exit could not be confirmed. Try again or return to the booth.';
+    const boothLogin = getRedirectPath(true)?.split('?')[0] === '/booth';
 
     try {
       const { resp, result } = await Promise.race([
@@ -259,9 +260,14 @@ function attachStaffHandler(form, exitBooth) {
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             signal: controller.signal,
-            body: JSON.stringify({ username, password, ...(exitBooth ? { action: 'exit-booth' } : {}) }),
+            body: JSON.stringify({
+              username,
+              password,
+              ...((exitBooth || boothLogin) ? { action: exitBooth ? 'exit-booth' : 'booth-login' } : {}),
+            }),
           });
-          return { resp: response, result: exitBooth ? await response.json() : null };
+          const data = (exitBooth || boothLogin) ? await response.json() : null;
+          return { resp: response, result: data };
         })(),
         new Promise((resolve, reject) => {
           timer = setTimeout(() => {
@@ -278,6 +284,7 @@ function attachStaffHandler(form, exitBooth) {
         window.location.replace('/login');
         return;
       }
+      if (boothLogin && result?.result !== 'ok') throw new Error('Booth sign-in was not confirmed');
       window.location.assign(getRedirectPath(true) || '/adobe/dashboard');
     } catch {
       btn.disabled = false;
@@ -305,7 +312,7 @@ export default function init(el) {
       const heading = introduction?.querySelector('h1');
       const copy = introduction?.querySelector('p');
       if (heading) heading.textContent = 'Exit booth mode';
-      if (copy) copy.textContent = 'Staff authorization is required to return this browser to the normal portal.';
+      if (copy) copy.textContent = 'Staff authorization is required to sign out of the booth.';
     }
     el.classList.add('pl-staff-only');
     row.remove();
