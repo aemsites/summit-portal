@@ -207,10 +207,10 @@ No staff credentials, attendee lookup, email send or visitor reset was performed
 in production; full authenticated exit and transition journeys were verified
 with the isolated local regressions. Close old report tabs and reload the booth.
 
-## Report stylesheet readiness correction (October 9, not deployed)
+## Report stylesheet readiness correction (October 9, deployed)
 
-The deployed readiness check can mistake a still-loading stylesheet for a
-failed one. Delaying the existing Cannes stripe CSS reproduces the exact
+The preceding readiness check could mistake a still-loading stylesheet for a
+failed one. Delaying the existing Cannes stripe CSS reproduced the exact
 **The report styles could not be loaded** recovery screen on real public-report
 markup, both directly and inside a frame, despite subsequent successful loading.
 This is shared report behavior, not a simulator-only failure. It does not establish
@@ -238,8 +238,9 @@ geometry, genuine CSS failure and a stalled request followed by late success are
 verified. All mutations stay local; personal-mode checks replay public content
 and do not certify an authenticated customer's report or native Windows hardware.
 
-Publish the reviewed branch and deploy the matching Worker report adapter after
-merge. No deployment is included in this fix.
+The matching Worker report adapter was deployed from merged main `c56dc1e`
+on October 9 at 14:38 UTC, together with the responsive Entry and portrait
+layout corrections below.
 
 ## Approved scope
 
@@ -445,7 +446,10 @@ are committed and Worker-bundled; the existing webpage asset is byte-identical t
 Unlike two defects in the mockups, the 2048px form respects the right gutter
 and the landscape Privacy Policy link is blue, not invisible white on white.
 No tracking text, notice version, retention period or permission behavior changes.
-These corrections are pending review and a matching Worker deployment.
+These corrections were deployed from merged main `c56dc1e` (PR #173) on
+October 9 at 14:38 UTC. Worker version
+`f45df51b-fde7-4c42-860a-7093bac15501` receives 100% of traffic; live Entry
+CSS and both new glow files match the merged source with `no-cache` revalidation.
 Revised images receive `no-cache` revalidation and the glow is Worker-bundled.
 The picker still uses its touch-sized outlined return action. The latest main
 session-renewal changes are integrated. Native geometry checks are in
@@ -1293,7 +1297,7 @@ chart observer; no additional idle/reset/expiry timers are added.
 The original broad portrait date/touch query stays separate. The 2:3, 3:4,
 landscape, mobile and nearby non-exact viewports retain the preceding layout.
 
-### Portrait layout corrections, October 9 (pending review and Worker deployment)
+### Portrait layout corrections, October 9 (deployed)
 
 The exact-ratio composition now keeps each KPI's full authored explanation in a
 native **View insight** / **Hide insight** disclosure. Closed copy no longer
@@ -1323,8 +1327,10 @@ touchscreen iframe passes the same geometry and interaction checks; resizing
 back to mobile restores the original KPI buttons and working insight sheet.
 The public FrescoPa report reproduced the shared CSS issues; the protected Unity
 report was not fetched without authentication. No production lookup, email or visitor
-state mutation was performed. Matching Worker asset deployment is still required
-after merge; publishing this branch does not update production.
+state mutation was performed. The matching Worker assets were deployed from
+merged main `c56dc1e` on October 9 at 14:38 UTC. Live report JS/CSS bytes match
+the merged source, and ordinary/touchscreen unauthenticated entry remains
+staff-gated. Close old report tabs and reload the booth before using the fixes.
 
 Briefing copy stacks above its full-width SVG plot. ISO month ticks split into
 month/year lines, retaining the original date in an accessible label; this

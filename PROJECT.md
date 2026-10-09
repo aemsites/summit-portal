@@ -126,7 +126,7 @@ customer lookup, email send or visitor reset was used. KV/D1/Durable Object
 bindings, staff epoch and secrets were preserved; no new migration was needed.
 Close old report tabs and reload the booth before use.
 
-**Booth stylesheet readiness correction (October 9, not deployed):** the shared
+**Booth stylesheet readiness correction (October 9, deployed):** the shared
 report adapter now awaits required stylesheet load/error events rather than
 treating an in-flight stylesheet as a failure. This fixes the reproduced Cannes
 stripe race in both direct booth reports and the live touchscreen presentation.
@@ -138,10 +138,10 @@ genuine outages and indefinitely stalled resources still require safe recovery.
 Real published FrescoPa markup with local synthetic personal/demo contexts passes
 delayed-CSS checks in direct and production-frame views with identical 2160 × 3840
 hero geometry; failure/timeout checks never reveal the report afterward. No
-protected customer data or live attendee mutations were used. The fix requires
-merge and matching Worker deployment; pushing the branch alone is not rollout.
+protected customer data or live attendee mutations were used. The matching
+report adapter is included in the 14:38 UTC Worker rollout recorded below.
 
-**Booth report layout corrections (October 9, pending review/deployment):**
+**Booth report layout corrections (October 9, deployed):**
 at the authorized 2160 x 3840 and 1080 x 1920 exact portrait viewports, KPI
 explanations start behind a native **View insight** disclosure, with full,
 unchanged text available by touch or keyboard. No hover is required. Leaving
@@ -158,8 +158,22 @@ touch/keyboard operation, responsive restoration and preserved booth flows.
 The 2160 x 3840 touchscreen iframe passes the same checks; returning to mobile
 restores the original KPI buttons and working insight sheet.
 The authenticated Unity report was not retrieved; no live attendee operations
-were performed. Merge and deploy the matching bundled report adapter/CSS before
-these corrections become live.
+were performed. The matching bundled report adapter/CSS is deployed in the
+14:38 UTC rollout below.
+
+**Booth Entry/report rollout, October 9 at 14:38 UTC:** deployed merged main
+`c56dc1ec8af8583abd3a0f43badf6a1acba170ff` (PR #173) to `summit-portal`.
+Worker version `f45df51b-fde7-4c42-860a-7093bac15501` serves 100% of traffic,
+superseding `3e996daa-39aa-4600-9486-a2e3e1d989bd`. Seven required origin
+frontend files matched before activation; fourteen bundled JS/CSS/SVG assets,
+including both new Entry glows, matched afterward with `no-cache` revalidation.
+Direct and touchscreen booth entry remain staff-gated with private no-store
+redirects; the employee guide retains its distinct Adobe identity gate.
+Existing variables, staff epoch, secrets and KV/D1/Durable Object bindings were
+preserved. No migration or private guide-content upload was performed.
+Production checks were read-only: no staff credentials, attendee lookup,
+email send or visitor reset was used. Close existing report tabs and reload
+the booth so new documents use the deployed Entry and report assets.
 
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
@@ -532,7 +546,7 @@ Live runtime/CSS/artwork hashes, including the loading stylesheet, match source;
 the unauthenticated staff gate remains intact. No customer lookup or email was
 performed. Close old report tabs and reload the actual booth before use.
 
-### October 9 entry refinement (pending review and Worker deployment)
+### October 9 entry refinement (deployed)
 
 The current Figma registration label is one sentence above the input, with no
 duplicated help line below. The unchanged 90-day tracking/no-sales-contact
@@ -555,8 +569,8 @@ the compact portrait field respects both gutters rather than overflowing the rig
 edge, and the landscape policy link remains visible instead of white on white.
 Local geometry/typography checks match the designed content positions within
 one pixel, with adjacent touch-sized demos and unchanged Finish behavior.
-This ships with the portrait report-layout fixes; merge and matching Worker
-deployment are still required.
+This ships with the portrait report-layout fixes in the 14:38 UTC Worker
+rollout recorded above.
 
 ### Final Figma industry chooser (October 8, deployed)
 
