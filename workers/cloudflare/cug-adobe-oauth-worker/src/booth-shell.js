@@ -94,7 +94,10 @@ function isSharedAsset(path) {
     || /^\/(?:scripts|styles|blocks)\/[a-zA-Z0-9_./-]+\.(?:js|css)$/.test(path)
     || /^\/(?:fonts|styles\/fonts)\/[a-zA-Z0-9_./-]+\.(?:woff2?|otf|ttf)$/.test(path)
     || /^\/(?:icons|img)\/[a-zA-Z0-9_./-]+\.(?:svg|png|jpe?g|webp|gif|avif)$/.test(path)
-    || ['/favicon.ico', '/nav', '/nav.plain.html', '/footer', '/footer.plain.html'].includes(path);
+    || [
+      '/favicon.ico', '/nav', '/nav.plain.html', '/footer', '/footer.plain.html',
+      '/fragments/nav/header', '/fragments/nav/footer', '/fragments/nav/header/languages',
+    ].includes(path);
 }
 
 function allowedContextPath(path, context) {

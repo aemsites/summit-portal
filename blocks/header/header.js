@@ -319,7 +319,7 @@ export default async function init(el) {
     fragment.classList.add('header-content');
     await decorateHeader(fragment);
     el.append(fragment);
-  } catch {
-    // Fragment not found or failed to load — silently skip header
+  } catch (error) {
+    getConfig().log(error);
   }
 }

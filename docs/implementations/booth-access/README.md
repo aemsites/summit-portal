@@ -136,8 +136,10 @@ submission, cancellation and stalled fetch/body recovery. The synthetic
 2160 x 3840, 1080 x 1920 and mobile sizes without real credentials or customer
 mutation. It uses `/test/fixtures/portal-login.html?staff&exit-booth` locally.
 
-Local verification passed: 473 Worker tests (one existing skip), 161 related
-frontend tests, changed-file lint, and the three isolated browser journeys.
+After integrating latest main, local verification passed: 475 Worker tests
+(one existing skip), 154 related frontend tests, changed-file lint, and the
+three isolated browser journeys. Repository-wide `npm run lint` remains blocked
+by unchanged baseline findings; unrelated files were not reformatted.
 At 2160 x 3840 the password input is 144px tall and the primary action is 120px
 tall with 44px text; half-size and mobile views have no horizontal overflow.
 The original native report-transition check also retains identical loader
