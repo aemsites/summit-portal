@@ -176,7 +176,7 @@ Production checks were read-only: no staff credentials, attendee lookup,
 email send or visitor reset was used. Close existing report tabs and reload
 the booth so new documents use the deployed Entry and report assets.
 
-**Approved KPI reading revision (October 9, implemented; rollout pending):**
+**Approved KPI reading revision (October 9, deployed from review branch):**
 Jose approved the attached charcoal reading panels and compact outlined
 **Read full insights** button. Every authored explanation immediately shows
 up to four readable lines; one touch/Space/Enter action expands all pillars
@@ -197,6 +197,18 @@ footer. Native/half-size and framed public-report checks preserve touch,
 keyboard, mobile-sheet restoration, full-width callouts and padded headings.
 Only local synthetic visits/public report content were used. The throwaway
 design mockup remains local, outside the production change set.
+
+**Urgent booth rollout, October 9 at 15:11 UTC:** at Jose's explicit request
+to deploy before the demo, deployed tested commit
+`efb901ed8bc74fe12f0f58caac34fc2abbc11fe7` from
+`josec-adobe-booth-insight-previews` **before merge**.
+Worker version `5aabc51b-5735-432e-94e4-a0e765157910` receives 100% of traffic,
+superseding `f45df51b-fde7-4c42-860a-7093bac15501`. The three changed live
+Entry/report CSS/JS assets match source byte-for-byte; the touchscreen staff
+gate remains private/no-store. Existing variables, secrets and bindings were
+preserved, with no migration or private-content update. The review branch still
+needs merging so future main-based deployments retain these fixes. Close old
+report tabs and reload the booth before the demo.
 
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.

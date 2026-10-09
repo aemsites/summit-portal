@@ -1319,6 +1319,14 @@ retains its own black background. Native geometry and artwork are unchanged.
 Pixel probes reproduce the line before and verify its absence afterward in
 1440 x 1100, 1280 x 720 and 1106 x 1080 live-wrapper viewports.
 
+**Demo hotfix rollout, October 9 at 15:11 UTC:** Jose explicitly approved
+deploying tested commit `efb901e` from `josec-adobe-booth-insight-previews`
+before merge. Worker `5aabc51b-5735-432e-94e4-a0e765157910` serves 100% of
+traffic; all three changed live JS/CSS assets match source and touchscreen
+entry remains staff-gated. Variables, secrets and bindings are preserved.
+Merge the review branch before a subsequent main-based deployment; close
+existing report tabs and reload the booth to pick up this version.
+
 Within the broader authorized portrait profile, summary and brand callout prose
 are no longer constrained by the shared `65ch` reading-width rule. The callout
 fills its own parent, including the flex-start Performance insights **How to
