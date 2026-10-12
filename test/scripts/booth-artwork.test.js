@@ -15,7 +15,6 @@ describe('Figma booth artwork', () => {
         <header class="stage-header"></header>
         <section class="welcome-intro">
           <h1>First<br>Second<br>Third</h1>
-          <div class="hero-bottom"><p>See where your brand appears in AI search.</p></div>
         </section>
       </main></body>`;
     document.body.append(frame);
@@ -46,9 +45,9 @@ describe('Figma booth artwork', () => {
     expect(glow.backgroundSize).to.equal('1510.62px 1023.62px');
   });
 
-  it('aligns the fixed Entry 3 headline and subtitle to native Figma coordinates', () => {
+  it('aligns the Entry headline to the existing native Figma position without a subtitle', () => {
     close(hero.querySelector('h1').getBoundingClientRect().y, 555.5);
-    close(hero.querySelector('.hero-bottom p').getBoundingClientRect().y, 880.5);
+    expect(hero.querySelector('.hero-bottom')).to.equal(null);
   });
 
   it('does not change the hero artwork even when a legacy entry parameter is present', () => {

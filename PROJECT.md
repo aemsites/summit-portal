@@ -2,6 +2,17 @@
 
 ## Overview
 
+**Entry copy refinement (October 12, review branch; not deployed):**
+the Entry headline is **See where your brand appears in AI search.**
+and the form introduction is **Open your personalized brand visibility report.**
+The abstract AI-search pitch and repeated subtitle are removed. Existing artwork,
+typography and responsive profiles remain: the longer form introduction wraps
+to two portrait lines while controls stay visible at the three Figma sizes,
+2160 x 3840 and its half-size fallback; landscape stays one line and mobile
+wraps without horizontal overflow. Canonical report naming elsewhere, privacy,
+lookup and consent are unchanged. `josec-adobe-booth-entry-copy` requires merge
+and matching Worker deployment before this bundled HTML is live.
+
 **Booth/portal isolation (October 9, deployed):** José
 approved keeping the current hostname and removing the browser-wide kiosk lock.
 Booth cookies no longer redirect ordinary guide, dashboard, report, PDF or asset

@@ -1134,13 +1134,21 @@ The default shared header is the event-neutral **Adobe Brand Visibility**, retai
 Adobe logo with accessible attribution and meaningful Digital Opportunity Report
 context. The requested **Amplify your brand visibility** header is an optional
 URL configuration rather than an event-specific default. Entry reads
-**Turn your brand content into an AI search advantage.** and
-**See where your brand appears in AI search.** The longer headline wraps at
-deliberate responsive sizes rather than inheriting the former question's size.
-**Open your customized report.** describes existing authorized company reports:
+**See where your brand appears in AI search.** as its single headline; the
+abstract pitch and duplicate supporting line are removed in the October 12
+copy refinement. **Open your personalized brand visibility report.** introduces
+the email form and describes existing authorized company reports:
 the Business email field still identifies CUG-authorized prepared reports, not
 registrants or an on-demand generation request. The picker and help keep that
 contract explicit.
+
+The October 12 refinement preserves existing typography and artwork. The longer
+report offer wraps naturally to two lines in the portrait frames; registration,
+privacy and actions remain in view at all three Figma sizes and the native
+2160 x 3840 touchscreen. Landscape remains one line. The canonical Digital
+Opportunity Report naming elsewhere and all lookup/consent behavior are unchanged.
+Review branch: `josec-adobe-booth-entry-copy`. Merge and matching Worker deployment
+are required before the bundled Entry copy becomes live.
 
 ### October 7 fixed Entry 3 / Finish 6
 
