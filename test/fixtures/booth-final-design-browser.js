@@ -28,11 +28,11 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 285 });
   check(await page.locator('#welcome-heading').textContent() === 'See where your brand appears in AI search.', 'Entry headline does not match the approved offer');
   check(await page.locator('.hero-bottom').count() === 0, 'Entry repeats the headline as a subtitle');
-  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 193.8 });
-  await match('.email-form label', { x: 112, y: 1756.8, width: 1936, height: 66 });
-  await match('.email-form input', { x: 112, y: 1852.8, width: 1936, height: 144 });
-  await match('#search-privacy', { x: 112, y: 2046.8, width: 1936, height: 38 });
-  await match('.email-form .primary', { x: 112, y: 2164.8, width: 454, height: 120 });
+  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 89.3 });
+  await match('.email-form label', { x: 112, y: 1652.3, width: 1936, height: 66 });
+  await match('.email-form input', { x: 112, y: 1748.3, width: 1936, height: 144 });
+  await match('#search-privacy', { x: 112, y: 1942.3, width: 1936, height: 38 });
+  await match('.email-form .primary', { x: 112, y: 2060.3, width: 454, height: 120 });
   await match('.stage-footer', { x: 0, y: 2652, width: 2160, height: 229 });
   const field = await page.locator('.email-form input').evaluate((element) => {
     const style = getComputedStyle(element);
@@ -56,17 +56,17 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     && staffStyle.color === 'rgb(80, 80, 80)'
     && staffStyle.border === 'rgb(143, 143, 143)', 'Staff shortcut is not a quiet outlined action');
   const staff = await bounds('.entry-alternatives button');
-  check(Math.abs(staff.y - 2164.8) < 1 && staff.height === 120
+  check(Math.abs(staff.y - 2060.3) < 1 && staff.height === 120
     && Math.abs(staff.x - 590) < 1, 'Industry demos is not adjacent to the lookup action');
   const profiles = [
     {
       width: 2048,
       height: 2732,
       headline: { x: 100, y: 374, width: 1041, height: 342 },
-      lead: { x: 112, y: 1621, width: 1824, height: 193.8 },
-      input: { x: 112, y: 1966.9, width: 1824, height: 144 },
-      privacy: { x: 112, y: 2160.9, width: 1824, height: 38 },
-      action: { x: 112, y: 2278.9, width: 454, height: 120 },
+      lead: { x: 112, y: 1621, width: 1824, height: 178.6 },
+      input: { x: 112, y: 1951.7, width: 1824, height: 144 },
+      privacy: { x: 112, y: 2145.7, width: 1824, height: 38 },
+      action: { x: 112, y: 2263.7, width: 454, height: 120 },
       footer: 2503,
     },
     {
@@ -95,6 +95,14 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Entry overflows horizontally');
     const input = await bounds('.email-form input');
     check(input.height >= 64, 'Entry field is too small for touch');
+    if (width >= 1000) {
+      const oneLine = await page.locator('.welcome-entry .lead').evaluate((element) => {
+        const style = getComputedStyle(element);
+        return element.getBoundingClientRect().height <= parseFloat(style.lineHeight) + 1
+          && element.scrollWidth <= element.clientWidth;
+      });
+      check(oneLine, 'Touchscreen report offer must fit one line without overflow');
+    }
     const primary = await bounds('.email-form .primary');
     const alternative = await bounds('.entry-alternatives button');
     check(alternative.height >= 64
