@@ -2,6 +2,33 @@
 
 ## Overview
 
+**Semrush Spotlight 2026 header screenshot audit and repair (October 12, published):**
+the full campaign partition contains 771 source rows, 475 included requests
+and 296 excluded rows. Actual request status identifies 473 approved reports
+and two still generating. The approved reports share 469 unique landing pages;
+four pages each serve two approved requests. The repository's 500-row listing
+cap was avoided by querying the full campaign partition.
+All 469 sources were backed up and inspected, including 441 existing images,
+27 missing image files and one already-empty screenshot cell. Local decoding,
+OCR and visual review identified 88 recapture candidates. Production screenshot
+service and ordinary isolated-browser retries yielded 52 visually approved
+replacements. These versioned images were published; 35 remaining unusable
+screenshots were hidden after unsuccessful retries, and the previously empty
+cell stayed empty. The other 381 screenshots, including AstraZeneca's supplied
+replacement, were preserved. Access challenges, age gates and qualification
+declarations were not bypassed.
+A fresh independent check of every source and visible asset confirmed 433
+screenshots and 36 empty cells, with source/image hashes and authenticated
+publication status matching the approved plan. All 468 previously live pages
+remain live. One approved report is still preview-only, with an incomplete DA
+publication phase and no published portal URL; its usable screenshot and
+preview-only status were preserved, not promoted.
+Edits preserve every byte outside the screenshot cell. All 87 repair journals,
+before/after sources, original assets, replacement images and final verification
+evidence are backed up and hash-checked privately outside Git. Report text,
+metrics, links, domain badges, permissions, campaign/delivery state, report
+artifacts, PDFs and Worker code are unchanged.
+
 **AI Forum NYC header screenshot audit and repair (October 12, published):**
 production campaign `cvcamp_c63809d5c96742ffa170cd45` has 290 source rows,
 including 239 report requests and 51 excluded rows. The DA `ai-forum-nyc`
@@ -38,7 +65,7 @@ and backups remain outside Git. These are DA landing-only repairs: report
 HTML, report screenshot blobs, PDFs and Worker code are untouched. Full report
 regeneration is out of scope.
 
-**Optional header screenshot failure handling (October 12, local fix):**
+**Optional header screenshot failure handling (October 12, merged):**
 the insight hero previously moved authored images into its screenshot column
 without handling load failures. A missing file therefore left the browser's
 broken-image icon inside a styled picture frame. The hero now removes only the
@@ -47,7 +74,8 @@ images and failures after decoration. Empty cells stay empty; valid and pending
 lazy screenshots, headings and the domain badge remain unchanged. Regression
 coverage exercises seven image states alongside the existing portrait layout
 checks, and a genuine 404 reproduction was verified at touchscreen, desktop
-and mobile sizes. This shared JavaScript fix is local and not yet published.
+and mobile sizes. This shared JavaScript fix was merged in PR #180
+(`84b7f3c`). No Worker deployment was performed for these screenshot repairs.
 Changed-file lint and all ten focused checks pass. Full-project lint retains
 its existing 3058 findings (2769 errors, 289 warnings); the repository has no
 `build` script, so the requested full build check cannot run. No unrelated
