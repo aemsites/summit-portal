@@ -21,7 +21,7 @@ source and touchscreen entry remains staff-gated. Existing configuration,
 secrets and bindings are preserved; no migration or attendee actions were
 performed. Reload the booth to use the revised Entry copy.
 
-**Entry report-offer sizing (October 12, review branch; not deployed):**
+**Entry report-offer sizing (October 12, deployed):**
 slightly reduces the active desktop portrait introduction from 102px to 94px
 at 2160 x 3840, retaining Adobe Clean Display, weight, gutters and natural
 wrapping. The complete sentence fits the available 1936px width on one line;
@@ -29,9 +29,10 @@ the half-size fallback uses 47px and also fits. Landscape stays at 84px and
 mobile at 32px; the narrower compact portrait can still wrap normally.
 No nowrap, clipping or text replacement is used. Registration/privacy/actions
 follow the shorter paragraph in normal flow. Review branch:
-`josec-adobe-booth-entry-heading-fit`; matching Worker deployment remains required.
+`josec-adobe-booth-entry-heading-fit` was merged in PR #178 and deployed in
+the typography rollout below.
 
-**Entry hero typography (October 12, review branch; not deployed):**
+**Entry hero typography (October 12, deployed):**
 the single hero headline uses 108px instead of 100px at native resolution and
 1.08 line-height instead of 0.95. It keeps its existing 840px column, position,
 font family and weight. The removed subtitle's space accommodates the taller
@@ -39,7 +40,17 @@ three-line heading without moving the form or artwork. Compact portrait keeps
 its 120px font with the more open leading; landscape scales the base headline
 to 108px, and mobile typography is unchanged. The 94px form introduction still
 fits one native touchscreen line. Review branch:
-`josec-adobe-booth-hero-typography`; matching Worker deployment remains required.
+`josec-adobe-booth-hero-typography` was merged in PR #179.
+
+**Production typography rollout, October 12 at 08:23 UTC:** deployed exact
+merged main `9a042a8bf5ee2c618c336858c6058e73bc6bf45c` to `summit-portal`.
+Worker `c83cfc8a-bea4-43f8-9fd4-4e588117223c` receives 100% of traffic,
+superseding `420ce322-43c7-48cf-8993-8d6fdbbbd6de`. Live Entry CSS matches
+source byte-for-byte, including both the 94px offer and 108px/1.08 headline.
+Three live runtime modules also match; stylesheet revalidation and touchscreen
+staff protection remain intact. Existing configuration/secrets/bindings are
+preserved, with no migrations or attendee operations. Reload the booth for
+both typography refinements.
 
 **Booth/portal isolation (October 9, deployed):** José
 approved keeping the current hostname and removing the browser-wide kiosk lock.
