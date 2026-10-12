@@ -6,9 +6,9 @@
 the Entry headline is **See where your brand appears in AI search.**
 and the form introduction is **Open your personalized brand visibility report.**
 The abstract AI-search pitch and repeated subtitle are removed. Existing artwork,
-typography and responsive profiles remain: the longer form introduction wraps
-to two portrait lines while controls stay visible at the three Figma sizes,
-2160 x 3840 and its half-size fallback; landscape stays one line and mobile
+typography and responsive profiles remain. The follow-up below keeps the form
+introduction on one native touchscreen line; controls stay visible at the three
+Figma sizes, 2160 x 3840 and its half-size fallback. Landscape stays one line and mobile
 wraps without horizontal overflow. Canonical report naming elsewhere, privacy,
 lookup and consent are unchanged. `josec-adobe-booth-entry-copy` was merged
 in PR #177 and deployed from exact main
@@ -20,6 +20,16 @@ the abstract pitch or duplicate subtitle. Four live runtime/CSS assets match
 source and touchscreen entry remains staff-gated. Existing configuration,
 secrets and bindings are preserved; no migration or attendee actions were
 performed. Reload the booth to use the revised Entry copy.
+
+**Entry report-offer sizing (October 12, review branch; not deployed):**
+slightly reduces the active desktop portrait introduction from 102px to 94px
+at 2160 x 3840, retaining Adobe Clean Display, weight, gutters and natural
+wrapping. The complete sentence fits the available 1936px width on one line;
+the half-size fallback uses 47px and also fits. Landscape stays at 84px and
+mobile at 32px; the narrower compact portrait can still wrap normally.
+No nowrap, clipping or text replacement is used. Registration/privacy/actions
+follow the shorter paragraph in normal flow. Review branch:
+`josec-adobe-booth-entry-heading-fit`; matching Worker deployment remains required.
 
 **Booth/portal isolation (October 9, deployed):** José
 approved keeping the current hostname and removing the browser-wide kiosk lock.

@@ -692,7 +692,7 @@
 
       .welcome-entry .lead {
         margin-bottom: calc(56 * var(--entry-unit));
-        font-size: calc(102 * var(--entry-unit));
+        font-size: calc(94 * var(--entry-unit));
       }
 
       .email-form label {

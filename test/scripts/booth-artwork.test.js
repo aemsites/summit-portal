@@ -171,6 +171,24 @@ describe('Figma booth artwork', () => {
     }
   });
 
+  it('slightly reduces only the desktop portrait report offer and allows natural mobile wrapping', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stage.replaceWith(source.querySelector('.stage').cloneNode(true));
+    stage = frame.contentDocument.querySelector('.stage');
+    stage.querySelector('[data-panel="welcome"]').hidden = false;
+    const lead = stage.querySelector('.welcome-entry .lead');
+    const sizes = [[2160, 3840, 94], [1080, 1920, 47], [2732, 2048, 84], [390, 844, 32]];
+    for (const [width, height, fontSize] of sizes) {
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      const style = frame.contentWindow.getComputedStyle(lead);
+      close(style.fontSize, fontSize);
+      expect(style.whiteSpace).to.equal('normal');
+      expect(style.overflow).to.equal('visible');
+    }
+  });
+
   it('keeps the registration label, disclosure and adjacent actions usable across all designed sizes', async () => {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const source = new DOMParser().parseFromString(await response.text(), 'text/html');

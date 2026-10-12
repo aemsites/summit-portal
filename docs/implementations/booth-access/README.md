@@ -1143,9 +1143,13 @@ registrants or an on-demand generation request. The picker and help keep that
 contract explicit.
 
 The October 12 refinement preserves existing typography and artwork. The longer
-report offer wraps naturally to two lines in the portrait frames; registration,
+report offer now uses a slightly smaller desktop portrait size, 94px instead
+of 102px at 2160 x 3840, to fit one native touchscreen line; registration,
 privacy and actions remain in view at all three Figma sizes and the native
-2160 x 3840 touchscreen. Landscape remains one line. The canonical Digital
+2160 x 3840 touchscreen. The half-size fallback uses 47px and fits one line;
+compact portrait and mobile may wrap naturally. Landscape remains at 84px.
+The sizing follow-up is pending review in `josec-adobe-booth-entry-heading-fit`
+and needs a matching Worker deployment. The canonical Digital
 Opportunity Report naming elsewhere and all lookup/consent behavior are unchanged.
 Review branch `josec-adobe-booth-entry-copy` was merged in PR #177.
 The bundled Entry copy was deployed from exact main
