@@ -701,9 +701,10 @@ describe('booth runtime boundary', () => {
     const root = await productionFixture();
     expect(root.querySelector('.brand span').textContent).to.equal('Amplify your brand visibility');
     expect(root.querySelector('.brand-icon').alt).to.equal('Adobe');
-    expect(root.getElementById('welcome-heading').textContent).to.equal('Turn your brand content into an AI search advantage.');
-    expect(root.querySelector('.hero-bottom p').textContent).to.equal('See where your brand appears in AI search.');
-    expect(root.querySelector('.welcome-entry .lead').textContent).to.equal('Open your customized report.');
+    expect(root.getElementById('welcome-heading').textContent).to.equal('See where your brand appears in AI search.');
+    expect(root.querySelector('.hero-bottom')).to.equal(null);
+    expect(root.querySelector('.welcome-entry .lead').textContent).to.equal('Open your personalized brand visibility report.');
+    expect(root.querySelector('[data-panel="welcome"]').textContent).not.to.include('AI search advantage');
     expect(root.querySelector('label[for="registration-email"]').textContent).to.equal('Registration email: use the same address you used for this event.');
     expect(root.getElementById('email-help')).to.equal(null);
     expect(root.getElementById('registration-email').getAttribute('aria-describedby')).to.equal('search-privacy email-error');

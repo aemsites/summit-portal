@@ -44,7 +44,12 @@ describe('bundled booth shell and exact report injection', () => {
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');
-    expect(html).not.toMatch(/brand\s+visibility\s+report/i);
+    const offer = '<p class="lead">Open your personalized brand visibility report.</p>';
+    expect(html).toContain(offer);
+    expect(html.replace(offer, '')).not.toMatch(/brand\s+visibility\s+report/i);
+    expect(html).toContain('<h1 id="welcome-heading">See where your brand appears in AI search.</h1>');
+    expect(html).not.toContain('Turn your brand content into an AI search advantage.');
+    expect(html).not.toContain('class="hero-bottom"');
     expect(html).not.toContain('send-demo');
     expect(html).not.toContain('jordan@');
     expect(html).not.toContain('Design review controls');

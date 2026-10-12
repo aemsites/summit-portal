@@ -1,4 +1,4 @@
-/** Compare live synthetic screens to the final Figma frames, never attendee data. */
+/** Compare synthetic screens to Figma geometry and approved copy refinements. */
 export default async function verifyBoothFinalDesign(page, root = 'http://localhost:3000') {
   if (!['localhost', '127.0.0.1'].includes(new URL(root).hostname)) {
     throw new Error('Design checks require the local-only booth fixture server.');
@@ -26,12 +26,13 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   await match('.stage-header', { x: 0, y: 0, width: 2160, height: 277 });
   await match('.brand-icon', { x: 100, y: 64, width: 264.858, height: 64 });
   await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 285 });
-  await match('.hero-bottom p', { x: 100, y: 880.5, width: 840, height: 150 });
-  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 97 });
-  await match('.email-form label', { x: 112, y: 1660, width: 1936, height: 66 });
-  await match('.email-form input', { x: 112, y: 1756, width: 1936, height: 144 });
-  await match('#search-privacy', { x: 112, y: 1950, width: 1936, height: 38 });
-  await match('.email-form .primary', { x: 112, y: 2068, width: 454, height: 120 });
+  check(await page.locator('#welcome-heading').textContent() === 'See where your brand appears in AI search.', 'Entry headline does not match the approved offer');
+  check(await page.locator('.hero-bottom').count() === 0, 'Entry repeats the headline as a subtitle');
+  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 193.8 });
+  await match('.email-form label', { x: 112, y: 1756.8, width: 1936, height: 66 });
+  await match('.email-form input', { x: 112, y: 1852.8, width: 1936, height: 144 });
+  await match('#search-privacy', { x: 112, y: 2046.8, width: 1936, height: 38 });
+  await match('.email-form .primary', { x: 112, y: 2164.8, width: 454, height: 120 });
   await match('.stage-footer', { x: 0, y: 2652, width: 2160, height: 229 });
   const field = await page.locator('.email-form input').evaluate((element) => {
     const style = getComputedStyle(element);
@@ -55,17 +56,17 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     && staffStyle.color === 'rgb(80, 80, 80)'
     && staffStyle.border === 'rgb(143, 143, 143)', 'Staff shortcut is not a quiet outlined action');
   const staff = await bounds('.entry-alternatives button');
-  check(Math.abs(staff.y - 2068) < 1 && staff.height === 120
+  check(Math.abs(staff.y - 2164.8) < 1 && staff.height === 120
     && Math.abs(staff.x - 590) < 1, 'Industry demos is not adjacent to the lookup action');
   const profiles = [
     {
       width: 2048,
       height: 2732,
       headline: { x: 100, y: 374, width: 1041, height: 342 },
-      lead: { x: 112, y: 1621, width: 1824, height: 97 },
-      input: { x: 112, y: 1870, width: 1824, height: 144 },
-      privacy: { x: 112, y: 2064, width: 1824, height: 38 },
-      action: { x: 112, y: 2182, width: 454, height: 120 },
+      lead: { x: 112, y: 1621, width: 1824, height: 193.8 },
+      input: { x: 112, y: 1966.9, width: 1824, height: 144 },
+      privacy: { x: 112, y: 2160.9, width: 1824, height: 38 },
+      action: { x: 112, y: 2278.9, width: 454, height: 120 },
       footer: 2503,
     },
     {

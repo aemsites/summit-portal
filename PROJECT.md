@@ -2,7 +2,18 @@
 
 ## Overview
 
-**Booth/portal isolation (October 9, implemented locally; not deployed):** José
+**Entry copy refinement (October 12, review branch; not deployed):**
+the Entry headline is **See where your brand appears in AI search.**
+and the form introduction is **Open your personalized brand visibility report.**
+The abstract AI-search pitch and repeated subtitle are removed. Existing artwork,
+typography and responsive profiles remain: the longer form introduction wraps
+to two portrait lines while controls stay visible at the three Figma sizes,
+2160 x 3840 and its half-size fallback; landscape stays one line and mobile
+wraps without horizontal overflow. Canonical report naming elsewhere, privacy,
+lookup and consent are unchanged. `josec-adobe-booth-entry-copy` requires merge
+and matching Worker deployment before this bundled HTML is live.
+
+**Booth/portal isolation (October 9, deployed):** José
 approved keeping the current hostname and removing the browser-wide kiosk lock.
 Booth cookies no longer redirect ordinary guide, dashboard, report, PDF or asset
 requests, and they never grant ordinary portal access. Booth report/demo URLs
@@ -19,8 +30,9 @@ authenticated booth entry; no new persistent kiosk lock is issued. This supersed
 browser-wide restrictions described in historical rollout entries below.
 Shared event hardware must use a dedicated browser profile without a portal
 sign-in and managed browser/OS kiosk lockdown; this is not per-tab visitor
-isolation. Coordinated frontend/Worker publication and reloading old booth/login
-tabs remain required. No production deployment or customer mutation was performed.
+isolation. Coordinated frontend/Worker publication completed in the renewal
+rollout below. Old booth/login tabs still need reloading; no authenticated
+customer mutation was performed during verification.
 
 A personalized digital performance report delivered to Adobe Summit attendees who are AEM Sites customers. Each report presents site-specific metrics — traffic, performance scores, AI search visibility, and SEO health — in a polished, data-rich single-page format.
 
@@ -230,7 +242,7 @@ preserved, with no migration or private-content update. The review branch still
 needs merging so future main-based deployments retain these fixes. Close old
 report tabs and reload the booth before the demo.
 
-**Mid-report recovery diagnosis (October 9, fix implemented locally; not deployed):**
+**Mid-report recovery diagnosis (October 9, fix deployed):**
 the previously deployed `createBoothInactivity` path treats every renewal error as fatal.
 Touch/scroll activity renews through `/auth/booth/activity`, throttled to 30
 seconds; the shared request deadline is ten seconds for fetch and JSON body.
@@ -239,7 +251,7 @@ which stops activity tracking, conceals the already-verified report and offers
 **Retry and clear screen**. That action resets the visit rather than reconnecting
 the current report. A local reproduction reaches this white recovery screen
 at 40 seconds while the original 15-minute authorization still has over 14
-minutes left. Both deployed source files match the diagnosed code.
+minutes left. At diagnosis, both live source files matched the failing code.
 Worker activity renewal also performs report discovery and can return 502 for
 temporary discovery failure without revoking the record, but the client still
 conceals it. Genuine revoked/expired access remains a distinct fatal case.
@@ -247,9 +259,9 @@ The demonstrated demo incident's exact failed request/status is not known.
 The implemented correction below uses non-destructive retry within the last confirmed
 expiry, with visible reconnection status, retaining immediate clearing for
 confirmed authorization loss, real expiry and visitor reset. No production
-behavior has changed as part of this diagnosis.
+behavior changed during diagnosis itself; the corrective rollout is recorded below.
 
-**Renewal timing/recovery refinement (October 9, review branch; not deployed):**
+**Renewal timing/recovery refinement (October 9, deployed):**
 normal input-based renewals now wait until three minutes remain on the last
 server-confirmed expiry, typically twelve minutes into a fresh fifteen-minute
 session. No request is queued just by verifying/loading a report or shell.
@@ -271,10 +283,24 @@ cleanup and serialized reset waiting are unchanged. Late responses cannot
 revive cleared or expired access. The real 2160 x 3840 touchscreen frame,
 using public report markup and synthetic local access, retained the visible
 report and enabled Finish during a 502, then recovered after its thirty-second
-retry without reset or page errors. This refinement has not been deployed.
-Review branch: `josec-adobe-booth-renewal-recovery`, including the latest
-main's explicit booth/portal navigation boundary. Merge and a matching Worker
-deployment are still required.
+retry without reset or page errors. The review branch
+`josec-adobe-booth-renewal-recovery` was merged in PR #176 and deployed together
+with main's explicit booth/portal navigation boundary from PR #175.
+
+**Production renewal/isolation rollout, October 9 at 23:33 UTC:** deployed exact
+merged main `333b91c38a9fcd338ab39c5d746aa9d9445f8e0a` to `summit-portal`.
+Worker version `ed1309ca-c719-4425-a428-2ac4a1eea51b` receives 100% of traffic,
+superseding `5aabc51b-5735-432e-94e4-a0e765157910`. Five required origin
+frontend modules, including the explicit staff-login intent, matched before
+activation. Eight bundled JS/CSS assets match live source afterward; all five
+renewal-related assets retain `no-cache` revalidation. Unauthenticated
+touchscreen entry remains staff-gated. An ordinary report preserves its own
+portal sign-in destination even with a legacy kiosk marker; the same explicit
+`booth=1` request returns through Entry to staff sign-in.
+Variables, staff epoch, secrets and KV/D1/Durable Object bindings were preserved.
+No migration, private-content upload, staff authentication, attendee lookup,
+email send or visitor reset was performed. Close old report/login tabs and
+reopen `/booth?touchscreen=1` so new marked report URLs and renewal code are used.
 
 The lead-history privacy exclusions apply to the new **server-side action events**. Existing ordinary portal browser analytics are unchanged.
 - `/request-report` — public QR-code lead intake for a Digital Opportunity Report, authored in DA with an empty `report-request-form` block. It must receive a `turnstile-sitekey` metadata value before launch. It submits only to the same-origin Worker endpoint and never starts report generation.
