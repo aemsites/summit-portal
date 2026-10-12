@@ -1160,6 +1160,14 @@ and unauthenticated staff protection remain intact. No migration, configuration
 change, private-content upload or attendee operation was performed. Reload
 the booth for the updated Entry.
 
+The subsequent approved hero refinement increases the native headline from
+100px to 108px and its line-height from 0.95 to 1.08, retaining its column,
+weight, position and artwork. The taller three-line headline fits the space
+left by the removed subtitle without moving the form. Compact portrait keeps
+its existing 120px font with the new leading; mobile remains unchanged.
+The form introduction retains the separate 94px single-line adjustment.
+This refinement is in `josec-adobe-booth-hero-typography` and is not deployed.
+
 ### October 7 fixed Entry 3 / Finish 6
 
 The approved [Final Design frames](https://www.figma.com/design/D8EQjOoLp0gRdZoIMk1SEj/Adobe-Brand-Visibility-UI?node-id=5-2)

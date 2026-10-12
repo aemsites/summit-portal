@@ -31,6 +31,16 @@ No nowrap, clipping or text replacement is used. Registration/privacy/actions
 follow the shorter paragraph in normal flow. Review branch:
 `josec-adobe-booth-entry-heading-fit`; matching Worker deployment remains required.
 
+**Entry hero typography (October 12, review branch; not deployed):**
+the single hero headline uses 108px instead of 100px at native resolution and
+1.08 line-height instead of 0.95. It keeps its existing 840px column, position,
+font family and weight. The removed subtitle's space accommodates the taller
+three-line heading without moving the form or artwork. Compact portrait keeps
+its 120px font with the more open leading; landscape scales the base headline
+to 108px, and mobile typography is unchanged. The 94px form introduction still
+fits one native touchscreen line. Review branch:
+`josec-adobe-booth-hero-typography`; matching Worker deployment remains required.
+
 **Booth/portal isolation (October 9, deployed):** José
 approved keeping the current hostname and removing the browser-wide kiosk lock.
 Booth cookies no longer redirect ordinary guide, dashboard, report, PDF or asset

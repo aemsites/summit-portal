@@ -189,6 +189,28 @@ describe('Figma booth artwork', () => {
     }
   });
 
+  it('gives desktop hero text more breathing room without changing the form introduction or mobile type', async () => {
+    const response = await fetch(new URL('../../booth.html', import.meta.url));
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stage.replaceWith(source.querySelector('.stage').cloneNode(true));
+    stage = frame.contentDocument.querySelector('.stage');
+    stage.querySelector('[data-panel="welcome"]').hidden = false;
+    const heading = stage.querySelector('#welcome-heading');
+    const sizes = [
+      [2160, 3840, 108], [1080, 1920, 54], [2048, 2732, 120],
+      [2732, 2048, 108], [390, 844, 38],
+    ];
+    for (const [width, height, fontSize] of sizes) {
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      const style = frame.contentWindow.getComputedStyle(heading);
+      close(style.fontSize, fontSize);
+      close(style.lineHeight, fontSize * (width >= 1000 ? 1.08 : 1));
+      expect(style.fontWeight).to.equal('900');
+      expect(heading.scrollWidth).to.be.at.most(heading.clientWidth);
+    }
+  });
+
   it('keeps the registration label, disclosure and adjacent actions usable across all designed sizes', async () => {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const source = new DOMParser().parseFromString(await response.text(), 'text/html');

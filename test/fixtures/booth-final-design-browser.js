@@ -25,7 +25,7 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   await page.evaluate(() => window.scrollTo(0, 0));
   await match('.stage-header', { x: 0, y: 0, width: 2160, height: 277 });
   await match('.brand-icon', { x: 100, y: 64, width: 264.858, height: 64 });
-  await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 285 });
+  await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 349.9 });
   check(await page.locator('#welcome-heading').textContent() === 'See where your brand appears in AI search.', 'Entry headline does not match the approved offer');
   check(await page.locator('.hero-bottom').count() === 0, 'Entry repeats the headline as a subtitle');
   await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 89.3 });
@@ -62,7 +62,7 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     {
       width: 2048,
       height: 2732,
-      headline: { x: 100, y: 374, width: 1041, height: 342 },
+      headline: { x: 100, y: 374, width: 1041, height: 388.8 },
       lead: { x: 112, y: 1621, width: 1824, height: 178.6 },
       input: { x: 112, y: 1951.7, width: 1824, height: 144 },
       privacy: { x: 112, y: 2145.7, width: 1824, height: 38 },
@@ -72,7 +72,7 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     {
       width: 2732,
       height: 2048,
-      headline: { x: 100, y: 514, width: 1308, height: 190 },
+      headline: { x: 100, y: 514, width: 1308, height: 233.3 },
       lead: { x: 112, y: 1187.6, width: 2508, height: 80 },
       input: { x: 112, y: 1406.6, width: 2312, height: 132.9 },
       privacy: { x: 112, y: 1562.1, width: 2312, height: 45 },
