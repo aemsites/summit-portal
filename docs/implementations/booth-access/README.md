@@ -1148,8 +1148,8 @@ of 102px at 2160 x 3840, to fit one native touchscreen line; registration,
 privacy and actions remain in view at all three Figma sizes and the native
 2160 x 3840 touchscreen. The half-size fallback uses 47px and fits one line;
 compact portrait and mobile may wrap naturally. Landscape remains at 84px.
-The sizing follow-up is pending review in `josec-adobe-booth-entry-heading-fit`
-and needs a matching Worker deployment. The canonical Digital
+The sizing follow-up in `josec-adobe-booth-entry-heading-fit` was merged in
+PR #178 and deployed in the typography rollout below. The canonical Digital
 Opportunity Report naming elsewhere and all lookup/consent behavior are unchanged.
 Review branch `josec-adobe-booth-entry-copy` was merged in PR #177.
 The bundled Entry copy was deployed from exact main
@@ -1166,7 +1166,15 @@ weight, position and artwork. The taller three-line headline fits the space
 left by the removed subtitle without moving the form. Compact portrait keeps
 its existing 120px font with the new leading; mobile remains unchanged.
 The form introduction retains the separate 94px single-line adjustment.
-This refinement is in `josec-adobe-booth-hero-typography` and is not deployed.
+This refinement in `josec-adobe-booth-hero-typography` was merged in PR #179.
+
+Both typography changes were deployed from exact main
+`9a042a8bf5ee2c618c336858c6058e73bc6bf45c` on October 12 at 08:23 UTC.
+Worker `c83cfc8a-bea4-43f8-9fd4-4e588117223c` serves 100% of traffic,
+replacing `420ce322-43c7-48cf-8993-8d6fdbbbd6de`. Live CSS and three shared
+runtime assets match source; CSS revalidation and staff gating remain intact.
+Configuration, secrets and bindings were preserved, with no migrations,
+private-content changes or attendee actions. Reload the booth for the new type.
 
 ### October 7 fixed Entry 3 / Finish 6
 
