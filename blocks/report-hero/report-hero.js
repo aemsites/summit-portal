@@ -149,6 +149,16 @@ export function buildInsightHero(block, rows) {
   // Image cell → image column
   if (imgCell) {
     [...imgCell.childNodes].forEach((n) => imgCol.append(n));
+    imgCol.querySelectorAll('img').forEach((image) => {
+      const removeScreenshot = () => {
+        // eslint-disable-next-line no-console
+        console.warn('Report header screenshot could not be loaded.');
+        (image.closest('picture') || image).remove();
+      };
+      // Cached failures do not fire another error event after decoration.
+      if (image.complete && image.naturalWidth === 0) removeScreenshot();
+      else image.addEventListener('error', removeScreenshot, { once: true });
+    });
   }
 
   row.replaceWith(textCol, imgCol);

@@ -2,6 +2,57 @@
 
 ## Overview
 
+**AI Forum NYC header screenshot audit and repair (October 12, published):**
+production campaign `cvcamp_c63809d5c96742ffa170cd45` has 290 source rows,
+including 239 report requests and 51 excluded rows. The DA `ai-forum-nyc`
+event tab maps to `AI Forum NYC`; its membership contains exactly 239 company
+labels and 239 unique landing pages. All landing pages are published.
+The audit found 198 usable screenshots, 17 security challenges, eight error
+pages, one blank capture, one unstyled capture and 12 missing image files:
+39 confirmed problematic NYC headers. Two further captures have incomplete
+hero imagery and merit recapture/review, not automatic removal.
+The reported AstraZeneca page was checked separately because it is not a
+NYC member; its original image contained a CloudFront 403 error.
+Protected publication-status reads confirm 228 existing images and 12
+missing images across the 240 inspected pages. Ordinary origin 401 responses
+were not treated as screenshot defects. Production validation already marked
+some captures invalid: SATCO and MissionSquare's rejected input images match
+their DA header images byte-for-byte. The deployed DA screenshot-copy path
+does not consult validity metadata; the report-generation filter separately
+expects a top-level `screenshots` list, but campaign metadata also uses nested
+capture structures.
+With approval, targeted captures were retried for all 41 NYC candidates and
+AstraZeneca using the production screenshot service and ordinary isolated
+browsers. Nineteen visually verified NYC replacements were published; the
+remaining 22 NYC headers were cleared because retries
+still produced errors, blocking screens, unavailable pages or unsuitable
+captures. AstraZeneca was initially cleared after unsuccessful retries, then
+restored with Jose's supplied manual screenshot, preserved byte-for-byte at
+2000 x 1425 under `screenshot-desktop-20261012-manual.png`.
+Replacements use versioned assets; HTML edits preserve every byte
+outside the screenshot cell and retain report text, metrics, links and favicon.
+Current source/image hashes were checked before writes, with fresh rollback
+backups and authenticated preview/live verification per page. All 42 repaired
+pages and all 20 replacement assets have live status 200. Private evidence
+and backups remain outside Git. These are DA landing-only repairs: report
+HTML, report screenshot blobs, PDFs and Worker code are untouched. Full report
+regeneration is out of scope.
+
+**Optional header screenshot failure handling (October 12, local fix):**
+the insight hero previously moved authored images into its screenshot column
+without handling load failures. A missing file therefore left the browser's
+broken-image icon inside a styled picture frame. The hero now removes only the
+failed screenshot and its picture wrapper, including already-failed cached
+images and failures after decoration. Empty cells stay empty; valid and pending
+lazy screenshots, headings and the domain badge remain unchanged. Regression
+coverage exercises seven image states alongside the existing portrait layout
+checks, and a genuine 404 reproduction was verified at touchscreen, desktop
+and mobile sizes. This shared JavaScript fix is local and not yet published.
+Changed-file lint and all ten focused checks pass. Full-project lint retains
+its existing 3058 findings (2769 errors, 289 warnings); the repository has no
+`build` script, so the requested full build check cannot run. No unrelated
+lint fixes or build infrastructure were added.
+
 **Entry copy refinement (October 12, deployed):**
 the Entry headline is **See where your brand appears in AI search.**
 and the form introduction is **Open your personalized brand visibility report.**
