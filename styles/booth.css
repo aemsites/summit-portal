@@ -505,8 +505,8 @@
       width: calc(840 * var(--art-unit));
       max-width: none;
       margin: 0 0 calc(40 * var(--art-unit));
-      font-size: calc(100 * var(--art-unit));
-      line-height: .95;
+      font-size: calc(108 * var(--art-unit));
+      line-height: 1.08;
     }
 
     .hero-bottom p {
