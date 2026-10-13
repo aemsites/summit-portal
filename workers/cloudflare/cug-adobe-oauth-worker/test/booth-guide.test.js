@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from '../src/index.js';
 import { serveBoothGuide } from '../src/booth-guide.js';
-import { createSession } from '../src/session.js';
+import { createSession, getSession } from '../src/session.js';
+import { sha256hex } from '../src/stafflogin.js';
 import { createMockEnv, createMockBoothCookie } from './helpers.js';
 
 const PATH = '/adobe/booth-guide';
@@ -36,11 +37,30 @@ describe('Adobe employee booth guide', () => {
     return new Request(`https://act.aem.now${path}`, { method, headers: auth ? { Cookie: auth } : {} });
   }
 
-  it('requires interactive Adobe OAuth before any page, JSON or screenshot lookup', async () => {
+  async function staffCookie() {
+    env.EVENT_STAFF_CREDENTIALS = `guide-staff:${await sha256hex('fixture-password')}`;
+    env.EVENT_CRED_EPOCH = 'guide-v1';
+    const login = await worker.fetch(new Request('https://act.aem.now/auth/staff-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'guide-staff', password: 'fixture-password' }),
+    }), env);
+    expect(login.status).toBe(200);
+    const auth = login.headers.getSetCookie().find((value) => value.startsWith('auth_token='));
+    expect(auth).toBeTruthy();
+    const value = auth.split(';')[0];
+    const session = await getSession(request(PATH, 'GET', value), env);
+    expect(session.email).toBe('guide-staff@adobe.com');
+    expect(session.method).toBe('staff');
+    expect(session.gen_epoch).toBe('guide-v1');
+    return value;
+  }
+
+  it('requires an authenticated Adobe staff session before any page, JSON or screenshot lookup', async () => {
     for (const path of [PATH, `${PATH}/`, `${PATH}.html`, DATA, IMAGE, `${PATH}.plain.html`, `${PATH}.md`]) {
       const anonymous = await worker.fetch(request(path, 'GET', ''), env);
       expect(anonymous.status).toBe([PATH, `${PATH}/`, `${PATH}.html`].includes(path) ? 302 : 401);
-      if (anonymous.status === 302) expect(anonymous.headers.get('Location')).toBe('/auth/portal?redirect=%2Fadobe%2Fbooth-guide');
+      if (anonymous.status === 302) expect(anonymous.headers.get('Location')).toBe('/login?staff&redirect=%2Fadobe%2Fbooth-guide');
       expect(anonymous.headers.get('Cache-Control')).toBe('private, no-store');
       expect(await anonymous.text()).not.toContain('Private guide content');
       expect((await worker.fetch(request(path, 'HEAD', ''), env)).status).toBe(anonymous.status);
@@ -50,7 +70,6 @@ describe('Adobe employee booth guide', () => {
   });
 
   it.each([
-    ['employee@adobe.com', 'staff'],
     ['employee@adobe.com', 'sharelink'],
     ['employee@adobe.com', 'magiclink'],
     ['employee@adobe.com', undefined],
@@ -79,6 +98,44 @@ describe('Adobe employee booth guide', () => {
     const image = await worker.fetch(request(IMAGE), env);
     expect(image.headers.get('Content-Type')).toBe('image/png');
     expect([...new Uint8Array(await image.arrayBuffer())]).toEqual([137, 80, 78, 71]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('allows a real staff-login session to read the guide, data and screenshots', async () => {
+    const auth = await staffCookie();
+    for (const path of [PATH, `${PATH}/`, `${PATH}.html`, DATA, IMAGE]) {
+      for (const method of ['GET', 'HEAD']) {
+        const result = await worker.fetch(request(path, method, auth), env);
+        expect(result.status).toBe(200);
+        expect(result.headers.get('Cache-Control')).toBe('private, no-store');
+        if (method === 'HEAD') expect((await result.arrayBuffer()).byteLength).toBe(0);
+      }
+    }
+    expect(await (await worker.fetch(request(DATA, 'GET', auth), env)).json()).toEqual(guide);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps report-request PII unavailable to the staff-login session', async () => {
+    const auth = await staffCookie();
+    for (const path of ['/api/report-requests', '/api/report-requests.csv']) {
+      expect((await worker.fetch(request(path, 'GET', auth), env)).status).toBe(403);
+    }
+    expect(storage).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects revoked, expired and forged staff cookies before reading private guide content', async () => {
+    const revoked = await staffCookie();
+    env.EVENT_CRED_EPOCH = 'guide-v2';
+    const expired = `auth_token=${await createSession(env, { email: 'guide-staff@adobe.com', method: 'staff', gen_epoch: 'guide-v2' }, -1)}`;
+    for (const auth of [revoked, expired, 'auth_token=forged-staff-session']) {
+      for (const path of [PATH, DATA, IMAGE]) {
+        const result = await worker.fetch(request(path, 'GET', auth), env);
+        expect(result.status).toBe(path === PATH ? 302 : 401);
+        if (path === PATH) expect(result.headers.get('Location')).toBe('/login?staff&redirect=%2Fadobe%2Fbooth-guide');
+      }
+    }
+    expect(storage).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
   });
 
