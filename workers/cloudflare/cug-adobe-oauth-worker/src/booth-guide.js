@@ -2,8 +2,7 @@
 import shell from '../../../../booth-guide.html';
 import runtime from '../../../../scripts/booth-guide.js';
 import css from '../../../../styles/booth-guide.css';
-import { getSession } from './session.js';
-import { reportRequestsAuthorisation } from './report-requests.js';
+import { getSession, isVerifiedMethod } from './session.js';
 
 const PATH = '/adobe/booth-guide';
 const KEY = 'booth-guide:current';
@@ -42,6 +41,12 @@ function validGuide(guide) {
     && new Set(guide.screenshots).size === guide.screenshots.length;
 }
 
+function boothGuideAuthorisation(session) {
+  if (!session) return 401;
+  return isVerifiedMethod(session.method)
+    && /^[^@\s]+@adobe\.com$/i.test(String(session.email || '')) ? 200 : 403;
+}
+
 /** Private content never enters DA, the public origin, the media bypass or a Worker bundle. */
 export async function serveBoothGuide(request, env) {
   const url = new URL(request.url);
@@ -53,13 +58,13 @@ export async function serveBoothGuide(request, env) {
   if (url.pathname !== PATH && !url.pathname.startsWith(`${PATH}/`) && !url.pathname.startsWith(`${PATH}.`)) return null;
   if (!['GET', 'HEAD'].includes(request.method)) return response(request, 'Method Not Allowed', 405, undefined, { Allow: 'GET, HEAD' });
   const page = [PATH, `${PATH}/`, `${PATH}.html`].includes(url.pathname);
-  const authorization = reportRequestsAuthorisation(await getSession(request, env));
+  const authorization = boothGuideAuthorisation(await getSession(request, env));
   if (authorization !== 200) {
     if (authorization === 401 && page) {
-      return response(request, null, 302, undefined, { Location: `/auth/portal?redirect=${encodeURIComponent(PATH)}` });
+      return response(request, null, 302, undefined, { Location: `/login?staff&redirect=${encodeURIComponent(PATH)}` });
     }
     if (page) return response(request, shell, authorization, 'text/html; charset=utf-8');
-    return response(request, 'This staff guide requires Adobe employee sign-in with Adobe ID. Sign out of other accounts at /auth/logout, then sign in with your Adobe account.', authorization);
+    return response(request, 'This staff guide requires an authenticated Adobe employee session. Sign out of other accounts at /auth/logout, then sign in with your Adobe or event staff account.', authorization);
   }
   if (page) return response(request, shell, 200, 'text/html; charset=utf-8');
   const data = url.pathname === `${PATH}/data.json`;
