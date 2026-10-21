@@ -58,7 +58,7 @@ export function parseCredentials(env) {
  * Staff credentials. POST { username, password, action?: 'booth-login' | 'exit-booth' }.
  *
  * Verifies against the EVENT_STAFF_CREDENTIALS secret and, on success, mints a
- * full 4-day staff session (groups adobe.com + semrush.com → opens every
+ * full 5-day staff session (groups adobe.com + semrush.com → opens every
  * customer page) carrying the current EVENT_CRED_EPOCH as a kill-switch claim.
  * Booth login stays scoped; explicit exit revokes the visit and clears cookies,
  * without minting a portal session.
@@ -129,7 +129,7 @@ export async function handleStaffLoginRequest(request, env) {
     return new Response(JSON.stringify({ result: 'ok' }), { headers });
   }
   const token = await createSession(env, userInfo, EVENT_SESSION_TTL);
-  log(`session minted for ${username} (4-day, epoch=${userInfo.gen_epoch})`);
+  log(`session minted for ${username} (5-day, epoch=${userInfo.gen_epoch})`);
 
   const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
   headers.append('Set-Cookie', sessionCookie(token, EVENT_SESSION_TTL));

@@ -42,9 +42,10 @@ describe('staff-domain helpers', () => {
     expect(isStaffEmail('c@apple.com', env)).toBe(false);
   });
 
-  it('sessionTtlForEmail returns 4 days for staff, default for others', () => {
+  it('sessionTtlForEmail returns 5 days for staff, default for others', () => {
     const env = createMockEnv();
-    expect(sessionTtlForEmail('a@adobe.com', env)).toBe(EVENT_SESSION_TTL);
+    expect(sessionTtlForEmail('a@adobe.com', env)).toBe(432000);
+    expect(sessionTtlForEmail('b@semrush.com', env)).toBe(432000);
     expect(sessionTtlForEmail('c@apple.com', env)).toBe(14400);
   });
 

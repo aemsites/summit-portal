@@ -3,7 +3,10 @@ import {
 } from 'vitest';
 import worker from '../src/index.js';
 import { BoothCoordinator } from '../src/booth.js';
-import { createSession, createShareLinkToken, getSession, getBoothSession, createBoothRevocationToken } from '../src/session.js';
+import {
+  createSession, createShareLinkToken, getSession, getBoothSession, createBoothRevocationToken,
+  EVENT_SESSION_TTL,
+} from '../src/session.js';
 import { handleCallback } from '../src/oauth.js';
 import { sha256hex } from '../src/stafflogin.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
@@ -52,7 +55,7 @@ describe('request-scoped booth authorization boundary', () => {
     vi.restoreAllMocks();
     resetCugSheetCache();
     env = createMockEnv({ REPORT_REQUESTS: createMockBoothD1(), EVENT_CRED_EPOCH: '1' });
-    cookies = new Map([['auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' })]]);
+    cookies = new Map([['auth_token', await createSession(env, { email: 'operator@adobe.com', groups: ['adobe.com'], method: 'oauth' }, EVENT_SESSION_TTL)]]);
     actor = new BoothCoordinator({ storage: createMockBoothStorage(), waitUntil: vi.fn() }, env);
     env.BOOTH_COORDINATOR = { idFromName: (id) => id, get: () => actor };
     data = {
@@ -177,6 +180,33 @@ describe('request-scoped booth authorization boundary', () => {
     expect(cookies.has('booth_kiosk')).toBe(false);
   });
 
+  it.each(['oauth', 'staff'])('keeps a fresh touchscreen %s login for five days without granting dashboard access', async (method) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const started = Date.now();
+    cookies.clear();
+    let response;
+    if (method === 'oauth') {
+      response = await request('/auth/callback?code=test&state=test', undefined, 'GET', {}, false);
+    } else {
+      env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
+      const body = { username: 'operator', password: 'test-only-password', action: 'booth-login' };
+      response = await request('/auth/staff-login', body, 'POST', {}, false);
+    }
+    expect(cookies.has('auth_token')).toBe(false);
+    const issued = response.headers.getSetCookie().filter((value) => /^booth_(?:session|device)=/.test(value));
+    expect(issued).toHaveLength(2);
+    issued.forEach((value) => expect(value).toContain('Max-Age=432000'));
+    const headers = { Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; ') };
+    const boothRequest = new Request('https://portal.example/booth', { headers });
+    vi.setSystemTime(started + 4 * 86400000 + 1000);
+    expect(await getBoothSession(boothRequest, env)).toMatchObject({ email: 'operator@adobe.com' });
+    expect(await getSession(new Request('https://portal.example/adobe/dashboard', { headers }), env)).toBeNull();
+    vi.setSystemTime(started + 5 * 86400000 - 1000);
+    expect(await getBoothSession(boothRequest, env)).toMatchObject({ email: 'operator@adobe.com' });
+    vi.setSystemTime(started + 5 * 86400000);
+    expect(await getBoothSession(boothRequest, env)).toBeNull();
+  });
+
   it.each(['', 'https://foreign.example'])('requires same-origin authorization for an explicit booth login from %s', async (origin) => {
     cookies.clear();
     env.EVENT_STAFF_CREDENTIALS = `operator:${await sha256hex('test-only-password')}`;
@@ -258,8 +288,9 @@ describe('request-scoped booth authorization boundary', () => {
     expect(cookies.has('booth_session')).toBe(true);
     await request('/auth/booth/lookup', { email: 'visitor@example.com' });
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(Date.now() + 901000);
+    vi.setSystemTime(Date.now() + 86401000);
     expect((await request(selected)).status).toBe(302);
+    expect((await request('/auth/booth/status')).status).toBe(200);
     vi.useRealTimers();
     env.EVENT_CRED_EPOCH = '2';
     expect((await request('/auth/booth/status')).status).toBe(401);

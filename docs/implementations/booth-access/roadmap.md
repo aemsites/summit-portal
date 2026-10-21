@@ -42,7 +42,7 @@ Streams B and C can overlap **after** BE-01's API shape is agreed; C's integrati
 
 - Do not globally lengthen current share links or silently reinterpret their CUG grant.
 - Do not put the roster, email-to-path map, or signed links in client-side data sheets, event query strings or logs.
-- Do not treat a frontend idle reset as revoking a four-day staff session.
+- Do not treat a frontend idle reset as revoking a five-day staff session.
 - Keep brand switching config-driven, with no one-off event page.
 - A missing or duplicate registration email must not fall back to company search.
 - Production Worker deployment, data provisioning and DA publishing are separate owner-approved actions, not automatic task steps.

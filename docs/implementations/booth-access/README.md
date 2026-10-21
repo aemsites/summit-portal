@@ -5,6 +5,28 @@ Worker runtime. This is a reusable CUG-authorized prototype, not an event roster
 system. Deployment, real email receipt, final hardware rehearsal and PR merge
 are separate gates; code and fixture tests do not prove those gates passed.
 
+## Session durations (October 21, user-approved; deployment pending)
+
+Internal staff portal sessions and freshly authenticated touchscreen staff
+sessions last **five days from sign-in**. Their signed credentials and browser
+cookies use the same expiry. Booth entry from an existing interactive portal
+session retains that session's remaining time; activity does not renew staff
+authentication.
+
+Visitor reports, industry demos, picker, Finish and idle Entry use **one day of
+inactivity**. Real visitor input renews a live visit through server authorization;
+renewal is still deferred until three minutes before its confirmed deadline.
+Passive polling and assets never renew it. Manual clear, staff revocation,
+current report permissions, expired-visit rejection and browser-history cleanup
+are unchanged. Visitor details can remain on an idle shared screen for up to
+24 hours, so operators must still clear between visitors.
+
+The Worker and bundled browser helper must be deployed together. Existing staff
+credentials keep their old expiry; sign in again to receive five days. Clear
+old visitor contexts and reload booth/report tabs after rollout. No production
+deployment has been performed for this update. Earlier dated rollout records
+below describe the previous four-day/fifteen-minute policy.
+
 ## Same-hostname portal isolation (October 9, deployed)
 
 José approved removing the browser-wide booth lock, not adding a separate
@@ -313,7 +335,7 @@ lookup. It revokes the active selection, keeps the current inactivity expiry and
 permissions on selection; send/view outcomes remain independent per report.
 Sent and uncertain outcomes cannot become retryable by switching.
 
-**Inactivity policy (October 8, deployed):** the screen and attendee
+**Historical inactivity policy (October 8, deployed; durations superseded above):** the screen and attendee
 access now expire together after **15 minutes without visitor interaction**.
 Touch/pointer, scrolling, keyboard and input/change events renew the existing
 visit through same-origin `POST /auth/booth/activity`. Active reports can remain
@@ -864,7 +886,7 @@ forces the product's inset to zero to conceal that limitation.
 
 Everything is fixture-only: no customer lookup, real mail, staff authentication
 or lead recording. Server-memory state is isolated by a local fixture
-cookie and lost on restart. The cookie lasts fifteen minutes; local activity
+cookie and lost on restart. The cookie lasts one day; local activity
 renews the server's inactivity deadline, matching the latest main session model.
 Industry reports and metrics are synthetic.
 Pre-init touch/API facades run only in the explicitly opted-in local workbench

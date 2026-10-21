@@ -3,6 +3,8 @@ import sinon from 'sinon';
 import { boothRequest, mountBooth } from '../../scripts/booth.js';
 import mountBoothReturn from '../../scripts/booth-report.js';
 
+const VISIT_MS = 24 * 60 * 60 * 1000;
+
 describe('booth runtime boundary', () => {
   let sandbox;
   beforeEach(() => { sandbox = sinon.createSandbox(); });
@@ -222,7 +224,7 @@ describe('booth runtime boundary', () => {
     mountBooth(root);
     await clock.tickAsync(0);
     root.getElementById('registration-email').value = 'visitor@example.com';
-    await clock.tickAsync(900000);
+    await clock.tickAsync(VISIT_MS);
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.getElementById('booth-status').textContent).to.equal('Load failed');
     expect(root.querySelector('#email-form button').disabled).to.equal(true);
@@ -243,7 +245,7 @@ describe('booth runtime boundary', () => {
     fetchStub.onSecondCall().returns(new Promise((resolve) => { releaseLookup = resolve; }));
     fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
     mountBooth(root);
-    await clock.tickAsync(899000);
+    await clock.tickAsync(VISIT_MS - 1000);
     root.getElementById('registration-email').value = 'visitor@example.test';
     root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await clock.tickAsync(1001);
@@ -350,7 +352,7 @@ describe('booth runtime boundary', () => {
     fetchStub.onSecondCall().resolves({ ok: true, json: () => new Promise(() => {}) });
     fetchStub.onThirdCall().resolves({ ok: true, json: async () => ({ state: 'entry' }) });
     mountBooth(root);
-    await clock.tickAsync(900000);
+    await clock.tickAsync(VISIT_MS);
     expect(root.getElementById('booth-status').textContent).to.include('Clearing');
     await clock.tickAsync(10001);
     expect(root.querySelector('#email-form button').disabled).to.equal(true);
@@ -421,14 +423,14 @@ describe('booth runtime boundary', () => {
       { ok: true, json: async () => ({ state: 'entry' }) }
     ));
     mountBooth(root);
-    await clock.tickAsync(890000);
+    await clock.tickAsync(VISIT_MS - 10000);
     const email = root.getElementById('registration-email');
     email.value = 'still-typing@example.test';
     email.dispatchEvent(new Event('input', { bubbles: true }));
     await clock.tickAsync(11000);
     expect(email.value).to.equal('still-typing@example.test');
     email.dispatchEvent(new Event('change', { bubbles: true }));
-    await clock.tickAsync(890000);
+    await clock.tickAsync(VISIT_MS - 10000);
     expect(email.value).to.equal('still-typing@example.test');
     expect(fetchStub.calledOnce).to.equal(true);
     await clock.tickAsync(10001);
@@ -443,21 +445,21 @@ describe('booth runtime boundary', () => {
       {
         ok: true,
         json: async () => {
-          if (url.endsWith('/status')) return { state: 'picker', candidates: [], expiresAt: 900000 };
-          if (url.endsWith('/activity')) return { expiresAt: Date.now() + 900000 };
+          if (url.endsWith('/status')) return { state: 'picker', candidates: [], expiresAt: VISIT_MS };
+          if (url.endsWith('/activity')) return { expiresAt: Date.now() + VISIT_MS };
           return { state: 'entry' };
         },
       }
     ));
     mountBooth(root);
-    await clock.tickAsync(890000);
+    await clock.tickAsync(VISIT_MS - 10000);
     const email = root.getElementById('registration-email');
     email.value = 'active@example.test';
     email.dispatchEvent(new Event('input', { bubbles: true }));
     await clock.tickAsync(50000);
     expect(email.value).to.equal('active@example.test');
     email.dispatchEvent(new Event('change', { bubbles: true }));
-    await clock.tickAsync(899999);
+    await clock.tickAsync(VISIT_MS - 1);
     expect(email.value).to.equal('active@example.test');
     await clock.tickAsync(1);
     expect(email.value).to.equal('');
@@ -546,13 +548,13 @@ describe('booth runtime boundary', () => {
     }
   });
 
-  it('renews the no-report screen from its confirmed server expiry until fifteen minutes of inactivity', async () => {
+  it('renews the no-report screen from its confirmed server expiry until one day of inactivity', async () => {
     const root = await productionFixture();
     const clock = sandbox.useFakeTimers();
     const fetchStub = sandbox.stub(window, 'fetch').callsFake(async (url, options) => {
-      if (url.endsWith('/lookup')) return jsonReply({ code: 'no_report', error: 'No report', expiresAt: 900000 }, 404);
+      if (url.endsWith('/lookup')) return jsonReply({ code: 'no_report', error: 'No report', expiresAt: VISIT_MS }, 404);
       if (url.endsWith('/activity')) {
-        return jsonReply({ expiresAt: Date.now() + 900000 - JSON.parse(options.body).idleMs });
+        return jsonReply({ expiresAt: Date.now() + VISIT_MS - JSON.parse(options.body).idleMs });
       }
       return jsonReply({ state: 'entry' });
     });
@@ -560,11 +562,11 @@ describe('booth runtime boundary', () => {
     await clock.tickAsync(0);
     root.getElementById('registration-email').value = 'no-report@example.test';
     root.getElementById('email-form').dispatchEvent(new Event('submit', { cancelable: true }));
-    await clock.tickAsync(840000);
+    await clock.tickAsync(VISIT_MS - 60000);
     root.dispatchEvent(new Event('pointerdown'));
     await clock.tickAsync(0);
     expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/activity');
-    await clock.tickAsync(899999);
+    await clock.tickAsync(VISIT_MS - 1);
     expect(root.querySelector('[data-panel="unavailable"]').hidden).to.equal(false);
     await clock.tickAsync(1);
     expect(fetchStub.lastCall.args[0]).to.equal('/auth/booth/reset');
