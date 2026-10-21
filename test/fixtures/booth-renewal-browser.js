@@ -63,7 +63,7 @@ export default async function verifyBoothRenewal(page, root = 'http://localhost:
       const { idleMs } = JSON.parse(route.request().postData());
       return route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ expiresAt: Date.now() + 900000 - idleMs }),
+        body: JSON.stringify({ expiresAt: Date.now() + 24 * 60 * 60 * 1000 - idleMs }),
       });
     });
     await target.goto(`${root}/booth?touchscreen=1`);

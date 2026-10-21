@@ -3,6 +3,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   const check = (condition, message) => {
     if (!condition) throw new Error(message);
   };
+  const visitMs = 24 * 60 * 60 * 1000;
   await page.clock.install();
   const actions = [];
   page.on('request', (request) => {
@@ -141,11 +142,11 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   check(await page.locator('#demo-intro').isVisible(), 'Staff shortcut lost its truthful introduction');
   await page.locator('#demo-options button').first().click();
   await page.locator('#booth-return').waitFor();
-  await page.clock.fastForward(890000);
+  await page.clock.fastForward(visitMs - 10000);
   await page.locator('#booth-return strong').click();
   await page.clock.fastForward(30000);
   check(new URL(page.url()).pathname.startsWith('/example-report/'), 'Touch activity did not renew demo idle time');
-  await page.clock.fastForward(870001);
+  await page.clock.fastForward(visitMs - 30000 + 1);
   await page.waitForURL('**/booth');
   await ready();
   await page.goBack();

@@ -43,7 +43,7 @@ function fixtureContext(request, response) {
   const key = randomUUID();
   const context = { state: 'entry', expiresAt: Date.now() + BOOTH_INACTIVITY_MS };
   fixtures.set(key, context);
-  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
+  response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${BOOTH_INACTIVITY_MS / 1000}`);
   return context;
 }
 
@@ -228,7 +228,7 @@ const server = createServer(async (request, response) => {
       const expiresAt = Date.now() + BOOTH_INACTIVITY_MS - body.idleMs;
       context.expiresAt = Math.max(context.expiresAt, expiresAt);
       const key = request.headers.cookie.match(/booth_preview=([\w-]+)/)[1];
-      response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=900`);
+      response.setHeader('Set-Cookie', `booth_preview=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${BOOTH_INACTIVITY_MS / 1000}`);
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ expiresAt: context.expiresAt }));
       return;

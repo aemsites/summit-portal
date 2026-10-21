@@ -223,8 +223,11 @@ describe('index (request routing)', () => {
       expect(resp.status).toBe(302);
       expect(resp.headers.get('Location')).toBe('https://mysite.com/members');
       expect(resp.headers.get('Set-Cookie')).toContain('auth_token=');
-      // Staff-domain login (alice@adobe.com) gets the 4-day event TTL.
-      expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=345600');
+      expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=432000');
+      const { getSession } = await import('../src/session.js');
+      const token = resp.headers.get('Set-Cookie').match(/auth_token=([^;]+)/)[1];
+      const session = await getSession(new Request('https://mysite.com/adobe/dashboard', { headers: { Cookie: `auth_token=${token}` } }), env);
+      expect(session.exp - session.iat).toBe(432000);
     });
 
     it('tags the session method as oauth', async () => {
@@ -752,6 +755,22 @@ describe('index (request routing)', () => {
       expect(resp.headers.get('Location')).toBe('https://mysite.com/login?redirect=%2Fcustomers%2Ftest%2F');
     });
 
+    it.each(['magiclink', 'sharelink'])('gives a staff %s session a five-day cookie and signed expiry', async (purpose) => {
+      const { getSession } = await import('../src/session.js');
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({ purpose, email: 'alice@adobe.com', iat: now, exp: now + 3600 }, env.JWT_SECRET);
+      const response = await worker.fetch(
+        new Request(`https://mysite.com/adobe/dashboard?token=${token}`),
+        env,
+      );
+      expect(response.status).toBe(302);
+      const cookie = response.headers.getSetCookie().find((value) => value.startsWith('auth_token='));
+      expect(cookie).toContain('Max-Age=432000');
+      const session = await getSession(new Request('https://mysite.com/adobe/dashboard', { headers: { Cookie: cookie.split(';')[0] } }), env);
+      expect(session.exp - session.iat).toBe(432000);
+      expect(session.method).toBe(purpose);
+    });
+
     it('gives a customer magic-link session the short 4h TTL', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({ purpose: 'magiclink', email: 'tim@apple.com', iat: now }, env.JWT_SECRET);
@@ -768,7 +787,7 @@ describe('index (request routing)', () => {
   });
 
   describe('POST /auth/staff-login', () => {
-    it('routes to the staff-login handler and mints a 4-day session', async () => {
+    it('routes to the staff-login handler and mints a 5-day session', async () => {
       const { sha256hex } = await import('../src/stafflogin.js');
       const staffEnv = createMockEnv({
         EVENT_STAFF_CREDENTIALS: `cannes:${await sha256hex('pw')}`,
@@ -785,7 +804,7 @@ describe('index (request routing)', () => {
       const cookies = resp.headers.getSetCookie();
       const authCookie = cookies.find((c) => c.startsWith('auth_token='));
       expect(authCookie).toBeTruthy();
-      expect(authCookie).toContain('Max-Age=345600');
+      expect(authCookie).toContain('Max-Age=432000');
 
       const { getSession } = await import('../src/session.js');
       const newToken = authCookie.match(/auth_token=([^;]+)/)[1];

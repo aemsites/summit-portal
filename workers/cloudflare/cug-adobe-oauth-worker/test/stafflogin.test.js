@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   handleStaffLoginRequest, sha256hex, timingSafeEqual, parseCredentials,
 } from '../src/stafflogin.js';
@@ -57,7 +55,7 @@ describe('handleStaffLoginRequest', () => {
     expect(resp.status).toBe(405);
   });
 
-  it('mints a 4-day full-staff session on valid credentials', async () => {
+  it('mints a 5-day full-staff session on valid credentials', async () => {
     const resp = await handleStaffLoginRequest(postLogin({ username: 'cannes-ipad', password: 'letmein' }), env);
     expect(resp.status).toBe(200);
     const token = authTokenFrom(resp);
@@ -68,8 +66,26 @@ describe('handleStaffLoginRequest', () => {
     );
     expect(session.email).toBe('cannes-ipad@adobe.com');
     expect(session.groups).toEqual(['adobe.com', 'semrush.com']);
-    expect(session.exp - session.iat).toBe(345600);
+    expect(session.exp - session.iat).toBe(432000);
+    expect(resp.headers.get('Set-Cookie')).toContain('Max-Age=432000');
     expect(session.gen_epoch).toBe('3');
+  });
+
+  it('keeps the dashboard signed in through day four and rejects the session after day five', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const started = Date.now();
+      const response = await handleStaffLoginRequest(postLogin({ username: 'cannes-ipad', password: 'letmein' }), env);
+      const request = new Request('https://mysite.com/adobe/dashboard', { headers: { Cookie: `auth_token=${authTokenFrom(response)}` } });
+      vi.setSystemTime(started + 4 * 86400000 + 1000);
+      expect(await getSession(request, env)).toMatchObject({ email: 'cannes-ipad@adobe.com' });
+      vi.setSystemTime(started + 5 * 86400000 - 1000);
+      expect(await getSession(request, env)).toMatchObject({ email: 'cannes-ipad@adobe.com' });
+      vi.setSystemTime(started + 5 * 86400000 + 1000);
+      expect(await getSession(request, env)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('rejects a wrong password', async () => {

@@ -39,7 +39,7 @@ Neither email nor token is returned to the attendee, analytics or browser storag
 | `POST /auth/booth/select` | `{ path }` only | Selects an exact stored candidate after fresh revalidation; returns report state with current expiry, `canChooseAnother` and that report's delivery/view outcomes |
 | `POST /auth/booth/picker` | `{}` only | Revokes active selection; returns `{ state: "picker", candidates, expiresAt }` without another email lookup or expiry extension |
 | `POST /auth/booth/send` | `{}` only | `{ sent: true }`; email and path derived exclusively from context |
-| `POST /auth/booth/activity` | `{ idleMs }` only; integer `0 <= idleMs < 900000` | `{ expiresAt }`; renews a live visit to fifteen minutes after the last input, with fresh staff/binding and personal-report permission checks; never revives an expired/reset visit |
+| `POST /auth/booth/activity` | `{ idleMs }` only; integer `0 <= idleMs < 86400000` | `{ expiresAt }`; renews a live visit to one day after the last input, with fresh staff/binding and personal-report permission checks; never revives an expired/reset visit |
 | `POST /auth/booth/reset` | `{}` | `{ state: "entry" }`; removes attendee context/cookie, retains scoped booth credentials and kiosk boundary |
 | `POST /auth/booth/exit` | `{}` | `{ state: "entry" }`; clears attendee and authentication/device credentials, preserves kiosk boundary; UI navigates to booth staff login |
 
@@ -83,7 +83,7 @@ the selected path must still be the prepared authorized candidate.
 ## Attendee context and concurrency
 
 Opaque random `booth_context` cookie: HttpOnly, Secure, SameSite=Strict, root
-path, fifteen-minute maximum age renewed with the live visit. It identifies a Durable Object, not an identity or
+path, one-day maximum age renewed with the live visit. It identifies a Durable Object, not an identity or
 an access grant. The coordinator binds the context to the scoped booth credential
 and rejects another session.
 
@@ -115,7 +115,7 @@ context returns to `/booth`; coordinator failure is an explicit fail-closed 503.
 Ordinary browsing/redemption on unmarked browsers remains unchanged.
 
 `SESSIONS` KV holds an immutable `booth:<random key>` record with asserted email
-and candidate paths until the renewable fifteen-minute inactivity expiry.
+and candidate paths until the renewable one-day inactivity expiry.
 Durable Object storage holds the binding,
 record key, selected path, inactivity expiry and per-report delivery/view outcomes.
 Every operation is serialized, including the expiry alarm. Durable storage—not eventually
@@ -159,7 +159,7 @@ stays visible without JavaScript and gives staff guidance in noscript. After
 verification, the adapter removes the temporary concealment
 wrapper while preserving its original nodes, listeners and direct-body layout.
 
-One fifteen-minute inactivity window applies on booth, Finish and active reports
+A one-day inactivity window applies on booth, Finish and active reports
 or demos. The shared helper sends batched renewals only after visitor pointer,
 scroll, key, input or change events, carrying elapsed idle milliseconds so a
 delayed request does not add extra idle time. Successful renewal refreshes the
@@ -168,7 +168,7 @@ view tracking do not renew. The injected initial deadline remains a fail-closed
 bound until status verification, but subsequent authorized activity may extend
 it. Failed renewal conceals the report or scrubs Entry into visible recovery.
 There is no separate fixed maximum visit length. Staff credentials keep their
-original four-day expiry and revocation. On pagehide, the booth scrubs inputs and
+original five-day expiry and revocation. On pagehide, the booth scrubs inputs and
 panels; bfcache pageshow and history pop reset server context before showing
 Entry. The report hides its cached document and clears on bfcache return.
 Its fixed Finish bar is visible at the top of long content, reserves measured

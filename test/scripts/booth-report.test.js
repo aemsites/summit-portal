@@ -1292,20 +1292,21 @@ describe('confirmed booth report portrait layout', () => {
     expect(document.querySelector('#booth-recovery p').textContent).to.include('Could not clear');
   });
 
-  it('renews touch and scroll activity beyond the injected deadline, then conceals after fifteen idle minutes', async () => {
+  it('renews touch and scroll activity beyond the injected deadline, then conceals after one idle day', async () => {
     const main = await reportFixture();
     const clock = sandbox.useFakeTimers({ now: Date.now() });
-    const expiresAt = Date.now() + 900000;
+    const visitMs = 24 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + visitMs;
     markReport(expiresAt);
     await mount({ expiresAt });
     window.fetch.callsFake(async (url, options) => (
       url.endsWith('/activity')
-        ? Response.json({ expiresAt: Date.now() + 900000 - JSON.parse(options.body).idleMs })
+        ? Response.json({ expiresAt: Date.now() + visitMs - JSON.parse(options.body).idleMs })
         : Response.json({ error: 'Synthetic reset failure' }, { status: 503 })
     ));
     const scroll = document.addEventListener.getCalls().find(({ args }) => args[0] === 'scroll');
     const touch = document.addEventListener.getCalls().find(({ args }) => args[0] === 'pointerdown');
-    await clock.tickAsync(840000);
+    await clock.tickAsync(visitMs - 60000);
     touch.args[1]();
     await clock.tickAsync(0);
     expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
@@ -1315,7 +1316,7 @@ describe('confirmed booth report portrait layout', () => {
     await clock.tickAsync(1);
     expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/activity');
     expect(document.documentElement.classList.contains('booth-report-clearing')).to.equal(false);
-    await clock.tickAsync(899998);
+    await clock.tickAsync(visitMs - 2);
     expect(getComputedStyle(main).display).not.to.equal('none');
     await clock.tickAsync(1);
     expect(window.fetch.lastCall.args[0]).to.equal('/auth/booth/reset');

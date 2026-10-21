@@ -190,7 +190,7 @@ export default async function verifyBooth(page, root = 'http://localhost:3000') 
   await page.clock.install();
   await page.locator('#registration-email').fill('visitor@example.com');
   await page.locator('#registration-email').press('ArrowLeft');
-  await page.clock.fastForward(900001);
+  await page.clock.fastForward(24 * 60 * 60 * 1000 + 1);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   check(state.state === 'entry', 'Idle timeout must reset server context');
   await page.evaluate(() => {

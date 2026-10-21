@@ -6,6 +6,7 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   const check = (condition, message) => {
     if (!condition) throw new Error(message);
   };
+  const visitMs = 24 * 60 * 60 * 1000;
   check(await page.evaluate(() => navigator.maxTouchPoints > 0), 'Use a browser context with hasTouch: true');
   const ready = () => page.waitForFunction(() => !document.querySelector('#email-form button').disabled);
   const entry = async (width, height) => {
@@ -67,11 +68,11 @@ export default async function verifyBoothKeyboard(page, root = 'http://localhost
   await page.clock.install();
   await entry(1080, 1920);
   await page.locator('#registration-email').click();
-  await page.clock.fastForward(890000);
+  await page.clock.fastForward(visitMs - 10000);
   await page.keyboard.insertText('still-typing@example.test');
   await page.clock.fastForward(11000);
   check(await page.locator('#registration-email').inputValue() === 'still-typing@example.test', 'Active virtual-keyboard typing was cleared as idle');
-  await page.clock.fastForward(889001);
+  await page.clock.fastForward(visitMs - 10999);
   await page.waitForFunction(() => document.querySelector('#registration-email').value === '');
   await page.clock.resume();
   return { checked: 'Entry email after resize and dismissal without blur at native/scaled sizes; overlay reachability for email and action; blur cleanup; input-only activity and eventual idle reset. Retired booth requests are not reintroduced. Local fixtures only.' };

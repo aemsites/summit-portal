@@ -14,7 +14,7 @@ import createBoothTiming from './booth-timing.js';
 import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
 import { websiteHost, fetchWebsiteIcon } from './booth-icons.js';
 
-const TTL = 15 * 60;
+const TTL = 24 * 60 * 60;
 const COOKIE = 'booth_context';
 const ASSET_HEADERS = {
   'Cache-Control': 'private, no-store',

@@ -195,28 +195,48 @@ describe('booth isolated context', () => {
     expect((await pending).status).toBe(403);
   });
 
-  it('uses a fifteen-minute inactivity expiry and refreshes KV, cookies and alarm only for visitor input', async () => {
+  it('uses a one-day inactivity expiry and refreshes KV, cookies and alarm only for visitor input', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       const started = Date.now();
       const lookup = await (await request('lookup', { email: 'visitor@example.com' })).json();
-      expect(lookup.expiresAt).toBe(started + 900000);
+      expect(lookup.expiresAt).toBe(started + 86400000);
       const record = await state.storage.get('context');
       const put = vi.spyOn(env.SESSIONS, 'put');
       const alarm = vi.spyOn(state.storage, 'setAlarm');
-      vi.setSystemTime(started + 840000);
+      vi.setSystemTime(started + 86340000);
       const response = await request('activity', { idleMs: 2000 });
       const renewed = await response.json();
-      expect(renewed).toEqual({ expiresAt: started + 1738000 });
-      expect(response.headers.get('Set-Cookie')).toContain('Max-Age=900');
+      expect(renewed).toEqual({ expiresAt: started + 172738000 });
+      expect(response.headers.get('Set-Cookie')).toContain('Max-Age=86400');
       expect(response.headers.get('Set-Cookie')).not.toContain('booth_session');
-      expect(put).toHaveBeenCalledWith(`booth:${record.key}`, expect.any(String), { expirationTtl: 898 });
+      expect(put).toHaveBeenCalledWith(`booth:${record.key}`, expect.any(String), { expirationTtl: 86398 });
       expect(alarm).toHaveBeenLastCalledWith(renewed.expiresAt);
       expect(await state.storage.get('context')).toMatchObject({ key: record.key, selectedPath: path, expiresAt: renewed.expiresAt });
-      vi.setSystemTime(started + 1000000);
+      vi.setSystemTime(started + 86401000);
       actor = new BoothCoordinator(state, env);
       expect((await (await request('status')).json()).expiresAt).toBe(renewed.expiresAt);
       vi.setSystemTime(renewed.expiresAt);
+      expect((await request('activity', { idleMs: 0 })).status).toBe(410);
+      expect(await state.storage.get('context')).toBeUndefined();
+      expect(env.SESSIONS.store.size).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a visitor report accessible after fifteen minutes and expires it after one idle day', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const started = Date.now();
+      const lookup = await request('lookup', { email: 'visitor@example.com' });
+      expect(lookup.headers.get('Set-Cookie')).toContain('Max-Age=86400');
+      vi.setSystemTime(started + 900001);
+      expect(await (await request('status')).json()).toMatchObject({ state: 'report', selectedPath: path });
+      vi.setSystemTime(started + 86399000);
+      expect(await (await request('status')).json()).toMatchObject({ state: 'report', selectedPath: path });
+      vi.setSystemTime(started + 86400000);
+      expect(await (await request('status')).json()).toMatchObject({ state: 'entry' });
       expect((await request('activity', { idleMs: 0 })).status).toBe(410);
       expect(await state.storage.get('context')).toBeUndefined();
       expect(env.SESSIONS.store.size).toBe(0);
@@ -247,7 +267,7 @@ describe('booth isolated context', () => {
       const record = await state.storage.get('context');
       const put = vi.spyOn(env.SESSIONS, 'put');
       vi.setSystemTime(lookup.expiresAt - 1000);
-      const response = await request('activity', { idleMs: 899500 });
+      const response = await request('activity', { idleMs: 86399500 });
       expect(await response.json()).toEqual({ expiresAt: lookup.expiresAt });
       expect(put).toHaveBeenLastCalledWith(`booth:${record.key}`, expect.any(String), { expirationTtl: 60 });
       vi.setSystemTime(lookup.expiresAt);
@@ -261,7 +281,7 @@ describe('booth isolated context', () => {
   it('rejects malformed activity, wrong devices, revoked staff and revoked report permissions', async () => {
     expect((await request('activity', { idleMs: 0 })).status).toBe(410);
     await request('lookup', { email: 'visitor@example.com' });
-    for (const body of [{}, { idleMs: -1 }, { idleMs: 900000 }, { idleMs: '0' }, { idleMs: 0.5 }, { idleMs: 0, path }]) {
+    for (const body of [{}, { idleMs: -1 }, { idleMs: 86400000 }, { idleMs: '0' }, { idleMs: 0.5 }, { idleMs: 0, path }]) {
       expect((await request('activity', body)).status).toBe(400);
     }
     expect((await request('activity', { idleMs: 0 }, { Origin: 'https://other.example' })).status).toBe(403);

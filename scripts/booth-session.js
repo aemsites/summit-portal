@@ -1,4 +1,4 @@
-export const BOOTH_INACTIVITY_MS = 15 * 60 * 1000;
+export const BOOTH_INACTIVITY_MS = 24 * 60 * 60 * 1000;
 const RENEW_BEFORE_EXPIRY_MS = 3 * 60 * 1000;
 const RETRY_INTERVAL_MS = 30000;
 

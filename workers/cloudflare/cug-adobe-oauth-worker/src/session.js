@@ -7,7 +7,7 @@
  */
 
 const SESSION_TTL = 14400; // 4 hours
-const EVENT_SESSION_TTL = 345600; // 4 days — staff/event sessions
+const EVENT_SESSION_TTL = 432000; // 5 days — staff/event sessions
 const STAFF_DOMAINS_DEFAULT = 'adobe.com,semrush.com';
 const COOKIE_NAME = 'auth_token';
 const MAGIC_LINK_MAX_AGE = 2 * 24 * 60 * 60; // 2 days in seconds
@@ -108,7 +108,7 @@ export async function validateImsStaffToken(token, env) {
   }
 }
 
-/** Staff logins get the 4-day event TTL; everyone else the short default. */
+/** Staff logins get the 5-day event TTL; everyone else the short default. */
 export function sessionTtlForEmail(email, env) {
   return isStaffEmail(email, env) ? EVENT_SESSION_TTL : SESSION_TTL;
 }

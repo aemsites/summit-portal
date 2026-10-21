@@ -65,6 +65,27 @@ test('old preview remains layout-only with explicit local fake actions', async (
   assert.equal((await fetch(`${root}/auth/booth/status`)).status, 200);
 });
 
+test('preview visit and cookie last one day and manual reset still clears the report', async (t) => {
+  const root = await start(t, ['--preview']);
+  const status = await fetch(`${root}/auth/booth/status`);
+  assert.match(status.headers.get('set-cookie'), /Max-Age=86400(?:;|$)/);
+  const headers = {
+    Cookie: status.headers.get('set-cookie').split(';')[0],
+    'Content-Type': 'application/json',
+  };
+  const started = Date.now();
+  const lookup = await fetch(`${root}/auth/booth/lookup`, { method: 'POST', headers, body: '{"email":"visitor@example.test"}' });
+  const visit = await lookup.json();
+  assert.equal(visit.state, 'report');
+  assert.ok(visit.expiresAt >= started + 86400000);
+  assert.ok(visit.expiresAt <= Date.now() + 86400000);
+  const activity = await fetch(`${root}/auth/booth/activity`, { method: 'POST', headers, body: '{"idleMs":0}' });
+  assert.equal(activity.status, 200);
+  assert.match(activity.headers.get('set-cookie'), /Max-Age=86400(?:;|$)/);
+  const reset = await fetch(`${root}/auth/booth/reset`, { method: 'POST', headers, body: '{}' });
+  assert.equal((await reset.json()).state, 'entry');
+});
+
 test('simulator injects a blocking hook only on booth fixture documents', async (t) => {
   const root = await start(t, ['--simulator']);
   assert.match(await (await fetch(root)).text(), /data-simulator="true"/);
