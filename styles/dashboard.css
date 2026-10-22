@@ -1,0 +1,278 @@
+.dashboard-page {
+  box-sizing: border-box;
+  padding: 28px 16px 48px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-family: Montserrat, var(--font-family);
+}
+
+.dashboard-page ~ .cp-report-dialog {
+  font-family: Montserrat, var(--font-family);
+}
+
+.dashboard-page .dashboard-shell {
+  display: block;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.dashboard-page :is(a, button, select, input):focus-visible {
+  outline: 3px solid light-dark(var(--color-blue-600), var(--color-blue-300));
+  outline-offset: 3px;
+}
+
+.dashboard-page .dashboard-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.dashboard-page .dashboard-heading h1 {
+  margin: 0;
+  font-size: clamp(22px, 2.3vw, 28px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+
+.dashboard-page .dashboard-intro {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dashboard-page .dashboard-request-more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-page .dashboard-request-more > span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.dashboard-page .dashboard-request-more a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 0 16px;
+  background: light-dark(var(--color-purple-700), var(--color-purple-300));
+  color: light-dark(var(--color-light), var(--color-purple-900));
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.dashboard-page .dashboard-jump {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: 16px;
+  color: light-dark(var(--color-purple-700), var(--color-purple-200));
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
+
+.dashboard-page .dashboard-grid {
+  display: grid;
+  gap: 32px;
+}
+
+.dashboard-page :is(.dashboard-reports, .dashboard-resources) {
+  min-width: 0;
+}
+
+.dashboard-page .dashboard-resources {
+  scroll-margin-top: 24px;
+}
+
+.dashboard-page .dashboard-resources > h2 {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.dashboard-page .dashboard-resource-card {
+  margin: 0 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--color-surface);
+}
+
+.dashboard-page .dashboard-resource-card > h3 {
+  margin: 0 0 9px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.dashboard-page .dashboard-resource-copy {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.dashboard-page .dashboard-resource-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.dashboard-page .dashboard-resource-actions :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: light-dark(var(--color-purple-700), var(--color-purple-200));
+  text-align: left;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.dashboard-page .dashboard-resource-actions :is(a, button):hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dashboard-page .dashboard-device-note {
+  margin: 16px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.dashboard-page .dashboard-resource-dialog {
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 24px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  text-align: left;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 20%);
+}
+
+.dashboard-page .dashboard-resource-dialog::backdrop {
+  background: rgb(15 20 35 / 42%);
+}
+
+.dashboard-page .dashboard-resource-dialog > h2 {
+  margin: 0 44px 22px 0;
+  font-size: 21px;
+  line-height: 1.4;
+}
+
+.dashboard-page .dashboard-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.dashboard-page .dashboard-dialog-content {
+  max-height: calc(100dvh - 160px);
+  overflow: auto;
+  padding: 3px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.dashboard-page .dashboard-dialog-content :is(.default-content, .block-content) {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+.dashboard-page .dashboard-dialog-content .rcl-bar {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.dashboard-page .dashboard-dialog-content .rcl-bar::after {
+  content: none;
+}
+
+.dashboard-page .dashboard-dialog-content .rcl-text {
+  font-size: 14px;
+}
+
+.dashboard-page .dashboard-dialog-content .dt-usage {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.dashboard-page .dashboard-dialog-content .dt-usage > summary {
+  min-height: 44px;
+  font-size: 15px;
+}
+
+.dashboard-page .dashboard-dialog-content .booth-guide-banner {
+  margin-top: 24px;
+}
+
+@media (width >= 900px) {
+  .dashboard-page {
+    padding: 32px 24px 64px;
+  }
+
+  .dashboard-page .dashboard-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 30px;
+  }
+
+  .dashboard-page .dashboard-request-more {
+    align-items: flex-end;
+  }
+
+  .dashboard-page .dashboard-jump {
+    display: none;
+  }
+
+  .dashboard-page .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) 264px;
+    align-items: start;
+    gap: 24px;
+  }
+
+  .dashboard-page .dashboard-resources {
+    padding-top: 2px;
+  }
+}
