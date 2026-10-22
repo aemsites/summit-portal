@@ -90,7 +90,7 @@ export function buildShareForm(path) {
   // --- Copy path (mints + copies on click, no email needed) ---
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
-  copyBtn.className = 'cp-dialog-cta cp-dialog-cta--secondary cp-share-copy';
+  copyBtn.className = 'cp-dialog-cta cp-dialog-cta-secondary cp-share-copy';
   copyBtn.innerHTML = `${COPY_ICON}<span class="cp-share-copy-label">Copy link</span>`;
   wrap.append(copyBtn);
 
