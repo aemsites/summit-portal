@@ -140,6 +140,7 @@ export function buildShareForm(path) {
   let copyResetTimer;
   copyBtn.addEventListener('click', async () => {
     clearTimeout(copyResetTimer);
+    copyLabel.textContent = 'Copy link';
 
     copyBtn.disabled = true;
     setStatus('Generating link…', 'pending');
@@ -147,23 +148,35 @@ export function buildShareForm(path) {
     try {
       const { status: code, ok, data } = await requestShareLink(path, { mode: 'copy' });
       if (ok && data.result === 'link' && data.link) {
+        let copied = false;
         try {
           await navigator.clipboard.writeText(data.link);
+          copied = true;
         } catch {
-          // Clipboard API blocked (insecure context / permissions): fall back to
-          // a hidden textarea + execCommand so Copy still works.
+          // A native modal makes everything outside it inert, including text selection.
           const ta = document.createElement('textarea');
           ta.value = data.link;
+          ta.readOnly = true;
           ta.style.position = 'fixed';
           ta.style.opacity = '0';
-          document.body.append(ta);
-          ta.select();
-          document.execCommand?.('copy');
-          ta.remove();
+          wrap.append(ta);
+          try {
+            ta.focus();
+            ta.select();
+            copied = document.execCommand?.('copy') === true;
+          } catch {
+            copied = false;
+          } finally {
+            ta.remove();
+          }
         }
-        copyLabel.textContent = 'Copied ✓';
-        setStatus('Link copied — paste it into Slack, Teams, or anywhere.', 'success');
-        copyResetTimer = setTimeout(() => { copyLabel.textContent = 'Copy link'; }, 2500);
+        if (copied) {
+          copyLabel.textContent = 'Copied ✓';
+          setStatus('Link copied — paste it into Slack, Teams, or anywhere.', 'success');
+          copyResetTimer = setTimeout(() => { copyLabel.textContent = 'Copy link'; }, 2500);
+        } else {
+          setStatus('Your browser could not copy the link. Please try again.', 'error');
+        }
       } else if (code === 401) {
         setStatus('Your session expired — please reload and sign in again.', 'error');
       } else {
@@ -173,6 +186,7 @@ export function buildShareForm(path) {
       setStatus('Network error — please try again.', 'error');
     } finally {
       copyBtn.disabled = false;
+      if (document.activeElement === document.body) copyBtn.focus();
     }
   });
 

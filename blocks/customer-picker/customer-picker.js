@@ -807,9 +807,18 @@ function buildCampaignPicker(id, onChange) {
     if (focus) trigger.focus();
   }
 
-  function renderOptions() {
-    active = -1;
-    input.removeAttribute('aria-activedescendant');
+  function setActive(index) {
+    const choices = [...list.children];
+    active = choices[index] ? index : -1;
+    choices.forEach((choice, i) => choice.classList.toggle('cp-campaign-option-active', i === active));
+    if (choices[active]) {
+      input.setAttribute('aria-activedescendant', choices[active].id);
+      choices[active].scrollIntoView({ block: 'nearest' });
+    } else input.removeAttribute('aria-activedescendant');
+  }
+
+  function renderOptions(preserveActive = false) {
+    const activeId = preserveActive ? list.children[active]?.dataset.campaignId : undefined;
     const selected = modes.find((mode) => mode.id === current);
     const matches = input.value.trim() ? searchCampaigns(modes, input.value)
       : [...(selected && current !== DEFAULT_MODE ? [selected] : []), modes[0]].filter(Boolean);
@@ -822,9 +831,11 @@ function buildCampaignPicker(id, onChange) {
       choice.setAttribute('role', 'option');
       choice.setAttribute('aria-selected', String(mode.id === current));
       choice.id = `${id}-campaign-option-${i}`;
+      choice.dataset.campaignId = mode.id;
       choice.tabIndex = -1;
       list.append(choice);
     });
+    setActive(matches.findIndex((mode) => mode.id === activeId));
     help.hidden = !!input.value.trim();
     status.textContent = input.value.trim() ? `${matches.length} ${matches.length === 1 ? 'campaign' : 'campaigns'} found` : '';
     if (input.value.trim() && !matches.length) status.textContent = 'No matching campaigns. Try another part of the name.';
@@ -839,21 +850,16 @@ function buildCampaignPicker(id, onChange) {
       input.focus();
     } else closePicker();
   });
-  input.addEventListener('input', renderOptions);
+  input.addEventListener('input', () => renderOptions());
   wrapper.addEventListener('keydown', (event) => {
     if (popup.hidden) return;
     const choices = [...list.children];
     if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();
-      if (event.key === 'Home') active = 0;
-      else if (event.key === 'End') active = choices.length - 1;
-      else if (event.key === 'ArrowDown') active = Math.min(active + 1, choices.length - 1);
-      else active = active <= 0 ? choices.length - 1 : active - 1;
-      choices.forEach((choice, i) => choice.classList.toggle('cp-campaign-option-active', i === active));
-      if (choices[active]) {
-        input.setAttribute('aria-activedescendant', choices[active].id);
-        choices[active].scrollIntoView({ block: 'nearest' });
-      }
+      if (event.key === 'Home') setActive(0);
+      else if (event.key === 'End') setActive(choices.length - 1);
+      else if (event.key === 'ArrowDown') setActive(Math.min(active + 1, choices.length - 1));
+      else setActive(active <= 0 ? choices.length - 1 : active - 1);
     } else if (event.key === 'Enter' && event.target === input) {
       event.preventDefault();
       choices[active < 0 ? 0 : active]?.click();
@@ -870,7 +876,7 @@ function buildCampaignPicker(id, onChange) {
       modes = choices;
       current = selected;
       trigger.textContent = modes.find((mode) => mode.id === current)?.displayLabel || 'Campaign unavailable';
-      if (!popup.hidden) renderOptions();
+      if (!popup.hidden) renderOptions(true);
     },
     close: closePicker,
     dispose: () => document.removeEventListener('pointerdown', outside),
@@ -894,11 +900,14 @@ function renderTable(rows, openDialog, recordOpen) {
   rows.forEach((company) => {
     const row = node('tr');
     row.setAttribute('role', 'row');
+    row.dataset.reportPath = reportPath(company.Folder);
+    row.dataset.company = company.Company;
     const companyCell = node('td');
     const companyWrap = node('div', 'cp-company-wrap');
     const avatar = node('span', 'cp-company-avatar', company.Company.slice(0, 2).toUpperCase());
     avatar.setAttribute('aria-hidden', 'true');
     const name = button(company.Company, 'cp-company', () => openDialog(name, company));
+    name.dataset.reportAction = 'company';
     companyWrap.append(avatar, name);
     companyCell.append(companyWrap);
     const website = node('td', 'cp-website', company.Report || company.Domains || 'Not recorded');
@@ -914,10 +923,13 @@ function renderTable(rows, openDialog, recordOpen) {
       open = pageLink('Open', company.Folder, 'cp-open');
       open.addEventListener('click', () => recordOpen(company));
     }
+    open.dataset.reportAction = 'open';
     const share = button('Share', 'cp-share-action', () => openDialog(share, company, true));
+    share.dataset.reportAction = 'share';
     const more = node('details', 'cp-more');
     const summary = node('summary', '', '\u2026');
     summary.setAttribute('aria-label', `More actions for ${company.Company}`);
+    summary.dataset.reportAction = 'more';
     const menu = node('div', 'cp-more-options');
     const details = button('Report details', '', () => {
       more.open = false;
@@ -941,6 +953,7 @@ function renderTable(rows, openDialog, recordOpen) {
       }
     });
     const mobileDetails = button('Report details', 'cp-details-action', () => openDialog(mobileDetails, company));
+    mobileDetails.dataset.reportAction = 'details';
     actions.append(open, share, more, mobileDetails);
     [companyCell, website, date, actions].forEach((cell) => {
       cell.setAttribute('role', 'cell');
@@ -1055,6 +1068,7 @@ export default async function init(el) {
   let disposed = false;
   let debounce;
   let opener;
+  let openerContext;
   let openedCompany;
   let render;
   let load;
@@ -1133,6 +1147,7 @@ export default async function init(el) {
 
   function showDialog(control, company, share = false) {
     opener = control;
+    openerContext = { recent: recents.contains(control), action: control.dataset.reportAction };
     openedCompany = company;
     const report = {
       ...company,
@@ -1164,14 +1179,20 @@ export default async function init(el) {
 
   function closeDialog() {
     if (!dialog.open) return;
-    const wasRecent = recents.contains(opener);
     dialog.close();
     refreshRecents();
-    if (wasRecent) {
-      opener = [...recents.querySelectorAll('.cp-card')]
-        .find((card) => card.dataset.folder === openedCompany.Folder) || search;
-    }
-    if (opener?.isConnected) opener.focus();
+    const matchingRows = [...results.querySelectorAll('tbody tr')]
+      .filter((row) => row.dataset.reportPath === reportPath(openedCompany.Folder));
+    const row = matchingRows.find((entry) => entry.dataset.company === openedCompany.Company)
+      || matchingRows[0];
+    const replacement = openerContext.recent
+      ? [...recents.querySelectorAll('.cp-card')]
+        .find((card) => reportPath(card.dataset.folder) === reportPath(openedCompany.Folder))
+      : [...(row?.querySelectorAll('[data-report-action]') || [])]
+        .find((control) => control.dataset.reportAction === openerContext.action);
+    const target = [opener, replacement, row?.querySelector('.cp-company'), search]
+      .find((control) => control?.isConnected && control.getClientRects().length);
+    target?.focus();
   }
 
   function writeUrl(push = false) {

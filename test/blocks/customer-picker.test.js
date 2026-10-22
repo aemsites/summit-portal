@@ -703,6 +703,130 @@ describe('customer-picker › reports-first dashboard', () => {
     options()[0].click();
   }
 
+  function deferSource(sourceName) {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    fetchStub.callsFake(async (value) => {
+      const name = new URL(value, window.location.origin).pathname.split('/').pop()
+        .replace('.json', '');
+      if (name === sourceName) return pending;
+      return Response.json({ data: sheets[name] || [] });
+    });
+    return () => release(Response.json({ data: sheets[sourceName] || [] }));
+  }
+
+  ['company-list', 'closed-user-groups'].forEach((sourceName) => {
+    it(`keeps the highlighted campaign when optional ${sourceName} arrives`, async () => {
+      const release = deferSource(sourceName);
+      dispose = await init(el);
+      try {
+        await tick();
+        el.querySelector('.cp-campaign-trigger').click();
+        const search = el.querySelector('.cp-campaign-search');
+        type(search, 'Roadshow');
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        expect(document.getElementById(search.getAttribute('aria-activedescendant')).textContent)
+          .to.equal('Roadshow 1');
+        release();
+        await dispose.ready;
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(new URLSearchParams(window.location.search).get('tab')).to.equal('event-1');
+      } finally {
+        release();
+        await dispose.ready;
+      }
+    });
+  });
+
+  ['.cp-company', '.cp-share-action', '.cp-more summary', '.cp-details-action']
+    .forEach((selector) => {
+      it(`returns to the replacement ${selector} after an optional source arrives`, async () => {
+        const release = deferSource('closed-user-groups');
+        dispose = await init(el);
+        try {
+          await tick();
+          const opener = el.querySelector(selector);
+          if (selector === '.cp-more summary') {
+            opener.closest('details').open = true;
+            opener.parentElement.querySelector('button').click();
+          } else opener.click();
+          const dialog = document.querySelector('.cp-report-dialog');
+          expect(dialog.open).to.equal(true);
+          release();
+          await dispose.ready;
+          dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          expect(dialog.open).to.equal(false);
+          expect(document.activeElement === el.querySelector(selector)).to.equal(true);
+        } finally {
+          release();
+          await dispose.ready;
+        }
+      });
+    });
+
+  [true, false].forEach((copyAllowed) => {
+    it(`keeps rejected-clipboard recovery in the native dialog: copy ${copyAllowed}`, async () => {
+      const link = 'https://example.test/synthetic-magic-link';
+      fetchStub.callsFake(async (value) => {
+        if (value === '/auth/sharelink') return Response.json({ result: 'link', link });
+        const name = new URL(value, window.location.origin).pathname.split('/').pop()
+          .replace('.json', '');
+        return Response.json({ data: sheets[name] || [] });
+      });
+      if (navigator.clipboard) {
+        sandbox.stub(navigator.clipboard, 'writeText').rejects(new DOMException('Blocked'));
+      }
+      let selected;
+      sandbox.stub(document, 'execCommand').callsFake(() => {
+        const active = document.activeElement;
+        selected = {
+          inDialog: !!active.closest('dialog[open]'),
+          text: active.value?.slice(active.selectionStart, active.selectionEnd),
+        };
+        return copyAllowed;
+      });
+      await load();
+      el.querySelector('.cp-share-action').click();
+      const dialog = document.querySelector('.cp-report-dialog');
+      dialog.querySelector('.cp-share-copy').click();
+      await tick();
+      expect(selected).to.deep.equal({ inDialog: true, text: link });
+      expect(dialog.querySelector('.cp-share-status').dataset.kind)
+        .to.equal(copyAllowed ? 'success' : 'error');
+      expect(document.querySelector('textarea')).to.equal(null);
+      expect(document.activeElement === dialog.querySelector('.cp-share-copy')).to.equal(true);
+    });
+  });
+
+  it('does not retain a successful copy label when the next clipboard attempt fails', async () => {
+    fetchStub.callsFake(async (value) => {
+      if (value === '/auth/sharelink') {
+        return Response.json({ result: 'link', link: 'https://example.test/synthetic-magic-link' });
+      }
+      const name = new URL(value, window.location.origin).pathname.split('/').pop()
+        .replace('.json', '');
+      return Response.json({ data: sheets[name] || [] });
+    });
+    if (navigator.clipboard) {
+      sandbox.stub(navigator.clipboard, 'writeText').rejects(new DOMException('Blocked'));
+    }
+    const legacyCopy = sandbox.stub(document, 'execCommand');
+    legacyCopy.onFirstCall().returns(true);
+    legacyCopy.onSecondCall().returns(false);
+    await load();
+    el.querySelector('.cp-share-action').click();
+    const dialog = document.querySelector('.cp-report-dialog');
+    const copy = dialog.querySelector('.cp-share-copy');
+    copy.click();
+    await tick();
+    expect(dialog.querySelector('.cp-share-status').dataset.kind).to.equal('success');
+    copy.click();
+    await tick();
+    expect(dialog.querySelector('.cp-share-status').dataset.kind).to.equal('error');
+    expect(dialog.querySelector('.cp-share-copy-label').textContent).to.equal('Copy link');
+  });
+
   it('renders only Company, Website, Published and Actions, without Accounts or its fetch', async () => {
     await load();
     expect([...el.querySelectorAll('thead th')].map((node) => node.textContent))
