@@ -1,6 +1,6 @@
 .customer-picker {
   --cp-accent: light-dark(var(--color-purple-700), var(--color-purple-200));
-  --cp-control-border: light-dark(var(--color-gray-300), var(--color-gray-600));
+  --cp-control-border: var(--color-gray-500);
 
   width: 100%;
   min-width: 0;
@@ -190,7 +190,8 @@
 }
 
 .customer-picker .cp-page-size select {
-  min-height: 36px;
+  min-width: 64px;
+  min-height: 44px;
   border: 1px solid var(--cp-control-border);
   border-radius: 6px;
   padding: 4px 8px;
@@ -262,7 +263,8 @@
 }
 
 .customer-picker .cp-company {
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -284,7 +286,8 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--cp-control-border);
   border-radius: 6px;
   padding: 7px 10px;
@@ -344,7 +347,8 @@
 }
 
 .customer-picker .cp-more-options :is(a, button) {
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 4px;
   padding: 9px 10px;
@@ -376,8 +380,8 @@
 }
 
 .customer-picker .cp-pagination button {
-  min-width: 34px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 7px 10px;
@@ -412,7 +416,8 @@
 }
 
 .customer-picker :is(.cp-retry, .cp-empty-action) {
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   padding: 8px 12px;
   background: transparent;
@@ -450,7 +455,8 @@
   flex-shrink: 0;
   gap: 8px;
   align-items: center;
-  min-height: 34px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 6px 10px;
@@ -480,8 +486,8 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 8px;
   background: var(--color-surface-alt);
@@ -506,6 +512,31 @@
 
 .customer-picker :is(.cp-dialog-section, .cp-dialog-notice) {
   margin-bottom: 18px;
+}
+
+.customer-picker .cp-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 14px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.customer-picker .cp-report-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-link);
+  overflow-wrap: anywhere;
+}
+
+.customer-picker .cp-campaign-count {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .customer-picker :is(.cp-dialog-section, .cp-share) h3 {
@@ -535,12 +566,22 @@
   line-height: 1.5;
 }
 
+.customer-picker .cp-campaign-memberships {
+  flex-direction: column;
+}
+
 .customer-picker .cp-campaign-memberships li {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
   background: light-dark(var(--color-purple-100), var(--color-purple-900));
   color: var(--cp-accent);
 }
 
 .customer-picker .cp-dialog-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--color-link);
 }
 
@@ -569,7 +610,7 @@
   justify-content: center;
   gap: 8px;
   box-sizing: border-box;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 9px 16px;
@@ -618,7 +659,7 @@
   box-sizing: border-box;
   flex: 1 1 200px;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--cp-control-border);
   border-radius: 8px;
   padding: 9px 12px;
@@ -673,7 +714,7 @@
   }
 
   .customer-picker .cp-filters {
-    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.85fr);
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.42fr);
   }
 
   .customer-picker .cp-table thead {
@@ -717,7 +758,7 @@
   }
 
   .customer-picker .cp-table th:last-child {
-    width: 174px;
+    width: 210px;
     border-top-right-radius: 12px;
   }
 
@@ -729,11 +770,17 @@
     content: none;
   }
 
-  .customer-picker .cp-details-action {
+  .customer-picker .cp-row-actions .cp-details-action {
     display: none;
   }
 
   .customer-picker .cp-row-actions {
     white-space: nowrap;
+  }
+
+  .customer-picker :is(.cp-open, .cp-share-action, .cp-more > summary) {
+    border-color: transparent;
+    background: transparent;
+    color: var(--cp-accent);
   }
 }

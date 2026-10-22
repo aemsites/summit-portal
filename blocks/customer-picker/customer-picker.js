@@ -680,6 +680,9 @@ function renderDialog(content, company, { id, websiteMap, domainMap, share }) {
   const heading = node('h2', 'cp-dialog-title', company.Company);
   heading.id = `${id}-details-title`;
   const body = node('div', 'cp-details-body');
+  body.tabIndex = 0;
+  body.setAttribute('role', 'region');
+  body.setAttribute('aria-label', 'Report information and campaigns');
   const actions = node('div', 'cp-dialog-actions');
   const sharing = node('section', 'cp-share');
   content.replaceChildren(heading, body, actions, sharing);
@@ -688,7 +691,7 @@ function renderDialog(content, company, { id, websiteMap, domainMap, share }) {
   const selection = node('div', 'cp-selected-report');
   body.append(selection);
 
-  function section(title, values, className = 'cp-dialog-list') {
+  function section(title, values, className = 'cp-dialog-list', description = '') {
     if (!values.length) return;
     const block = node('section', 'cp-dialog-section');
     const list = node('ul', className);
@@ -697,7 +700,9 @@ function renderDialog(content, company, { id, websiteMap, domainMap, share }) {
       item.append(value);
       list.append(item);
     });
-    block.append(node('h3', '', title), list);
+    block.append(node('h3', '', title));
+    if (description) block.append(node('p', 'cp-campaign-count', description));
+    block.append(list);
     selection.append(block);
   }
 
@@ -716,16 +721,27 @@ function renderDialog(content, company, { id, websiteMap, domainMap, share }) {
     }
     const lookup = selected.Customers || company.Customers || company.Company;
     const websites = selected.Report ? [selected.Report] : (websiteMap.get(lookup) || []);
-    section('Website', websites.map((website) => pageLink(website, /^https?:\/\//i.test(website) ? website : `https://${website}`)));
-    if (selected.Customers) section('Customer', [selected.Customers]);
-    section('Email domains', domainMap.get(lookup) || []);
-    section('Published', [publishedDate(selected.Created)]);
+    const metadata = node('div', 'cp-report-meta');
+    websites.forEach((website) => {
+      metadata.append(pageLink(website, /^https?:\/\//i.test(website) ? website : `https://${website}`));
+    });
+    const date = node('span', 'cp-report-date', 'Published ');
+    date.append(publishedDate(selected.Created));
+    metadata.append(date);
+    selection.append(metadata);
     const memberships = selected.campaigns || [];
     if (memberships.length) {
-      section('Campaigns', memberships.map((mode) => mode.label), 'cp-dialog-list cp-campaign-memberships');
+      section(
+        'Campaigns',
+        memberships.map((mode) => mode.label),
+        'cp-dialog-list cp-campaign-memberships',
+        `This report belongs to ${memberships.length} campaign${memberships.length === 1 ? '' : 's'}.`,
+      );
     } else {
       section('Campaigns', [company.campaignsIncomplete ? 'Memberships unavailable' : 'No known campaign']);
     }
+    if (selected.Customers && selected.Customers !== company.Company) section('Customer', [selected.Customers]);
+    section('Email domains', domainMap.get(lookup) || []);
     if (company.campaignsIncomplete) {
       selection.append(node('p', 'cp-dialog-notice', 'Campaign information could not be fully loaded. Close details and retry the source on the dashboard.'));
     }
@@ -900,7 +916,7 @@ function renderTable(rows, openDialog, recordOpen) {
     }
     const share = button('Share', 'cp-share-action', () => openDialog(share, company, true));
     const more = node('details', 'cp-more');
-    const summary = node('summary', '', 'More');
+    const summary = node('summary', '', '\u2026');
     summary.setAttribute('aria-label', `More actions for ${company.Company}`);
     const menu = node('div', 'cp-more-options');
     const details = button('Report details', '', () => {
@@ -1343,12 +1359,15 @@ export default async function init(el) {
   });
   size.addEventListener('change', () => change({ size: Number(size.value), page: 1 }, true));
   render();
-  await load(Object.keys(urls));
-  return () => {
+  // Let section decoration finish even while an optional sheet is still loading.
+  const ready = load(Object.keys(urls));
+  const dispose = () => {
     disposed = true;
     clearTimeout(debounce);
     window.removeEventListener('popstate', popstate);
     picker.dispose();
     dialog.remove();
   };
+  dispose.ready = ready;
+  return dispose;
 }

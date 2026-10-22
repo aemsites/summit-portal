@@ -1,0 +1,194 @@
+import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { setViewport } from '@web/test-runner-commands';
+import { composeDashboard } from '../../scripts/dashboard-layout.js';
+import { loadStyle } from '../../scripts/ak.js';
+import initPicker from '../../blocks/customer-picker/customer-picker.js';
+import initCallout from '../../blocks/report-callout/report-callout.js';
+import initBoothGuide from '../../blocks/booth-guide-banner/booth-guide-banner.js';
+import initTools from '../../blocks/dashboard-tools/dashboard-tools.js';
+
+describe('dashboard layout', () => {
+  let markup;
+  let main;
+  let sandbox;
+
+  before(async () => {
+    const response = await fetch(new URL('../fixtures/customer-picker-dashboard.html', import.meta.url));
+    markup = await response.text();
+  });
+
+  beforeEach(() => {
+    document.body.innerHTML = markup;
+    main = document.querySelector('main');
+    sandbox = sinon.createSandbox();
+    main.querySelectorAll('.report-callout').forEach((callout) => initCallout(callout));
+    const picker = main.querySelector('.customer-picker');
+    picker.innerHTML = '<input type="search" aria-label="Company or website"><table><tbody><tr><td>Example</td></tr></tbody></table>';
+    const booth = document.createElement('div');
+    booth.className = 'booth-guide-banner';
+    picker.before(booth);
+    initBoothGuide(booth);
+    const tools = document.createElement('div');
+    tools.className = 'dashboard-tools';
+    picker.after(tools);
+    initTools(tools);
+  });
+
+  afterEach(async () => {
+    sandbox.restore();
+    document.body.replaceChildren();
+    await setViewport({ width: 800, height: 600 });
+  });
+
+  it('test_dashboard_reuses_callouts_and_export_controls', async () => {
+    const picker = main.querySelector('.customer-picker');
+    const callouts = [...main.querySelectorAll('.report-callout')];
+    const form = main.querySelector('.dt-export');
+    const tools = main.querySelector('.dashboard-tools');
+    const select = form.querySelector('select');
+    const requestLink = main.querySelector('a[href="/adobe/report-requests"]');
+    const formListener = sandbox.spy();
+    form.addEventListener('submit', formListener);
+    select.value = 'no_report';
+    const fetchStub = sandbox.stub(window, 'fetch').resolves(new Response('', { status: 403 }));
+
+    await composeDashboard(main, '/adobe/dashboard');
+    const resources = main.querySelector('.dashboard-resources');
+    expect(main.querySelector('.dashboard-reports .customer-picker')).to.equal(picker);
+    callouts.forEach((callout) => expect(resources.contains(callout)).to.equal(true));
+    expect(resources.querySelector('.dt-export')).to.equal(form);
+    expect(resources.querySelector('.dashboard-tools')).to.equal(tools);
+    expect(resources.querySelector('a[href="/adobe/report-requests"]')).to.equal(requestLink);
+    expect(select.value).to.equal('no_report');
+    expect([...select.options].map((option) => option.value)).to.deep.equal([
+      '', 'search', 'no_report', 'report_selected', 'report_viewed', 'report_sent',
+      'demo_selected', 'demo_viewed', 'contact_requested',
+    ]);
+    const exportAction = resources.querySelector('.dashboard-export-action');
+    exportAction.click();
+    const dialog = form.closest('dialog');
+    expect(dialog.open).to.equal(true);
+    expect(dialog.contains(document.activeElement)).to.equal(true);
+    expect(tools.querySelector('details').open).to.equal(true);
+    const guidance = dialog.textContent;
+    [
+      '90 days', 'Downloaded copies are your responsibility', 'not a unique person',
+      'Email and Visit', 'unsuccessful lookups', 'do not prove reading',
+      'not confirmed delivery', 'not sales-contact consent', 'historical contact opt-ins',
+      'according to Adobe policy', 'dedicated browser profile without a portal sign-in',
+    ].forEach((text) => expect(guidance).to.include(text));
+    form.requestSubmit();
+    await new Promise((resolve) => { setTimeout(resolve, 80); });
+    expect(formListener.calledOnce).to.equal(true);
+    expect(fetchStub.firstCall.args[0]).to.equal('/api/booth-activity.csv?kind=no_report');
+    expect(dialog.querySelector('.dt-export-status').textContent).to.include('Adobe employee');
+    dialog.querySelector('.dashboard-dialog-close').click();
+    expect(dialog.open).to.equal(false);
+    expect(document.activeElement).to.equal(exportAction);
+  });
+
+  it('retains each inventoried destination and all coverage and sharing guidance', async () => {
+    await composeDashboard(main, '/adobe/dashboard/');
+    const destinations = [...main.querySelectorAll('a[href]')].map((link) => link.getAttribute('href'));
+    [
+      '/adobe/report-requests', '/request-report', '/docs/sales-playbook',
+      '/customers/0-9/000-demo/', '/adobe/booth-guide', '/booth',
+      'https://digital-insights.corp.adobe.com/',
+    ].forEach((path) => expect(destinations).to.include(path));
+    expect(main.querySelector('.dashboard-request-more a').getAttribute('href'))
+      .to.equal('https://digital-insights.corp.adobe.com/');
+    [
+      'Semrush', 'Adobe', 'small sites', 'redirects', 'blocked collection',
+      'AI Visibility', 'Keyword Opportunities', 'no PDF', 'magic link',
+      'without Adobe sign-in', 'portal access',
+    ].forEach((text) => expect(main.textContent).to.include(text));
+    expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
+    expect(main.querySelector('h1').textContent).to.equal('Digital Opportunity Reports');
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
+    expect(main.querySelector('.dashboard-jump').getAttribute('href')).to.equal('#dashboard-resources');
+  });
+
+  it('test_unknown_callout_remains_reachable', async () => {
+    const announcement = document.createElement('div');
+    announcement.className = 'report-callout neutral';
+    announcement.innerHTML = '<aside><p>Additional announcement. <button type="button">Keep this action</button></p></aside>';
+    const button = announcement.querySelector('button');
+    const listener = sandbox.spy();
+    button.addEventListener('click', listener);
+    main.querySelector('.customer-picker').after(announcement);
+    await composeDashboard(main, '/adobe/dashboard');
+    expect(main.querySelector('.dashboard-resources').contains(announcement)).to.equal(true);
+    const card = announcement.closest('.dashboard-resource-card');
+    expect(card).to.exist;
+    card.querySelector('.dashboard-resource-action').click();
+    expect(announcement.closest('dialog').open).to.equal(true);
+    button.click();
+    expect(listener.calledOnce).to.equal(true);
+  });
+
+  it('test_dashboard_composition_is_idempotent_and_route_scoped', async () => {
+    const original = main.innerHTML;
+    await composeDashboard(main, '/accounts/e/example/');
+    expect(main.innerHTML).to.equal(original);
+    const first = await composeDashboard(main, '/adobe/dashboard');
+    const form = main.querySelector('.dt-export');
+    const second = await composeDashboard(main, '/adobe/dashboard/');
+    expect(second).to.equal(first);
+    expect(main.querySelectorAll('.dashboard-shell')).to.have.lengthOf(1);
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
+    expect(main.querySelectorAll('.dt-export')).to.have.lengthOf(1);
+    expect(main.querySelector('.dt-export')).to.equal(form);
+    expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
+    expect(document.head.querySelectorAll('link[href$="/styles/dashboard.css"]')).to.have.lengthOf(1);
+  });
+
+  it('preserves an unrecognized authored section and restores resource-dialog focus on Escape', async () => {
+    const extra = document.createElement('section');
+    extra.innerHTML = '<h2>Additional policy</h2><p>Do not discard this authored information.</p>';
+    main.append(extra);
+    await composeDashboard(main, '/adobe/dashboard');
+    expect(main.querySelector('.dashboard-resources').contains(extra)).to.equal(true);
+    const card = extra.closest('.dashboard-resource-card');
+    const open = card.querySelector('.dashboard-resource-action');
+    open.click();
+    const dialog = extra.closest('dialog');
+    expect(dialog.open).to.equal(true);
+    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(dialog.open).to.equal(false);
+    expect(document.activeElement).to.equal(open);
+  });
+
+  it('keeps real report controls within the desktop and 320px layouts with 44px targets', async () => {
+    const picker = main.querySelector('.customer-picker');
+    picker.innerHTML = '<a href="/data/company-list.json">Companies</a>';
+    sandbox.stub(window, 'fetch').callsFake(async (url) => Response.json({
+      data: String(url).includes('insights-list.json') ? [{
+        Report: 'example.test',
+        Customers: 'Example company',
+        Folder: '/accounts/e/example/insights/example-test/portal-landing/',
+      }] : [],
+    }));
+    const dispose = await initPicker(picker);
+    try {
+      await dispose.ready;
+      await loadStyle(new URL('../../styles/styles.css', import.meta.url).href);
+      await loadStyle(new URL('../../blocks/customer-picker/customer-picker.css', import.meta.url).href);
+      await composeDashboard(main, '/adobe/dashboard');
+      for (const width of [1440, 900, 600, 320]) {
+        await setViewport({ width, height: 900 });
+        expect(document.documentElement.scrollWidth).to.be.at.most(width);
+        expect(getComputedStyle(picker.querySelector('.cp-details-action')).display)
+          .to.equal(width >= 600 ? 'none' : 'inline-flex');
+        const controls = main.querySelectorAll('button, a, summary, input, select');
+        [...controls].filter((control) => control.getClientRects().length).forEach((control) => {
+          const box = control.getBoundingClientRect();
+          expect(box.width, control.textContent || control.getAttribute('aria-label')).to.be.at.least(44);
+          expect(box.height, control.textContent || control.getAttribute('aria-label')).to.be.at.least(44);
+        });
+      }
+    } finally {
+      dispose();
+    }
+  });
+});

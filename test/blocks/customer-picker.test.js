@@ -693,6 +693,7 @@ describe('customer-picker › reports-first dashboard', () => {
 
   async function load() {
     dispose = await init(el);
+    await dispose.ready;
   }
 
   async function chooseCampaign(query) {
@@ -711,6 +712,28 @@ describe('customer-picker › reports-first dashboard', () => {
     expect(el.querySelector('tbody .cp-company').textContent).to.equal('Company 00000');
   });
 
+  it('finishes block decoration without waiting for an optional access source', async () => {
+    let releaseAccess;
+    const access = new Promise((resolve) => { releaseAccess = resolve; });
+    fetchStub.callsFake(async (url) => {
+      const name = new URL(url, window.location.origin).pathname.split('/').pop().replace('.json', '');
+      if (name === 'closed-user-groups') return access;
+      return Response.json({ data: sheets[name] || [], total: (sheets[name] || []).length });
+    });
+    const initialization = init(el);
+    const finished = await Promise.race([
+      initialization.then(() => true),
+      new Promise((resolve) => { setTimeout(() => resolve(false), 80); }),
+    ]);
+    await tick();
+    const rendered = el.querySelectorAll('tbody tr').length;
+    releaseAccess(Response.json({ data: [] }));
+    dispose = await initialization;
+    await dispose.ready;
+    expect(finished).to.equal(true);
+    expect(rendered).to.equal(25);
+  });
+
   it('renders just 25 of 10,765 rows and searches beyond the visible page', async () => {
     sheets['insights-list'] = Array.from({ length: 10765 }, (_, i) => row(i));
     await load();
@@ -724,6 +747,20 @@ describe('customer-picker › reports-first dashboard', () => {
     await tick();
     expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(1);
     expect(el.querySelector('tbody').textContent).to.include('site10764.example');
+  });
+
+  it('puts full campaign membership immediately after compact report metadata', async () => {
+    sheets['insights-list'] = [row(0, { 'Campaign 0': 'Company 00000', 'Campaign 37': 'Company 00000' })];
+    await load();
+    el.querySelector('.cp-company').click();
+    const dialog = document.querySelector('.cp-report-dialog');
+    expect(dialog.querySelectorAll('.cp-report-meta')).to.have.lengthOf(1);
+    expect(dialog.querySelector('.cp-report-meta a').textContent).to.equal('site0.example');
+    expect(dialog.querySelector('.cp-report-meta time').dateTime).to.equal('2026-10-22');
+    expect(dialog.querySelector('.cp-details-body h3').textContent).to.equal('Campaigns');
+    expect(dialog.querySelector('.cp-campaign-count').textContent).to.include('2 campaigns');
+    expect(dialog.querySelector('.cp-campaign-memberships').textContent).to.include('Roadshow 0');
+    expect(dialog.querySelector('.cp-campaign-memberships').textContent).to.include('Événement Northern Europe');
   });
 
   it('searches website independently and resets the page after query and size changes', async () => {
@@ -987,6 +1024,7 @@ describe('customer-picker › reports-first dashboard', () => {
     } finally {
       resolveCompany(Response.json({ data: sheets['company-list'] }));
       dispose = await pending;
+      await dispose.ready;
     }
   });
 
@@ -1008,6 +1046,7 @@ describe('customer-picker › reports-first dashboard', () => {
     } finally {
       resolveIndex(Response.json({ data: sheets['insights-list'] }));
       dispose = await pending;
+      await dispose.ready;
     }
     expect(el.querySelector('tbody .cp-company').textContent).to.equal('Frescopa');
   });
