@@ -1,0 +1,74 @@
+{
+  "insights-list": {
+    "data": [
+      {
+        "Folder": "/accounts/f/frescopa/insights/frescopa-example/portal-landing/",
+        "Report": "frescopa.example",
+        "Customers": "Frescopa",
+        "Cannes 2026": "Frescopa; Frescopa Studio",
+        "Report Notice": "Coverage varies",
+        "Created": "22.10.2026",
+        "DIH cv_owner": "Frescopa",
+        "DIH cv_reuse": "Frescopa"
+      },
+      {
+        "Report": "northstar.example",
+        "Customers": "Northstar Travel",
+        "Folder": "/accounts/n/northstar-travel/insights/northstar-example/cannes-2026/",
+        "Created": "22.10.2026",
+        "DIH cv_owner": "Northstar Travel"
+      },
+      {
+        "Report": "northstar.example",
+        "Customers": "Northstar Travel",
+        "Folder": "/accounts/n/northstar-travel/insights/northstar-example/summit-2026/",
+        "Created": "22.10.2026",
+        "DIH cv_owner": "Northstar Travel"
+      }
+    ],
+    "total": 3,
+    "limit": 3,
+    "offset": 0,
+    ":sheetname": "insights-list",
+    ":type": "sheet",
+    ":colWidths": [
+      100,
+      250
+    ],
+    "custom": "retained"
+  },
+  "event-tabs": {
+    "data": [
+      {
+        "Id": "cannes",
+        "Column": "Cannes 2026",
+        "Label": "Paris",
+        "Active": ""
+      },
+      {
+        "Id": "dih-cv_owner",
+        "Column": "DIH cv_owner",
+        "Label": "Paris",
+        "Active": "true",
+        "CampaignId": "cv_owner"
+      },
+      {
+        "Id": "dih-cv_reuse",
+        "Column": "DIH cv_reuse",
+        "Label": "Paris",
+        "Active": "true",
+        "CampaignId": "cv_reuse"
+      }
+    ],
+    "total": 3,
+    "limit": 3,
+    "offset": 0,
+    ":sheetname": "event-tabs",
+    ":type": "sheet",
+    ":colWidths": [
+      100,
+      250
+    ],
+    "custom": "retained"
+  }
+}

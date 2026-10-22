@@ -231,3 +231,18 @@ backfill or publication.
 callers. The dashboard now uses `report-catalog.js` for complete-dataset search,
 stable sorting, pagination, URL state, qualifiers and exact-path memberships.
 Both modules have browser tests under `test/blocks/`.
+
+### Real publisher fixture
+
+`test/fixtures/portal-campaign-contract.json` is the unmodified index/registry
+output of DIH's `backend/tests/services/test_portal_campaign_contract.py`, using
+the real publisher with in-memory DA/AEM clients. It contains synthetic data
+only: one shared page, same-named campaigns, a legacy alias and two existing
+Cannes/Summit report formats. No production export is involved.
+
+Run that pytest test with `-s --no-cov` in DIH's `backend/` directory. It prints
+`PORTAL_CONTRACT=<temporary-file>` after validating the emitted payload.
+Copy that file unchanged to the fixture above, then run
+`npm run test:file -- test/blocks/report-catalog.test.js` here. The consumer
+checks the actual IDs, all memberships, exact Open/Edit/Share targets,
+format selection and registry-failure recovery.
