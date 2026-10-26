@@ -1,7 +1,7 @@
 import { buildShareForm, folderToDeepLink } from './share-form.js';
 import {
-  campaignsForFolder, filterReports, paginateReports, qualifyCampaigns, readReportState,
-  reportPath, searchCampaigns,
+  campaignsForFolder, filterReports, paginateReports, parsePublishedDate, qualifyCampaigns,
+  readReportState, reportPath, searchCampaigns,
 } from './report-catalog.js';
 
 const RECENT_MAX = 8;
@@ -278,15 +278,8 @@ export function parseInsightFolder(folder) {
   return { website, variant, folder: `${f}/` };
 }
 
-/**
- * Parse a DIH `Created` value (`D.MM.YYYY`) into a sortable integer so we can
- * pick the most recent variant. Missing/unparseable dates sort oldest (0).
- */
 function createdSortKey(created) {
-  const m = (created || '').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (!m) return 0;
-  const [, d, mo, y] = m;
-  return Number(y) * 10000 + Number(mo) * 100 + Number(d);
+  return parsePublishedDate(created)?.getTime() ?? -Infinity;
 }
 
 /**
@@ -664,13 +657,8 @@ function pageLink(text, href, className) {
 }
 
 function publishedDate(value) {
-  const match = String(value || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (!match) return node('span', '', 'Not recorded');
-  const [, day, month, year] = match.map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCDate() !== day || date.getUTCMonth() !== month - 1) {
-    return node('span', '', 'Not recorded');
-  }
+  const date = parsePublishedDate(value);
+  if (!date) return node('span', '', 'Not recorded');
   const time = node('time', '', new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date));
   time.dateTime = date.toISOString().slice(0, 10);
   return time;
@@ -892,7 +880,7 @@ function renderTable(rows, openDialog, recordOpen) {
   ['Company', 'Website', 'Published', 'Actions'].forEach((title) => {
     const th = node('th', '', title);
     th.scope = 'col';
-    if (title === 'Company') th.setAttribute('aria-sort', 'ascending');
+    if (title === 'Published') th.setAttribute('aria-sort', 'descending');
     headerRow.append(th);
   });
   head.append(headerRow);
@@ -926,38 +914,17 @@ function renderTable(rows, openDialog, recordOpen) {
     open.dataset.reportAction = 'open';
     const share = button('Share', 'cp-share-action', () => openDialog(share, company, true));
     share.dataset.reportAction = 'share';
-    const more = node('details', 'cp-more');
-    const summary = node('summary', '', '\u2026');
-    summary.setAttribute('aria-label', `More actions for ${company.Company}`);
-    summary.dataset.reportAction = 'more';
-    const menu = node('div', 'cp-more-options');
-    const details = button('Report details', '', () => {
-      more.open = false;
-      openDialog(summary, company);
-    });
-    menu.append(details);
-    if (multiple) {
-      const edit = button('Edit in DA', '', () => {
-        more.open = false;
-        openDialog(summary, company);
-      });
-      menu.append(edit);
-    } else {
-      menu.append(pageLink('Edit in DA', `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`));
-    }
-    more.append(summary, menu);
-    more.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        more.open = false;
-        summary.focus();
-      }
-    });
-    const mobileDetails = button('Report details', 'cp-details-action', () => openDialog(mobileDetails, company));
-    mobileDetails.dataset.reportAction = 'details';
-    actions.append(open, share, more, mobileDetails);
+    actions.append(open, share);
     [companyCell, website, date, actions].forEach((cell) => {
       cell.setAttribute('role', 'cell');
       row.append(cell);
+    });
+    row.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.target.closest('a, button')) return;
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed
+        && (row.contains(selection.anchorNode) || row.contains(selection.focusNode))) return;
+      name.click();
     });
     body.append(row);
   });

@@ -11,14 +11,27 @@ export function reportPath(folder) {
   return `${new URL(folder, 'https://catalog.invalid').pathname.replace(/\/+$/, '')}/`;
 }
 
+export function parsePublishedDate(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!match) return null;
+  const [, day, month, year] = match.map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day ? date : null;
+}
+
 export function filterReports(rows, query) {
   const terms = searchText(query).split(/\s+/).filter(Boolean);
   return rows.filter((row) => {
     const text = searchText([row.Company, row.Customers, row.Report, row.Domains].filter(Boolean).join(' '));
     return terms.every((term) => text.includes(term));
-  }).sort((a, b) => collator.compare(a.Company || a.Customers || '', b.Company || b.Customers || '')
-    || collator.compare(a.Report || '', b.Report || '')
-    || collator.compare(a.Folder || '', b.Folder || ''));
+  }).map((row) => ({ row, published: parsePublishedDate(row.Created)?.getTime() ?? -Infinity }))
+    .sort((a, b) => b.published - a.published
+      || collator.compare(a.row.Company || a.row.Customers || '', b.row.Company || b.row.Customers || '')
+      || collator.compare(a.row.Report || '', b.row.Report || '')
+      || collator.compare(a.row.Folder || '', b.row.Folder || ''))
+    .map(({ row }) => row);
 }
 
 export function paginateReports(rows, { page = 1, size = 25 } = {}) {

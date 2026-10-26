@@ -10,6 +10,11 @@ by company, website or campaign. Campaign choices come from the existing sheets;
 see [campaign registration and membership](integrations/event-tabs-and-event-membership.md).
 Do not add a tab or duplicate the picker when a new campaign is published.
 
+Reports appear newest publication date first, with unrecorded or invalid dates
+last. Click a report row to open its details and sharing panel. The row keeps
+only **Open** and **Share** shortcuts; Share focuses the sharing controls in
+that same panel. When several formats are available, choose one first.
+
 ## Copy example for owner review
 
 This example follows the approved reports-first design. Review these optional

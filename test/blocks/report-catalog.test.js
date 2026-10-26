@@ -197,15 +197,52 @@ describe('report catalog', () => {
     expect(filterReports(rows, 'studio north')).to.have.lengthOf(1);
   });
 
-  it('sorts by company, then website, then exact path for stable page boundaries', () => {
-    const rows = [
-      { Company: 'Zeta', Report: 'a.example', Folder: '/a/' },
-      { Company: 'Acme', Report: 'b.example', Folder: '/b/' },
-      { Company: 'Acme', Report: 'a.example', Folder: '/z/' },
-      { Company: 'Acme', Report: 'a.example', Folder: '/a/' },
-    ];
-    expect(filterReports(rows, '').map((r) => r.Folder)).to.deep.equal(['/a/', '/z/', '/b/', '/a/']);
-    expect(rows[0].Company).to.equal('Zeta');
+  it('sorts by newest publication date across month and year boundaries without changing the input', () => {
+    const rows = Object.freeze([
+      { Company: 'Alpha', Created: '31.12.2025', Folder: '/december/' },
+      { Company: 'Zeta', Created: '2.10.2026', Folder: '/october/' },
+      { Company: 'Beta', Created: '10.09.2026', Folder: '/september/' },
+      { Company: 'Delta', Created: '1.01.2026', Folder: '/january/' },
+      { Company: 'Gamma', Created: '29.02.2024', Folder: '/leap-day/' },
+    ].map((row) => Object.freeze(row)));
+    expect(filterReports(rows, '').map((r) => r.Folder))
+      .to.deep.equal(['/october/', '/september/', '/january/', '/december/', '/leap-day/']);
+    expect(rows[0].Folder).to.equal('/december/');
+  });
+
+  it('puts missing, malformed and impossible publication dates after valid dates', () => {
+    const invalid = ['31.02.2026', '29.02.2026', '31.04.2026', '1.13.2026', '', undefined, 'not a date'];
+    const rows = invalid.map((Created, i) => ({ Company: `Unknown ${i}`, Created, Folder: `/${i}/` }));
+    rows.push({ Company: 'Zeta dated', Created: '1.01.1969', Folder: '/dated/' });
+    expect(filterReports(rows, '').map((r) => r.Folder))
+      .to.deep.equal(['/dated/', ...invalid.map((_, i) => `/${i}/`)]);
+  });
+
+  it('sorts the complete searched dataset by publication date before pagination', () => {
+    const rows = Array.from({ length: 60 }, (_, i) => ({
+      Company: `Company ${String(i).padStart(2, '0')}`,
+      Report: `shared${i}.example`,
+      Folder: `/reports/${i}/`,
+      Created: i < 30 ? `${i + 1}.09.2026` : `${i - 29}.10.2026`,
+    }));
+    const sorted = filterReports(rows, 'shared');
+    expect(sorted.map((r) => r.Folder))
+      .to.deep.equal([...rows].reverse().map((r) => r.Folder));
+    expect(paginateReports(sorted, { page: 1, size: 25 }).rows.at(-1).Folder).to.equal('/reports/35/');
+    expect(paginateReports(sorted, { page: 2, size: 25 }).rows[0].Folder).to.equal('/reports/34/');
+  });
+
+  [undefined, '22.10.2026'].forEach((Created) => {
+    it(`breaks publication-date ties by company, website and exact path: ${Created || 'unrecorded'}`, () => {
+      const rows = [
+        { Company: 'Zeta', Report: 'a.example', Folder: '/a/' },
+        { Company: 'Acme', Report: 'b.example', Folder: '/b/' },
+        { Company: 'Acme', Report: 'a.example', Folder: '/z/' },
+        { Company: 'Acme', Report: 'a.example', Folder: '/a/' },
+      ].map((row) => ({ ...row, Created }));
+      expect(filterReports(rows, '').map((r) => r.Folder)).to.deep.equal(['/a/', '/z/', '/b/', '/a/']);
+      expect(rows[0].Company).to.equal('Zeta');
+    });
   });
 
   it('finds every matching campaign among more than 30, with partial accent-insensitive search', () => {

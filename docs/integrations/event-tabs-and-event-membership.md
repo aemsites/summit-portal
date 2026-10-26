@@ -111,8 +111,17 @@ one-month email/copy link contract.
 
 The company-or-website field filters the complete selected dataset before
 pagination. The table starts with 25 rows and lets people choose 25, 50 or 100.
-Only that page's rows are rendered. Sorting is company A-Z, website, then
-report path. Changing a filter or page size starts at page one.
+Only that page's rows are rendered. Sort the complete filtered dataset by
+publication date, newest first, before paging. Missing or invalid dates appear
+last. Equal dates use company A-Z, website, then report path for stable page
+boundaries. Changing a filter or page size starts at page one.
+
+Clicking a row opens its details and sharing panel. The native company-name
+button provides the same action for keyboard users; the table row keeps its
+table semantics. Text selection does not activate the row. **Open** and
+**Share** remain independent shortcuts, with Share focusing the sharing controls.
+There is no ellipsis menu or duplicate Report details shortcut on either layout.
+Exact-format editing remains available inside the details panel.
 
 Campaign search matches any part of the name, ignoring case and accents. An
 empty campaign query shows the current selection, All campaigns and a search

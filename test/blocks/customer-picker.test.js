@@ -739,31 +739,30 @@ describe('customer-picker › reports-first dashboard', () => {
     });
   });
 
-  ['.cp-company', '.cp-share-action', '.cp-more summary', '.cp-details-action']
-    .forEach((selector) => {
-      it(`returns to the replacement ${selector} after an optional source arrives`, async () => {
-        const release = deferSource('closed-user-groups');
-        dispose = await init(el);
-        try {
-          await tick();
-          const opener = el.querySelector(selector);
-          if (selector === '.cp-more summary') {
-            opener.closest('details').open = true;
-            opener.parentElement.querySelector('button').click();
-          } else opener.click();
-          const dialog = document.querySelector('.cp-report-dialog');
-          expect(dialog.open).to.equal(true);
-          release();
-          await dispose.ready;
-          dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-          expect(dialog.open).to.equal(false);
-          expect(document.activeElement === el.querySelector(selector)).to.equal(true);
-        } finally {
-          release();
-          await dispose.ready;
-        }
-      });
+  [
+    ['.cp-company', '.cp-company'],
+    ['.cp-share-action', '.cp-share-action'],
+    ['tbody tr', '.cp-company'],
+  ].forEach(([selector, focusSelector]) => {
+    it(`returns to the replacement ${selector} after an optional source arrives`, async () => {
+      const release = deferSource('closed-user-groups');
+      dispose = await init(el);
+      try {
+        await tick();
+        el.querySelector(selector).click();
+        const dialog = document.querySelector('.cp-report-dialog');
+        expect(dialog.open).to.equal(true);
+        release();
+        await dispose.ready;
+        dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(dialog.open).to.equal(false);
+        expect(document.activeElement === el.querySelector(focusSelector)).to.equal(true);
+      } finally {
+        release();
+        await dispose.ready;
+      }
     });
+  });
 
   [true, false].forEach((copyAllowed) => {
     it(`keeps rejected-clipboard recovery in the native dialog: copy ${copyAllowed}`, async () => {
@@ -834,6 +833,155 @@ describe('customer-picker › reports-first dashboard', () => {
     expect(el.querySelector('.cp-family-btn')).to.equal(null);
     expect(fetchStub.getCalls().some((call) => String(call.args[0]).includes('/account-list.json'))).to.equal(false);
     expect(el.querySelector('tbody .cp-company').textContent).to.equal('Company 00000');
+  });
+
+  it('shows newest reports first in All campaigns and a selected campaign', async () => {
+    sheets['insights-list'] = [
+      row(0, { Customers: 'Alpha old', Created: '31.12.2025', 'Campaign 37': 'Alpha old' }),
+      row(1, { Customers: 'Zeta newest', Created: '2.10.2026', 'Campaign 37': 'Zeta newest' }),
+      row(2, { Customers: 'Beta middle', Created: '10.09.2026', 'Campaign 37': 'Beta middle' }),
+    ];
+    await load();
+    const names = () => [...el.querySelectorAll('tbody .cp-company')].map((name) => name.textContent);
+    expect(names()).to.deep.equal(['Zeta newest', 'Beta middle', 'Alpha old']);
+    expect(el.querySelector('th[aria-sort="descending"]')?.textContent).to.equal('Published');
+    expect(el.querySelectorAll('th[aria-sort]')).to.have.lengthOf(1);
+    await chooseCampaign('Northern');
+    expect(names()).to.deep.equal(['Zeta newest', 'Beta middle', 'Alpha old']);
+  });
+
+  it('uses the same calendar validation for displayed dates and newest-first ordering', async () => {
+    sheets['insights-list'] = [
+      row(0, { Customers: 'Alpha invalid', Created: '31.02.2026' }),
+      row(1, { Customers: 'Zeta valid', Created: ' 2.10.2026 ' }),
+      row(2, { Customers: 'Beta unrecorded', Created: '' }),
+    ];
+    await load();
+    const rows = [...el.querySelectorAll('tbody tr')];
+    expect(rows.map((entry) => entry.querySelector('.cp-company').textContent))
+      .to.deep.equal(['Zeta valid', 'Alpha invalid', 'Beta unrecorded']);
+    expect(rows[0].querySelector('time')?.dateTime).to.equal('2026-10-02');
+    expect(rows.slice(1).map((entry) => entry.querySelector('.cp-published').textContent))
+      .to.deep.equal(['Not recorded', 'Not recorded']);
+  });
+
+  [false, true].forEach((reverse) => {
+    it(`uses the latest publication metadata when the source repeats an exact report path: reverse ${reverse}`, async () => {
+      const duplicate = [
+        row(0, { Customers: 'Older company metadata', Created: '31.12.2025' }),
+        row(0, { Customers: 'Current company metadata', Created: '2.10.2026' }),
+      ];
+      sheets['insights-list'] = reverse ? duplicate.reverse() : duplicate;
+      await load();
+      expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(1);
+      expect(el.querySelector('.cp-company').textContent).to.equal('Current company metadata');
+      expect(el.querySelector('tbody time')?.dateTime).to.equal('2026-10-02');
+      el.querySelector('.cp-company').click();
+      expect(document.querySelector('.cp-report-meta time')?.dateTime).to.equal('2026-10-02');
+    });
+  });
+
+  ['tbody tr', '.cp-website', '.cp-published', '.cp-company-avatar', '.cp-row-actions']
+    .forEach((selector) => {
+      it(`opens details and sharing once from non-interactive row content: ${selector}`, async () => {
+        const showModal = sandbox.spy(HTMLDialogElement.prototype, 'showModal');
+        await load();
+        el.querySelector(selector).click();
+        const dialog = document.querySelector('.cp-report-dialog');
+        expect(dialog.open).to.equal(true);
+        expect(showModal.calledOnce).to.equal(true);
+        expect(dialog.querySelector('.cp-dialog-title').textContent).to.equal('Company 00000');
+        expect(dialog.querySelector('.cp-share-copy')).to.exist;
+        dialog.querySelector('.cp-dialog-close').click();
+        expect(document.activeElement === el.querySelector('.cp-company')).to.equal(true);
+      });
+    });
+
+  it('keeps the native company button as the row keyboard control without adding a row tab stop', async () => {
+    const showModal = sandbox.spy(HTMLDialogElement.prototype, 'showModal');
+    await load();
+    const entry = el.querySelector('tbody tr');
+    const primary = entry.querySelector('.cp-company');
+    expect(entry.getAttribute('role')).to.equal('row');
+    expect(entry.tabIndex).to.equal(-1);
+    expect(primary.tagName).to.equal('BUTTON');
+    expect(primary.tabIndex).to.equal(0);
+    primary.focus();
+    primary.click();
+    expect(showModal.calledOnce).to.equal(true);
+    document.querySelector('.cp-dialog-close').click();
+    expect(document.activeElement === primary).to.equal(true);
+  });
+
+  it('keeps Open separate from details and does not open Share twice through the row', async () => {
+    const showModal = sandbox.spy(HTMLDialogElement.prototype, 'showModal');
+    await load();
+    const open = el.querySelector('tbody .cp-open');
+    // Cancel navigation after the row handler, so its control guard is still tested.
+    el.addEventListener('click', (event) => {
+      if (event.target === open) event.preventDefault();
+    });
+    open.click();
+    expect(open.getAttribute('href')).to.equal(row(0).Folder);
+    expect(showModal.called).to.equal(false);
+    const share = el.querySelector('tbody .cp-share-action');
+    share.click();
+    expect(showModal.calledOnce).to.equal(true);
+    const dialog = document.querySelector('.cp-report-dialog');
+    expect(dialog.open).to.equal(true);
+    expect(document.activeElement === dialog.querySelector('.cp-share-input')).to.equal(true);
+    dialog.querySelector('.cp-dialog-close').click();
+    expect(document.activeElement === share).to.equal(true);
+  });
+
+  it('does not open a row while its website text is selected for copying', async () => {
+    await load();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el.querySelector('.cp-website'));
+    selection.removeAllRanges();
+    selection.addRange(range);
+    try {
+      el.querySelector('tbody tr').click();
+      expect(document.querySelector('.cp-report-dialog').open).to.equal(false);
+      expect(selection.toString()).to.equal('site0.example');
+    } finally {
+      selection.removeAllRanges();
+    }
+  });
+
+  it('does not let selected text in another row block opening a report', async () => {
+    await load();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el.querySelector('.cp-website'));
+    selection.removeAllRanges();
+    selection.addRange(range);
+    try {
+      el.querySelectorAll('tbody tr')[1].click();
+      const dialog = document.querySelector('.cp-report-dialog');
+      expect(dialog.open).to.equal(true);
+      expect(dialog.querySelector('.cp-dialog-title').textContent).to.equal('Company 00001');
+    } finally {
+      selection.removeAllRanges();
+    }
+  });
+
+  it('returns to the visible company control if the share opener becomes hidden', async () => {
+    await load();
+    const share = el.querySelector('.cp-share-action');
+    share.click();
+    share.style.display = 'none';
+    document.querySelector('.cp-dialog-close').click();
+    expect(document.activeElement === el.querySelector('.cp-company')).to.equal(true);
+  });
+
+  it('keeps only Open and Share actions without an ellipsis or duplicate details shortcut', async () => {
+    await load();
+    const actions = el.querySelector('tbody .cp-row-actions');
+    expect([...actions.querySelectorAll('a, button')].map((control) => control.textContent))
+      .to.deep.equal(['Open', 'Share']);
+    expect(actions.querySelector('details, summary, .cp-details-action') === null).to.equal(true);
   });
 
   it('finishes block decoration without waiting for an optional access source', async () => {

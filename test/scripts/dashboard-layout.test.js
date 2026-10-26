@@ -178,8 +178,15 @@ describe('dashboard layout', () => {
       for (const width of [1440, 900, 600, 320]) {
         await setViewport({ width, height: 900 });
         expect(document.documentElement.scrollWidth).to.be.at.most(width);
-        expect(getComputedStyle(picker.querySelector('.cp-details-action')).display)
-          .to.equal(width >= 600 ? 'none' : 'inline-flex');
+        expect(picker.querySelector('.cp-details-action, .cp-more') === null).to.equal(true);
+        expect([...picker.querySelectorAll('.cp-row-actions a, .cp-row-actions button')]
+          .map((control) => control.textContent)).to.deep.equal(['Open', 'Share']);
+        expect(getComputedStyle(picker.querySelector('tbody tr')).cursor).to.equal('pointer');
+        picker.querySelector('.cp-website').click();
+        const dialog = document.querySelector('.cp-report-dialog');
+        expect(dialog.open).to.equal(true);
+        dialog.querySelector('.cp-dialog-close').click();
+        expect(document.activeElement === picker.querySelector('.cp-company')).to.equal(true);
         const controls = main.querySelectorAll('button, a, summary, input, select');
         [...controls].filter((control) => control.getClientRects().length).forEach((control) => {
           const box = control.getBoundingClientRect();
