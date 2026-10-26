@@ -40,12 +40,20 @@ publish or overwrite the authored page.
 Keep the existing three-cell `Report Callout (report-requests)` block: label,
 heading/body, then actions. Keep the existing neutral playbook and coverage
 callouts, followed by the heading, demo link and `Customer Picker` block.
-The layout moves the decorated source nodes, including their existing links
-and event handlers; it does not create another report list or export form.
+The layout reuses the decorated source blocks and export controls. Shortcut
+links keep their existing event handlers, and full guidance retains working
+links with the original labels and destinations. It does not create another
+report list or export form.
 
 The compact card summaries are part of the dashboard code. Full authored
 guidance remains available from each card. Additional callouts or authored
 sections appear as additional guidance rather than being discarded.
+
+The information panels use smaller subheadings, readable paragraphs and separated
+actions rather than the original banner layout. Their title and close button
+stay visible while long guidance scrolls, including with the keyboard. Keep all
+original wording and links inside each panel, even when the same destination
+also has a shortcut in the resource column.
 
 ## Destinations to retain
 
@@ -79,7 +87,9 @@ need a dedicated browser profile without a portal sign-in.
   the matching insights and campaign-registry sheet URLs from it.
 - Preserve all destinations above and the coverage limitations. New copy must
   not promise that every section or PDF is always available.
-- Preview both desktop and mobile. Check the Slack help link, resources jump link, full guidance,
+- Preview both desktop and mobile, including a short window. Compare each panel's
+  full wording and links with the original content, not just its card summary.
+  Check keyboard scrolling, the close button, the Slack help link, resources jump,
   export form, company/website search, campaign search and page-size selector.
 - Check a report with several campaigns and one with several formats. Details
   and sharing must refer to the chosen page, not every page for its website.

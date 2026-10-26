@@ -136,12 +136,146 @@ describe('dashboard layout', () => {
     link.addEventListener('click', listener);
     main.querySelector('.default-content').append(link);
     await composeDashboard(main, '/adobe/dashboard');
-    expect(main.querySelectorAll(`a[href="${link.href}"]`)).to.have.lengthOf(1);
+    expect(main.querySelectorAll(`.dashboard-resource-actions a[href="${link.href}"]`)).to.have.lengthOf(1);
     expect(link.closest('.dashboard-resources') !== null).to.equal(true);
     expect(link.closest('dialog') === null).to.equal(true);
     expect(link.textContent).to.equal('Ask in #digital-insights');
     link.click();
     expect(listener.calledOnce).to.equal(true);
+  });
+
+  it('should retain every original guidance text and link inside its information panel', async () => {
+    const sources = [...main.querySelectorAll(
+      '.report-callout, .booth-guide-banner, .dashboard-tools, .default-content > p',
+    )];
+    const text = (element) => element.textContent.replace(/\s+/g, ' ').trim();
+    const inventory = sources.map((source) => ({
+      source,
+      text: text(source),
+      links: [...source.querySelectorAll('a[href]')].map((link) => ({
+        href: link.getAttribute('href'),
+        label: text(link),
+        target: link.getAttribute('target'),
+        rel: link.getAttribute('rel'),
+        description: link.getAttribute('aria-describedby'),
+      })),
+    }));
+    await composeDashboard(main, '/adobe/dashboard');
+    inventory.forEach((original) => {
+      expect(original.source.closest('dialog') !== null).to.equal(true);
+      expect(text(original.source)).to.equal(original.text);
+      original.links.forEach((expected) => {
+        const link = [...original.source.querySelectorAll('a[href]')]
+          .find((candidate) => candidate.getAttribute('href') === expected.href);
+        expect(link !== undefined, expected.href).to.equal(true);
+        expect(text(link)).to.equal(expected.label);
+        expect(link.getAttribute('target')).to.equal(expected.target);
+        expect(link.getAttribute('rel')).to.equal(expected.rel);
+        expect(link.getAttribute('aria-describedby')).to.equal(expected.description);
+      });
+    });
+  });
+
+  it('should keep the original shortcut listener and a usable guidance link without duplicate IDs', async () => {
+    const source = main.querySelector('.report-callout.report-requests');
+    const link = source.querySelector('a[href="/adobe/report-requests"]');
+    link.id = 'authored-request-link';
+    link.innerHTML = '<span id="authored-request-label">Open report requests</span>';
+    const listener = sandbox.spy((event) => event.preventDefault());
+    link.addEventListener('click', listener);
+    await composeDashboard(main, '/adobe/dashboard');
+    const copy = source.querySelector('a[href="/adobe/report-requests"]');
+    expect(copy !== null).to.equal(true);
+    expect(copy === link).to.equal(false);
+    expect(copy.textContent).to.equal('Open report requests');
+    expect(main.querySelectorAll('#authored-request-link')).to.have.lengthOf(1);
+    expect(main.querySelectorAll('#authored-request-label')).to.have.lengthOf(1);
+    expect(link.closest('.dashboard-resource-actions') !== null).to.equal(true);
+    link.click();
+    expect(listener.calledOnce).to.equal(true);
+  });
+
+  it('should give leading guidance emphasis a heading without reordering inline emphasis', async () => {
+    const source = main.querySelector('.report-callout.neutral');
+    const paragraph = source.querySelector('.rcl-text');
+    const lead = paragraph.querySelector('strong');
+    paragraph.prepend(document.createTextNode(' \n'));
+    const other = document.createElement('p');
+    other.className = 'rcl-text';
+    other.innerHTML = 'Keep this <strong>inline emphasis</strong> in its sentence. <strong>Another point.</strong> Keep all its detail.';
+    source.querySelector('.rcl-bar').append(other);
+    const inline = other.querySelector('strong');
+    const nextPoint = other.querySelectorAll('strong')[1];
+    const original = source.textContent.replace(/\s+/g, ' ').trim();
+    await composeDashboard(main, '/adobe/dashboard');
+    expect(lead.parentElement.tagName).to.equal('H3');
+    expect(inline.parentElement === other).to.equal(true);
+    expect(nextPoint.parentElement.tagName).to.equal('P');
+    expect(nextPoint.parentElement === other).to.equal(false);
+    expect(source.textContent.replace(/\s+/g, ' ').trim()).to.equal(original);
+  });
+
+  it('should keep information panels readable and closable across themes and short or narrow viewports', async () => {
+    await composeDashboard(main, '/adobe/dashboard');
+    await Promise.all([
+      '../../styles/styles.css',
+      '../../blocks/report-callout/report-callout.css',
+      '../../blocks/booth-guide-banner/booth-guide-banner.css',
+      '../../blocks/dashboard-tools/dashboard-tools.css',
+    ].map((path) => loadStyle(new URL(path, import.meta.url).href)));
+    const originalScheme = document.documentElement.style.colorScheme;
+    try {
+      for (const scheme of ['light', 'dark']) {
+        document.documentElement.style.colorScheme = scheme;
+        for (const [width, height] of [[1440, 1000], [740, 436], [320, 900]]) {
+          await setViewport({ width, height });
+          for (const opener of main.querySelectorAll('.dashboard-resource-action')) {
+            opener.click();
+            const dialog = opener.closest('.dashboard-resource-card').querySelector('dialog');
+            const body = dialog.querySelector('.dashboard-dialog-content');
+            const title = dialog.querySelector('[id$="-title"]');
+            const close = dialog.querySelector('.dashboard-dialog-close');
+            const box = dialog.getBoundingClientRect();
+            expect(box.left).to.be.at.least(0);
+            expect(box.right).to.be.at.most(width);
+            expect(box.top).to.be.at.least(0);
+            expect(box.bottom).to.be.at.most(height);
+            expect(body.getBoundingClientRect().width).to.be.at.most(box.width);
+            expect(body.scrollWidth).to.be.at.most(body.clientWidth);
+            const titleSize = parseFloat(getComputedStyle(title).fontSize);
+            body.querySelectorAll('h2, h3, h4').forEach((heading) => {
+              expect(parseFloat(getComputedStyle(heading).fontSize)).to.be.lessThan(titleSize);
+              expect(Number(heading.getAttribute('aria-level') || heading.tagName.slice(1)))
+                .to.be.at.least(3);
+            });
+            body.querySelectorAll('.dt-retention, .dt-guidance, .dt-export-status').forEach((copy) => {
+              expect(parseFloat(getComputedStyle(copy).fontSize)).to.be.at.least(14);
+            });
+            body.querySelectorAll('.dt-retention, .dt-export-status').forEach((copy) => {
+              expect(parseFloat(getComputedStyle(copy).marginTop)).to.be.at.least(8);
+            });
+            expect(body.tabIndex).to.equal(0);
+            body.focus();
+            expect(document.activeElement === body).to.equal(true);
+            [...dialog.querySelectorAll('a, button, select, summary')]
+              .filter((control) => control.getClientRects().length)
+              .forEach((control) => {
+                const size = control.getBoundingClientRect();
+                expect(size.width, control.textContent).to.be.at.least(44);
+                expect(size.height, control.textContent).to.be.at.least(44);
+              });
+            body.scrollTop = body.scrollHeight;
+            const closeBox = close.getBoundingClientRect();
+            expect(closeBox.top).to.be.at.least(0);
+            expect(closeBox.bottom).to.be.at.most(height);
+            close.click();
+            expect(document.activeElement === opener).to.equal(true);
+          }
+        }
+      }
+    } finally {
+      document.documentElement.style.colorScheme = originalScheme;
+    }
   });
 
   it('test_unknown_callout_remains_reachable', async () => {

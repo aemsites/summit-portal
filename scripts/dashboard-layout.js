@@ -20,8 +20,11 @@ function sameDestination(link, href) {
 function moveLink(main, href, label) {
   const found = [...main.querySelectorAll('a[href]')].find((link) => sameDestination(link, href));
   const link = found || node('a');
-  if (found) found.replaceWith(document.createTextNode(found.textContent));
-  else {
+  if (found) {
+    const sourceLink = found.cloneNode(true);
+    sourceLink.removeAttribute('id');
+    found.replaceWith(sourceLink);
+  } else {
     link.href = href;
     if (href.startsWith('https://')) {
       link.target = '_blank';
@@ -33,17 +36,55 @@ function moveLink(main, href, label) {
   return link;
 }
 
+function formatGuidance(source) {
+  // Preserve authored heading nodes while nesting them under the dialog title.
+  source.querySelectorAll('h2').forEach((heading) => {
+    heading.setAttribute('aria-level', '3');
+  });
+  source.querySelectorAll('.rcl-text').forEach((paragraph) => {
+    const first = [...paragraph.childNodes].find((child) => child.nodeType !== Node.TEXT_NODE
+      || child.textContent.trim());
+    if (first?.nodeName === 'STRONG') {
+      const heading = node('h3', 'dashboard-guidance-lead');
+      paragraph.before(heading);
+      heading.append(first);
+    }
+    let current = paragraph;
+    let prefix = '';
+    [...paragraph.childNodes].forEach((child) => {
+      if (child.nodeName === 'STRONG' && /[.!?]\s*$/.test(prefix)) {
+        const next = node('p', 'rcl-text');
+        current.after(next);
+        current = next;
+        prefix = '';
+      }
+      if (current !== paragraph) current.append(child);
+      prefix += child.textContent;
+    });
+  });
+}
+
 function resourceDialog(id, title, sources) {
   const dialog = node('dialog', 'dashboard-resource-dialog');
+  const header = node('div', 'dashboard-dialog-header');
   const heading = node('h2', '', title);
   heading.id = `${id}-title`;
   dialog.setAttribute('aria-labelledby', heading.id);
   const close = node('button', 'dashboard-dialog-close', '\u00d7');
   close.type = 'button';
   close.setAttribute('aria-label', 'Close guidance');
+  header.append(heading, close);
   const content = node('div', 'dashboard-dialog-content');
-  content.append(...sources);
-  dialog.append(close, heading, content);
+  content.tabIndex = 0;
+  content.setAttribute('role', 'region');
+  content.setAttribute('aria-labelledby', heading.id);
+  sources.forEach((source) => {
+    formatGuidance(source);
+    const section = node('div', 'dashboard-guidance-section');
+    section.append(source);
+    content.append(section);
+  });
+  dialog.append(header, content);
   let opener;
   function closeDialog() {
     dialog.close();
