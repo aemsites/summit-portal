@@ -41,6 +41,35 @@ describe('dashboard layout', () => {
     await setViewport({ width: 800, height: 600 });
   });
 
+  it('should keep the original content in place until the dashboard stylesheet is ready', async () => {
+    const { href } = new URL('../../styles/dashboard.css', import.meta.url);
+    const existing = [...document.head.querySelectorAll('link[rel="stylesheet"]')]
+      .filter((link) => link.href === href);
+    existing.forEach((link) => link.remove());
+    const append = document.head.append.bind(document.head);
+    let stylesheet;
+    sandbox.stub(document.head, 'append').callsFake((...elements) => {
+      const pending = elements.find((element) => element instanceof HTMLLinkElement
+        && element.href === href);
+      if (pending) stylesheet = pending;
+      else append(...elements);
+    });
+    const picker = main.querySelector('.customer-picker');
+    const originalParent = picker.parentNode;
+    const composition = composeDashboard(main, '/adobe/dashboard');
+
+    try {
+      expect(stylesheet instanceof HTMLLinkElement).to.equal(true);
+      expect(main.querySelector('.dashboard-shell') === null).to.equal(true);
+      expect(picker.parentNode === originalParent).to.equal(true);
+    } finally {
+      stylesheet?.dispatchEvent(new Event('load'));
+      await composition;
+      append(...existing);
+    }
+    expect(main.querySelector('.dashboard-reports .customer-picker') === picker).to.equal(true);
+  });
+
   it('test_dashboard_reuses_callouts_and_export_controls', async () => {
     const picker = main.querySelector('.customer-picker');
     const callouts = [...main.querySelectorAll('.report-callout')];
@@ -326,6 +355,58 @@ describe('dashboard layout', () => {
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(dialog.open).to.equal(false);
     expect(document.activeElement).to.equal(open);
+  });
+
+  it('should keep resources below the viewport while the complete report list is loading', async () => {
+    const originalUrl = window.location.href;
+    window.history.replaceState(null, '', '/adobe/dashboard');
+    const picker = main.querySelector('.customer-picker');
+    picker.innerHTML = '<a href="/data/company-list.json">Companies</a>';
+    const rows = Array.from({ length: 25 }, (_, i) => ({
+      Report: `company-${i}.example`,
+      Customers: `Company ${i}`,
+      Folder: `/accounts/e/example/insights/company-${i}/portal-landing/`,
+    }));
+    let resolveIndex;
+    const indexResponse = new Promise((resolve) => { resolveIndex = resolve; });
+    const release = () => resolveIndex(Response.json({
+      data: rows,
+      total: rows.length,
+      offset: 0,
+      limit: 1000,
+    }));
+    sandbox.stub(window, 'fetch').callsFake(async (url) => (
+      String(url).includes('insights-list.json')
+        ? indexResponse
+        : Response.json({ data: [], total: 0, offset: 0, limit: 1000 })
+    ));
+    const dispose = await initPicker(picker);
+    try {
+      await Promise.all([
+        '../../styles/styles.css',
+        '../../blocks/customer-picker/customer-picker.css',
+      ].map((path) => loadStyle(new URL(path, import.meta.url).href)));
+      await composeDashboard(main, '/adobe/dashboard');
+      await setViewport({ width: 390, height: 844 });
+      window.scrollTo(0, 0);
+      const results = picker.querySelector('.cp-results');
+      const resources = main.querySelector('.dashboard-resources');
+      expect(results.getAttribute('aria-busy')).to.equal('true');
+      expect(resources.getBoundingClientRect().top).to.be.at.least(window.innerHeight);
+      expect(picker.querySelectorAll('tbody tr')).to.have.lengthOf(0);
+
+      release();
+      await dispose.ready;
+      expect(results.getAttribute('aria-busy')).to.equal('false');
+      expect(picker.querySelectorAll('tbody tr')).to.have.lengthOf(25);
+      expect(resources.getBoundingClientRect().top).to.be.at.least(window.innerHeight);
+      expect(getComputedStyle(results).minHeight).to.equal('0px');
+    } finally {
+      release();
+      await dispose.ready;
+      dispose();
+      window.history.replaceState(null, '', originalUrl);
+    }
   });
 
   it('keeps real report controls within the desktop and 320px layouts with 44px targets', async () => {

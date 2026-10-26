@@ -91,6 +91,10 @@
   min-width: 0;
 }
 
+.dashboard-page .customer-picker .cp-results[aria-busy="true"] {
+  min-height: 100svh;
+}
+
 .dashboard-page .dashboard-resources {
   scroll-margin-top: 24px;
 }

@@ -10,10 +10,19 @@ by company, website or campaign. Campaign choices come from the existing sheets;
 see [campaign registration and membership](integrations/event-tabs-and-event-membership.md).
 Do not add a tab or duplicate the picker when a new campaign is published.
 
+Existing campaign labels, membership columns and legacy campaign links remain
+supported. Do not rename their IDs or columns just to enable this dashboard;
+the reader does not require a DA sheet migration.
+
 Reports appear newest publication date first, with unrecorded or invalid dates
 last. Click a report row to open its details and sharing panel. The row keeps
 only **Open** and **Share** shortcuts; Share focuses the sharing controls in
 that same panel. When several formats are available, choose one first.
+
+The layout waits for its styles before rearranging the authored content. While
+the complete report list loads, it reserves one screen of space so mobile
+resources do not appear briefly and then move away. That extra space is removed
+when loading finishes; empty and unavailable states keep their compact layout.
 
 The first resource card, **Questions & help**, links directly to
 [#digital-insights on Adobe Slack](https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5)

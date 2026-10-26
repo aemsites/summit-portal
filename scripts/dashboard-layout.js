@@ -153,6 +153,8 @@ export async function composeDashboard(main, pathname = window.location.pathname
   const picker = main.querySelector('.customer-picker');
   if (!picker) return undefined;
 
+  await loadStyle(new URL('../styles/dashboard.css', import.meta.url).href);
+
   const authoredSections = [...main.children];
   const callouts = [...main.querySelectorAll('.report-callout')];
   const requests = callouts.filter((block) => block.classList.contains('report-requests'));
@@ -268,6 +270,5 @@ export async function composeDashboard(main, pathname = window.location.pathname
   resources.append(node('p', 'dashboard-device-note', 'Booth access and portal access are separate. On shared event devices, use a dedicated browser profile without a portal sign-in.'));
   main.classList.add('dashboard-page');
   main.prepend(shell);
-  await loadStyle(new URL('../styles/dashboard.css', import.meta.url).href);
   return shell;
 }
