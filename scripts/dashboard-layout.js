@@ -1,6 +1,7 @@
 import { loadStyle } from './ak.js';
 
 const DIH_URL = 'https://digital-insights.corp.adobe.com/';
+const SLACK_URL = 'https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5';
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -160,6 +161,12 @@ export async function composeDashboard(main, pathname = window.location.pathname
   if (intro && hasContent(intro)) readingSources.push(intro);
   if (demoIntro && demoIntro !== intro && hasContent(demoIntro)) readingSources.push(demoIntro);
   const cards = [
+    {
+      id: 'dashboard-help',
+      title: 'Questions & help',
+      copy: 'Ask about the platform, Digital Insights or Digital Opportunity reports in our Adobe Slack channel.',
+      links: [[SLACK_URL, 'Ask in #digital-insights']],
+    },
     {
       id: 'dashboard-requests',
       title: 'Customer report requests',

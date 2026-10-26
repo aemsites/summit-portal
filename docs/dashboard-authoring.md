@@ -15,6 +15,13 @@ last. Click a report row to open its details and sharing panel. The row keeps
 only **Open** and **Share** shortcuts; Share focuses the sharing controls in
 that same panel. When several formats are available, choose one first.
 
+The first resource card, **Questions & help**, links directly to
+[#digital-insights on Adobe Slack](https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5)
+for questions about the platform, Digital Insights and Digital Opportunity reports.
+It stays visible without opening a guidance dialog. On mobile, use the
+**Resources & guidance** jump link to reach it below the reports. This destination
+is included in the dashboard code; no new DA callout or publication is required.
+
 ## Copy example for owner review
 
 This example follows the approved reports-first design. Review these optional
@@ -44,6 +51,7 @@ sections appear as additional guidance rather than being discarded.
 
 | Purpose | Destination |
 |---|---|
+| Platform and report questions | `https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5` (`#digital-insights`) |
 | Staff request review | `/adobe/report-requests` |
 | No-sign-in customer intake | `/request-report` |
 | Generate more reports | `https://digital-insights.corp.adobe.com/` |
@@ -71,7 +79,7 @@ need a dedicated browser profile without a portal sign-in.
   the matching insights and campaign-registry sheet URLs from it.
 - Preserve all destinations above and the coverage limitations. New copy must
   not promise that every section or PDF is always available.
-- Preview both desktop and mobile. Check the resources jump link, full guidance,
+- Preview both desktop and mobile. Check the Slack help link, resources jump link, full guidance,
   export form, company/website search, campaign search and page-size selector.
 - Check a report with several campaigns and one with several formats. Details
   and sharing must refer to the chosen page, not every page for its website.

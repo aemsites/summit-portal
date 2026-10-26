@@ -95,6 +95,7 @@ describe('dashboard layout', () => {
       '/adobe/report-requests', '/request-report', '/docs/sales-playbook',
       '/customers/0-9/000-demo/', '/adobe/booth-guide', '/booth',
       'https://digital-insights.corp.adobe.com/',
+      'https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5',
     ].forEach((path) => expect(destinations).to.include(path));
     expect(main.querySelector('.dashboard-request-more a').getAttribute('href'))
       .to.equal('https://digital-insights.corp.adobe.com/');
@@ -105,8 +106,42 @@ describe('dashboard layout', () => {
     ].forEach((text) => expect(main.textContent).to.include(text));
     expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
     expect(main.querySelector('h1').textContent).to.equal('Digital Opportunity Reports');
-    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(5);
     expect(main.querySelector('.dashboard-jump').getAttribute('href')).to.equal('#dashboard-resources');
+  });
+
+  it('should make the Slack channel visible for platform and report questions', async () => {
+    await composeDashboard(main, '/adobe/dashboard');
+    const resources = main.querySelector('.dashboard-resources');
+    const link = resources.querySelector('a[href="https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5"]');
+    expect(link !== null).to.equal(true);
+    expect(link.textContent).to.equal('Ask in #digital-insights');
+    expect(link.target).to.equal('_blank');
+    expect(link.rel.split(/\s+/)).to.include('noopener');
+    expect(link.closest('dialog') === null).to.equal(true);
+    const card = link.closest('.dashboard-resource-card');
+    expect(resources.querySelector('.dashboard-resource-card') === card).to.equal(true);
+    expect(card.querySelector('h3').textContent).to.equal('Questions & help');
+    ['platform', 'Digital Insights', 'Digital Opportunity reports', 'Slack']
+      .forEach((text) => expect(card.textContent).to.include(text));
+    link.focus();
+    expect(document.activeElement === link).to.equal(true);
+  });
+
+  it('should reuse an authored Slack link without hiding it or losing its listener', async () => {
+    const link = document.createElement('a');
+    link.href = 'https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5';
+    link.textContent = 'Join our Slack channel';
+    const listener = sandbox.spy((event) => event.preventDefault());
+    link.addEventListener('click', listener);
+    main.querySelector('.default-content').append(link);
+    await composeDashboard(main, '/adobe/dashboard');
+    expect(main.querySelectorAll(`a[href="${link.href}"]`)).to.have.lengthOf(1);
+    expect(link.closest('.dashboard-resources') !== null).to.equal(true);
+    expect(link.closest('dialog') === null).to.equal(true);
+    expect(link.textContent).to.equal('Ask in #digital-insights');
+    link.click();
+    expect(listener.calledOnce).to.equal(true);
   });
 
   it('test_unknown_callout_remains_reachable', async () => {
@@ -136,7 +171,7 @@ describe('dashboard layout', () => {
     const second = await composeDashboard(main, '/adobe/dashboard/');
     expect(second).to.equal(first);
     expect(main.querySelectorAll('.dashboard-shell')).to.have.lengthOf(1);
-    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(5);
     expect(main.querySelectorAll('.dt-export')).to.have.lengthOf(1);
     expect(main.querySelector('.dt-export')).to.equal(form);
     expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
