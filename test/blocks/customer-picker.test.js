@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
+import { setViewport } from '@web/test-runner-commands';
 import init, {
   parseInsightFolder,
   groupInsightsByWebsite,
@@ -1092,19 +1093,80 @@ describe('customer-picker › reports-first dashboard', () => {
     expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(50);
   });
 
-  it('does not show 38 unfiltered campaigns and finds a partial accent-insensitive name', async () => {
+  it('should show campaigns before typing and restore them when a partial-name search is cleared', async () => {
     await load();
     el.querySelector('.cp-campaign-trigger').click();
-    expect(options().length).to.be.at.most(2);
+    const initialIds = options().map((option) => option.dataset.campaignId);
+    expect(initialIds).to.include.members(modes().map((mode) => mode.Id));
+    expect(options()[0].textContent).to.equal('All campaigns');
     expect(el.querySelector('.cp-campaign-help').textContent).to.include('Search');
-    type(el.querySelector('.cp-campaign-search'), 'nÓRTH');
+    const search = el.querySelector('.cp-campaign-search');
+    type(search, 'nÓRTH');
     await tick();
     expect(options()).to.have.lengthOf(1);
     expect(options()[0].textContent).to.include('Événement Northern Europe');
+    type(search, '');
+    expect(options().map((option) => option.dataset.campaignId)).to.deep.equal(initialIds);
+    type(search, 'nÓRTH');
     options()[0].click();
     expect(new URLSearchParams(window.location.search).get('tab')).to.equal('event-37');
     expect(new URLSearchParams(window.location.search).get('page')).to.equal('1');
     expect(el.querySelector('.cp-result-count').textContent).to.include('30');
+  });
+
+  it('should allow scrolling and keyboard selection when no campaign search is entered', async () => {
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = new URL('../../blocks/customer-picker/customer-picker.css', import.meta.url).href;
+    const loaded = new Promise((resolve, reject) => {
+      stylesheet.onload = resolve;
+      stylesheet.onerror = reject;
+    });
+    document.head.append(stylesheet);
+
+    try {
+      await loaded;
+      await load();
+      for (const size of [
+        { width: 1440, height: 1000 },
+        { width: 390, height: 844 },
+        { width: 320, height: 568 },
+      ]) {
+        await setViewport(size);
+        const trigger = el.querySelector('.cp-campaign-trigger');
+        trigger.click();
+        const list = el.querySelector('.cp-campaign-options');
+        const search = el.querySelector('.cp-campaign-search');
+        expect(search.value).to.equal('');
+        expect(getComputedStyle(list).overflowY).to.equal('auto');
+        expect(list.scrollHeight).to.be.above(list.clientHeight);
+        expect(list.clientHeight).to.be.at.most(Math.min(280, window.innerHeight * 0.4) + 1);
+        list.scrollTop = list.scrollHeight;
+        const last = options().at(-1);
+        const { campaignId } = last.dataset;
+        const listBounds = list.getBoundingClientRect();
+        const lastBounds = last.getBoundingClientRect();
+        expect(list.scrollTop).to.be.above(0);
+        expect(lastBounds.top).to.be.at.least(listBounds.top - 1);
+        expect(lastBounds.bottom).to.be.at.most(listBounds.bottom + 1);
+        last.click();
+        expect(new URLSearchParams(window.location.search).get('tab')).to.equal(campaignId);
+
+        trigger.click();
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        expect(list.scrollTop).to.equal(0);
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+        expect(list.scrollTop).to.be.above(0);
+        expect(search.getAttribute('aria-activedescendant')).to.equal(options().at(-1).id);
+        search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(new URLSearchParams(window.location.search).get('tab')).to.equal(campaignId);
+        expect(trigger.getAttribute('aria-expanded')).to.equal('false');
+      }
+    } finally {
+      stylesheet.remove();
+      await setViewport(viewport);
+    }
   });
 
   it('visibly distinguishes same-named legacy and DIH campaigns', async () => {

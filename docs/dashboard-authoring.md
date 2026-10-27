@@ -10,6 +10,10 @@ by company, website or campaign. Campaign choices come from the existing sheets;
 see [campaign registration and membership](integrations/event-tabs-and-event-membership.md).
 Do not add a tab or duplicate the picker when a new campaign is published.
 
+Opening the campaign selector shows all available campaigns in a scrollable list.
+Readers can browse without typing, or search for any part of a campaign name to
+narrow the choices. Clearing the search restores the full list.
+
 Existing campaign labels, membership columns and legacy campaign links remain
 supported. Do not rename their IDs or columns just to enable this dashboard;
 the reader does not require a DA sheet migration.
