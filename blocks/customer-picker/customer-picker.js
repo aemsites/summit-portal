@@ -775,7 +775,7 @@ function buildCampaignPicker(id, onChange) {
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-controls', `${id}-campaign-options`);
   input.setAttribute('aria-expanded', 'true');
-  const help = node('p', 'cp-campaign-help', 'Search by any part of a campaign name.');
+  const help = node('p', 'cp-campaign-help', 'Search or scroll to choose a campaign.');
   const list = node('div', 'cp-campaign-options');
   list.id = `${id}-campaign-options`;
   list.setAttribute('role', 'listbox');
@@ -807,9 +807,7 @@ function buildCampaignPicker(id, onChange) {
 
   function renderOptions(preserveActive = false) {
     const activeId = preserveActive ? list.children[active]?.dataset.campaignId : undefined;
-    const selected = modes.find((mode) => mode.id === current);
-    const matches = input.value.trim() ? searchCampaigns(modes, input.value)
-      : [...(selected && current !== DEFAULT_MODE ? [selected] : []), modes[0]].filter(Boolean);
+    const matches = searchCampaigns(modes, input.value);
     list.replaceChildren();
     matches.forEach((mode, i) => {
       const choice = button(mode.displayLabel || mode.label, 'cp-campaign-option', () => {
