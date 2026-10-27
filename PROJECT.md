@@ -1378,6 +1378,22 @@ Public, mobile-first request form. Its authoring contract is intentionally empty
 ### report-requests-list
 Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads newest-first rows from `GET /api/report-requests`, supports a debounced text search and cursor pagination, and keeps the CSV download query synchronized with the active search. On mobile, rows use labelled records rather than a horizontally overflowing table. The page and interactive shell both link back to `/adobe/dashboard`. Because this authenticated route previously remained as raw authored markup when normal Author Kit discovery missed the block, `scripts.js` explicitly ensures the required block loads after standard page decoration. Its DA source includes a static loading fallback with dashboard navigation, so a module-loading failure cannot leave a blank page or sign-in loop. The list intentionally has no event filter, workflow status, owner, assignment, editing, or internal request-ID surface.
 
+**Campaign intake CSV (October 27; Worker deployment required):** `/api/report-requests.csv`
+now matches the current Digital Insights Hub Companies-sheet columns and order:
+`Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
+`Primary Country (Optional)`, `Audience`, `Access Emails`. Company and website
+come from the request; the customer's business email goes in `Access Emails`,
+not the Adobe representative field. Uncollected campaign settings remain blank.
+Per Jose's decision, the optional country is also blank so the Hub can infer it;
+the request's free-text market is not a validated country override. Submitted
+date, contact name, role and entered market remain available in the list, but
+are not campaign intake columns. Search, newest-first order, the existing
+1,000-row export limit, Adobe-only access and CSV escaping are unchanged.
+Open the CSV in Excel and save it as `.xlsx` before creating a campaign batch:
+the Hub does not accept CSV uploads directly. The schema was checked against
+[`company-template.ts`](https://github.com/Adobe-AEM-Foundation/digital-insights-hub/blob/c201e8e53ac34212fc7ac1364f6a897b43fc04a2/frontend/src/lib/campaigns-v3/company-template.ts).
+No production deployment or campaign creation is included.
+
 ### header
 Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor.
 
