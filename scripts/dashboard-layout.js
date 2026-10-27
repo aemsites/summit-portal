@@ -162,9 +162,10 @@ export async function composeDashboard(main, pathname = window.location.pathname
     .some((link) => sameDestination(link, '/docs/sales-playbook')));
   const coverage = callouts.filter((block) => !requests.includes(block)
     && !playbooks.includes(block)
-    && (block.classList.contains('coverage') || /semrush/i.test(block.textContent)));
+    && (block.classList.contains('coverage') || /\breport coverage\b/i.test(block.textContent)));
   const known = new Set([...requests, ...playbooks, ...coverage]);
   const unknown = callouts.filter((block) => !known.has(block));
+  [...playbooks, ...coverage].forEach((block) => block.remove());
   const booth = [...main.querySelectorAll('.booth-guide-banner')];
   const tools = [...main.querySelectorAll('.dashboard-tools')];
   const title = main.querySelector('h1') || node('h1', '', 'Digital Opportunity Reports');
@@ -200,7 +201,7 @@ export async function composeDashboard(main, pathname = window.location.pathname
   grid.append(reports, resources);
   shell.append(header, jump, grid);
 
-  const readingSources = [...playbooks];
+  const readingSources = [];
   if (intro && hasContent(intro)) readingSources.push(intro);
   if (demoIntro && demoIntro !== intro && hasContent(demoIntro)) readingSources.push(demoIntro);
   const cards = [
@@ -222,16 +223,12 @@ export async function composeDashboard(main, pathname = window.location.pathname
       id: 'dashboard-present',
       title: 'Present with confidence',
       copy: "Read, present and explain a customer's report and portal page.",
-      links: [['/docs/sales-playbook', 'Sales Playbook'], ['/customers/0-9/000-demo/', 'Open demo report']],
+      links: [
+        [`${DIH_URL}reports/how-to-use`, 'Digital Insights Hub Guides'],
+        ['/customers/0-9/000-demo/', 'Open demo report'],
+      ],
       sources: readingSources,
       detailsLabel: 'Reading and presenting guidance',
-    },
-    {
-      id: 'dashboard-coverage',
-      title: 'Why a section may be missing',
-      copy: 'SEO, keyword and AI-visibility coverage depends on the data available for each website.',
-      sources: coverage,
-      detailsLabel: 'Understand report coverage',
     },
     {
       id: 'dashboard-booth',

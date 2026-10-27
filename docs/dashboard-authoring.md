@@ -31,6 +31,12 @@ It stays visible without opening a guidance dialog. On mobile, use the
 **Resources & guidance** jump link to reach it below the reports. This destination
 is included in the dashboard code; no new DA callout or publication is required.
 
+**Present with confidence** links to
+[Digital Insights Hub Guides](https://digital-insights.corp.adobe.com/reports/how-to-use)
+and the demo report. The former Sales Playbook link and **Why a section may be
+missing** card are removed, along with their legacy authored callouts. They do
+not reappear as additional guidance, even if the old blocks remain in DA.
+
 ## Copy example for owner review
 
 This example follows the approved reports-first design. Review these optional
@@ -43,18 +49,18 @@ publish or overwrite the authored page.
 | Introduction | Find a company, open a report, or share a magic link. |
 | Customer-request heading | Customer report requests |
 | Customer-request body | Customers can request without Adobe sign-in. Review their request, generate the report in Digital Insights Hub, then return here to send a magic link. |
-| Presenting guidance | Use the Sales Playbook to read, present and explain a customer's report and portal page. Explore the demo report before a meeting. |
-| Coverage guidance | SEO and keyword data come from Semrush, an Adobe company; AI-visibility data comes from Adobe. New or small sites, redirects and blocked collection can leave gaps. AI Visibility or Keyword Opportunities may be omitted, and occasionally no PDF is available. |
+| Presenting guidance | Use Digital Insights Hub Guides to read, present and explain a customer's report and portal page. Explore the demo report before a meeting. |
 
 Keep the existing three-cell `Report Callout (report-requests)` block: label,
-heading/body, then actions. Keep the existing neutral playbook and coverage
-callouts, followed by the heading, demo link and `Customer Picker` block.
-The layout reuses the decorated source blocks and export controls. Shortcut
+heading/body, then actions, followed by the heading, demo link and `Customer Picker`
+block. The old neutral playbook and coverage callouts can be deleted from DA;
+the layout already removes them from the rendered dashboard.
+The layout reuses the other decorated source blocks and export controls. Shortcut
 links keep their existing event handlers, and full guidance retains working
 links with the original labels and destinations. It does not create another
 report list or export form.
 
-The compact card summaries are part of the dashboard code. Full authored
+The compact card summaries are part of the dashboard code. Other full authored
 guidance remains available from each card. Additional callouts or authored
 sections appear as additional guidance rather than being discarded.
 
@@ -72,7 +78,7 @@ also has a shortcut in the resource column.
 | Staff request review | `/adobe/report-requests` |
 | No-sign-in customer intake | `/request-report` |
 | Generate more reports | `https://digital-insights.corp.adobe.com/` |
-| Sales Playbook | `/docs/sales-playbook` |
+| Digital Insights Hub Guides | `https://digital-insights.corp.adobe.com/reports/how-to-use` |
 | Demo | `/customers/0-9/000-demo/` |
 | Event staff guide | `/adobe/booth-guide` |
 | Booth experience | `/booth` |
@@ -94,7 +100,7 @@ need a dedicated browser profile without a portal sign-in.
   campaign navigation.
 - Keep the company-list source and its environment prefix. The picker derives
   the matching insights and campaign-registry sheet URLs from it.
-- Preserve all destinations above and the coverage limitations. New copy must
+- Preserve all destinations above. New copy must
   not promise that every section or PDF is always available.
 - Preview both desktop and mobile, including a short window. Compare each panel's
   full wording and links with the original content, not just its card summary.
