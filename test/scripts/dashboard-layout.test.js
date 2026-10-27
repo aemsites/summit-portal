@@ -70,9 +70,9 @@ describe('dashboard layout', () => {
     expect(main.querySelector('.dashboard-reports .customer-picker') === picker).to.equal(true);
   });
 
-  it('test_dashboard_reuses_callouts_and_export_controls', async () => {
+  it('test_dashboard_reuses_request_callouts_and_export_controls', async () => {
     const picker = main.querySelector('.customer-picker');
-    const callouts = [...main.querySelectorAll('.report-callout')];
+    const callouts = [...main.querySelectorAll('.report-callout.report-requests')];
     const form = main.querySelector('.dt-export');
     const tools = main.querySelector('.dashboard-tools');
     const select = form.querySelector('select');
@@ -117,26 +117,47 @@ describe('dashboard layout', () => {
     expect(document.activeElement).to.equal(exportAction);
   });
 
-  it('retains each inventoried destination and all coverage and sharing guidance', async () => {
+  it('retains the current resource destinations and sharing guidance', async () => {
     await composeDashboard(main, '/adobe/dashboard/');
     const destinations = [...main.querySelectorAll('a[href]')].map((link) => link.getAttribute('href'));
     [
-      '/adobe/report-requests', '/request-report', '/docs/sales-playbook',
+      '/adobe/report-requests', '/request-report',
       '/customers/0-9/000-demo/', '/adobe/booth-guide', '/booth',
       'https://digital-insights.corp.adobe.com/',
+      'https://digital-insights.corp.adobe.com/reports/how-to-use',
       'https://adobe.enterprise.slack.com/archives/C0ABMNDLXC5',
     ].forEach((path) => expect(destinations).to.include(path));
     expect(main.querySelector('.dashboard-request-more a').getAttribute('href'))
       .to.equal('https://digital-insights.corp.adobe.com/');
     [
-      'Semrush', 'Adobe', 'small sites', 'redirects', 'blocked collection',
-      'AI Visibility', 'Keyword Opportunities', 'no PDF', 'magic link',
+      'magic link',
       'without Adobe sign-in', 'portal access',
     ].forEach((text) => expect(main.textContent).to.include(text));
     expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
     expect(main.querySelector('h1').textContent).to.equal('Digital Opportunity Reports');
-    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(5);
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
     expect(main.querySelector('.dashboard-jump').getAttribute('href')).to.equal('#dashboard-resources');
+  });
+
+  it('should replace the playbook with Hub Guides and remove the coverage section and legacy callouts', async () => {
+    const retiredCallouts = [...main.querySelectorAll('.report-callout.neutral')];
+    await composeDashboard(main, '/adobe/dashboard');
+    const link = main.querySelector('.dashboard-resource-actions a[href="https://digital-insights.corp.adobe.com/reports/how-to-use"]');
+    expect(link !== null).to.equal(true);
+    expect(link.textContent).to.equal('Digital Insights Hub Guides');
+    expect(link.target).to.equal('_blank');
+    expect(link.rel.split(/\s+/)).to.include('noopener');
+    expect(link.closest('dialog') === null).to.equal(true);
+    expect(link.closest('.dashboard-resource-card').querySelector('h3').textContent)
+      .to.equal('Present with confidence');
+    expect(main.querySelector('a[href="/docs/sales-playbook"]') === null).to.equal(true);
+    expect(main.querySelector('#dashboard-coverage-heading') === null).to.equal(true);
+    [
+      'Sales Playbook', 'Report coverage.', 'Why a section may be missing',
+      'SEO, keyword and AI-visibility coverage depends on the data available for each website.',
+      'Understand report coverage',
+    ].forEach((text) => expect(main.textContent).not.to.include(text));
+    retiredCallouts.forEach((callout) => expect(callout.isConnected).to.equal(false));
   });
 
   it('should make the Slack channel visible for platform and report questions', async () => {
@@ -173,9 +194,9 @@ describe('dashboard layout', () => {
     expect(listener.calledOnce).to.equal(true);
   });
 
-  it('should retain every original guidance text and link inside its information panel', async () => {
+  it('should retain other original guidance text and links inside their information panels', async () => {
     const sources = [...main.querySelectorAll(
-      '.report-callout, .booth-guide-banner, .dashboard-tools, .default-content > p',
+      '.report-callout.report-requests, .booth-guide-banner, .dashboard-tools, .default-content > p',
     )];
     const text = (element) => element.textContent.replace(/\s+/g, ' ').trim();
     const inventory = sources.map((source) => ({
@@ -226,6 +247,9 @@ describe('dashboard layout', () => {
 
   it('should give leading guidance emphasis a heading without reordering inline emphasis', async () => {
     const source = main.querySelector('.report-callout.neutral');
+    const link = source.querySelector('a');
+    link.href = '/guidance';
+    link.textContent = 'Other report guidance';
     const paragraph = source.querySelector('.rcl-text');
     const lead = paragraph.querySelector('strong');
     paragraph.prepend(document.createTextNode(' \n'));
@@ -310,7 +334,7 @@ describe('dashboard layout', () => {
   it('test_unknown_callout_remains_reachable', async () => {
     const announcement = document.createElement('div');
     announcement.className = 'report-callout neutral';
-    announcement.innerHTML = '<aside><p>Additional announcement. <button type="button">Keep this action</button></p></aside>';
+    announcement.innerHTML = '<aside><p>Additional announcement from Semrush. <button type="button">Keep this action</button></p></aside>';
     const button = announcement.querySelector('button');
     const listener = sandbox.spy();
     button.addEventListener('click', listener);
@@ -334,7 +358,7 @@ describe('dashboard layout', () => {
     const second = await composeDashboard(main, '/adobe/dashboard/');
     expect(second).to.equal(first);
     expect(main.querySelectorAll('.dashboard-shell')).to.have.lengthOf(1);
-    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(5);
+    expect(main.querySelectorAll('.dashboard-resource-card')).to.have.lengthOf(4);
     expect(main.querySelectorAll('.dt-export')).to.have.lengthOf(1);
     expect(main.querySelector('.dt-export')).to.equal(form);
     expect(main.querySelectorAll('h1')).to.have.lengthOf(1);
