@@ -715,6 +715,27 @@ describe('customer-picker › reports-first dashboard', () => {
     return () => release(Response.json({ data: sheets[sourceName] || [] }));
   }
 
+  it('should reuse canonical report paths when optional access data finishes loading', async () => {
+    const release = deferSource('closed-user-groups');
+    dispose = await init(el);
+    try {
+      await tick();
+      expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(25);
+      const urls = sandbox.spy(window, 'URL');
+      release();
+      await dispose.ready;
+      const reportPaths = urls.getCalls()
+        .filter((call) => call.args[1] === 'https://catalog.invalid');
+      const visibleRows = el.querySelectorAll('tbody tr').length;
+      expect(reportPaths.length).to.be.at.most(sheets['insights-list'].length + visibleRows);
+      expect(el.querySelector('tbody .cp-company').textContent).to.equal('Company 00000');
+      expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(25);
+    } finally {
+      release();
+      await dispose.ready;
+    }
+  });
+
   ['company-list', 'closed-user-groups'].forEach((sourceName) => {
     it(`keeps the highlighted campaign when optional ${sourceName} arrives`, async () => {
       const release = deferSource(sourceName);
@@ -879,6 +900,24 @@ describe('customer-picker › reports-first dashboard', () => {
       el.querySelector('.cp-company').click();
       expect(document.querySelector('.cp-report-meta time')?.dateTime).to.equal('2026-10-02');
     });
+  });
+
+  it('should keep newest metadata when a report folder is an absolute URL', async () => {
+    const relative = row(0).Folder;
+    sheets['insights-list'] = [
+      row(0, { Customers: 'Older relative company', Created: '22.10.2026' }),
+      row(0, {
+        Folder: `https://portal.example${relative.replace(/\/$/, '')}`,
+        Customers: 'Current absolute company',
+        Created: '23.10.2026',
+      }),
+    ];
+    await load();
+    expect(el.querySelectorAll('tbody tr')).to.have.lengthOf(1);
+    expect(el.querySelector('.cp-company').textContent).to.equal('Current absolute company');
+    expect(el.querySelector('tbody time')?.dateTime).to.equal('2026-10-23');
+    el.querySelector('.cp-company').click();
+    expect(document.querySelector('.cp-report-meta time')?.dateTime).to.equal('2026-10-23');
   });
 
   ['tbody tr', '.cp-website', '.cp-published', '.cp-company-avatar', '.cp-row-actions']

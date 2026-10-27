@@ -1083,15 +1083,17 @@ export default async function init(el) {
     let rows;
     if (mode === 'portal') rows = (sources.company.rows || []).filter((row) => row.Folder && row.Company);
     else if (mode === DEFAULT_MODE) {
-      rows = groupInsightsByWebsite(raw).map((row) => ({ ...row, Company: byPath.get(reportPath(row.Folder))?.Customers?.trim() || 'Company not recorded' }));
+      rows = groupInsightsByWebsite(raw);
     } else {
       const event = eventModes.find((entry) => entry.id === mode);
       rows = event ? buildEventCompanies(raw, event.column) : [];
     }
     rows = rows.map((row) => {
-      const selected = byPath.get(reportPath(row.Folder));
+      const selected = byPath.get(row.Folder) || byPath.get(reportPath(row.Folder));
       return {
         ...row,
+        Company: mode === DEFAULT_MODE
+          ? selected?.Customers?.trim() || 'Company not recorded' : row.Company,
         Report: selected?.Report ?? row.Report,
         Customers: selected?.Customers ?? row.Customers,
         Created: selected?.Created ?? row.Created,
