@@ -49,6 +49,10 @@ export async function ensureRequiredRouteBlocks(pathname = window.location.pathn
       picker.after(block);
       await loadBlock(block);
     }
+    if (picker) {
+      const { composeDashboard } = await import('./dashboard-layout.js');
+      await composeDashboard(main, pathname);
+    }
   }
   if (pathname === '/403') {
     const main = document.querySelector('main');

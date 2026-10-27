@@ -1,338 +1,257 @@
-# Integration guide: event tabs & event membership
+# Campaign filtering and report membership
 
-**Audience:** engineers of the upstream system that writes content into the
-`aemsites/summit-portal` DA repository.
+The dashboard uses a searchable campaign picker instead of adding a tab for
+every event. Campaign names and report memberships still come from the existing
+`event-tabs` and `insights-list` sheets. Adding or renaming a campaign does not
+need a portal code change.
 
-**Goal:** add, update, and retire event portal tabs in the Summit Portal customer
-picker — and mark which reports belong to an event — **entirely from content, with
-no code change or deploy on the portal side**.
+A report can belong to several campaigns. Membership is attached to its exact
+published page, not inferred from its company, website, or report format.
 
-This replaces the previous arrangement, where each event tab was hardcoded in
-`blocks/customer-picker/customer-picker.js` and a new event needed a PR.
+## The two sheets
 
----
+| Sheet | Purpose |
+|---|---|
+| `/data/event-tabs.json` | Campaign IDs, displayed names, membership columns and visibility |
+| `/data/insights-list.json` | Report metadata and one sparse cell for each membership |
 
-## 1. The two files you write
+The picker derives both URLs from its authored `company-list.json` source. For
+example, `/data-stage/company-list.json` selects the sibling `data-stage` sheets,
+not production `/data/` sheets. The legacy Adobe Summit 2026 campaign continues
+to read that company list. Email-domain information continues to come from
+`/closed-user-groups.json`.
 
-| File | Answers | Size |
-|---|---|---|
-| [`/data/event-tabs.json`](https://da.live/sheet#/aemsites/summit-portal/data/event-tabs) | *Which event tabs exist, in what order, under what label* | one row per event |
-| [`/data/insights-list.json`](https://da.live/sheet#/aemsites/summit-portal/data/insights-list) | *Which reports are in each event, and what to call them there* | one row per report (~4,200) |
+Accounts navigation is not part of this report dashboard. Account pages, data,
+and access rules are unchanged.
 
-They are joined by a single string: the **column name**. A row in `event-tabs.json`
-names a column; that column in `insights-list.json` holds the membership.
+## Campaign registration
 
-```
-event-tabs.json                          insights-list.json
-┌─────────────────────────┐              ┌──────────────────────────────────┐
-│ Column: "Munich Summit  │─────────────▶│ …, "Munich Summit 2026": "Bosch" │
-│          2026"          │   must match │ …, "Munich Summit 2026": ""      │
-│ Label:  "Munich Summit  │   EXACTLY    │ …  (key absent = not a member)   │
-│          2026"          │              └──────────────────────────────────┘
-└─────────────────────────┘
-```
+One registry row describes one campaign:
 
-The match is **exact** — case, spacing, and punctuation all count. A typo produces
-a tab with zero cards, not an error.
+| Field | Meaning |
+|---|---|
+| `Column` | Required. The exact membership-column name in `insights-list`. |
+| `Label` | Human-readable campaign name. Defaults to `Column` for legacy rows. |
+| `Active` | Blank means visible. `false`, `no`, `0`, `off` or `n`, ignoring case and surrounding spaces, hides the filter choice. |
+| `Id` | Stable URL and recent-history ID. Legacy rows can omit it to use a slug of `Column`. |
+| `CampaignId` | DIH's real campaign ID for managed registrations. It is registry metadata, not an index column. |
 
----
-
-## 2. `/data/event-tabs.json` — the tab registry
-
-One row per tab. Columns:
-
-| Column | Required | Meaning |
-|---|---|---|
-| `Column` | **yes** | The `insights-list` column this tab reads. Must match exactly. |
-| `Label` | no | Tab text in the UI. Defaults to `Column` if blank. |
-| `Active` | no | Opt-**out**. Only `false`, `no`, `0`, `off`, `n` (case-insensitive, trimmed) hide the tab. **Blank means visible.** |
-| `Id` | no | Stable internal id. Defaults to a slug of `Column`. |
-
-### Rules
-
-- **Row order is tab order.** Tabs render inside the **Digital Opportunity
-  Reports** section of the picker, as chips left-to-right in sheet row order,
-  after the two code-side entries: **All reports** (the full catalogue) and
-  **Adobe Summit 2026** (which reads `company-list.json`, not an `insights-list`
-  column, so it cannot be a row here). **Accounts** sits in the other primary
-  tab and is unrelated to this sheet.
-- **A row is dropped** if `Column` is blank, if its `Id` duplicates an earlier row,
-  or if its `Id` collides with a built-in mode (`accounts`, `insights`, `portal`).
-- **`Id` must never change for an existing tab.** It backs the per-tab
-  "Recently viewed" list (`localStorage` key `cp-recent-<id>`). Changing it silently
-  empties every user's recents for that tab. If you only want to rename the tab,
-  change `Label` and leave `Id` and `Column` alone.
-- The `Id` slug rule, when you omit `Id`: lowercase, every run of non-alphanumeric
-  characters becomes `-`, leading/trailing `-` trimmed.
-  `"Summit Mumbai 2026"` → `summit-mumbai-2026`.
-- Each tab is deep-linkable as `/adobe/dashboard?tab=<Id>` — another reason not
-  to change an `Id` once links to it exist in the wild. An unknown `tab` value
-  falls back to **All reports** rather than erroring.
-
-### Current contents
+DIH publishes this shape, illustrated with a synthetic campaign:
 
 ```json
 {
-  "total": 6, "limit": 6, "offset": 0,
-  "data": [
-    { "Id": "cannes",    "Column": "Cannes 2026",           "Label": "Cannes 2026 Portal",    "Active": "true" },
-    { "Id": "sydney",    "Column": "Sydney Summit 2026",    "Label": "Sydney Summit 2026",    "Active": "true" },
-    { "Id": "london",    "Column": "Summit London 2026",    "Label": "Summit London 2026",    "Active": "true" },
-    { "Id": "munich",    "Column": "Munich Summit 2026",    "Label": "Munich Summit 2026",    "Active": "true" },
-    { "Id": "singapore", "Column": "Summit Singapore 2026", "Label": "Summit Singapore 2026", "Active": "true" },
-    { "Id": "mumbai",    "Column": "Summit Mumbai 2026",    "Label": "Summit Mumbai 2026",    "Active": "true" }
-  ],
-  ":sheetname": "data", ":type": "sheet"
+  "Id": "dih-cv_example",
+  "Column": "DIH cv_example",
+  "Label": "Experience Makers Paris",
+  "Active": "true",
+  "CampaignId": "cv_example"
 }
 ```
 
-The short `Id` values (`cannes`, not `cannes-2026`) are historical — they preserve
-recents from before tabs were content-driven. **Do not "tidy" them.** New events can
-simply omit `Id` and take the slug default.
+Managed IDs retain their spelling, including underscores. They are not generated
+from the label. Renaming a campaign changes `Label`, not its ID or column.
+Historical legacy IDs such as `cannes`, `london` and `mumbai` must also stay stable.
 
----
+Campaigns with the same name remain separate. The picker adds a visible
+`Legacy: <Id>` or `DIH: <CampaignId>` qualifier when needed. Full long names wrap
+instead of being truncated.
 
-## 3. `/data/insights-list.json` — event membership
+Registry order controls search-result order. Built-in `insights`, `portal` and
+`accounts` IDs are reserved. `portal` is the legacy Adobe Summit campaign; it is
+not inferred from a report having a `summit-2026` format.
 
-Each row is one report. To put a report into an event, set the event's column on
-that row.
+Retire a campaign with `Active: false` rather than deleting its registry row.
+Its filter choice disappears, but exact-page memberships remain visible in
+report details. A valid empty or fully inactive registry does not enable the
+legacy-column fallback.
 
-### Semantics
+## Exact-page memberships
 
-- **Non-empty cell = the report is in that event.** Empty string, whitespace, or an
-  absent key all mean "not in this event".
-- **The cell value is the card label** shown in that tab — i.e. the event-specific
-  company name. This is deliberately *not* the same as `Customers`: the same
-  account can be branded differently per event.
-- **A `;` splits one row into several cards.** `"EY; EY Studio+"` produces two cards,
-  both linking to the same page. Use this when two companies share one portal page.
-  8 rows currently do this.
-- **`Folder` is the link target.** The card links to that row's `Folder`; a trailing
-  slash is normalized for you.
-- **One card per flagged row.** Event tabs deliberately do *not* collapse by website
-  the way the Insight Reports tab does — so the same company may appear in several
-  events, and co-located companies each keep a distinct card.
-- Cards are sorted by label, and the A–Z nav groups on the first character
-  (leading digits group under `0-9`).
-
-### Reserved column names
-
-Never use these as an event column — they are the row's own data and are skipped
-by the tab machinery:
-
-```
-Report    Customers    Folder    Created    Report Notice
-```
-
-Any *other* column is treated as an event flag.
-
-### Sparse vs. dense columns — both are fine
-
-The existing data uses two styles, and the portal handles both identically:
-
-| Style | Columns using it | Key present on |
-|---|---|---|
-| Dense — write `""` on non-members | Cannes 2026, Sydney Summit 2026, Summit London 2026 | 3,004 of 4,230 rows |
-| Sparse — write the key only on members | Munich Summit 2026, Summit Singapore 2026, Summit Mumbai 2026 | 405 / 118 / 382 rows |
-
-**Prefer sparse.** It is smaller, and a reader that only sets member rows cannot
-accidentally clear another event's cell. Do not feel obliged to backfill `""`.
-
-> **You will not see every event column at the top of the sheet — this is normal.**
-> The DA sheet header and the first rows of the JSON only show the columns present on
-> the early (non-member) rows. A sparse column such as `Summit Mumbai 2026` therefore
-> appears only once you scroll to one of its member rows. It is not missing, and the
-> tab still works: the portal scans *every* row for the column named in
-> `event-tabs.json`, so a row without the key simply counts as a non-member.
-> Do **not** "repair" this by hand-backfilling `""` across the file — that races the
-> whole-file `POST` (see §4) against your own pipeline. If you want every event column
-> present on every row, make the **generating pipeline** write them densely; don't
-> patch the data after the fact.
-
-> Consequence worth knowing: because rows carry different key sets, **column order
-> cannot be reliably recovered from this file.** That is precisely why tab order
-> lives in `event-tabs.json` and not here.
-
----
-
-## 4. The write API
-
-Base: `https://admin.da.live/source/aemsites/summit-portal/<path>`
-Auth: `Authorization: Bearer <IMS token>` — the same token works for the publish
-endpoints in §5.
-
-| Verb | Effect | Status |
-|---|---|---|
-| `GET` | Returns the whole sheet JSON | `200` |
-| `POST` | **Replaces the whole file** — multipart form, field `data`, type `application/json` | `201` create / `200` update |
-| `DELETE` | Removes the file | `204` |
-
-### ⚠️ POST is whole-file replace — you must read-modify-write
-
-There is no partial or per-row update. A `POST` that omits a row **deletes that row**.
-Verified: posting `[{Id:"b"},{Id:"c"}]` over a file containing `[{Id:"a"}]` leaves
-exactly `b` and `c` — `a` is gone with no warning.
-
-So every mutation is:
-
-1. `GET` the current file.
-2. Mutate the parsed `data` array in memory.
-3. Recompute `total` and `limit` to match `data.length`.
-4. `POST` the whole document back.
-5. Publish (§5).
-
-Re-`GET` immediately before the `POST` to keep the window small, and **serialize
-your writes** — two concurrent writers on `insights-list.json` will silently lose
-one side's changes.
-
-### Envelope to preserve
+This synthetic report belongs to two DIH campaigns and one legacy event:
 
 ```json
 {
-  "total": <data.length>,
-  "limit": <data.length>,
+  "Report": "frescopa.example",
+  "Customers": "Frescopa",
+  "Folder": "/accounts/f/frescopa/insights/frescopa-example/portal-landing/",
+  "Created": "22.10.2026",
+  "DIH cv_example": "Frescopa",
+  "DIH cv_another": "Frescopa",
+  "Cannes 2026": "Frescopa"
+}
+```
+
+Each membership key must match its registry `Column` exactly, including spaces
+and case. A nonblank value means membership. Missing keys, empty strings and
+whitespace mean no membership.
+
+The value is the campaign-specific company label. A semicolon separates
+co-branded aliases: `"EY; EY Studio+"` produces two selectable entries for that
+same page. These aliases remain searchable.
+
+Prefer sparse cells: add only member keys, and never clear unrelated campaign
+cells when updating a report. Reserved report fields are:
+
+```text
+Report    Customers    Folder    Created    Report Notice
+```
+
+The All campaigns view preserves the existing one-entry-per-website grouping:
+the newest `portal-landing` wins; otherwise the available legacy formats remain
+selectable. A specific campaign uses its flagged raw rows instead. It must not
+replace an older member page with a newer nonmember page for the same website.
+
+Company, publication date and report notice come from the selected exact page.
+Details list all known memberships for that page, including retired campaigns.
+Choosing another format changes the memberships, Open/Edit target and share
+target together. Sharing preserves the trailing slash and uses the existing
+one-month email/copy link contract.
+
+## Dashboard search, pages and links
+
+The company-or-website field filters the complete selected dataset before
+pagination. The table starts with 25 rows and lets people choose 25, 50 or 100.
+Only that page's rows are rendered. Sort the complete filtered dataset by
+publication date, newest first, before paging. Missing or invalid dates appear
+last. Equal dates use company A-Z, website, then report path for stable page
+boundaries. Changing a filter or page size starts at page one.
+
+Clicking a row opens its details and sharing panel. The native company-name
+button provides the same action for keyboard users; the table row keeps its
+table semantics. Text selection does not activate the row. **Open** and
+**Share** remain independent shortcuts, with Share focusing the sharing controls.
+There is no ellipsis menu or duplicate Report details shortcut on either layout.
+Exact-format editing remains available inside the details panel.
+
+Campaign search matches any part of the name, ignoring case and accents. An
+empty campaign query shows the current selection, All campaigns and a search
+prompt, not a long list. Every matching result remains keyboard-reachable in
+the scrollable list.
+
+Existing `/adobe/dashboard?tab=<Id>` links still work. The URL also records:
+
+| Parameter | Value |
+|---|---|
+| `q` | Company/website query |
+| `page` | One-based page number |
+| `size` | 25, 50 or 100 |
+
+Campaign and page changes add history entries; typing replaces the current entry
+after the short debounce. Back/forward restores controls and results. Invalid
+pages and sizes are normalized. Unknown or retired campaign links visibly fall
+back to All campaigns. `tab=accounts` also returns to reports.
+
+No new cross-visit filter storage is created. Existing eight-item,
+folder-deduplicated `cp-recent-<Id>` history remains.
+
+## Loading and recovery
+
+Primary reports, company information, the registry and email-domain information
+load independently. An optional-source failure does not turn a successful report
+index into an empty catalog.
+
+The reader consumes complete sheet data. When a response advertises more rows,
+it follows `offset` pagination and verifies the returned offset and total.
+Malformed rows, inconsistent totals and incomplete pages are retryable failures,
+not successful partial catalogs.
+
+| State | Dashboard behavior |
+|---|---|
+| Loading | Visible progress, not a false empty result |
+| 401 | Adobe sign-in link |
+| 403 | Explicit access explanation |
+| Unavailable or malformed index | Error with Retry |
+| Registry 404 | Visible incomplete status; genuine legacy columns remain usable |
+| Other registry failure | Warning with recovery; an unresolved selected campaign is held, not silently replaced by All campaigns |
+| Valid empty or inactive registry | No inferred choices; inactive campaigns stay hidden |
+| Incomplete membership sources | Details explain that the list may be incomplete |
+
+The 404 fallback never presents machine columns such as `DIH cv_example` as
+human-readable campaign names. Publish or restore the registry to recover them.
+It waits for the report index before resolving a legacy campaign deep link.
+
+`/data/**` is protected by the portal's existing closed user group. Anonymous
+401 responses are expected. This change does not relax those access rules.
+
+## Writing and publishing
+
+DA writes replace the entire source file. Do not post only the new rows:
+that deletes every row omitted from the request.
+
+```text
+GET  https://admin.da.live/source/aemsites/summit-portal/<path>
+POST https://admin.da.live/source/aemsites/summit-portal/<path>
+```
+
+Authenticate with the existing DA bearer token. POST is multipart form data:
+field `data`, content type `application/json`. Preserve the envelope:
+
+```json
+{
+  "total": 0,
+  "limit": 0,
   "offset": 0,
-  "data": [ ... ],
+  "data": [],
   ":sheetname": "data",
   ":type": "sheet"
 }
 ```
 
-`:colWidths` is optional and only affects the DA sheet editor's presentation.
-The portal reads **only** the `data` array.
+The example shows an empty envelope: on a real whole-file write, set `total`
+and `limit` to the actual `data.length`. Preserve other envelope keys,
+legacy registrations, aliases, report notices and unrelated cells.
 
----
+Serialize read-modify-write operations. A last-moment GET alone does not prevent
+two writers from losing one another's changes. DIH uses the existing shared
+sheet lock; do not race it with manual whole-file edits.
 
-## 5. Publishing (do not skip)
+Publish content and index membership before exposing the registry choice:
 
-A write to DA is invisible to the portal until it is published to **both** stages:
+1. Publish the report page and its `insights-list.json` membership.
+2. Publish the matching `event-tabs.json` registration.
 
-```
+Each changed path needs both endpoints, preview first and live second:
+
+```text
 POST https://admin.hlx.page/preview/aemsites/summit-portal/main/<path>
 POST https://admin.hlx.page/live/aemsites/summit-portal/main/<path>
 ```
 
-Preview first, then live. Both return `200`.
+The two sheets are not an atomic transaction. A partial failure must remain
+visible and retryable. Stage uses the configured `data-stage` paths; do not
+substitute production paths during testing.
 
-`<path>` here is `data/event-tabs.json` or `data/insights-list.json` — no leading slash.
+Deploy this portal reader before enabling the corresponding DIH writer.
+Opening or merging a code PR does not authorize a production content edit,
+backfill or publication.
 
-**The single most common failure is a correct DA write that was never published.**
-The sheet looks right in da.live and the portal shows nothing.
+## Integration checks
 
----
+- Keep every pre-existing row, envelope key and unrelated membership cell.
+- Keep stable IDs and columns; change only the displayed label on a rename.
+- Verify one exact page appears under each of its campaigns.
+- Verify details do not inherit another format's memberships.
+- Verify a reused report can gain membership without replacing report content.
+- Verify retirement hides the choice without deleting historical details.
+- Verify preview and live publication of both changed sheets.
+- Compare selectable entry counts, remembering semicolon aliases can outnumber raw rows.
 
-## 6. Adding a new event — order of operations
+`customer-picker.js` retains the existing parser/grouping exports for legacy
+callers. The dashboard now uses `report-catalog.js` for complete-dataset search,
+stable sorting, pagination, URL state, qualifiers and exact-path memberships.
+Both modules have browser tests under `test/blocks/`.
 
-Do these in order. The order matters: it avoids a window where the tab exists but
-is empty.
+### Real publisher fixture
 
-**Step 1 — membership first.** Add the event column to the member rows in
-`insights-list.json` (read-modify-write), then publish it.
+`test/fixtures/portal-campaign-contract.json` is the unmodified index/registry
+output of DIH's `backend/tests/services/test_portal_campaign_contract.py`, using
+the real publisher with in-memory DA/AEM clients. It contains synthetic data
+only: one shared page, same-named campaigns, a legacy alias and two existing
+Cannes/Summit report formats. No production export is involved.
 
-**Step 2 — then the tab.** Append a row to `event-tabs.json` naming that column,
-then publish it.
-
-The tab appears on the next page load. No deploy.
-
-### Worked example — "Summit Tokyo 2027"
-
-```bash
-BASE=https://admin.da.live/source/aemsites/summit-portal
-PUB=https://admin.hlx.page
-AUTH="Authorization: Bearer $DA_TOKEN"
-
-# --- Step 1: membership ---
-curl -s -H "$AUTH" $BASE/data/insights-list.json > insights.json
-# mutate: for each member row, set row["Summit Tokyo 2027"] = "<event-facing name>"
-# recompute total/limit; leave every other key untouched
-curl -s -X POST -H "$AUTH" -F "data=@insights.json;type=application/json" \
-  $BASE/data/insights-list.json
-curl -s -X POST -H "$AUTH" $PUB/preview/aemsites/summit-portal/main/data/insights-list.json
-curl -s -X POST -H "$AUTH" $PUB/live/aemsites/summit-portal/main/data/insights-list.json
-
-# --- Step 2: the tab ---
-curl -s -H "$AUTH" $BASE/data/event-tabs.json > tabs.json
-# mutate: append { "Column": "Summit Tokyo 2027", "Label": "Summit Tokyo 2027", "Active": "true" }
-#         (omit Id — it slugs to summit-tokyo-2027); recompute total/limit
-curl -s -X POST -H "$AUTH" -F "data=@tabs.json;type=application/json" \
-  $BASE/data/event-tabs.json
-curl -s -X POST -H "$AUTH" $PUB/preview/aemsites/summit-portal/main/data/event-tabs.json
-curl -s -X POST -H "$AUTH" $PUB/live/aemsites/summit-portal/main/data/event-tabs.json
-```
-
-### Other operations
-
-| Task | Do this |
-|---|---|
-| Rename a tab | Change `Label` only. Leave `Id` and `Column` alone. |
-| Reorder tabs | Reorder the rows in `event-tabs.json`. |
-| Retire a finished event | Set `Active` to `false`. **Keep the row and keep the column data** — it stays recoverable and the history is intact. |
-| Add a company to a live event | Set that event's column on its `insights-list` row; republish `insights-list.json` only. |
-| Remove a company from an event | Set its cell to `""` (or drop the key); republish. |
-| Two companies on one page | One row, cell = `"Name A; Name B"`. |
-
-Deleting an `event-tabs.json` row also works to remove a tab, but `Active: false`
-is preferred — it is reversible and self-documenting.
-
----
-
-## 7. Failure modes & the safety net
-
-If `event-tabs.json` is missing, unpublished, malformed, or yields no usable rows,
-the portal **falls back** to deriving one tab per non-reserved `insights-list`
-column that has at least one non-empty cell, labelled by the column header.
-
-This means tabs degrade rather than disappear — but in **arbitrary order**, with
-raw column names as labels and **no way to hide a retired event**. Treat the
-fallback as a safety net, never as the intended path.
-
-| Symptom | Most likely cause |
-|---|---|
-| Tab missing entirely | `event-tabs.json` not published to *live* |
-| Tab present, zero cards | `Column` doesn't exactly match the `insights-list` header |
-| Tab shows raw column names, wrong order | Fallback is active — `event-tabs.json` is unreachable or has no valid rows |
-| Another event's cards vanished | A `POST` without read-modify-write clobbered rows |
-| Users lost their "Recently viewed" | An existing tab's `Id` was changed |
-| Card links 404 | The row's `Folder` doesn't point at a published page |
-| A `?tab=` link opens All reports instead | That `Id` no longer exists — it was renamed, or the row was deleted rather than set `Active: false` |
-
-### Access note
-
-`/data/**` sits behind a closed user group (`adobe.com`, `semrush.com`). Both files
-return `401` to anonymous requests — that is expected and correct, not a
-misconfiguration. Any new file you add under `/data/` inherits the same protection
-automatically.
-
----
-
-## 8. Pre-flight checklist
-
-- [ ] Read-modify-write used — the `POST` body contains **every** pre-existing row
-- [ ] `total` and `limit` equal `data.length`
-- [ ] `:sheetname` and `:type` preserved
-- [ ] `Column` in `event-tabs.json` matches the `insights-list` header **byte for byte**
-- [ ] `Id` unchanged for every pre-existing tab
-- [ ] `Column` is not one of the reserved names
-- [ ] Membership published **before** the tab row
-- [ ] Both files published to **preview *and* live**
-- [ ] Spot-check: the new tab appears, card count matches the number of flagged rows
-      (remember `;` cells produce more cards than rows)
-
----
-
-## 9. Reference — how the portal consumes this
-
-`blocks/customer-picker/customer-picker.js`:
-
-- `parseEventModes(configRows, insightRows)` — resolves `event-tabs.json` rows into
-  the tab list; falls back to `deriveEventModes` when nothing usable survives.
-- `deriveEventModes(insightRows)` — the fallback described in §7.
-- `buildEventCompanies(insightRows, column)` — builds the cards for one tab.
-- `slugifyModeId(value)` — the `Id` default rule.
-- `buildNavModel(eventModes)` — groups the resolved modes into the two-level
-  navigation. Event modes pass through with their ids and labels untouched; this
-  function adds no authored surface, which is why the two-level redesign needed
-  no change to either sheet.
-- `resolveTabParam(navModel, raw)` — maps `?tab=` to a mode id.
-
-All are exported and unit-tested in `test/blocks/customer-picker.test.js`.
+Run that pytest test with `-s --no-cov` in DIH's `backend/` directory. It prints
+`PORTAL_CONTRACT=<temporary-file>` after validating the emitted payload.
+Copy that file unchanged to the fixture above, then run
+`npm run test:file -- test/blocks/report-catalog.test.js` here. The consumer
+checks the actual IDs, all memberships, exact Open/Edit/Share targets,
+format selection and registry-failure recovery.

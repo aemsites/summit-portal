@@ -31,7 +31,7 @@ describe('scripts.js', () => {
     block.remove();
   });
 
-  it('adds a closed export after the reports list once, without moving announcements, including a trailing slash', async () => {
+  it('loads required blocks before composing one reports-first dashboard, including a trailing slash', async () => {
     const main = document.createElement('main');
     main.innerHTML = `
       <div class="section"><div class="block-content">
@@ -48,10 +48,11 @@ describe('scripts.js', () => {
     await ensureRequiredRouteBlocks('/adobe/dashboard');
     expect(main.querySelectorAll('.dashboard-tools')).to.have.length(1);
     expect(main.querySelectorAll('.booth-guide-banner')).to.have.length(1);
-    expect(main.querySelector('.customer-picker').previousElementSibling.className).to.equal('booth-guide-banner');
-    expect(main.querySelector('.booth-guide-banner a').getAttribute('href')).to.equal('/adobe/booth-guide');
+    expect(main.querySelector('.dashboard-reports .customer-picker')).to.exist;
+    expect(main.querySelector('.dashboard-resources a[href="/adobe/booth-guide"]')).to.exist;
     expect(main.querySelector('.dt-usage').open).to.equal(false);
-    expect(main.querySelector('.customer-picker').nextElementSibling.className).to.equal('dashboard-tools');
+    expect(main.querySelector('.dashboard-resources .dashboard-tools')).to.exist;
+    expect(main.querySelector('.dashboard-resources .booth-guide-banner')).to.exist;
     expect(main.querySelector('.customer-picker .dashboard-tools')).to.equal(null);
     expect(main.querySelector('.cp-search').nextElementSibling.className).to.equal('cp-grid');
     expect(main.querySelector('.cp-card').textContent).to.equal('Example report');

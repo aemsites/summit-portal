@@ -1,6 +1,8 @@
-import { buildShareForm, buildShareSection, folderToDeepLink } from './share-form.js';
-
-const LETTERS = '0-9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z'.split(' ');
+import { buildShareForm, folderToDeepLink } from './share-form.js';
+import {
+  campaignsForFolder, filterReports, paginateReports, parsePublishedDate, qualifyCampaigns,
+  readReportState, reportPath, searchCampaigns,
+} from './report-catalog.js';
 
 const RECENT_MAX = 8;
 const recentKey = (mode) => `cp-recent-${mode}`;
@@ -33,11 +35,6 @@ function pushRecent(mode, company) {
   }
 }
 
-function getLetterGroup(name) {
-  const first = name.trim().charAt(0).toUpperCase();
-  return /\d/.test(first) ? '0-9' : first;
-}
-
 // Known event landing-page variants. A website folder can hold several of these
 // in parallel (e.g. a Cannes and a Summit report), so they render as separate
 // selectable reports inside one website card.
@@ -67,10 +64,6 @@ const INSIGHTS_DATA_COLUMNS = new Set(['Report', 'Customers', 'Folder', 'Created
 /** Built-in picker modes. An event row may never claim one of these ids. */
 const BUILTIN_MODE_IDS = new Set(['accounts', 'insights', 'portal']);
 
-/** Ids of the event modes resolved at init — drives `isReportMode` (dialog
- *  layout) for whatever tabs the sheet happens to define this session. */
-const EVENT_MODE_IDS = new Set();
-
 /** Slugify a sheet value into a mode id (`Summit Mumbai 2026` → `summit-mumbai-2026`). */
 export function slugifyModeId(value) {
   return String(value == null ? '' : value)
@@ -99,7 +92,8 @@ export function deriveEventModes(insightRows) {
   const seen = new Set();
   for (const row of insightRows || []) {
     for (const key of Object.keys(row)) {
-      if (!INSIGHTS_DATA_COLUMNS.has(key) && !seen.has(key) && String(row[key] || '').trim()) {
+      if (!INSIGHTS_DATA_COLUMNS.has(key) && !key.startsWith('DIH ')
+        && !seen.has(key) && String(row[key] || '').trim()) {
         seen.add(key);
         columns.push(key);
       }
@@ -126,10 +120,15 @@ export function parseEventModes(configRows, insightRows) {
   const seen = new Set();
   for (const row of Array.isArray(configRows) ? configRows : []) {
     const column = String(row.Column || '').trim();
-    const id = slugifyModeId(row.Id || column);
+    const id = row.CampaignId ? String(row.Id || '').trim() : slugifyModeId(row.Id || column);
     if (column && id && isActiveCell(row.Active) && !BUILTIN_MODE_IDS.has(id) && !seen.has(id)) {
       seen.add(id);
-      modes.push({ id, label: String(row.Label || '').trim() || column, column });
+      modes.push({
+        id,
+        label: String(row.Label || '').trim() || column,
+        column,
+        ...(row.CampaignId ? { campaignId: String(row.CampaignId).trim() } : {}),
+      });
     }
   }
   return modes.length ? modes : deriveEventModes(insightRows);
@@ -263,13 +262,6 @@ const REPORT_NOTICES = {
   },
 };
 
-/** Website-report modes (All reports + every event tab) share one dialog
- *  layout — websites, per-format reports, per-page share — distinct from the
- *  accounts/portal directory layout. */
-function isReportMode(mode) {
-  return mode === 'insights' || EVENT_MODE_IDS.has(mode);
-}
-
 /**
  * Split an insight-report folder into its website slug and optional variant.
  * DIH folders are `…/insights/<website>/[variant]/` where <variant> is empty
@@ -286,15 +278,8 @@ export function parseInsightFolder(folder) {
   return { website, variant, folder: `${f}/` };
 }
 
-/**
- * Parse a DIH `Created` value (`D.MM.YYYY`) into a sortable integer so we can
- * pick the most recent variant. Missing/unparseable dates sort oldest (0).
- */
 function createdSortKey(created) {
-  const m = (created || '').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (!m) return 0;
-  const [, d, mo, y] = m;
-  return Number(y) * 10000 + Number(mo) * 100 + Number(d);
+  return parsePublishedDate(created)?.getTime() ?? -Infinity;
 }
 
 /**
@@ -497,67 +482,38 @@ export function buildNav(navModel, onChange) {
 }
 
 function buildSearch() {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'cp-search';
+  const wrapper = document.createElement('label');
+  wrapper.className = 'cp-field cp-company-field';
+  const label = document.createElement('span');
+  label.textContent = 'Company or website';
 
   const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = 'Search insight reports…';
+  input.type = 'search';
+  input.placeholder = 'Search company name or website';
   input.className = 'cp-search-input';
-  wrapper.append(input);
+  wrapper.append(label, input);
 
   return { wrapper, input };
 }
 
-function buildLetterNav(groups) {
-  const nav = document.createElement('nav');
-  nav.className = 'cp-letter-nav';
-  nav.setAttribute('aria-label', 'Alphabetical navigation');
-
-  for (const letter of LETTERS) {
-    const btn = document.createElement('a');
-    btn.className = 'cp-letter-btn';
-    btn.textContent = letter;
-    btn.href = `#cp-group-${letter}`;
-
-    if (!groups.has(letter)) {
-      btn.classList.add('cp-letter-disabled');
-      btn.removeAttribute('href');
-    } else {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = document.getElementById(`cp-group-${letter}`);
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    }
-    nav.append(btn);
-  }
-
-  return nav;
-}
-
-function buildDialog() {
-  const backdrop = document.createElement('div');
-  backdrop.className = 'cp-dialog-backdrop';
-  backdrop.hidden = true;
-
-  const dialog = document.createElement('div');
-  dialog.className = 'cp-dialog';
+function buildDialog(id) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'customer-picker cp-report-dialog';
+  dialog.setAttribute('aria-labelledby', `${id}-details-title`);
 
   const close = document.createElement('button');
   close.className = 'cp-dialog-close';
   close.type = 'button';
   close.setAttribute('aria-label', 'Close details');
-  close.innerHTML = '&times;';
+  close.textContent = '\u00d7';
 
   const content = document.createElement('div');
   content.className = 'cp-dialog-content';
 
   dialog.append(close, content);
-  backdrop.append(dialog);
-  document.body.append(backdrop);
+  document.body.append(dialog);
 
-  return { backdrop, close, content };
+  return { dialog, close, content };
 }
 
 /** Turn a company.Folder value into a same-origin path (strip origin + trailing slash).
@@ -570,138 +526,11 @@ function folderToPath(folder) {
   }
 }
 
-function renderDialog(content, company, websiteMap, domainMap, mode) {
-  let html = `<h3 class="cp-dialog-title">${company.Company}</h3>`;
-
-  // Data-limitation notice (only on report modes; the value comes from the
-  // report's `Report Notice` cell). Tells the rep a section is missing because
-  // of the data available for that domain, not a generation error.
-  const notice = isReportMode(mode) ? REPORT_NOTICES[company.ReportNotice] : null;
-  if (notice) {
-    html += `<div class="cp-dialog-notice" role="note">
-      <span class="cp-dialog-notice-icon" aria-hidden="true">ℹ️</span>
-      <div class="cp-dialog-notice-text">
-        <strong>${notice.title}</strong>
-        <span>${notice.body}</span>
-      </div>
-    </div>`;
-  }
-
-  const isReport = isReportMode(mode);
-
-  // The key into websiteMap/domainMap differs for report modes (keyed by the
-  // customer name) vs. accounts/portal (keyed by company). Compute it once.
-  const lookupKey = isReport ? (company.Customers || company.Company) : company.Company;
-  const domains = domainMap.get(lookupKey) || [];
-
-  if (mode === 'accounts') {
-    if (company.AM) {
-      html += `<div class="cp-dialog-section">
-        <h4>Account Manager</h4>
-        <ul class="cp-dialog-list">
-          <li>${company.AM}</li>
-        </ul>
-      </div>`;
-    }
-    if (company.Folder) {
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
-      html += `<div class="cp-dialog-actions">
-        <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">Open account page &rarr;</a>
-        <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
-      </div>`;
-    }
-  } else {
-    const websites = websiteMap.get(lookupKey) || [];
-
-    if (websites.length) {
-      html += `<div class="cp-dialog-section">
-        <h4>Websites</h4>
-        <ul class="cp-dialog-list">
-          ${websites.map((w) => {
-            const href = /^https?:\/\//i.test(w) ? w : `https://${w}`;
-            return `<li><a href="${href}" target="_blank" rel="noopener">${w}</a></li>`;
-          }).join('')}
-        </ul>
-      </div>`;
-    }
-
-    if (isReport && company.Customers) {
-      html += `<div class="cp-dialog-section">
-        <h4>Customer</h4>
-        <ul class="cp-dialog-list">
-          <li>${company.Customers}</li>
-        </ul>
-      </div>`;
-    } else if (domains.length) {
-      html += `<div class="cp-dialog-section">
-        <h4>Email Domains</h4>
-        <ul class="cp-dialog-list">
-          ${domains.map((d) => `<li>${d}</li>`).join('')}
-        </ul>
-      </div>`;
-    }
-
-    if (isReport && company.formats && company.formats.length) {
-      // One website can have several landing-page formats (Cannes, Summit, …).
-      // Each format opens/edits/shares INDEPENDENTLY — sharing must target a
-      // specific landing page, not the whole website folder. The Share button
-      // toggles a per-format email form (wired up after innerHTML below).
-      html += `<div class="cp-dialog-section">
-        <h4>Available reports</h4>
-        <div class="cp-format-list">
-          ${company.formats.map((f, i) => {
-            const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(f.folder)}/index`;
-            return `<div class="cp-format" data-format-index="${i}">
-              <div class="cp-format-row">
-                <a class="cp-dialog-cta" href="${f.folder}" target="_blank" rel="noopener">${f.label} &rarr;</a>
-                <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit</a>
-                <button type="button" class="cp-dialog-cta cp-dialog-cta--secondary cp-format-share-toggle" aria-expanded="false">Share</button>
-              </div>
-              <div class="cp-format-share" hidden></div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-    } else if (company.Folder) {
-      const ctaLabel = isReport ? 'Open Digital Opportunity Report' : 'Open customer portal page';
-      const editUrl = `https://da.live/canvas#/aemsites/summit-portal${folderToPath(company.Folder)}/index`;
-      html += `<div class="cp-dialog-actions">
-        <a class="cp-dialog-cta" href="${company.Folder}" target="_blank" rel="noopener">${ctaLabel} &rarr;</a>
-        <a class="cp-dialog-cta cp-dialog-cta--secondary" href="${editUrl}" target="_blank" rel="noopener">Edit page</a>
-      </div>`;
-    }
-  }
-
-  content.innerHTML = html;
-
-  // Report modes: share PER FORMAT. Each "Share" button toggles a share form
-  // bound to that format's specific page (lazily built on first open).
-  if (isReport && company.formats && company.formats.length) {
-    content.querySelectorAll('.cp-format').forEach((row) => {
-      const fmt = company.formats[Number(row.dataset.formatIndex)];
-      const toggle = row.querySelector('.cp-format-share-toggle');
-      const slot = row.querySelector('.cp-format-share');
-      if (!fmt || !toggle || !slot) return;
-      toggle.addEventListener('click', () => {
-        if (!slot.firstChild) slot.append(buildShareForm(folderToDeepLink(fmt.folder)));
-        const open = slot.hidden;
-        slot.hidden = !open;
-        toggle.setAttribute('aria-expanded', String(open));
-        if (open) slot.querySelector('.cp-share-input')?.focus();
-      });
-    });
-  } else if (mode !== 'accounts') {
-    // Single shared page (portal mode): one share form for the page.
-    // The internal accounts directory is never shareable.
-    const shareSection = buildShareSection(company);
-    if (shareSection) content.append(shareSection);
-  }
-}
-
 function buildCard(company, onOpen) {
   const card = document.createElement('button');
   card.className = 'cp-card';
   card.type = 'button';
+  card.dataset.folder = company.Folder;
 
   const name = document.createElement('span');
   name.className = 'cp-card-name';
@@ -745,44 +574,6 @@ function buildRecentBand(mode, companies, onOpen) {
   }
   band.append(cards);
   return band;
-}
-
-function buildGrid(companies, onOpen) {
-  const grouped = new Map();
-  for (const c of companies) {
-    const letter = getLetterGroup(c.Company);
-    if (!grouped.has(letter)) grouped.set(letter, []);
-    grouped.get(letter).push(c);
-  }
-
-  const sortedGroups = new Map();
-  for (const letter of LETTERS) {
-    if (grouped.has(letter)) sortedGroups.set(letter, grouped.get(letter));
-  }
-
-  const grid = document.createElement('div');
-  grid.className = 'cp-grid';
-
-  for (const [letter, items] of sortedGroups) {
-    const section = document.createElement('div');
-    section.className = 'cp-group';
-    section.id = `cp-group-${letter}`;
-
-    const heading = document.createElement('h2');
-    heading.className = 'cp-group-heading';
-    heading.textContent = letter;
-    section.append(heading);
-
-    const cards = document.createElement('div');
-    cards.className = 'cp-cards';
-    for (const company of items) {
-      cards.append(buildCard(company, onOpen));
-    }
-    section.append(cards);
-    grid.append(section);
-  }
-
-  return { grid, groups: sortedGroups };
 }
 
 /** Hide cards that do not match `query`, hide groups left with none, and return
@@ -843,187 +634,730 @@ function buildLookupMaps(companyData, cugData) {
   return { websiteMap, domainMap };
 }
 
-const SEARCH_PLACEHOLDERS = {
-  insights: 'Search all Digital Opportunity Reports…',
-  accounts: 'Search accounts…',
-  portal: 'Search Adobe Summit 2026…',
-};
+function node(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}
+
+function button(text, className, action) {
+  const element = node('button', className, text);
+  element.type = 'button';
+  element.addEventListener('click', action);
+  return element;
+}
+
+function pageLink(text, href, className) {
+  const element = node('a', className, text);
+  element.href = href;
+  element.target = '_blank';
+  element.rel = 'noopener';
+  return element;
+}
+
+function publishedDate(value) {
+  const date = parsePublishedDate(value);
+  if (!date) return node('span', '', 'Not recorded');
+  const time = node('time', '', new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date));
+  time.dateTime = date.toISOString().slice(0, 10);
+  return time;
+}
+
+function renderDialog(content, company, { id, websiteMap, domainMap, share }) {
+  const heading = node('h2', 'cp-dialog-title', company.Company);
+  heading.id = `${id}-details-title`;
+  const body = node('div', 'cp-details-body');
+  body.tabIndex = 0;
+  body.setAttribute('role', 'region');
+  body.setAttribute('aria-label', 'Report information and campaigns');
+  const actions = node('div', 'cp-dialog-actions');
+  const sharing = node('section', 'cp-share');
+  content.replaceChildren(heading, body, actions, sharing);
+
+  const formats = company.formats || [];
+  const selection = node('div', 'cp-selected-report');
+  body.append(selection);
+
+  function section(title, values, className = 'cp-dialog-list', description = '') {
+    if (!values.length) return;
+    const block = node('section', 'cp-dialog-section');
+    const list = node('ul', className);
+    values.forEach((value) => {
+      const item = node('li');
+      item.append(value);
+      list.append(item);
+    });
+    block.append(node('h3', '', title));
+    if (description) block.append(node('p', 'cp-campaign-count', description));
+    block.append(list);
+    selection.append(block);
+  }
+
+  function renderSelection(selected) {
+    selection.replaceChildren();
+    actions.replaceChildren();
+    sharing.replaceChildren();
+    sharing.hidden = !selected;
+    if (!selected) return;
+    const notice = REPORT_NOTICES[selected.ReportNotice];
+    if (notice) {
+      const message = node('div', 'cp-dialog-notice');
+      message.setAttribute('role', 'note');
+      message.append(node('strong', '', notice.title), node('p', '', notice.body));
+      selection.append(message);
+    }
+    const lookup = selected.Customers || company.Customers || company.Company;
+    const websites = selected.Report ? [selected.Report] : (websiteMap.get(lookup) || []);
+    const metadata = node('div', 'cp-report-meta');
+    websites.forEach((website) => {
+      metadata.append(pageLink(website, /^https?:\/\//i.test(website) ? website : `https://${website}`));
+    });
+    const date = node('span', 'cp-report-date', 'Published ');
+    date.append(publishedDate(selected.Created));
+    metadata.append(date);
+    selection.append(metadata);
+    const memberships = selected.campaigns || [];
+    if (memberships.length) {
+      section(
+        'Campaigns',
+        memberships.map((mode) => mode.label),
+        'cp-dialog-list cp-campaign-memberships',
+        `This report belongs to ${memberships.length} campaign${memberships.length === 1 ? '' : 's'}.`,
+      );
+    } else {
+      section('Campaigns', [company.campaignsIncomplete ? 'Memberships unavailable' : 'No known campaign']);
+    }
+    if (selected.Customers && selected.Customers !== company.Company) section('Customer', [selected.Customers]);
+    section('Email domains', domainMap.get(lookup) || []);
+    if (company.campaignsIncomplete) {
+      selection.append(node('p', 'cp-dialog-notice', 'Campaign information could not be fully loaded. Close details and retry the source on the dashboard.'));
+    }
+    actions.append(
+      pageLink('Open report', selected.folder || selected.Folder, 'cp-dialog-cta'),
+      pageLink('Edit in DA', `https://da.live/canvas#/aemsites/summit-portal${folderToPath(selected.folder || selected.Folder)}/index`, 'cp-dialog-cta cp-dialog-cta-secondary'),
+    );
+    sharing.append(node('h3', '', 'Share this report'), buildShareForm(folderToDeepLink(selected.folder || selected.Folder)));
+  }
+
+  if (formats.length > 1) {
+    const label = node('label', 'cp-field', 'Report format');
+    const select = node('select', 'cp-format-select');
+    select.setAttribute('aria-label', 'Report format');
+    select.append(new Option('Choose a report format', ''));
+    formats.forEach((format) => select.append(new Option(format.label, format.folder)));
+    label.append(select);
+    body.prepend(label, node('p', 'cp-format-help', 'Choose the exact report before opening, editing or sharing.'));
+    select.addEventListener('change', () => renderSelection(formats.find((format) => format.folder === select.value)));
+  }
+  renderSelection(formats.length > 1 ? null : { ...company, ...(formats[0] || {}) });
+  if (share) sharing.querySelector('input')?.focus();
+}
+
+function buildCampaignPicker(id, onChange) {
+  const wrapper = node('div', 'cp-field cp-campaign-picker');
+  const label = node('span', '', 'Campaign');
+  label.id = `${id}-campaign-label`;
+  const trigger = node('button', 'cp-campaign-trigger', 'All campaigns');
+  trigger.type = 'button';
+  trigger.setAttribute('aria-labelledby', `${label.id} ${id}-campaign-trigger`);
+  trigger.id = `${id}-campaign-trigger`;
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-controls', `${id}-campaign-popup`);
+  const popup = node('div', 'cp-campaign-popup');
+  popup.id = `${id}-campaign-popup`;
+  popup.hidden = true;
+  const input = node('input', 'cp-campaign-search');
+  input.type = 'search';
+  input.placeholder = 'Search campaign name';
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-label', 'Search campaigns');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-controls', `${id}-campaign-options`);
+  input.setAttribute('aria-expanded', 'true');
+  const help = node('p', 'cp-campaign-help', 'Search by any part of a campaign name.');
+  const list = node('div', 'cp-campaign-options');
+  list.id = `${id}-campaign-options`;
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', 'Campaigns');
+  const status = node('p', 'cp-campaign-status');
+  status.setAttribute('role', 'status');
+  popup.append(input, help, list, status);
+  wrapper.append(label, trigger, popup);
+  let modes = [];
+  let current = DEFAULT_MODE;
+  let active = -1;
+
+  function closePicker(focus = true) {
+    popup.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    if (focus) trigger.focus();
+  }
+
+  function setActive(index) {
+    const choices = [...list.children];
+    active = choices[index] ? index : -1;
+    choices.forEach((choice, i) => choice.classList.toggle('cp-campaign-option-active', i === active));
+    if (choices[active]) {
+      input.setAttribute('aria-activedescendant', choices[active].id);
+      choices[active].scrollIntoView({ block: 'nearest' });
+    } else input.removeAttribute('aria-activedescendant');
+  }
+
+  function renderOptions(preserveActive = false) {
+    const activeId = preserveActive ? list.children[active]?.dataset.campaignId : undefined;
+    const selected = modes.find((mode) => mode.id === current);
+    const matches = input.value.trim() ? searchCampaigns(modes, input.value)
+      : [...(selected && current !== DEFAULT_MODE ? [selected] : []), modes[0]].filter(Boolean);
+    list.replaceChildren();
+    matches.forEach((mode, i) => {
+      const choice = button(mode.displayLabel || mode.label, 'cp-campaign-option', () => {
+        closePicker();
+        onChange(mode.id);
+      });
+      choice.setAttribute('role', 'option');
+      choice.setAttribute('aria-selected', String(mode.id === current));
+      choice.id = `${id}-campaign-option-${i}`;
+      choice.dataset.campaignId = mode.id;
+      choice.tabIndex = -1;
+      list.append(choice);
+    });
+    setActive(matches.findIndex((mode) => mode.id === activeId));
+    help.hidden = !!input.value.trim();
+    status.textContent = input.value.trim() ? `${matches.length} ${matches.length === 1 ? 'campaign' : 'campaigns'} found` : '';
+    if (input.value.trim() && !matches.length) status.textContent = 'No matching campaigns. Try another part of the name.';
+  }
+
+  trigger.addEventListener('click', () => {
+    if (popup.hidden) {
+      popup.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      input.value = '';
+      renderOptions();
+      input.focus();
+    } else closePicker();
+  });
+  input.addEventListener('input', () => renderOptions());
+  wrapper.addEventListener('keydown', (event) => {
+    if (popup.hidden) return;
+    const choices = [...list.children];
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      if (event.key === 'Home') setActive(0);
+      else if (event.key === 'End') setActive(choices.length - 1);
+      else if (event.key === 'ArrowDown') setActive(Math.min(active + 1, choices.length - 1));
+      else setActive(active <= 0 ? choices.length - 1 : active - 1);
+    } else if (event.key === 'Enter' && event.target === input) {
+      event.preventDefault();
+      choices[active < 0 ? 0 : active]?.click();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closePicker();
+    } else if (event.key === 'Tab') closePicker(false);
+  });
+  const outside = (event) => { if (!wrapper.contains(event.target)) closePicker(false); };
+  document.addEventListener('pointerdown', outside);
+  return {
+    wrapper,
+    update(choices, selected) {
+      modes = choices;
+      current = selected;
+      trigger.textContent = modes.find((mode) => mode.id === current)?.displayLabel || 'Campaign unavailable';
+      if (!popup.hidden) renderOptions(true);
+    },
+    close: closePicker,
+    dispose: () => document.removeEventListener('pointerdown', outside),
+  };
+}
+
+function renderTable(rows, openDialog, recordOpen) {
+  const table = node('table', 'cp-table');
+  table.setAttribute('role', 'table');
+  const caption = node('caption', 'cp-visually-hidden', 'Digital Opportunity Reports');
+  const head = node('thead');
+  const headerRow = node('tr');
+  ['Company', 'Website', 'Published', 'Actions'].forEach((title) => {
+    const th = node('th', '', title);
+    th.scope = 'col';
+    if (title === 'Published') th.setAttribute('aria-sort', 'descending');
+    headerRow.append(th);
+  });
+  head.append(headerRow);
+  const body = node('tbody');
+  rows.forEach((company) => {
+    const row = node('tr');
+    row.setAttribute('role', 'row');
+    row.dataset.reportPath = reportPath(company.Folder);
+    row.dataset.company = company.Company;
+    const companyCell = node('td');
+    const companyWrap = node('div', 'cp-company-wrap');
+    const avatar = node('span', 'cp-company-avatar', company.Company.slice(0, 2).toUpperCase());
+    avatar.setAttribute('aria-hidden', 'true');
+    const name = button(company.Company, 'cp-company', () => openDialog(name, company));
+    name.dataset.reportAction = 'company';
+    companyWrap.append(avatar, name);
+    companyCell.append(companyWrap);
+    const website = node('td', 'cp-website', company.Report || company.Domains || 'Not recorded');
+    website.dataset.label = 'Website';
+    const date = node('td', 'cp-published');
+    date.dataset.label = 'Published';
+    date.append(publishedDate(company.Created));
+    const actions = node('td', 'cp-row-actions');
+    const multiple = company.formats?.length > 1;
+    let open;
+    if (multiple) open = button('Open', 'cp-open', () => openDialog(open, company));
+    else {
+      open = pageLink('Open', company.Folder, 'cp-open');
+      open.addEventListener('click', () => recordOpen(company));
+    }
+    open.dataset.reportAction = 'open';
+    const share = button('Share', 'cp-share-action', () => openDialog(share, company, true));
+    share.dataset.reportAction = 'share';
+    actions.append(open, share);
+    [companyCell, website, date, actions].forEach((cell) => {
+      cell.setAttribute('role', 'cell');
+      row.append(cell);
+    });
+    row.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.target.closest('a, button')) return;
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed
+        && (row.contains(selection.anchorNode) || row.contains(selection.focusNode))) return;
+      name.click();
+    });
+    body.append(row);
+  });
+  table.append(caption, head, body);
+  return table;
+}
+
+function renderPagination(page, onChange) {
+  const nav = node('nav', 'cp-pagination');
+  nav.setAttribute('aria-label', 'Report pages');
+  function pageButton(text, number, label) {
+    const control = button(text, '', () => onChange(number, label));
+    control.setAttribute('aria-label', label);
+    return control;
+  }
+  const prev = pageButton('Previous', page.page - 1, 'Previous page');
+  prev.disabled = page.page === 1;
+  nav.append(prev);
+  const numbers = [...new Set([1, page.page - 1, page.page, page.page + 1, page.pageCount])]
+    .filter((value) => value >= 1 && value <= page.pageCount).sort((a, b) => a - b);
+  numbers.forEach((number, i) => {
+    if (i && number - numbers[i - 1] > 1) nav.append(node('span', '', '\u2026'));
+    const control = pageButton(String(number), number, `Page ${number}`);
+    if (number === page.page) control.setAttribute('aria-current', 'page');
+    nav.append(control);
+  });
+  const next = pageButton('Next', page.page + 1, 'Next page');
+  next.disabled = page.page === page.pageCount;
+  nav.append(next);
+  return nav;
+}
+
+function validSheetRow(row, kind) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
+  if (kind === 'registry') {
+    if (Object.values(row).every((value) => value == null || String(value).trim() === '')) return true;
+    return typeof row.Column === 'string' && !!row.Column.trim()
+      && ['Id', 'Label', 'CampaignId'].every((field) => row[field] == null || typeof row[field] === 'string')
+      && (!row.CampaignId || /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(row.Id || ''));
+  }
+  let fields = [];
+  if (kind === 'index') fields = ['Report', 'Customers', 'Folder', 'Created', 'Report Notice'];
+  if (kind === 'company') fields = ['Company', 'Folder', 'Domains'];
+  if (kind === 'cug') fields = ['url', 'cug-groups'];
+  if (!fields.every((field) => row[field] == null || typeof row[field] === 'string')) return false;
+  if (kind !== 'index') return true;
+  if (!row.Folder || !row.Folder.trim()) return false;
+  const url = new URL(row.Folder, window.location.origin);
+  return ['https:', 'http:'].includes(url.protocol);
+}
+
+async function loadSheet(sourceUrl, kind) {
+  try {
+    const rows = [];
+    let total;
+    do {
+      const url = new URL(sourceUrl);
+      if (rows.length) {
+        url.searchParams.set('offset', rows.length);
+        url.searchParams.set('limit', 1000);
+      }
+      const response = await fetch(url.href);
+      if (!response.ok) return { state: response.status === 404 ? 'missing' : 'error', status: response.status };
+      const body = await response.json();
+      if (!Array.isArray(body.data) || !body.data.every((row) => validSheetRow(row, kind))) {
+        throw new Error('Invalid sheet rows.');
+      }
+      const count = Number(body.total ?? body.data.length);
+      if (!Number.isSafeInteger(count) || count < 0 || (total !== undefined && total !== count)
+        || (body.offset != null && Number(body.offset) !== rows.length)
+        || (rows.length && body.offset == null)
+        || (count > rows.length && !body.data.length) || rows.length + body.data.length > count) {
+        throw new Error('Incomplete or inconsistent sheet pagination.');
+      }
+      total = count;
+      rows.push(...body.data);
+    } while (rows.length < total);
+    return { state: 'ready', rows };
+  } catch (error) {
+    return { state: 'error', message: error.message };
+  }
+}
+
+let pickerCount = 0;
 
 export default async function init(el) {
-  const link = el.querySelector('a[href$=".json"]');
-  if (!link) return;
-
-  const { origin } = new URL(link.href);
-  const insightsUrl = `${origin}/data/insights-list.json`;
-  const accountsUrl = `${origin}/data/account-list.json`;
-  const companyUrl = `${origin}/data/company-list.json`;
-  const eventTabsUrl = `${origin}/data/event-tabs.json`;
-  const cugUrl = `${origin}/closed-user-groups.json`;
-
-  const [
-    portalResp, insightsResp, accountsResp, companyResp, eventTabsResp, cugResp,
-  ] = await Promise.all([
-    fetch(link.href),
-    fetch(insightsUrl),
-    fetch(accountsUrl),
-    fetch(companyUrl),
-    fetch(eventTabsUrl).catch(() => null),
-    fetch(cugUrl),
-  ]);
-  if (!portalResp.ok) return;
-
-  const portalCompanies = (await portalResp.json()).data || [];
-  const insightRows = insightsResp.ok ? ((await insightsResp.json()).data || []) : [];
-  // All reports: one row per website×variant in the sheet → collapse to one
-  // card per website, each carrying its available landing-page formats.
-  const insightsCompanies = groupInsightsByWebsite(insightRows);
-  // Which event tabs exist is authored in /data/event-tabs.json — no code change
-  // per event. A missing/broken sheet falls back to deriving tabs from the
-  // insights-list columns, so the tabs never vanish. See parseEventModes.
-  const eventTabRows = eventTabsResp && eventTabsResp.ok
-    ? ((await eventTabsResp.json().catch(() => ({}))).data || [])
-    : [];
-  const eventModes = parseEventModes(eventTabRows, insightRows);
-  EVENT_MODE_IDS.clear();
-  eventModes.forEach((e) => EVENT_MODE_IDS.add(e.id));
-  // Event portal tabs build directly from the flagged rows (one card per row),
-  // independent of the website grouping above — see buildEventCompanies.
-  const eventCompanies = Object.fromEntries(
-    eventModes.map((e) => [e.id, buildEventCompanies(insightRows, e.column)]),
-  );
-  const accountsCompanies = accountsResp.ok
-    ? (await accountsResp.json()).data.map((r) => ({ ...r, Company: r.Account }))
-    : [];
-  const companyData = companyResp.ok ? await companyResp.json() : null;
-  const cugData = cugResp.ok ? await cugResp.json() : null;
-
-  const { websiteMap, domainMap } = buildLookupMaps(companyData, cugData);
-
-  el.textContent = '';
-
-  const navModel = buildNavModel(eventModes);
-  const companiesMap = {
-    insights: insightsCompanies,
-    accounts: accountsCompanies,
-    portal: portalCompanies,
-    ...eventCompanies,
+  const authored = el.querySelector('a[href$=".json"]');
+  if (!authored) {
+    el.replaceChildren(node('p', 'cp-state', 'Reports are not configured. Ask the page author to add the company-list source.'));
+    return undefined;
+  }
+  pickerCount += 1;
+  const id = `cp-${pickerCount}`;
+  const companyUrl = new URL(authored.href);
+  const urls = {
+    company: companyUrl.href,
+    index: new URL('insights-list.json', companyUrl).href,
+    registry: new URL('event-tabs.json', companyUrl).href,
+    cug: new URL('/closed-user-groups.json', companyUrl).href,
   };
+  const sources = Object.fromEntries(Object.keys(urls).map((key) => [key, { state: 'loading' }]));
+  const versions = {};
+  const datasets = new Map();
+  let eventModes = [];
+  let membershipModes = [];
+  let byPath = new Map();
+  let maps = { websiteMap: new Map(), domainMap: new Map() };
+  let disposed = false;
+  let debounce;
+  let opener;
+  let openerContext;
+  let openedCompany;
+  let render;
+  let load;
+  let state = readReportState(window.location.search, []);
+  if (state.unknownCampaign) {
+    state.mode = state.unknownCampaign;
+    state.unknownCampaign = '';
+  }
+  const notices = node('div', 'cp-catalog-notices');
+  notices.setAttribute('role', 'status');
+  const filters = node('div', 'cp-filters');
+  const { wrapper: searchWrapper, input: search } = buildSearch();
+  function change(patch, push = false) {
+    clearTimeout(debounce);
+    Object.assign(state, patch);
+    render(push);
+  }
+  const picker = buildCampaignPicker(id, (mode) => change({ mode, page: 1, unknownCampaign: '' }, true));
+  filters.append(searchWrapper, picker.wrapper);
+  const recents = node('div', 'cp-recents-slot');
+  const summary = node('div', 'cp-results-summary');
+  const count = node('p', 'cp-result-count');
+  count.setAttribute('role', 'status');
+  const sizeLabel = node('label', 'cp-page-size', 'Rows per page');
+  const size = node('select');
+  size.setAttribute('aria-label', 'Rows per page');
+  [25, 50, 100].forEach((value) => size.append(new Option(String(value), String(value))));
+  sizeLabel.append(size);
+  summary.append(count, sizeLabel);
+  const results = node('div', 'cp-results');
+  const pagination = node('div', 'cp-pagination-slot');
+  el.replaceChildren(notices, filters, recents, summary, results, pagination);
+  const { dialog, close, content } = buildDialog(id);
 
-  const { backdrop, close, content: dialogContent } = buildDialog();
-  let activeCard = null;
-  let currentMode = DEFAULT_MODE;
+  function choices() {
+    return [
+      { id: DEFAULT_MODE, label: 'All campaigns', displayLabel: 'All campaigns' },
+      ...qualifyCampaigns([{ id: 'portal', label: 'Adobe Summit 2026' }, ...eventModes]),
+    ];
+  }
+
+  function companies(mode) {
+    if (datasets.has(mode)) return datasets.get(mode);
+    const raw = sources.index.rows || [];
+    let rows;
+    if (mode === 'portal') rows = (sources.company.rows || []).filter((row) => row.Folder && row.Company);
+    else if (mode === DEFAULT_MODE) {
+      rows = groupInsightsByWebsite(raw);
+    } else {
+      const event = eventModes.find((entry) => entry.id === mode);
+      rows = event ? buildEventCompanies(raw, event.column) : [];
+    }
+    rows = rows.map((row) => {
+      const selected = byPath.get(row.Folder) || byPath.get(reportPath(row.Folder));
+      return {
+        ...row,
+        Company: mode === DEFAULT_MODE
+          ? selected?.Customers?.trim() || 'Company not recorded' : row.Company,
+        Report: selected?.Report ?? row.Report,
+        Customers: selected?.Customers ?? row.Customers,
+        Created: selected?.Created ?? row.Created,
+        ReportNotice: selected ? (selected['Report Notice'] || '') : row.ReportNotice,
+      };
+    });
+    datasets.set(mode, rows);
+    return rows;
+  }
+
+  function membership(folder) {
+    const modes = qualifyCampaigns([{ id: 'portal', label: 'Adobe Summit 2026' }, ...membershipModes]);
+    const memberships = campaignsForFolder(sources.index.rows || [], modes, folder);
+    const legacy = sources.company.rows || [];
+    if (legacy.some((row) => row.Folder && reportPath(row.Folder) === reportPath(folder))) {
+      memberships.unshift({ id: 'portal', label: modes.find((mode) => mode.id === 'portal').displayLabel });
+    }
+    return memberships;
+  }
+
+  function showDialog(control, company, share = false) {
+    opener = control;
+    openerContext = { recent: recents.contains(control), action: control.dataset.reportAction };
+    openedCompany = company;
+    const report = {
+      ...company,
+      campaigns: membership(company.Folder),
+      campaignsIncomplete: sources.registry.state !== 'ready' || sources.company.state !== 'ready',
+    };
+    report.formats = (company.formats || []).map((format) => {
+      const raw = byPath.get(reportPath(format.folder)) || {};
+      return {
+        ...format,
+        Report: raw.Report,
+        Customers: raw.Customers,
+        Created: raw.Created,
+        ReportNotice: raw['Report Notice'] || '',
+        campaigns: membership(format.folder),
+      };
+    });
+    renderDialog(content, report, { id, ...maps, share });
+    pushRecent(state.mode, company);
+    dialog.showModal();
+    if (share) content.querySelector('input, select')?.focus();
+    else close.focus();
+  }
+
+  function refreshRecents() {
+    const band = buildRecentBand(state.mode, companies(state.mode), showDialog);
+    recents.replaceChildren(...(band ? [band] : []));
+  }
 
   function closeDialog() {
-    backdrop.hidden = true;
-    if (activeCard) {
-      activeCard.classList.remove('cp-card--active');
-      activeCard.focus();
-      activeCard = null;
+    if (!dialog.open) return;
+    dialog.close();
+    refreshRecents();
+    const matchingRows = [...results.querySelectorAll('tbody tr')]
+      .filter((row) => row.dataset.reportPath === reportPath(openedCompany.Folder));
+    const row = matchingRows.find((entry) => entry.dataset.company === openedCompany.Company)
+      || matchingRows[0];
+    const replacement = openerContext.recent
+      ? [...recents.querySelectorAll('.cp-card')]
+        .find((card) => reportPath(card.dataset.folder) === reportPath(openedCompany.Folder))
+      : [...(row?.querySelectorAll('[data-report-action]') || [])]
+        .find((control) => control.dataset.reportAction === openerContext.action);
+    const target = [opener, replacement, row?.querySelector('.cp-company'), search]
+      .find((control) => control?.isConnected && control.getClientRects().length);
+    target?.focus();
+  }
+
+  function writeUrl(push = false) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', state.mode);
+    if (state.query) url.searchParams.set('q', state.query);
+    else url.searchParams.delete('q');
+    url.searchParams.set('page', state.page);
+    url.searchParams.set('size', state.size);
+    if (url.href === window.location.href) return;
+    window.history[push ? 'pushState' : 'replaceState'](null, '', url);
+  }
+
+  function sourceMessage(slot, key, text) {
+    const source = sources[key];
+    const message = node('div', 'cp-state');
+    const description = node('p', '', text);
+    message.append(description);
+    if (source.status === 401) {
+      const signIn = node('a', 'cp-sign-in', 'Sign in with Adobe ID');
+      signIn.href = `/auth/portal?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+      message.append(signIn);
+    } else if (source.status !== 403 && source.state !== 'loading') {
+      message.append(button('Retry', 'cp-retry', () => load([key])));
+    }
+    slot.append(message);
+  }
+
+  function renderNotices() {
+    notices.replaceChildren();
+    if (state.unknownCampaign) {
+      notices.append(node('p', '', 'That campaign is no longer available. Showing All campaigns instead.'));
+    }
+    if (sources.registry.state === 'missing') {
+      sourceMessage(notices, 'registry', 'The campaign list is incomplete. Only legacy campaign names can be shown until its registry is published.');
+    } else if (sources.registry.state === 'error') {
+      sourceMessage(notices, 'registry', 'The campaign list could not be loaded. Retry to restore campaign names and membership details.');
+    }
+    if (sources.company.state === 'error' || sources.company.state === 'missing') {
+      sourceMessage(notices, 'company', 'Adobe Summit 2026 reports and related company information could not be loaded. Other report sources load separately.');
+    }
+    if (sources.cug.state === 'error' || sources.cug.state === 'missing') {
+      sourceMessage(notices, 'cug', 'Email-domain access information could not be loaded. Report sharing still checks access when you use it.');
     }
   }
 
-  function openDialog(card, company) {
-    if (activeCard) activeCard.classList.remove('cp-card--active');
-    activeCard = card;
-    card.classList.add('cp-card--active');
-    renderDialog(dialogContent, company, websiteMap, domainMap, currentMode);
-    backdrop.hidden = false;
-    close.focus();
-    pushRecent(currentMode, company);
-  }
-
-  close.addEventListener('click', closeDialog);
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeDialog(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !backdrop.hidden) closeDialog(); });
-
-  const { wrapper: searchWrapper, input: searchInput } = buildSearch();
-  const navContainer = document.createElement('div');
-  const gridContainer = document.createElement('div');
-
-  // Declared before renderMode so renderMode can call nav.setActive without
-  // tripping no-use-before-define; assigned once renderMode exists, because
-  // buildNav takes it as the change handler.
-  let nav;
-
-  // Shown in place of the grid when a search matches nothing. On an event tab it
-  // carries the way out — the report is usually in All reports.
-  const empty = document.createElement('div');
-  empty.className = 'cp-empty';
-  empty.hidden = true;
-
-  /** Show or hide the empty state for `visible` matches of the current query. */
-  function renderEmptyState(visible) {
-    const query = searchInput.value;
-    if (visible > 0 || !query.trim()) {
-      empty.hidden = true;
-      empty.replaceChildren();
+  render = (push = false) => {
+    const modes = choices();
+    const registryResolved = sources.registry.state === 'ready'
+      || (sources.registry.state === 'missing' && sources.index.state === 'ready');
+    const known = modes.some((mode) => mode.id.toLowerCase() === state.mode.toLowerCase());
+    if (!known && registryResolved) {
+      state.unknownCampaign = state.mode;
+      state.mode = DEFAULT_MODE;
+    }
+    const resolvedMode = modes.find((mode) => mode.id.toLowerCase() === state.mode.toLowerCase());
+    if (resolvedMode) state.mode = resolvedMode.id;
+    picker.update(modes, state.mode);
+    search.value = state.query;
+    size.value = String(state.size);
+    renderNotices();
+    const required = state.mode === 'portal' ? 'company' : 'index';
+    const source = sources[required];
+    const waitingForCampaign = !known && !registryResolved;
+    search.disabled = source.state !== 'ready' || waitingForCampaign;
+    size.disabled = search.disabled;
+    results.replaceChildren();
+    pagination.replaceChildren();
+    recents.replaceChildren();
+    if (source.state !== 'ready' || waitingForCampaign) {
+      const loading = source.state === 'loading' || (waitingForCampaign && sources.registry.state === 'loading');
+      results.setAttribute('aria-busy', String(loading));
+      count.textContent = loading ? 'Loading reports...' : 'Reports unavailable';
+      let message = 'Reports could not be loaded. Please try again.';
+      if (loading) message = waitingForCampaign ? 'Loading campaign and report information...' : 'Loading reports...';
+      else if (source.status === 401) message = 'Sign in with Adobe ID to view reports.';
+      else if (source.status === 403) message = 'Your account does not have access to these reports.';
+      else if (waitingForCampaign) message = 'The selected campaign cannot be resolved until its campaign list loads. Retry above, or choose All campaigns.';
+      sourceMessage(results, waitingForCampaign ? 'registry' : required, message);
+      if (!waitingForCampaign) writeUrl(push);
       return;
     }
-    const copy = emptyStateCopy(findMode(navModel, currentMode), query, insightsCompanies.length);
-    const text = document.createElement('p');
-    text.className = 'cp-empty-text';
-    text.textContent = copy.text;
-    empty.replaceChildren(text);
-    if (copy.action) {
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'cp-empty-action';
-      action.textContent = copy.action;
-      // eslint-disable-next-line no-use-before-define
-      action.addEventListener('click', () => renderMode(DEFAULT_MODE, { keepQuery: true }));
-      empty.append(action);
+    results.setAttribute('aria-busy', 'false');
+    const allRows = companies(state.mode);
+    const page = paginateReports(filterReports(allRows, state.query), state);
+    state.page = page.page;
+    const first = page.total ? (page.page - 1) * state.size + 1 : 0;
+    const last = Math.min(page.page * state.size, page.total);
+    count.textContent = `${fmtCount(first)}-${fmtCount(last)} of ${fmtReports(page.total)}${state.mode === DEFAULT_MODE ? '' : ` in ${resolvedMode?.displayLabel || resolvedMode?.label}`}`;
+    refreshRecents();
+    if (page.rows.length) {
+      results.append(renderTable(page.rows, showDialog, (company) => {
+        pushRecent(state.mode, company);
+        refreshRecents();
+      }));
+    } else {
+      const empty = node('div', 'cp-empty');
+      empty.append(node('h3', '', state.query ? 'No matching reports' : 'No reports yet'));
+      empty.append(node('p', 'cp-empty-text', state.query
+        ? `No company or website matches "${state.query}"${state.mode === DEFAULT_MODE ? '.' : ' in this campaign.'}`
+        : 'Reports will appear here after they are published.'));
+      if (state.mode !== DEFAULT_MODE) empty.append(button('Search all reports', 'cp-empty-action', () => change({ mode: DEFAULT_MODE, page: 1 }, true)));
+      if (state.query) empty.append(button('Clear search', 'cp-empty-action', () => change({ query: '', page: 1 })));
+      results.append(empty);
     }
-    empty.hidden = false;
+    pagination.append(renderPagination(page, (number, label) => {
+      change({ page: number }, true);
+      const control = pagination.querySelector(`[aria-label="${label}"]:not(:disabled)`)
+        || pagination.querySelector('[aria-current="page"]');
+      control?.focus();
+    }));
+    writeUrl(push);
+  };
+
+  function rebuild() {
+    const raw = sources.index.rows || [];
+    byPath = new Map();
+    raw.forEach((row) => {
+      const path = reportPath(row.Folder);
+      const previous = byPath.get(path);
+      if (!previous || createdSortKey(row.Created) > createdSortKey(previous.Created)) {
+        byPath.set(path, row);
+      }
+    });
+    eventModes = sources.registry.state === 'ready'
+      ? parseEventModes(sources.registry.rows, [])
+      : [];
+    // Retired registrations remain in exact-page details, not the filter picker.
+    membershipModes = sources.registry.state === 'ready'
+      ? parseEventModes(sources.registry.rows.map((row) => ({ ...row, Active: true })), [])
+      : [];
+    if (sources.registry.state === 'missing') {
+      eventModes = deriveEventModes(raw);
+      membershipModes = eventModes;
+    }
+    maps = buildLookupMaps({ data: sources.company.rows }, { data: sources.cug.rows });
+    datasets.clear();
   }
 
-  /**
-   * Render one mode. `keepQuery` carries the typed search across a mode switch —
-   * used by the context line and the empty state, which exist precisely so a
-   * fruitless event search can be retried against the full catalogue without
-   * retyping.
-   */
-  function renderMode(mode, { keepQuery = false } = {}) {
-    currentMode = mode;
-    closeDialog();
-    const companies = companiesMap[mode] || [];
-    if (!keepQuery) searchInput.value = '';
-    const event = eventModes.find((e) => e.id === mode);
-    searchInput.placeholder = SEARCH_PLACEHOLDERS[mode]
-      || (event ? `Search ${event.label}…` : 'Search…');
+  load = async (keys) => {
+    await Promise.all(keys.map(async (key) => {
+      versions[key] = (versions[key] || 0) + 1;
+      const version = versions[key];
+      sources[key] = { state: 'loading' };
+      render();
+      const result = await loadSheet(urls[key], key);
+      if (disposed || version !== versions[key]) return;
+      sources[key] = result;
+      rebuild();
+      render();
+    }));
+  };
 
-    const { grid, groups } = buildGrid(companies, openDialog);
-    const letterNav = buildLetterNav(groups);
-
-    const recentBand = buildRecentBand(mode, companies, openDialog);
-    if (recentBand) navContainer.replaceChildren(recentBand, letterNav);
-    else navContainer.replaceChildren(letterNav);
-    gridContainer.replaceChildren(grid, empty);
-
-    nav.setActive(mode, companies.length);
-
-    const query = searchInput.value;
-    renderEmptyState(query.trim() ? applyFilter(grid, query) : companies.length);
-
-    // Keep the URL shareable: ?tab=<mode> reopens this exact tab.
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', mode);
-      window.history.replaceState(null, '', url);
-    } catch {
-      // ignore: history unavailable (sandboxed iframe / opaque origin)
-    }
-  }
-
-  nav = buildNav(navModel, renderMode);
-  el.append(nav.el, searchWrapper, navContainer, gridContainer);
-
-  const initialTab = new URLSearchParams(window.location.search).get('tab');
-  renderMode(resolveTabParam(navModel, initialTab));
-
-  let debounce;
-  searchInput.addEventListener('input', () => {
+  const popstate = () => {
     clearTimeout(debounce);
-    const grid = gridContainer.querySelector('.cp-grid');
-    debounce = setTimeout(() => renderEmptyState(applyFilter(grid, searchInput.value)), 120);
+    closeDialog();
+    picker.close(false);
+    state = readReportState(window.location.search, choices());
+    if (state.unknownCampaign && !['ready', 'missing'].includes(sources.registry.state)) {
+      state.mode = state.unknownCampaign;
+      state.unknownCampaign = '';
+    }
+    render();
+  };
+  window.addEventListener('popstate', popstate);
+  close.addEventListener('click', closeDialog);
+  dialog.addEventListener('cancel', (event) => { event.preventDefault(); closeDialog(); });
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDialog();
+    }
   });
+  dialog.addEventListener('click', (event) => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right
+      || event.clientY < box.top || event.clientY > box.bottom) closeDialog();
+  });
+  search.addEventListener('input', () => {
+    clearTimeout(debounce);
+    state.query = search.value;
+    state.page = 1;
+    debounce = setTimeout(() => render(), 120);
+  });
+  size.addEventListener('change', () => change({ size: Number(size.value), page: 1 }, true));
+  render();
+  // Let section decoration finish even while an optional sheet is still loading.
+  const ready = load(Object.keys(urls));
+  const dispose = () => {
+    disposed = true;
+    clearTimeout(debounce);
+    window.removeEventListener('popstate', popstate);
+    picker.dispose();
+    dialog.remove();
+  };
+  dispose.ready = ready;
+  return dispose;
 }
