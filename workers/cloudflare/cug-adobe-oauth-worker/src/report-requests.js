@@ -246,17 +246,29 @@ export function csvCell(value) {
 }
 
 export function reportRequestsCsv(rows) {
-  const header = ['Submitted', 'Name', 'Email', 'Company', 'Website', 'Role', 'Market'];
+  const header = [
+    'Company Name',
+    'Website',
+    'Sub-ID',
+    'DR ID',
+    'Representative Email',
+    'CMS',
+    'Primary Country (Optional)',
+    'Audience',
+    'Access Emails',
+  ];
   const lines = rows.map((row) => [
-    row.submitted_at,
-    row.full_name,
-    row.email,
     row.company,
     row.website,
-    row.job_title,
-    row.primary_market,
+    '',
+    '',
+    '',
+    '',
+    '', // Let the Hub infer the country instead of using an unvalidated free-text market.
+    '',
+    row.email,
   ].map(csvCell).join(','));
-  return `${header.map(csvCell).join(',')}\r\n${lines.join('\r\n')}\r\n`;
+  return `${[header.map(csvCell).join(','), ...lines].join('\r\n')}\r\n`;
 }
 
 async function parsePublicRequest(request) {

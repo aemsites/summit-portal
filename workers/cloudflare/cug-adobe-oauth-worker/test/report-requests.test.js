@@ -154,14 +154,40 @@ describe('report requests', () => {
       [{ email: 'staff@adobe.com', method: 'oauth' }, 200],
     ];
     for (const [session, status] of sessions) {
-      const response = await handleReportRequests(new Request('https://mysite.com/api/report-requests'), env, session);
-      expect(response.status).toBe(status);
-      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      for (const path of ['/api/report-requests', '/api/report-requests.csv']) {
+        const response = await handleReportRequests(new Request(`https://mysite.com${path}`), env, session);
+        expect(response.status).toBe(status);
+        expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      }
     }
     expect(reportRequestsAuthorisation({ email: 'employee@adobe.com', method: 'oauth' })).toBe(200);
   });
 
-  it('returns matching rows newest-first and safely escapes CSV cells', async () => {
+  it('exports the current Digital Insights Hub intake headers even without requests', () => {
+    expect(reportRequestsCsv([])).toBe(
+      '"Company Name","Website","Sub-ID","DR ID","Representative Email","CMS","Primary Country (Optional)","Audience","Access Emails"\r\n',
+    );
+  });
+
+  it('maps requests to company intake without inventing account details or a country override', () => {
+    const csv = reportRequestsCsv([{
+      request_id: 'internal-id',
+      submitted_at: '2026-09-08T10:00:00.000Z',
+      full_name: 'Jordan Lee',
+      email: 'jordan@example.com',
+      company: 'Northstar Commerce',
+      website: 'example.com/growth',
+      job_title: 'VP, Digital',
+      primary_market: 'North America',
+    }]);
+
+    expect(csv.split('\r\n').slice(1)).toEqual([
+      '"Northstar Commerce","example.com/growth","","","","","","","jordan@example.com"',
+      '',
+    ]);
+  });
+
+  it('keeps CSV downloads aligned with search and newest-first ordering', async () => {
     const env = environment();
     env.REPORT_REQUESTS.requests.set('older', {
       request_id: 'older',
@@ -181,7 +207,7 @@ describe('report requests', () => {
       email: 'jordan@example.com',
       company: 'Northstar',
       website: 'northstar.com',
-      job_title: '=SUM(A1)',
+      job_title: 'VP, Digital',
       primary_market: 'North America',
       search_text: 'jordan northstar northstar.com',
     });
@@ -190,8 +216,27 @@ describe('report requests', () => {
     expect((await list.json()).requests.map((row) => row.request_id)).toEqual(['newer']);
     const csv = await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv'), env, session);
     expect(csv.headers.get('Content-Type')).toContain('text/csv');
-    expect(await csv.text()).toContain("'=SUM(A1)");
-    expect(reportRequestsCsv([{ submitted_at: 'now', full_name: 'A "quoted"', email: 'a@example.com' }]))
-      .toContain('"A ""quoted"""');
+    expect(csv.headers.get('Content-Disposition')).toBe('attachment; filename="report-requests.csv"');
+    expect((await csv.text()).split('\r\n').slice(1)).toEqual([
+      '"Northstar","northstar.com","","","","","","","jordan@example.com"',
+      '"Example","example.com","","","","","","","taylor@example.com"',
+      '',
+    ]);
+
+    const filtered = await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=northstar'), env, session);
+    expect((await filtered.text()).split('\r\n').slice(1)).toEqual([
+      '"Northstar","northstar.com","","","","","","","jordan@example.com"',
+      '',
+    ]);
+  });
+
+  it.each(['=SUM(A1)', '+SUM(A1)', '-SUM(A1)', '@SUM(A1)'])('escapes a formula-prefixed company: %s', (company) => {
+    expect(reportRequestsCsv([{ company, website: 'example.com', email: 'a@example.com' }]).split('\r\n')[1])
+      .toBe(`"'${company}","example.com","","","","","","","a@example.com"`);
+  });
+
+  it('quotes commas, quotes, and line breaks in intake cells', () => {
+    const csv = reportRequestsCsv([{ company: 'A "quoted",\r\ncompany', website: 'example.com', email: 'a@example.com' }]);
+    expect(csv).toContain('"A ""quoted"",\r\ncompany","example.com","","","","","","","a@example.com"\r\n');
   });
 });
