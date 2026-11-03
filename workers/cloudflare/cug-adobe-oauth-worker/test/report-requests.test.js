@@ -35,6 +35,7 @@ const validBody = {
   website: 'HTTPS://www.Example.com/growth/',
   jobTitle: 'VP, Digital',
   primaryMarket: 'North America',
+  requestSource: '  Adobe Summit,   London ',
   consent: true,
 };
 
@@ -52,10 +53,21 @@ describe('report requests', () => {
   });
 
   it('validates required fields and does not permit honeypot data', () => {
-    expect(normaliseRequest({ ...validBody, fullName: '' }).error).toContain('full name');
+    expect(normaliseRequest({ ...validBody, fullName: '' }).error).toContain('first and last name');
     expect(normaliseRequest({ ...validBody, consent: false }).error).toContain('agree');
     expect(normaliseRequest({ ...validBody, websiteConfirm: 'bot content' }).error).toBeTruthy();
-    expect(normaliseRequest({ ...validBody, fullName: { value: 'Jordan Lee' } }).error).toContain('full name');
+    expect(normaliseRequest({ ...validBody, fullName: { value: 'Jordan Lee' } }).error).toContain('first and last name');
+  });
+
+  it('normalises and bounds source, while accepting older clients without a source field', () => {
+    expect(normaliseRequest(validBody).value.requestSource).toBe('Adobe Summit, London');
+    expect(normaliseRequest({ ...validBody, requestSource: 'a'.repeat(200) }).value.requestSource).toHaveLength(200);
+    for (const requestSource of ['', '   ', null, 123, {}, 'a'.repeat(201)]) {
+      expect(normaliseRequest({ ...validBody, requestSource }).error).toContain('200 characters');
+    }
+    const { requestSource: omitted, ...legacy } = validBody;
+    expect(normaliseRequest(legacy).value.requestSource).toBeNull();
+    expect(normaliseRequest({ ...validBody, fullName: `${'A'.repeat(60)} ${'B'.repeat(60)}` }).value.fullName).toHaveLength(121);
   });
 
   it('rejects non-JSON and unavailable persistence with non-cacheable errors', async () => {
@@ -99,10 +111,17 @@ describe('report requests', () => {
       email: 'jordan@example.com',
       company: 'Northstar Commerce',
       website: 'example.com/growth',
+      request_source: 'Adobe Summit, London',
       consent_version: 'adobe-privacy-v1',
     });
     expect(stored).not.toHaveProperty('turnstile_token');
     expect(stored).not.toHaveProperty('ip');
+    expect(stored.search_text).toContain('adobe summit, london');
+    const session = { email: 'employee@adobe.com', method: 'oauth' };
+    const list = await handleReportRequests(new Request('https://mysite.com/api/report-requests?q=summit'), env, session);
+    expect((await list.json()).requests).toMatchObject([{ request_source: 'Adobe Summit, London' }]);
+    const csv = await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=summit'), env, session);
+    expect(await csv.text()).toContain('"jordan@example.com","Adobe Summit, London"\r\n');
   });
 
   it('returns the original successful response without duplicating a retried request', async () => {
@@ -163,9 +182,9 @@ describe('report requests', () => {
     expect(reportRequestsAuthorisation({ email: 'employee@adobe.com', method: 'oauth' })).toBe(200);
   });
 
-  it('exports the current Digital Insights Hub intake headers even without requests', () => {
+  it('keeps the Digital Insights Hub intake columns and appends request source, even without requests', () => {
     expect(reportRequestsCsv([])).toBe(
-      '"Company Name","Website","Sub-ID","DR ID","Representative Email","CMS","Primary Country (Optional)","Audience","Access Emails"\r\n',
+      '"Company Name","Website","Sub-ID","DR ID","Representative Email","CMS","Primary Country (Optional)","Audience","Access Emails","Request Source"\r\n',
     );
   });
 
@@ -179,10 +198,11 @@ describe('report requests', () => {
       website: 'example.com/growth',
       job_title: 'VP, Digital',
       primary_market: 'North America',
+      request_source: 'Adobe Summit, London',
     }]);
 
     expect(csv.split('\r\n').slice(1)).toEqual([
-      '"Northstar Commerce","example.com/growth","","","","","","","jordan@example.com"',
+      '"Northstar Commerce","example.com/growth","","","","","","","jordan@example.com","Adobe Summit, London"',
       '',
     ]);
   });
@@ -218,25 +238,35 @@ describe('report requests', () => {
     expect(csv.headers.get('Content-Type')).toContain('text/csv');
     expect(csv.headers.get('Content-Disposition')).toBe('attachment; filename="report-requests.csv"');
     expect((await csv.text()).split('\r\n').slice(1)).toEqual([
-      '"Northstar","northstar.com","","","","","","","jordan@example.com"',
-      '"Example","example.com","","","","","","","taylor@example.com"',
+      '"Northstar","northstar.com","","","","","","","jordan@example.com",""',
+      '"Example","example.com","","","","","","","taylor@example.com",""',
       '',
     ]);
 
     const filtered = await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=northstar'), env, session);
     expect((await filtered.text()).split('\r\n').slice(1)).toEqual([
-      '"Northstar","northstar.com","","","","","","","jordan@example.com"',
+      '"Northstar","northstar.com","","","","","","","jordan@example.com",""',
       '',
     ]);
   });
 
   it.each(['=SUM(A1)', '+SUM(A1)', '-SUM(A1)', '@SUM(A1)'])('escapes a formula-prefixed company: %s', (company) => {
     expect(reportRequestsCsv([{ company, website: 'example.com', email: 'a@example.com' }]).split('\r\n')[1])
-      .toBe(`"'${company}","example.com","","","","","","","a@example.com"`);
+      .toBe(`"'${company}","example.com","","","","","","","a@example.com",""`);
+  });
+
+  it.each(['=SUM(A1)', '+SUM(A1)', '-SUM(A1)', '@SUM(A1)'])('escapes a formula-prefixed source: %s', (source) => {
+    const csv = reportRequestsCsv([{ company: 'Example', website: 'example.com', email: 'a@example.com', request_source: source }]);
+    expect(csv.split('\r\n')[1]).toBe(`"Example","example.com","","","","","","","a@example.com","'${source}"`);
   });
 
   it('quotes commas, quotes, and line breaks in intake cells', () => {
     const csv = reportRequestsCsv([{ company: 'A "quoted",\r\ncompany', website: 'example.com', email: 'a@example.com' }]);
-    expect(csv).toContain('"A ""quoted"",\r\ncompany","example.com","","","","","","","a@example.com"\r\n');
+    expect(csv).toContain('"A ""quoted"",\r\ncompany","example.com","","","","","","","a@example.com",""\r\n');
+  });
+
+  it('quotes punctuation and line breaks in source without altering existing intake cells', () => {
+    const csv = reportRequestsCsv([{ company: 'Example', website: 'example.com', email: 'a@example.com', request_source: 'Event "One",\r\nLondon' }]);
+    expect(csv).toContain('"Example","example.com","","","","","","","a@example.com","Event ""One"",\r\nLondon"\r\n');
   });
 });

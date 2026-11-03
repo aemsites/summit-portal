@@ -1373,15 +1373,71 @@ Its auto-loaded `docs.css` scopes **every** rule under `.docs-page`, so dropping
 Authored page-data block: each row becomes a `<meta>` tag (or sets `document.title` / `lang`), then the block removes itself. **Single-section reports** (e.g. insight reports) author every block — `report-hero`, `report-stats`, `report-carousel`, … plus `metadata` — inside **one** `main > div` section sharing one `.block-content`. So `init()` must NOT remove its `.section` unconditionally: it drops the `.metadata` element, then removes the `.block-content`/`.section` only when nothing else remains. Removing the section unconditionally wiped the entire report (the 18th Digitech regression after PR #73). `hidePageDataSections()` (run from `lazy.js`) is the broader cleanup for standalone page-data sections and is a no-op on single-section reports because the metadata element/markers are already gone by the lazy phase.
 
 ### report-request-form
-Public, mobile-first request form. Its authoring contract is intentionally empty: customer fields are fixed in code to prevent collecting context intended for internal report generation. Required fields are full name, business email, company, website/domain, and contact consent; role/job title and primary market are optional. A secondary editorial aside links to the public FrescoPa sample at `/example-report/frescopa/`; it must never link to an authenticated customer report or use a long-lived magic link. The form adds a honeypot, obtains a Cloudflare Turnstile token using the page's `turnstile-sitekey` metadata, creates one browser-lifecycle idempotency key, and sends JSON to the canonical `https://act.aem.now/api/report-requests` endpoint. That endpoint accepts cross-origin form submissions only from the production Summit `.aem.page` and `.aem.live` delivery origins, so the form remains usable when opened directly on either official host. Browser validation mirrors the Worker but server validation remains authoritative. On success, the confirmation replaces the complete intake shell so the original form/headline cannot remain in the desktop grid. Its desktop title uses the available panel width, while every step title and description is explicitly assigned to the content grid column so text cannot collapse into the counter column. The generated request ID is internal-only for idempotency and auditing, not a support reference.
+Public request form with an empty authoring contract: customer fields are fixed in
+code, not authored. The November 3 redesign follows the approved Adobe booth
+identity: Adobe wordmark, Adobe Clean/Display, black hero, original booth artwork
+and blue rounded actions. It uses its own light, responsive masthead with a sign-in
+link, replacing the shared theme-switching header only on pages containing this block.
+The existing legal footer remains unchanged. Desktop has a wide headline, artwork
+on the right, and two-column form fields; mobile omits the decorative artwork and
+collapses the four icon-and-label report topics under **Explore report coverage**
+to bring the form closer to the top. The single breakpoint remains 1000px.
+
+Required form fields are **first name, last name, business email, company,
+website/domain, request source**, and contact consent. Role and primary market
+are no longer collected. First/last name are combined into the existing
+`fullName`/`full_name` contract (up to 60 characters each, including the joining
+space up to 121); existing names are not migrated. **Where did you hear about
+this report?** accepts up to 200 characters and asks for the event name/city or
+email, colleague or web referral. The Worker normalizes whitespace and validates
+supplied source values; missing source is accepted only for compatibility with
+older clients during rollout, and historical source values remain null.
+
+Below the form, a compact industry grid links to all ten public demo-brand
+reports, using the existing booth industry icons and a shared
+`scripts/booth-demos.js` catalog. The Worker's old module re-exports that catalog
+so booth callers keep the same contract. Links open in separate tabs to preserve
+form entries; they never point at protected customer reports or magic links.
+
+The form preserves the honeypot, Cloudflare Turnstile via `turnstile-sitekey`
+metadata, browser-lifecycle idempotency key, canonical
+`https://act.aem.now/api/report-requests` endpoint, allowed production AEM delivery
+origins and explicit contact consent. Errors retain entered values and allow
+retry. Success replaces the entire intake shell, including hero and demos, with
+the confirmation; internal request IDs are never shown as support references.
+The validation-summary accent is intentional error feedback, not decorative chrome.
+
+**Rollout:** apply `0004_report_request_source.sql` before deploying the Worker
+and publishing the frontend. The migration adds a nullable `request_source`
+column without changing existing leads or consent records. No production
+deployment is part of this design change. Local synthetic preview:
+`npm run preview:booth`, then `/content/index?preview=request` or `/request-report`;
+it never sends a real request or records a lead.
+
+Local verification covers 320–1920px layouts, desktop/mobile column counts,
+coverage expansion, validation, retry and confirmation, plus migration and actual
+SQLite persistence/search/CSV round-trips with legacy records preserved. Focused
+browser and Worker tests and changed-file lint pass; the Worker dry-run build
+succeeds. The complete browser suite passes all 489 tests on the final run; an
+earlier serial run hit the existing 120-second booth-report timeout. All six
+fixture-server tests pass. The full Worker suite has 534 passing tests, one skip
+and three existing guide-redirect failures, reproduced against unchanged HEAD.
+The runtime HTML test fixture excludes the shared demo catalog from its text-asset
+stub so it bundles as JavaScript. Whole-project lint retains its 1,642 existing
+findings (1,381 errors, 261 warnings); all changed JavaScript and CSS pass lint.
+This no-build-step site has no top-level `build` script; the actual Worker
+production bundle builds successfully without deployment.
 
 ### report-requests-list
-Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads newest-first rows from `GET /api/report-requests`, supports a debounced text search and cursor pagination, and keeps the CSV download query synchronized with the active search. On mobile, rows use labelled records rather than a horizontally overflowing table. The page and interactive shell both link back to `/adobe/dashboard`. Because this authenticated route previously remained as raw authored markup when normal Author Kit discovery missed the block, `scripts.js` explicitly ensures the required block loads after standard page decoration. Its DA source includes a static loading fallback with dashboard navigation, so a module-loading failure cannot leave a blank page or sign-in loop. The list intentionally has no event filter, workflow status, owner, assignment, editing, or internal request-ID surface.
+Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads newest-first rows from `GET /api/report-requests`, supports a debounced text search (including request source) and cursor pagination, and keeps the CSV download query synchronized with the active search. Each record displays **Request source**; historical requests show a dash instead of invented attribution. Legacy role/market details remain visible only when present. On mobile, rows use labelled records rather than a horizontally overflowing table. The page and interactive shell both link back to `/adobe/dashboard`. Because this authenticated route previously remained as raw authored markup when normal Author Kit discovery missed the block, `scripts.js` explicitly ensures the required block loads after standard page decoration. Its DA source includes a static loading fallback with dashboard navigation, so a module-loading failure cannot leave a blank page or sign-in loop. The list intentionally has no event filter, workflow status, owner, assignment, editing, or internal request-ID surface.
 
 **Campaign intake CSV (October 27; Worker deployment required):** `/api/report-requests.csv`
 now matches the current Digital Insights Hub Companies-sheet columns and order:
 `Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
-`Primary Country (Optional)`, `Audience`, `Access Emails`. Company and website
+`Primary Country (Optional)`, `Audience`, `Access Emails`. The November 3 source
+tracking change appends **Request Source** after those nine existing columns;
+it contains the submitted event/referral text, with blank values for older leads.
+Company and website
 come from the request; the customer's business email goes in `Access Emails`,
 not the Adobe representative field. Uncollected campaign settings remain blank.
 Per Jose's decision, the optional country is also blank so the Hub can infer it;

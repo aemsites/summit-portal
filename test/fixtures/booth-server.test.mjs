@@ -65,6 +65,21 @@ test('old preview remains layout-only with explicit local fake actions', async (
   assert.equal((await fetch(`${root}/auth/booth/status`)).status, 200);
 });
 
+test('public request preview stays separate from the booth and never sends real leads', async (t) => {
+  const root = await start(t, ['--preview']);
+  for (const path of ['/request-report', '/content/index?preview=request']) {
+    const response = await fetch(`${root}${path}`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /report-request-form/);
+    assert.match(html, /local-preview-only/);
+    assert.doesNotMatch(html, /data-booth-mode|src="\/scripts\/booth-report.js"/);
+  }
+  const booth = await fetch(`${root}/request-report?booth=1`, { redirect: 'manual' });
+  assert.equal(booth.status, 302);
+  assert.equal(booth.headers.get('location'), '/booth');
+});
+
 test('preview visit and cookie last one day and manual reset still clears the report', async (t) => {
   const root = await start(t, ['--preview']);
   const status = await fetch(`${root}/auth/booth/status`);

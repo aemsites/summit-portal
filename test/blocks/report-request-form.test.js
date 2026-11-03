@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import init from '../../blocks/report-request-form/report-request-form.js';
+import { BOOTH_DEMOS } from '../../scripts/booth-demos.js';
 
 const tick = () => new Promise((resolve) => { window.setTimeout(resolve, 0); });
 const settle = () => new Promise((resolve) => { window.setTimeout(resolve, 80); });
@@ -41,18 +42,56 @@ describe('report-request-form', () => {
     window.history.replaceState(null, '', originalUrl);
   });
 
-  it('renders exactly the customer fields, consent, and optional disclosure', () => {
+  it('collects first and last name and source, without role or market fields', () => {
     const block = makeBlock();
     init(block);
 
     expect([...block.querySelectorAll('input')].map((input) => input.name))
-      .to.deep.equal(['fullName', 'email', 'company', 'website', 'jobTitle', 'primaryMarket', 'websiteConfirm', 'consent']);
-    expect(block.querySelector('details summary').textContent).to.equal('Add optional details');
-    const example = block.querySelector('.rrf-example');
-    expect(example.textContent).to.include('Want to see what you\'ll receive?');
-    expect(example.querySelector('a').getAttribute('href')).to.equal('/example-report/frescopa/');
+      .to.deep.equal(['firstName', 'lastName', 'email', 'company', 'website', 'requestSource', 'websiteConfirm', 'consent']);
+    expect(block.querySelector('[name="firstName"]').autocomplete).to.equal('given-name');
+    expect(block.querySelector('[name="lastName"]').autocomplete).to.equal('family-name');
+    const source = block.querySelector('[name="requestSource"]');
+    expect(source.required).to.equal(true);
+    expect(source.maxLength).to.equal(200);
+    expect(source.getAttribute('aria-describedby')).to.include(`${source.id}-hint`);
+    expect(block.querySelector('.rrf-field-hint').textContent).to.include('event name and city');
+    expect(block.querySelector('.rrf-optional')).to.equal(null);
     expect(block.textContent).to.not.include('DR ID');
     expect(block.textContent).to.not.include('event code');
+  });
+
+  it('places every public industry example below the form with booth icons and separate tabs', () => {
+    const block = makeBlock();
+    init(block);
+    const demos = block.querySelector('.rrf-demos');
+    expect(demos.previousElementSibling.contains(block.querySelector('form'))).to.equal(true);
+    expect(demos.textContent).to.include('demo brands');
+    const links = [...demos.querySelectorAll('a')];
+    expect(links.map((link) => link.getAttribute('href'))).to.deep.equal(BOOTH_DEMOS.map((demo) => demo.path));
+    links.forEach((link, index) => {
+      expect(link.target).to.equal('_blank');
+      expect(link.rel).to.include('noopener');
+      expect(link.querySelector('img').getAttribute('src')).to.equal(`/img/booth/industry-${BOOTH_DEMOS[index].id}.svg`);
+      expect(link.getAttribute('aria-label')).to.include('opens in a new tab');
+    });
+  });
+
+  it('opens coverage on desktop and collapses it on mobile', () => {
+    const media = new EventTarget();
+    media.matches = true;
+    const stub = sinon.stub(window, 'matchMedia').returns(media);
+    try {
+      const block = makeBlock();
+      init(block);
+      const coverage = block.querySelector('.rrf-coverage');
+      expect(coverage.open).to.equal(true);
+      expect(coverage.querySelectorAll('li')).to.have.length(4);
+      media.matches = false;
+      media.dispatchEvent(new Event('change'));
+      expect(coverage.open).to.equal(false);
+    } finally {
+      stub.restore();
+    }
   });
 
   it('starts a booth request fresh without URL prefill, saved autofill or checked consent', () => {
@@ -62,7 +101,7 @@ describe('report-request-form', () => {
     document.head.append(marker);
     const block = makeBlock();
     init(block);
-    ['fullName', 'email', 'company', 'website'].forEach((name) => {
+    ['firstName', 'lastName', 'email', 'company', 'website', 'requestSource'].forEach((name) => {
       const input = block.querySelector(`[name="${name}"]`);
       expect(input.value).to.equal('');
       expect(input.autocomplete).to.equal('off');
@@ -77,7 +116,22 @@ describe('report-request-form', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 
     expect(block.querySelector('.rrf-error-summary').hidden).to.equal(false);
-    expect(block.querySelector('.rrf-field-error').textContent).to.include('full name');
+    expect(block.querySelector('.rrf-field-error').textContent).to.include('first name');
+    expect(block.querySelector('[name="lastName"]').getAttribute('aria-invalid')).to.equal('true');
+    expect(block.querySelector('[name="requestSource"]').getAttribute('aria-invalid')).to.equal('true');
+    expect(fetchStub.called).to.equal(false);
+  });
+
+  it('rejects whitespace-only names and source before requesting verification', () => {
+    const block = makeBlock();
+    init(block);
+    ['firstName', 'lastName', 'requestSource'].forEach((name) => {
+      block.querySelector(`[name="${name}"]`).value = '   ';
+    });
+    block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    ['firstName', 'lastName', 'requestSource'].forEach((name) => {
+      expect(block.querySelector(`[name="${name}"]`).getAttribute('aria-invalid')).to.equal('true');
+    });
     expect(fetchStub.called).to.equal(false);
   });
 
@@ -103,10 +157,12 @@ describe('report-request-form', () => {
     init(block);
     await tick();
     const form = block.querySelector('form');
-    form.elements.fullName.value = 'Jordan Lee';
+    form.elements.firstName.value = ' Jordan ';
+    form.elements.lastName.value = ' Lee ';
     form.elements.email.value = 'jordan@example.com';
     form.elements.company.value = 'Northstar';
     form.elements.website.value = 'northstar.com';
+    form.elements.requestSource.value = 'Adobe Summit, London';
     form.elements.consent.checked = true;
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await settle();
@@ -118,12 +174,43 @@ describe('report-request-form', () => {
     expect(JSON.parse(options.body)).to.include({
       fullName: 'Jordan Lee',
       website: 'northstar.com',
+      requestSource: 'Adobe Summit, London',
       consent: true,
       turnstileToken: 'turnstile-token',
     });
+    expect(JSON.parse(options.body)).to.not.have.property('jobTitle');
+    expect(JSON.parse(options.body)).to.not.have.property('primaryMarket');
     expect(block.querySelector('.rrf-success').textContent).to.include("We'll take it from here.");
     expect(block.querySelector('.rrf-success').textContent).to.not.include('internal-only-id');
     expect(block.querySelector('.rrf-shell > h1')).to.equal(null);
     expect(block.querySelector('.rrf-shell').children).to.have.length(1);
+  });
+
+  it('keeps entered details and the same retry key when submission fails', async () => {
+    fetchStub.onFirstCall().resolves(new Response('{"error":"Please try again."}', { status: 503 }));
+    const block = makeBlock();
+    init(block);
+    await tick();
+    const form = block.querySelector('form');
+    Object.entries({
+      firstName: 'Jordan',
+      lastName: 'Lee',
+      email: 'jordan@example.com',
+      company: 'Northstar',
+      website: 'northstar.com',
+      requestSource: 'Email',
+    }).forEach(([name, value]) => { form.elements[name].value = value; });
+    form.elements.consent.checked = true;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(block.querySelector('.rrf-submit-status').textContent).to.equal('Please try again.');
+    expect(form.elements.requestSource.value).to.equal('Email');
+    expect(form.querySelector('button').disabled).to.equal(false);
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(fetchStub.callCount).to.equal(2);
+    expect(fetchStub.firstCall.args[1].headers['Idempotency-Key'])
+      .to.equal(fetchStub.secondCall.args[1].headers['Idempotency-Key']);
+    expect(block.querySelector('.rrf-success')).to.exist;
   });
 });

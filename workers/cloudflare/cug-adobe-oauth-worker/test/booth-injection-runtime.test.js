@@ -25,10 +25,13 @@ describe('real workerd early HTML concealment', () => {
       plugins: [{
         name: 'fixture-only-booth-assets',
         setup(builder) {
-          builder.onLoad({ filter: /\/(?:booth(?:-touchscreen)?\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+|img\/icons\/globe\.svg)$/ }, async ({ path: asset }) => ({
-            contents: `export default ${JSON.stringify(await readFile(asset, 'utf8'))};`,
-            loader: 'js',
-          }));
+          builder.onLoad({ filter: /\/(?:booth(?:-touchscreen)?\.html|scripts\/booth[^/]*\.js|styles\/booth[^/]*\.css|blocks\/report-[^/]+\/[^/]+\.(?:js|css)|img\/booth\/[^/]+|img\/icons\/globe\.svg)$/ }, async ({ path: asset }) => {
+            if (asset === resolve('../../../scripts/booth-demos.js')) return undefined;
+            return {
+              contents: `export default ${JSON.stringify(await readFile(asset, 'utf8'))};`,
+              loader: 'js',
+            };
+          });
         },
       }],
     });

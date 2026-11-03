@@ -36,9 +36,10 @@ function requestRow(request) {
   details.append(
     detailsRow('Company', request.company),
     detailsRow('Website', request.website),
-    detailsRow('Role', request.job_title),
-    detailsRow('Market', request.primary_market),
+    detailsRow('Request source', request.request_source),
   );
+  if (request.job_title) details.append(detailsRow('Role', request.job_title));
+  if (request.primary_market) details.append(detailsRow('Market', request.primary_market));
   row.append(top, details);
   return row;
 }
@@ -75,7 +76,7 @@ export default function init(el) {
     <p class="rrl-kicker">Adobe internal</p>
     <div class="rrl-title-row"><h1>Report requests</h1></div>
     <div class="rrl-controls">
-      <label><span class="visually-hidden">Search report requests</span><input type="search" placeholder="Search name, company, or website"></label>
+      <label><span class="visually-hidden">Search report requests</span><input type="search" placeholder="Search name, company, website, or source"></label>
       <a class="rrl-export" href="/api/report-requests.csv">Export CSV</a>
     </div>
   `;
