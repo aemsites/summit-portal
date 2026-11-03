@@ -58,7 +58,8 @@ export function createMockD1() {
     }
     if (sql.startsWith('INSERT INTO report_requests')) {
       const [
-        requestId, submittedAt, fullName, email, company, website, jobTitle, primaryMarket,
+        requestId, submittedAt, fullName, email, company, website,
+        jobTitle, primaryMarket, requestSource,
         consentVersion, consentedAt, searchText,
       ] = params;
       if (!requests.has(requestId)) {
@@ -71,6 +72,7 @@ export function createMockD1() {
           website,
           job_title: jobTitle,
           primary_market: primaryMarket,
+          request_source: requestSource,
           consent_version: consentVersion,
           consented_at: consentedAt,
           search_text: searchText,

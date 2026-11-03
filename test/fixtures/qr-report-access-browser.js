@@ -91,10 +91,12 @@ export default async function verifyRecovery(page, base = 'http://localhost:3000
   await form.getByRole('button', { name: 'Request my report' }).click();
   await page.locator('.rrf-error-summary:not([hidden])').waitFor();
   check(await page.locator('.rrf-success').count() === 0, 'Invalid request must not submit');
-  await form.getByRole('textbox', { name: 'Full name', exact: true }).fill('Jordan Lee');
+  await form.getByRole('textbox', { name: 'First name', exact: true }).fill('Jordan');
+  await form.getByRole('textbox', { name: 'Last name', exact: true }).fill('Lee');
   await form.getByRole('textbox', { name: 'Business email', exact: true }).fill('jordan@example.com');
   await form.getByRole('textbox', { name: 'Company', exact: true }).fill('Example Company');
   await form.getByRole('textbox', { name: 'Website or domain', exact: true }).fill('example.com');
+  await form.getByRole('textbox', { name: 'Where did you hear about this report?', exact: true }).fill('Email');
   await form.getByRole('checkbox').check();
   await form.getByRole('button', { name: 'Request my report' }).click();
   await page.locator('.rrf-success').waitFor();

@@ -33,6 +33,7 @@ describe('report-requests-list', () => {
         website: 'northstar.com',
         job_title: 'VP, Digital',
         primary_market: 'North America',
+        request_source: 'Adobe Summit, London',
       }],
       nextCursor: null,
     }), { status: 200 }));
@@ -42,12 +43,28 @@ describe('report-requests-list', () => {
 
     expect(block.querySelector('.rrl-back').getAttribute('href')).to.equal('/adobe/dashboard');
     expect(block.textContent).to.include('Jordan Lee');
+    expect(block.textContent).to.include('Request source');
+    expect(block.textContent).to.include('Adobe Summit, London');
     expect(block.textContent).to.not.include('internal-id');
     const search = block.querySelector('input[type="search"]');
     search.value = 'northstar';
     search.dispatchEvent(new Event('input'));
     await new Promise((resolve) => { window.setTimeout(resolve, 300); });
     expect(block.querySelector('.rrl-export').getAttribute('href')).to.equal('/api/report-requests.csv?q=northstar');
+  });
+
+  it('keeps historical requests readable without inventing their source', async () => {
+    fetchStub = sinon.stub(window, 'fetch').resolves(new Response(JSON.stringify({
+      requests: [{ full_name: 'Jordan Lee', email: 'jordan@example.com', company: 'Northstar', website: 'northstar.com', submitted_at: '2026-09-08T10:00:00.000Z' }],
+      nextCursor: null,
+    })));
+    const block = makeBlock();
+    init(block);
+    await settle();
+    const source = [...block.querySelectorAll('dl > div')].find((row) => row.querySelector('dt').textContent === 'Request source');
+    expect(source.querySelector('dd').textContent).to.equal('—');
+    expect(block.textContent).to.not.include('Role');
+    expect(block.textContent).to.not.include('Market');
   });
 
   it('shows a sign-in action for unauthenticated access', async () => {

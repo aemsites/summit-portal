@@ -93,11 +93,12 @@ export function normaliseRequest(body) {
   const website = normaliseWebsite(body.website);
   const jobTitle = normaliseText(body.jobTitle);
   const primaryMarket = normaliseText(body.primaryMarket);
+  const requestSource = normaliseText(body.requestSource);
 
   if (body.websiteConfirm != null && body.websiteConfirm !== '') {
     return { error: 'Unable to submit request' };
   }
-  if (!fullName || !hasAtMost(fullName, 120)) return { error: 'Please enter your full name.' };
+  if (!fullName || !hasAtMost(fullName, 121)) return { error: 'Please enter your first and last name.' };
   if (!EMAIL_RE.test(email) || !hasAtMost(email, 254)) {
     return { error: 'Enter a valid business email address.' };
   }
@@ -107,6 +108,10 @@ export function normaliseRequest(body) {
   }
   if (!hasAtMost(jobTitle, 120) || !hasAtMost(primaryMarket, 120)) {
     return { error: 'Optional details must be 120 characters or fewer.' };
+  }
+  if (body.requestSource !== undefined
+    && (typeof body.requestSource !== 'string' || !requestSource || !hasAtMost(requestSource, 200))) {
+    return { error: 'Tell us where you heard about this report using 200 characters or fewer.' };
   }
   if (body.consent !== true) {
     return { error: 'Please agree that Adobe may contact you about your requested report.' };
@@ -120,6 +125,7 @@ export function normaliseRequest(body) {
       website,
       jobTitle: jobTitle || null,
       primaryMarket: primaryMarket || null,
+      requestSource: requestSource || null,
     },
   };
 }
@@ -233,7 +239,7 @@ function requestRowsQuery(search, cursor, limit) {
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   return {
-    sql: `SELECT request_id, submitted_at, full_name, email, company, website, job_title, primary_market
+    sql: `SELECT request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source
       FROM report_requests ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
     params: [...params, limit],
   };
@@ -256,6 +262,7 @@ export function reportRequestsCsv(rows) {
     'Primary Country (Optional)',
     'Audience',
     'Access Emails',
+    'Request Source',
   ];
   const lines = rows.map((row) => [
     row.company,
@@ -267,6 +274,7 @@ export function reportRequestsCsv(rows) {
     '', // Let the Hub infer the country instead of using an unvalidated free-text market.
     '',
     row.email,
+    row.request_source,
   ].map(csvCell).join(','));
   return `${[header.map(csvCell).join(','), ...lines].join('\r\n')}\r\n`;
 }
@@ -316,16 +324,16 @@ async function handleCreate(request, env) {
   const submittedAt = new Date().toISOString();
   const keyHash = await requestKeyHash(idempotencyKey, env);
   const {
-    fullName, email, company, website, jobTitle, primaryMarket,
+    fullName, email, company, website, jobTitle, primaryMarket, requestSource,
   } = normalised.value;
-  const searchText = [fullName, email, company, website, jobTitle, primaryMarket]
+  const searchText = [fullName, email, company, website, jobTitle, primaryMarket, requestSource]
     .filter(Boolean).join(' ').toLowerCase();
 
   await env.REPORT_REQUESTS.batch([
     env.REPORT_REQUESTS.prepare(`INSERT INTO report_requests (
-      request_id, submitted_at, full_name, email, company, website, job_title, primary_market,
+      request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source,
       consent_version, consented_at, search_text
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
       requestId,
       submittedAt,
       fullName,
@@ -334,6 +342,7 @@ async function handleCreate(request, env) {
       website,
       jobTitle,
       primaryMarket,
+      requestSource,
       CONSENT_VERSION,
       submittedAt,
       searchText,

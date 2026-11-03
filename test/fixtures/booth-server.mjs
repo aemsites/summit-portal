@@ -96,8 +96,12 @@ const server = createServer(async (request, response) => {
   }
   if (preview && path === '/') path = '/test/fixtures/booth-touchscreen.html';
   if (path === '/booth' || path === '/content/index') {
-    path = url.searchParams.getAll('touchscreen').length === 1 && url.searchParams.get('touchscreen') === '1'
-      ? '/booth-touchscreen.html' : '/booth.html';
+    if (preview && path === '/content/index' && url.searchParams.get('preview') === 'request') {
+      path = '/test/fixtures/report-request-preview.html';
+    } else {
+      path = url.searchParams.getAll('touchscreen').length === 1 && url.searchParams.get('touchscreen') === '1'
+        ? '/booth-touchscreen.html' : '/booth.html';
+    }
   }
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
@@ -275,6 +279,7 @@ const server = createServer(async (request, response) => {
     response.end();
     return;
   }
+  if (preview && path === '/request-report') path = '/test/fixtures/report-request-preview.html';
   if (path.startsWith('/accounts/')) {
     if (preview && boothDocument) {
       const context = fixtureContext(request, response);
