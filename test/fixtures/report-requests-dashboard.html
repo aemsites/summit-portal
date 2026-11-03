@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Report requests - synthetic local preview</title>
+  <link rel="icon" href="/img/icons/adobe-logo.svg">
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/blocks/report-requests-list/report-requests-list.css">
+</head>
+<body>
+  <main>
+    <div class="section"><div class="block-content"><div class="report-requests-list"></div></div></div>
+  </main>
+  <script type="module">
+    import init from '/blocks/report-requests-list/report-requests-list.js';
+
+    const theme = new URLSearchParams(window.location.search).get('theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.style.colorScheme = theme;
+    const requests = [
+      { full_name: 'Alex Example', email: 'alex@example.com', company: 'Example Company', website: 'example.com', request_source: 'Adobe Summit, London', submitted_at: '2026-11-03T09:30:00Z' },
+      { full_name: 'Sam Sample', email: 'sam@example.org', company: 'Sample Organization', website: 'example.org', request_source: 'Partner campaign', submitted_at: '2026-11-02T15:15:00Z' },
+      { full_name: 'Taylor Example', email: 'taylor@example.net', company: 'Example with a longer company name', website: 'a-very-long-website-name.example.net', job_title: 'Digital experience lead', primary_market: 'North America', submitted_at: '2026-10-25T10:00:00Z' },
+    ];
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, options) => {
+      const url = new URL(input, window.location.href);
+      if (url.pathname === '/api/report-requests') {
+        const query = (url.searchParams.get('q') || '').toLowerCase();
+        const matches = requests.filter((request) => Object.values(request).join(' ').toLowerCase().includes(query));
+        return Promise.resolve(Response.json({ requests: matches, nextCursor: null }));
+      }
+      if (url.pathname === '/api/report-requests.csv') {
+        return Promise.reject(new Error('CSV downloads are disabled in this synthetic preview.'));
+      }
+      return originalFetch(input, options);
+    };
+    init(document.querySelector('.report-requests-list'));
+    document.querySelector('.rrl-export').addEventListener('click', (event) => {
+      event.preventDefault();
+      window.alert('Synthetic preview only. No customer data is downloaded.');
+    });
+  </script>
+</body>
+</html>
