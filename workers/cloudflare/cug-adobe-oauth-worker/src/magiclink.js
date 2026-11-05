@@ -102,7 +102,7 @@ export async function fetchLiveCugGroups(path, env) {
   try {
     const resp = await fetch(url, { method: 'HEAD', headers });
     if (!resp.ok) {
-      logError(`live CUG header fetch failed with status ${resp.status} for path=${path}`);
+      logError(`live CUG header fetch failed with status ${resp.status} for path=${url.pathname}`);
       return null;
     }
     const required = resp.headers.get('x-aem-cug-required') === 'true';
@@ -110,10 +110,10 @@ export async function fetchLiveCugGroups(path, env) {
       .split(',')
       .map((g) => g.trim().toLowerCase())
       .filter(Boolean);
-    log(`live CUG check path=${path} required=${required} group count=${groups.length}`);
+    log(`live CUG check path=${url.pathname} required=${required} group count=${groups.length}`);
     return { required, groups };
-  } catch (err) {
-    logError(`live CUG header fetch threw: ${err.message}`);
+  } catch {
+    logError('live CUG header fetch failed');
     return null;
   }
 }

@@ -202,9 +202,9 @@ export async function cugSheetGroups(path, env) {
     if (!path || !path.startsWith(SHEET_SCOPE)) return null;
     const entries = await loadEntries(env);
     return matchSheetGroups(entries, path);
-  } catch (err) {
+  } catch {
     // Belt and braces: this path gates every request, so it must never throw.
-    logError(`group resolution failed for path=${path}: ${err.message}`);
+    logError('group resolution failed');
     return null;
   }
 }
