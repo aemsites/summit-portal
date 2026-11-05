@@ -1473,6 +1473,45 @@ Renders copyright text and a horizontal list of legal links (Terms of use, Priva
 
 ## Authentication
 
+### DIH-generated Portal share links (November 5; not deployed)
+
+`POST /auth/sharelink/dih` lets the DIH backend request a copied 30-day Portal
+link for **any authenticated DIH user**, without a Portal visit or an additional
+staff-domain/role requirement. The service-only adapter in `src/dih-sharelink.js`
+accepts exactly `{path, actor_email}` and verifies a dedicated
+`DIH_SHARE_LINK_SECRET` HMAC over timestamp, method, route and exact UTF-8 body.
+The timestamp window is ±300 seconds inclusive; there is no cookie/IMS fallback,
+browser CORS, recipient field, or email delivery. Missing/malformed service
+configuration returns `503`. All responses are private/no-store.
+
+`src/sharelink.js` shares its existing CUG resolution and token minting between
+the service adapter and the unchanged staff API: longest mapping scope,
+sheet/header/mapping group priority, no staff grants in copied links, and the
+existing 30-day JWT signer. No signing key leaves the Worker. Service audit logs
+mask the actor and omit query strings, signatures and signed links; shared CUG
+diagnostics omit query strings too. `test/dih-sharelink.test.js` covers the service
+contract with real signed tokens and a fixed Python HMAC reference vector;
+existing staff email/copy tests remain in `test/sharelink.test.js`.
+
+Before deployment, operators must provision the same dedicated random secret
+(at least 32 characters) in the Worker environment and DIH backend, then verify
+the joined flow. No secret provisioning, deployment, or IMS change is included.
+See [Worker credential setup, wire contract and rollback](workers/cloudflare/cug-adobe-oauth-worker/portal-auth-demo.md#dih-server-to-server-share-links-deployment-pending).
+Removing the service secret disables new DIH minting with `503`, without changing
+staff sharing or revoking existing links; rolling back the Worker also requires
+disabling the caller.
+
+**Local verification (November 5):** the 76 service-contract tests and all 105
+related staff/magic-link/CUG-sheet tests pass (181 total). The full Worker suite
+has 610 passing tests, one existing skip, and the same three guide-redirect
+failures observed before this change (534 passed at baseline). Root
+`npm run lint` retains exactly the same 1,642 findings (1,381 errors, 261 warnings);
+comparison of finding messages found no additions. The new adapter/tests and
+edited share-link, magic-link and CUG-sheet modules lint clean. The Summit
+`wrangler deploy --env summit --dry-run` bundle succeeds without deployment.
+Root `npm run build` remains unsupported because the site has no general build
+script; none was added.
+
 ### Customer QR recovery (design approved; pending live validation and deployment)
 
 The customer login offers a public **Request a report** link before authentication. Email login reads the response's business result: only `sent` claims a link was emailed; `not_found` retains the email form and shows an accessible unavailable-report explanation plus a request CTA. A legacy `not_found` carrying an outage reason is treated as a retryable error. Mapping fetch failures or malformed payloads return a logged `503 lookup_unavailable`, not a false no-report result; mapping requests are bounded to five seconds. Failed internal no-match notifications are logged without preventing customer recovery.

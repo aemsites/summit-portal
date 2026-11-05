@@ -24,6 +24,7 @@ import { normalizeCugGroup } from './cug-group.js';
 import { handlePortalRedirect, safeRedirectPath } from './portal.js';
 import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
+import { handleDihShareLinkRequest } from './dih-sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
@@ -159,6 +160,11 @@ const handleRequest = async (request, env) => {
   }
 
   // --- Auth routes ---
+
+  // Service authentication only; deliberately no browser CORS or IMS fallback.
+  if (url.pathname === '/auth/sharelink/dih') {
+    return handleDihShareLinkRequest(request, env);
+  }
 
   // Magic link request: POST email, check CUG domain, send signed link
   if (url.pathname === '/auth/magiclink') {

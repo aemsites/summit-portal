@@ -45,6 +45,8 @@ EVENT_CRED_EPOCH = "1"
 # Secrets (set via: wrangler secret put <NAME>)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
+# DIH_SHARE_LINK_SECRET (dedicated random >=32-character server-to-server HMAC secret;
+# never reuse JWT_SECRET or put it in vars/client code; see portal-auth-demo.md)
 # EVENT_STAFF_CREDENTIALS = "..."  (newline/comma list of username:sha256hex(password) for on-site iPad logins)
 # APO_CLIENT_ID = "..."
 # APO_CLIENT_SECRET = "..."
@@ -87,6 +89,8 @@ EVENT_CRED_EPOCH = "1"
 # Secrets (set via: wrangler secret put <NAME> --env summit)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
+# DIH_SHARE_LINK_SECRET (same dedicated secret as the DIH backend; >=32 characters;
+# set with wrangler secret put DIH_SHARE_LINK_SECRET --env summit, never JWT_SECRET)
 # EVENT_STAFF_CREDENTIALS = "..."  (newline/comma list of username:sha256hex(password) for on-site iPad logins)
 # ORIGIN_AUTHENTICATION = "..."  (site token for the protected origin)
 # APO_CLIENT_ID = "..."

@@ -55,6 +55,120 @@ async function dispatchReportEmail(email, shareLinkUrl, org, env) {
 }
 
 /**
+ * Shared CUG resolution and minting after the caller has been authenticated.
+ * The DIH service adapter uses only the default no-recipient copy mode.
+ */
+export async function createAuthorizedShareLink(request, env, path, email = '', copyOnly = true) {
+  const recipientDomain = email ? email.split('@')[1] : null;
+  const targetPath = normalisePath(path);
+
+  // --- Resolve the target page's CUG mapping ---
+  const { entries, error: mappingError } = await fetchCugMapping(env);
+  if (mappingError) {
+    logError(`mapping fetch failed: ${mappingError}`);
+    return jsonResponse({ error: 'Failed to load page access mapping' }, 502);
+  }
+
+  // A page may have several mapping entries (one per allowed domain) sharing the
+  // same scope. Find every entry whose scope COVERS the page, then keep only the
+  // most-specific (longest) scope so a broad parent scope can't widen access.
+  const covering = entries.filter((e) => scopeCoversPath(e.url, targetPath));
+  if (covering.length === 0) {
+    log(`no CUG entry covers path=${new URL(path, request.url).pathname}`);
+    return jsonResponse({ error: 'Page not found or not access-controlled' }, 404);
+  }
+  const longestScope = covering.reduce(
+    (max, e) => Math.max(max, normalisePath(e.url).length),
+    0,
+  );
+  const pageEntries = covering.filter((e) => normalisePath(e.url).length === longestScope);
+
+  const allowedDomains = pageEntries
+    .map((e) => (e.group || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  // Which domains the page really allows, best source first. The mapping sheet
+  // can drift from what actually gates the page (seen in production: mapping
+  // said `hsbc.co.uk`, the live group was `hsbc.com`), so it is the last resort.
+  //
+  //   1. the `closed-user-groups` SHEET — what the page is authored to allow,
+  //      republished on every report, so a new account is never missing
+  //   2. the live `x-aem-cug-groups` HEADER — the same data as (1), but only as
+  //      fresh as the last manual "Apply Page Access" run
+  //   3. the mapping sheet — only when neither of the above is available
+  //
+  // A grant must match what `checkCugAccess` will enforce when the link is
+  // redeemed; both now read the sheet first, so the two stay in step.
+  const sheetGroups = await cugSheetGroups(path, env);
+  const live = sheetGroups ? null : await fetchLiveCugGroups(path, env);
+  const liveGroups = (live && live.required && live.groups.length) ? live.groups : null;
+  const domainsForGrant = sheetGroups || liveGroups || allowedDomains;
+  if (sheetGroups) {
+    log(`CUG groups from sheet count=${sheetGroups.length} mapping count=${allowedDomains.length}`);
+  } else if (liveGroups) {
+    log(`CUG groups from live header count=${liveGroups.length} mapping count=${allowedDomains.length}`);
+  } else {
+    log('sheet and live CUG check unavailable or inconclusive — falling back to mapping data');
+  }
+
+  let grantGroups;
+  let tokenEmail;
+  if (copyOnly && !email) {
+    // Exclude both staff domains and exact staff addresses from copied grants.
+    grantGroups = domainsForGrant.filter((group) => !staffDomains(env).has(group.split('@').pop()));
+    if (grantGroups.length === 0) {
+      log('rejected: page has no non-staff (customer) group to share');
+      return jsonResponse({ error: 'Page has no customer group to share' }, 400);
+    }
+    // An exact group is already an email, not a domain for a synthetic address.
+    const firstGroup = [...grantGroups].sort()[0];
+    tokenEmail = firstGroup.includes('@') ? firstGroup : `share-link@${firstGroup}`;
+  } else {
+    // A recipient WAS named — either `mode: 'email'`, or `mode: 'copy'` from a
+    // caller that still supplies one (e.g. the EW magic-link tool). Either way,
+    // grant ONLY that recipient's own group — never every group on the page.
+    // Never turn an exact address into a whole-domain grant or inherit staff
+    // groups. Only groups already authored for this recipient can be shared.
+    if (staffDomains(env).has(recipientDomain)) {
+      log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
+      return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
+    }
+    grantGroups = domainsForGrant.filter((group) => matchesCugGroup(group, email));
+    if (grantGroups.length === 0) {
+      log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
+      return jsonResponse({ error: 'Recipient email or domain is not authorized for this page' }, 403);
+    }
+    tokenEmail = email;
+  }
+
+  // --- Mint a long-lived (30-day) signed share token ---
+  let token;
+  try {
+    token = await createShareLinkToken(tokenEmail, env, grantGroups);
+    log(`share link token created (grant count=${grantGroups.length})`);
+  } catch (err) {
+    logError(`createShareLinkToken failed: ${err.message}`);
+    return jsonResponse({ error: 'Failed to create share link token' }, 500);
+  }
+
+  const shareLinkUrl = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
+
+  // Copy mode: return the link for the staff caller to deliver themselves. No
+  // email is sent (neither the recipient confirm nor the internal notify), so
+  // there's no dependency on a recipient's mail gateway accepting APO mail.
+  if (copyOnly) {
+    return jsonResponse({ result: 'link', link: shareLinkUrl });
+  }
+
+  // Choose the email template from the PAGE's org (Semrush vs Adobe). The
+  // recipient may be any domain, so org comes from the page entry, not the
+  // recipient. Prefer an entry that names an org; fall back to the first.
+  const matchedEntry = pageEntries.find((e) => (e.org || '').trim()) || pageEntries[0];
+  const org = (matchedEntry.org || '').trim();
+  return dispatchReportEmail(email, shareLinkUrl, org, env);
+}
+
+/**
  * Handle a staff "share this page" request.
  *
  * POST /auth/sharelink  { email, path, mode }
@@ -141,111 +255,11 @@ export async function handleShareLinkRequest(request, env) {
   const targetPath = normalisePath(path);
   log(`staff=***@${callerDomain} sharing path=${targetPath}${recipientDomain ? ` with domain=${recipientDomain}` : ' (copy mode, no recipient)'}`);
 
-  // --- Resolve the target page's CUG mapping ---
-  const { entries, error: mappingError } = await fetchCugMapping(env);
-  if (mappingError) {
-    logError(`mapping fetch failed: ${mappingError}`);
-    return jsonResponse({ error: 'Failed to load page access mapping' }, 502);
-  }
-
-  // A page may have several mapping entries (one per allowed domain) sharing the
-  // same scope. Find every entry whose scope COVERS the page, then keep only the
-  // most-specific (longest) scope so a broad parent scope can't widen access.
-  const covering = entries.filter((e) => scopeCoversPath(e.url, targetPath));
-  if (covering.length === 0) {
-    log(`no CUG entry covers path=${targetPath}`);
-    return jsonResponse({ error: 'Page not found or not access-controlled' }, 404);
-  }
-  const longestScope = covering.reduce(
-    (max, e) => Math.max(max, normalisePath(e.url).length),
-    0,
-  );
-  const pageEntries = covering.filter((e) => normalisePath(e.url).length === longestScope);
-
-  const allowedDomains = pageEntries
-    .map((e) => (e.group || '').trim().toLowerCase())
-    .filter(Boolean);
-
-  // Which domains the page really allows, best source first. The mapping sheet
-  // can drift from what actually gates the page (seen in production: mapping
-  // said `hsbc.co.uk`, the live group was `hsbc.com`), so it is the last resort.
-  //
-  //   1. the `closed-user-groups` SHEET — what the page is authored to allow,
-  //      republished on every report, so a new account is never missing
-  //   2. the live `x-aem-cug-groups` HEADER — the same data as (1), but only as
-  //      fresh as the last manual "Apply Page Access" run
-  //   3. the mapping sheet — only when neither of the above is available
-  //
-  // A grant must match what `checkCugAccess` will enforce when the link is
-  // redeemed; both now read the sheet first, so the two stay in step.
-  const sheetGroups = await cugSheetGroups(path, env);
-  const live = sheetGroups ? null : await fetchLiveCugGroups(path, env);
-  const liveGroups = (live && live.required && live.groups.length) ? live.groups : null;
-  const domainsForGrant = sheetGroups || liveGroups || allowedDomains;
-  if (sheetGroups) {
-    log(`CUG groups from sheet count=${sheetGroups.length} mapping count=${allowedDomains.length}`);
-  } else if (liveGroups) {
-    log(`CUG groups from live header count=${liveGroups.length} mapping count=${allowedDomains.length}`);
-  } else {
-    log('sheet and live CUG check unavailable or inconclusive — falling back to mapping data');
-  }
-
-  let grantGroups;
-  let tokenEmail;
-  if (copyOnly && !email) {
-    // Exclude both staff domains and exact staff addresses from copied grants.
-    grantGroups = domainsForGrant.filter((group) => !staffDomains(env).has(group.split('@').pop()));
-    if (grantGroups.length === 0) {
-      log('rejected: page has no non-staff (customer) group to share');
-      return jsonResponse({ error: 'Page has no customer group to share' }, 400);
-    }
-    // An exact group is already an email, not a domain for a synthetic address.
-    const firstGroup = [...grantGroups].sort()[0];
-    tokenEmail = firstGroup.includes('@') ? firstGroup : `share-link@${firstGroup}`;
-  } else {
-    // A recipient WAS named — either `mode: 'email'`, or `mode: 'copy'` from a
-    // caller that still supplies one (e.g. the EW magic-link tool). Either way,
-    // grant ONLY that recipient's own group — never every group on the page.
-    // Never turn an exact address into a whole-domain grant or inherit staff
-    // groups. Only groups already authored for this recipient can be shared.
-    if (staffDomains(env).has(recipientDomain)) {
-      log(`rejected: recipient domain=${recipientDomain} is a staff domain`);
-      return jsonResponse({ error: 'Share links must be issued to a customer address, not a staff domain' }, 400);
-    }
-    grantGroups = domainsForGrant.filter((group) => matchesCugGroup(group, email));
-    if (grantGroups.length === 0) {
-      log(`rejected: recipient domain=${recipientDomain} not permitted for this page`);
-      return jsonResponse({ error: 'Recipient email or domain is not authorized for this page' }, 403);
-    }
-    tokenEmail = email;
-  }
-
-  // --- Mint a long-lived (30-day) signed share token ---
-  let token;
-  try {
-    token = await createShareLinkToken(tokenEmail, env, grantGroups);
-    log(`share link token created (grant count=${grantGroups.length})`);
-  } catch (err) {
-    logError(`createShareLinkToken failed: ${err.message}`);
-    return jsonResponse({ error: 'Failed to create share link token' }, 500);
-  }
-
-  const shareLinkUrl = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
-
-  // Copy mode: return the link for the staff caller to deliver themselves. No
-  // email is sent (neither the recipient confirm nor the internal notify), so
-  // there's no dependency on a recipient's mail gateway accepting APO mail.
-  if (copyOnly) {
+  const response = await createAuthorizedShareLink(request, env, path, email, copyOnly);
+  if (copyOnly && response.ok) {
     log(`copy-mode link minted for staff=***@${callerDomain} (no email sent)`);
-    return jsonResponse({ result: 'link', link: shareLinkUrl });
   }
-
-  // Choose the email template from the PAGE's org (Semrush vs Adobe). The
-  // recipient may be any domain, so org comes from the page entry, not the
-  // recipient. Prefer an entry that names an org; fall back to the first.
-  const matchedEntry = pageEntries.find((e) => (e.org || '').trim()) || pageEntries[0];
-  const org = (matchedEntry.org || '').trim();
-  return dispatchReportEmail(email, shareLinkUrl, org, env);
+  return response;
 }
 
 /** Server-only dispatch. The coordinator supplies freshly authorized, context-bound values. */

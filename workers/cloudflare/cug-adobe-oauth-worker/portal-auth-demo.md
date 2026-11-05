@@ -21,6 +21,110 @@ Walkthrough of the main use cases for the Cloudflare CUG worker with Adobe IMS a
 - The `closed-user-groups` spreadsheet is published with CUG rules
 - The `closed-user-groups-mapping` spreadsheet is published with group-to-page mappings
 
+## DIH server-to-server share links (deployment pending)
+
+DIH users can copy a 30-day Customer Portal link without opening the Portal
+dashboard. **Any authenticated DIH user** may request it; the Portal applies no
+additional actor-domain or staff-role restriction. The DIH backend must authenticate
+the user and supply their email. `actor_email` is audit context, not a recipient
+or a Portal login credential. Never expose the service secret to a browser.
+The existing staff `/auth/sharelink` endpoint keeps its session/IMS and staff
+checks, email mode, and CORS behavior.
+
+### Credential setup
+
+These are operator instructions, not steps performed by this source change:
+
+1. Generate a dedicated, cryptographically random secret of at least 32 characters.
+   Store it in the DIH backend's server-side secret manager and the Worker secret
+   `DIH_SHARE_LINK_SECRET`. Do not reuse, export, or rotate `JWT_SECRET` for this
+   integration. Leading/trailing whitespace and control characters are rejected.
+2. From this Worker directory, use
+   `npx wrangler secret put DIH_SHARE_LINK_SECRET --env summit` for the Summit
+   environment. Use the environment-specific secret command for other environments.
+   Secrets are not inherited across Wrangler environments. Never add real values
+   to `wrangler.toml`, source, examples, browser assets, or logs.
+3. Coordinate Worker deployment with backend configuration and verify a synthetic
+   request against an approved customer page. Confirm token redemption, 30-day
+   expiry, no email delivery, and `Cache-Control: private, no-store`.
+   Source tests and `wrangler deploy --dry-run` do not deploy the endpoint.
+
+### Request and signature contract
+
+`POST /auth/sharelink/dih` accepts UTF-8 `application/json` (optionally
+`; charset=utf-8`) with **exactly** two fields:
+
+```json
+{"path":"/accounts/a/acme/insights/index","actor_email":"seller@example.com"}
+```
+
+`path` uses the existing same-origin safe-path validator. `actor_email` must be a
+string matching a basic email shape. Fields such as `mode`, `email`, or any other
+extra key are rejected. There is no email-delivery option.
+
+- `X-DIH-Timestamp`: decimal integer Unix seconds, within **300 seconds inclusive**
+  of the Worker clock in either direction.
+- `X-DIH-Signature`: lowercase 64-character hexadecimal HMAC-SHA256 with the dedicated
+  secret over the UTF-8 bytes of the following string (no trailing newline unless
+  it is part of `exactBody`):
+
+```text
+${timestamp}\nPOST\n/auth/sharelink/dih\n${exactBody}
+```
+
+Serialize the body once, sign it, then send those exact bytes. Whitespace, Unicode
+encoding, actor, path, timestamp, method, and route must match. The Worker verifies
+with Web Crypto rather than comparing MAC strings. Request bodies are limited to
+8,192 bytes, including streamed bodies. Timestamps provide freshness, not one-time
+use: an authenticated request can be replayed inside that window.
+
+This route does not return browser CORS headers; `OPTIONS` returns `405`.
+Cookies, IMS bearer credentials, and ordinary Portal logins never substitute for
+service authentication. Keep the existing IMS client configuration unchanged.
+
+### Responses and grant behavior
+
+Success is `200` with
+`{"result":"link","link":"https://<request-origin>/<page-path>?token=<signed-token>"}`.
+The existing minting logic issues the same 30-day share JWT using `JWT_SECRET`,
+not the HMAC service secret. It selects the longest covering CUG mapping scope,
+prefers sheet groups over live headers over mapping groups, and excludes staff
+domains and exact staff emails. The actor is never granted access through their
+own identity. No recipient confirmation or internal-notification email is sent.
+
+Errors:
+
+| Status | Meaning |
+|---|---|
+| `400` | Invalid UTF-8, JSON/schema, actor email or safe path; or no customer group |
+| `401` | Missing/invalid/stale timestamp or missing/malformed/incorrect signature |
+| `404` | No covering CUG mapping |
+| `405` | Method other than POST (`Allow: POST`) |
+| `413` | Body exceeds 8,192 bytes |
+| `415` | Content type is not supported UTF-8 JSON |
+| `500` | Share-token minting or unexpected access-resolution failure |
+| `502` | Existing CUG mapping lookup failed |
+| `503` | Dedicated service secret missing or malformed |
+
+Method and configuration checks run before authentication; schema checks follow
+signature verification. All service responses, including errors, use
+`Cache-Control: private, no-store`. Audit output includes the pathname and a
+masked actor (`***@example.com`), not the full email, secret, signature, query
+string, or resulting signed link. Shared CUG diagnostics also omit query strings.
+
+### Rotation and rollback
+
+Rotate the dedicated service secret in both server-side stores together; this
+single-key contract has no overlap period, so mismatched versions return `401`.
+To disable new service minting, remove `DIH_SHARE_LINK_SECRET` from the target
+Worker environment (for Summit:
+`npx wrangler secret delete DIH_SHARE_LINK_SECRET --env summit`) and disable the
+DIH integration. The endpoint then returns `503`; staff sharing is unaffected.
+Alternatively roll the Worker back to the previous approved version and disable
+the caller. Already minted links retain their normal expiry and current CUG
+enforcement; removing this service secret does **not** revoke them. Do not rotate
+`JWT_SECRET` as a service rollback: that affects other Portal tokens and sessions.
+
 ---
 
 ## 1. Public page — no authentication required
