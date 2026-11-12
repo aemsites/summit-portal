@@ -70,6 +70,9 @@ function errorMessage(input) {
   }
   if (missing) return `Please enter your ${input.dataset.label.toLowerCase()}.`;
   if (validity.typeMismatch) return 'Enter a valid business email address.';
+  if (input.name === 'email' && /@(?:[^@\s]+\.)?(?:adobe|semrush)\.com$/i.test(input.value.trim())) {
+    return 'Adobe and Semrush employees should use the internal platform. This form is only for tracking report requests directly from customers.';
+  }
   if (validity.patternMismatch) return 'Enter a website such as company.com.';
   if (validity.tooLong) return `Use ${input.maxLength} characters or fewer.`;
   return '';

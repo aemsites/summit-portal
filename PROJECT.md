@@ -1393,6 +1393,17 @@ email, colleague or web referral. The Worker normalizes whitespace and validates
 supplied source values; missing source is accepted only for compatibility with
 older clients during rollout, and historical source values remain null.
 
+**Customer-only intake (November 12; deployment pending):** the public form and
+Worker reject email addresses at `adobe.com` and `semrush.com`, including
+subdomains, regardless of case or surrounding whitespace. The email field
+explains: **Adobe and Semrush employees should use the internal platform. This
+form is only for tracking report requests directly from customers.** Correcting
+the address clears the field error. Direct submissions are rejected before
+Turnstile verification or storage, so bypassing browser validation cannot create
+an internal lead. Customer requests, existing records, staff sign-in and internal
+request-list access are unchanged. Publish the frontend and deploy the Worker
+together to enforce both checks; no production deployment has been performed.
+
 Below the form, a compact industry grid links to all ten public demo-brand
 reports, using the existing booth industry icons and a shared
 `scripts/booth-demos.js` catalog. The Worker's old module re-exports that catalog

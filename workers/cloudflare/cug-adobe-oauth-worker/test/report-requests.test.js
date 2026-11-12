@@ -59,6 +59,33 @@ describe('report requests', () => {
     expect(normaliseRequest({ ...validBody, fullName: { value: 'Jordan Lee' } }).error).toContain('first and last name');
   });
 
+  it.each([
+    'employee@adobe.com',
+    ' Employee+report@SEMRUSH.COM ',
+    'employee@team.adobe.com',
+    'employee@team.eu.semrush.com',
+  ])('rejects internal email %s without verification or storage', async (email) => {
+    const env = environment();
+    const response = await handleReportRequests(request({ ...validBody, email }), env, null);
+    expect(response.status).toBe(400);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(await response.json()).toEqual({ error: 'Adobe and Semrush employees should use the internal platform. This form is only for tracking report requests directly from customers.' });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(env.REPORT_REQUESTS.requests.size).toBe(0);
+    expect(env.SESSIONS.store.size).toBe(0);
+  });
+
+  it.each([
+    'customer@example.com',
+    'customer@notadobe.com',
+    'customer@notsemrush.com',
+    'customer@adobe.com.example.com',
+    'customer@semrush.com.example.com',
+    'adobe.com@example.com',
+  ])('keeps customer email %s eligible', (email) => {
+    expect(normaliseRequest({ ...validBody, email }).value.email).toBe(email);
+  });
+
   it('normalises and bounds source, while accepting older clients without a source field', () => {
     expect(normaliseRequest(validBody).value.requestSource).toBe('Adobe Summit, London');
     expect(normaliseRequest({ ...validBody, requestSource: 'a'.repeat(200) }).value.requestSource).toHaveLength(200);
