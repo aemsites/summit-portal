@@ -102,6 +102,9 @@ export function normaliseRequest(body) {
   if (!EMAIL_RE.test(email) || !hasAtMost(email, 254)) {
     return { error: 'Enter a valid business email address.' };
   }
+  if (/@(?:[^@\s]+\.)?(?:adobe|semrush)\.com$/i.test(email)) {
+    return { error: 'Adobe and Semrush employees should use the internal platform. This form is only for tracking report requests directly from customers.' };
+  }
   if (!company || !hasAtMost(company, 160)) return { error: 'Please enter your company.' };
   if (!website || !hasAtMost(website, 253)) {
     return { error: 'Enter a website such as company.com.' };

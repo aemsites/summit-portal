@@ -135,6 +135,48 @@ describe('report-request-form', () => {
     expect(fetchStub.called).to.equal(false);
   });
 
+  it('blocks internal emails before verification and clears the error for a customer email', async () => {
+    const block = makeBlock();
+    init(block);
+    await tick();
+    const form = block.querySelector('form');
+    Object.entries({
+      firstName: 'Jordan',
+      lastName: 'Lee',
+      company: 'Northstar',
+      website: 'northstar.com',
+      requestSource: 'Email',
+    }).forEach(([name, value]) => { form.elements[name].value = value; });
+    form.elements.consent.checked = true;
+    const execute = sinon.spy(window.turnstile, 'execute');
+    const { email } = form.elements;
+    [
+      'employee@adobe.com',
+      ' Employee+report@SEMRUSH.COM ',
+      'employee@team.adobe.com',
+      'employee@team.eu.semrush.com',
+    ].forEach((value) => {
+      email.value = value;
+      email.dispatchEvent(new Event('blur'));
+      form.dispatchEvent(new Event('submit', { cancelable: true }));
+      expect(email.getAttribute('aria-invalid')).to.equal('true');
+      expect(document.getElementById(`${email.id}-error`).textContent)
+        .to.equal('Adobe and Semrush employees should use the internal platform. This form is only for tracking report requests directly from customers.');
+      expect(block.querySelector('.rrf-error-summary').hidden).to.equal(false);
+    });
+    expect(execute.called).to.equal(false);
+    expect(fetchStub.called).to.equal(false);
+
+    email.value = 'customer@notadobe.com';
+    email.dispatchEvent(new Event('input'));
+    expect(email.getAttribute('aria-invalid')).to.equal('false');
+    expect(document.getElementById(`${email.id}-error`).textContent).to.equal('');
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(fetchStub.calledOnce).to.equal(true);
+    expect(block.querySelector('.rrf-success')).to.exist;
+  });
+
   it('explains an unavailable report without changing the intake fields', () => {
     window.history.replaceState(null, '', '/request-report?reason=unavailable');
     const block = makeBlock();
