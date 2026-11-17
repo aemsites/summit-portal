@@ -270,18 +270,23 @@ async function decorateUserInfo(section) {
       wrapper.append(notice);
     }
   } else {
+    const verified = user.verified === true;
+    const linkLabel = {
+      sharelink: 'Viewing via shared link',
+      magiclink: 'Viewing via email link',
+    }[user.method] || 'Viewing via link';
     const btn = document.createElement('button');
     btn.className = 'user-email';
-    btn.textContent = user.email;
+    btn.textContent = verified ? user.email : linkLabel;
 
     const menu = document.createElement('div');
     menu.className = 'user-menu';
     const signOut = document.createElement('a');
     signOut.href = '/auth/logout';
-    signOut.textContent = 'Sign out';
+    signOut.textContent = verified ? 'Sign out' : 'Leave shared view';
     const myPortal = document.createElement('a');
     myPortal.href = '/auth/portal';
-    myPortal.textContent = 'My Portal';
+    myPortal.textContent = verified ? 'My Portal' : 'Open portal';
     menu.append(signOut, myPortal);
 
     btn.addEventListener('click', () => toggleMenu(wrapper));

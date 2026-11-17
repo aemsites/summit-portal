@@ -297,13 +297,13 @@ const handleRequest = async (request, env) => {
     }
     return new Response(JSON.stringify({
       authenticated: true,
-      email: session.email,
-      name: session.name,
+      email: isVerifiedMethod(session.method) ? session.email : null,
+      name: isVerifiedMethod(session.method) ? session.name : null,
       groups: session.groups,
       // How the session was established, and whether that proves the viewer is
       // the named user (interactive login vs. a link-borne session that could
-      // be opened by anyone). `email` above is for this client's own UI only —
-      // client telemetry never forwards it to analytics; see viewer-identity.js.
+      // be opened by anyone). Link recipients remain authorization subjects,
+      // not viewer identities; keep their email/name out of the identity UI.
       method: session.method || null,
       verified: isVerifiedMethod(session.method),
     }), {
@@ -329,13 +329,22 @@ const handleRequest = async (request, env) => {
     return proxyToOrigin(request, env, url);
   }
 
-  // Magic link: ?token= creates or replaces the session without an IMS round-trip
+  // Link access must never replace a verified staff portal sign-in.
   const magicToken = url.searchParams.get('token');
   if (magicToken) {
+    const cleanUrl = new URL(url.href);
+    cleanUrl.searchParams.delete('token');
+    const existing = await getSession(request, env);
+    if (existing && isVerifiedMethod(existing.method) && isStaffEmail(existing.email, env)) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: cleanUrl.href, 'Cache-Control': 'private, no-store' },
+      });
+    }
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token present on ${url.pathname}`);
     // Accept both the 2-day self-service magic link and the 30-day staff share
-    // link — either one mints a fresh 1-hour session for the deep link.
+    // link — either can establish link-based access without an IMS round-trip.
     const claims = (await verifyMagicLink(magicToken, env))
       || (await verifyShareLink(magicToken, env));
     if (!claims) {
@@ -345,8 +354,6 @@ const handleRequest = async (request, env) => {
       // logged in": send them to /login preserving the page the link was for
       // (token stripped) so re-auth (Adobe ID or a fresh magic link) returns
       // them to that page instead of falling through to the group dashboard.
-      const cleanUrl = new URL(url.href);
-      cleanUrl.searchParams.delete('token');
       const target = safeRedirectPath(`${cleanUrl.pathname}${cleanUrl.search}`);
       const loginUrl = new URL('/login', request.url);
       if (target) loginUrl.searchParams.set('redirect', target);
@@ -377,12 +384,10 @@ const handleRequest = async (request, env) => {
     const userInfo = { email, name: claims.name || email, groups, method };
     const newToken = await createSession(env, userInfo, ttl);
 
-    const cleanUrl = new URL(url.href);
-    cleanUrl.searchParams.delete('token');
     // eslint-disable-next-line no-console
     console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
 
-    const headers = new Headers({ Location: cleanUrl.href });
+    const headers = new Headers({ Location: cleanUrl.href, 'Cache-Control': 'private, no-store' });
     headers.append('Set-Cookie', sessionCookie(newToken, ttl));
     headers.append('Set-Cookie', signedInMarkerCookie());
     return new Response(null, { status: 302, headers });

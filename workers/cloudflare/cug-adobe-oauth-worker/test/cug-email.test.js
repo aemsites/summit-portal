@@ -5,7 +5,7 @@ import { handleShareLinkRequest } from '../src/sharelink.js';
 import { checkCugAccess } from '../src/cug.js';
 import { handleMagicLinkRequest } from '../src/magiclink.js';
 import { handlePortalRedirect } from '../src/portal.js';
-import { createSession, getSession, verifyShareLink } from '../src/session.js';
+import { createSession, createShareLinkToken, getSession, verifyShareLink } from '../src/session.js';
 import { resetCugSheetCache } from '../src/cugsheet.js';
 import { createMockEnv, createMockBoothStorage, createMockBoothD1, createMockBoothCookie } from './helpers.js';
 import { sendShareLinkConfirm, sendMagicLinkConfirm } from '../src/notification.js';
@@ -46,6 +46,8 @@ describe('exact-email CUG integration', () => {
     expect(response.status).toBe(302);
     const cookie = response.headers.get('Set-Cookie').match(/auth_token=[^;]+/)[0];
     const session = await getSession(new Request('https://portal.example/', { headers: { Cookie: cookie } }), env);
+    const me = await worker.fetch(new Request('https://portal.example/auth/me', { headers: { Cookie: cookie } }), env);
+    expect(await me.json()).toMatchObject({ authenticated: true, email: null, name: null, method: 'sharelink', verified: false });
     return { cookie, session };
   }
 
@@ -149,7 +151,20 @@ describe('exact-email CUG integration', () => {
     expect(claims.groups).toEqual([email]);
     const { session } = await redeem(link);
     expect(session.groups).toEqual([email]);
+    const rejected = await checkCugAccess(protectedPage('alias.example'), session, new Request(`https://portal.example${domainPath}`), env);
+    expect(rejected.headers.get('Location')).toBe('https://portal.example/403');
     expect(sendShareLinkConfirm).not.toHaveBeenCalled();
+  });
+
+  it('keeps already-issued domain-only links working without identifying the recipient as the viewer', async () => {
+    const token = await createShareLinkToken(email, env);
+    const { cookie, session } = await redeem(`https://portal.example${domainPath}?token=${token}`);
+    expect(session.email).toBe(email);
+    expect(session.groups).toEqual(['alias.example']);
+    const response = await worker.fetch(new Request(`https://portal.example${domainPath}`, { headers: { Cookie: cookie } }), env);
+    expect(response.status).toBe(200);
+    const denied = await worker.fetch(new Request(`https://portal.example${unrelated}`, { headers: { Cookie: cookie } }), env);
+    expect(denied.headers.get('Location')).toBe('https://portal.example/403');
   });
 
   it('matches verified session identity and explicit bearer groups without allowing a neighboring identity', async () => {

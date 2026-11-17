@@ -2,6 +2,42 @@
 
 ## Overview
 
+**Shared-link viewer identity and staff-session preservation (November 17, branch only):**
+`/auth/me` exposes email/name only for verified interactive (`oauth`/`staff`)
+sessions. Link-based and legacy unverified sessions retain their signed
+authorization subject and exact email/domain grants internally, but return
+null identity fields. The header labels them **Viewing via shared link**,
+**Viewing via email link**, or **Viewing via link**, with **Open portal** and
+**Leave shared view** actions instead of claiming the link recipient is the
+viewer. New copied links, explicit-recipient delivery, already-issued links,
+session lifetimes and CUG entries/grant matching are unchanged.
+Opening a token-bearing link with a current verified Adobe/Semrush staff
+portal session strips the token and continues with that same session, without
+setting cookies or adding customer grants. Normal CUG checks still apply
+after the redirect; a staff login without access remains denied. Expired or
+unverified staff sessions do not qualify. Booth boundaries remain separate.
+This fixes DIH's existing Preview portal/customer-share URL without a DIH
+contract change or inventing a portal login for a signed-out DIH user.
+Both the header code and authentication Worker require publication for the
+complete change (header first avoids a blank label with an older header).
+No PR, merge or deployment is included in this branch.
+
+Verification: 346 focused Worker checks pass, covering the real mint/redeem/CUG
+flow, explicit-recipient exact-email delivery, legacy domain-only links,
+verified staff preservation, expired/unverified sessions and booth/auth
+boundaries. All 13 focused browser checks pass. The complete Worker suite has
+631 passing tests, one existing skip and the same three pre-existing
+guide-login redirect failures documented below. Repository lint retains its
+1,642 baseline findings (1,381 errors, 261 warnings), with no new findings in
+changed JavaScript. There is no top-level `build` script; the actual Wrangler
+`--dry-run --env summit` bundle succeeds without deployment. A synthetic
+Playwright check of the real header at `/content/index` confirms the shared
+view label and menu at 1280px and 390px, without horizontal page overflow.
+Port 3017 was used because an unrelated Docker service occupies port 3000;
+this checkout has no authored `/content/index` file, so the existing local
+fixture server supplied the page. No production sign-in or customer data
+was used.
+
 **Session durations (October 21, user-approved; deployment pending):**
 internal Adobe/Semrush dashboard logins and freshly authenticated touchscreen
 staff logins now last **five days from sign-in**, with matching signed-token
