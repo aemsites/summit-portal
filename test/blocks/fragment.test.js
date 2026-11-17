@@ -59,4 +59,47 @@ describe('fragment loading', () => {
       log.restore();
     }
   });
+
+  [
+    { method: 'sharelink', label: 'Viewing via shared link' },
+    { method: 'magiclink', label: 'Viewing via email link' },
+    { method: null, label: 'Viewing via link' },
+  ].forEach(({ method, label }) => {
+    it(`shows ${label} instead of the link recipient's identity`, async () => {
+      fetchStub.callsFake(async (path) => (path === '/auth/me'
+        ? Response.json({ authenticated: true, email: 'recipient@customer.example', name: 'Recipient', method, verified: false })
+        : new Response('<main><div><p><a href="/"><span></span>Portal</a></p></div><div><p>Navigation</p></div><div><p>Actions</p></div></main>')));
+      const header = document.createElement('header');
+      document.body.append(header);
+      try {
+        await initHeader(header);
+        await new Promise((resolve) => { setTimeout(resolve, 0); });
+        const button = header.querySelector('.user-email');
+        expect(button.textContent).to.equal(label);
+        expect(header.textContent).not.to.include('recipient@customer.example');
+        button.click();
+        expect(header.querySelector('.user-info').classList.contains('is-open')).to.equal(true);
+        expect(header.querySelector('.user-menu a[href="/auth/portal"]').textContent).to.equal('Open portal');
+        expect(header.querySelector('.user-menu a[href="/auth/logout"]').textContent).to.equal('Leave shared view');
+      } finally {
+        header.remove();
+      }
+    });
+  });
+
+  it('keeps the verified staff identity and portal menu', async () => {
+    fetchStub.callsFake(async (path) => (path === '/auth/me'
+      ? Response.json({ authenticated: true, email: 'operator@adobe.com', method: 'oauth', verified: true })
+      : new Response('<main><div><p><a href="/"><span></span>Portal</a></p></div><div><p>Navigation</p></div><div><p>Actions</p></div></main>')));
+    const header = document.createElement('header');
+    try {
+      await initHeader(header);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(header.querySelector('.user-email').textContent).to.equal('operator@adobe.com');
+      expect(header.querySelector('a[href="/auth/portal"]').textContent).to.equal('My Portal');
+      expect(header.querySelector('a[href="/auth/logout"]').textContent).to.equal('Sign out');
+    } finally {
+      header.remove();
+    }
+  });
 });

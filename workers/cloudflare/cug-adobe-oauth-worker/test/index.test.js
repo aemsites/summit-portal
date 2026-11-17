@@ -325,10 +325,10 @@ describe('index (request routing)', () => {
       expect(body.verified).toBe(true);
     });
 
-    it('reports verified:false for a magic-link session (still returns email for the UI)', async () => {
+    it.each(['magiclink', 'sharelink', undefined])('withholds viewer identity for an unverified %s session', async (method) => {
       const { createSession } = await import('../src/session.js');
       const token = await createSession(env, {
-        email: 'tim@apple.com', name: 'Tim', groups: ['apple.com'], method: 'magiclink',
+        email: 'recipient@customer.example', name: 'Recipient', groups: ['customer.example'], method,
       });
       const resp = await worker.fetch(new Request('https://mysite.com/auth/me', {
         headers: { Cookie: `auth_token=${token}` },
@@ -336,8 +336,11 @@ describe('index (request routing)', () => {
 
       const body = await resp.json();
       expect(body.authenticated).toBe(true);
-      expect(body.method).toBe('magiclink');
+      expect(body.method).toBe(method || null);
       expect(body.verified).toBe(false);
+      expect(body.email).toBeNull();
+      expect(body.name).toBeNull();
+      expect(body.groups).toEqual(['customer.example']);
     });
   });
 
@@ -541,6 +544,52 @@ describe('index (request routing)', () => {
   });
 
   describe('magic link (?token=)', () => {
+    it.each([
+      ['oauth', 'operator@adobe.com', 'magiclink'],
+      ['oauth', 'operator@adobe.com', 'sharelink'],
+      ['staff', 'operator@semrush.com', 'sharelink'],
+      ['oauth', 'operator@adobe.com', 'expired'],
+    ])('preserves %s staff %s when opening a %s link', async (method, email, purpose) => {
+      const { createSession } = await import('../src/session.js');
+      const staffToken = await createSession(env, { email, name: 'Operator', groups: [email.split('@')[1]], method });
+      const cookie = `auth_token=${staffToken}`;
+      const now = Math.floor(Date.now() / 1000);
+      const token = await signedJwt({
+        purpose: purpose === 'expired' ? 'sharelink' : purpose,
+        email: 'recipient@customer.example',
+        groups: ['recipient@customer.example'],
+        iat: now - 60,
+        exp: purpose === 'expired' ? now - 1 : now + 3600,
+      }, env.JWT_SECRET);
+      const resp = await worker.fetch(new Request(`https://mysite.com/customers/test/?token=${token}&view=report`, { headers: { Cookie: cookie } }), env);
+      expect(resp.status).toBe(302);
+      expect(resp.headers.get('Location')).toBe('https://mysite.com/customers/test/?view=report');
+      expect(resp.headers.has('Set-Cookie')).toBe(false);
+      expect(resp.headers.get('Cache-Control')).toBe('private, no-store');
+      const me = await worker.fetch(new Request('https://mysite.com/auth/me', { headers: { Cookie: cookie } }), env);
+      expect(await me.json()).toMatchObject({ email, method, verified: true });
+      vi.stubGlobal('fetch', mockOriginFetch('<html>staff dashboard</html>', { 'x-aem-cug-required': 'true', 'x-aem-cug-groups': email.split('@')[1] }));
+      expect((await worker.fetch(new Request('https://mysite.com/dashboard', { headers: { Cookie: cookie } }), env)).status).toBe(200);
+      vi.stubGlobal('fetch', mockOriginFetch('<html>customer-only report</html>', { 'x-aem-cug-required': 'true', 'x-aem-cug-groups': 'customer.example' }));
+      const denied = await worker.fetch(new Request('https://mysite.com/customer-only', { headers: { Cookie: cookie } }), env);
+      expect(denied.headers.get('Location')).toBe('https://mysite.com/403');
+    });
+
+    it.each([
+      ['oauth', 'viewer@customer.example', 3600],
+      ['sharelink', 'operator@adobe.com', 3600],
+      [undefined, 'operator@adobe.com', 3600],
+      ['oauth', 'operator@adobe.com', -1],
+    ])('still redeems links over a non-current-verified-staff %s %s session (ttl=%s)', async (method, email, ttl) => {
+      const { createSession, createShareLinkToken, getSession } = await import('../src/session.js');
+      const previous = await createSession(env, { email, method }, ttl);
+      const token = await createShareLinkToken('recipient@customer.example', env, ['recipient@customer.example']);
+      const resp = await worker.fetch(new Request(`https://mysite.com/customers/test/?token=${token}`, { headers: { Cookie: `auth_token=${previous}` } }), env);
+      const cookie = resp.headers.get('Set-Cookie').match(/auth_token=[^;]+/)[0];
+      const session = await getSession(new Request('https://mysite.com/', { headers: { Cookie: cookie } }), env);
+      expect(session).toMatchObject({ email: 'recipient@customer.example', groups: ['recipient@customer.example'], method: 'sharelink' });
+    });
+
     it('creates a session and redirects to the clean URL when token is valid', async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await signedJwt({ purpose: 'magiclink', email: 'alice@adobe.com', iat: now }, env.JWT_SECRET);
