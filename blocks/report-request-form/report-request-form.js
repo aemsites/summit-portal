@@ -3,6 +3,7 @@ import { BOOTH_DEMOS } from '../../scripts/booth-demos.js';
 
 const API_PATH = 'https://act.aem.now/api/report-requests';
 const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const fieldSpecs = [
   {
@@ -19,16 +20,6 @@ const fieldSpecs = [
   },
   {
     id: 'website', key: 'website', label: 'Website or domain', inputmode: 'url', autocomplete: 'url', placeholder: 'company.com', maxLength: 253, required: true, wide: true,
-  },
-  {
-    id: 'request-source',
-    key: 'requestSource',
-    label: 'Where did you hear about this report?',
-    hint: 'At an event? Include the event name and city. Otherwise, tell us if it was an email, a colleague, or the web.',
-    autocomplete: 'off',
-    maxLength: 200,
-    required: true,
-    wide: true,
   },
 ];
 
@@ -64,9 +55,6 @@ function errorMessage(input) {
     || (input.required && input.type !== 'checkbox' && !input.value.trim());
   if (input.name === 'consent' && missing) {
     return 'Please agree that Adobe may contact you about your requested report.';
-  }
-  if (input.name === 'requestSource' && missing) {
-    return 'Please tell us where you heard about this report.';
   }
   if (missing) return `Please enter your ${input.dataset.label.toLowerCase()}.`;
   if (validity.typeMismatch) return 'Enter a valid business email address.';
@@ -119,14 +107,6 @@ function createField(spec, prefix) {
     if (input.getAttribute('aria-invalid') === 'true') setFieldError(input);
   });
   wrapper.append(label, input, error);
-  if (spec.hint) {
-    const hint = document.createElement('p');
-    hint.className = 'rrf-field-hint';
-    hint.id = `${input.id}-hint`;
-    hint.textContent = spec.hint;
-    input.setAttribute('aria-describedby', `${hint.id} ${error.id}`);
-    input.after(hint);
-  }
   return wrapper;
 }
 
@@ -196,14 +176,14 @@ function successView(form) {
   document.dispatchEvent(new Event('booth-request-complete'));
 }
 
-function buildPayload(form, turnstileToken) {
+function buildPayload(form, turnstileToken, publicCampaignId) {
   const formData = new FormData(form);
   return {
     fullName: `${formData.get('firstName').trim()} ${formData.get('lastName').trim()}`,
     email: formData.get('email'),
     company: formData.get('company'),
     website: formData.get('website'),
-    requestSource: formData.get('requestSource'),
+    ...(publicCampaignId ? { publicCampaignId } : {}),
     consent: formData.get('consent') === 'on',
     websiteConfirm: formData.get('websiteConfirm'),
     turnstileToken,
@@ -223,7 +203,7 @@ function validForm(form) {
   return true;
 }
 
-function createForm(siteKey) {
+function createForm(siteKey, publicCampaignId) {
   const prefix = `report-request-${crypto.randomUUID().slice(0, 8)}`;
   const form = document.createElement('form');
   form.className = 'report-request-form-form';
@@ -288,7 +268,7 @@ function createForm(siteKey) {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(buildPayload(form, turnstileToken)),
+        body: JSON.stringify(buildPayload(form, turnstileToken, publicCampaignId)),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -341,6 +321,11 @@ export default function init(el) {
   loadStyle('https://use.typekit.net/hah7vzn.css');
   loadStyle('https://use.typekit.net/pbq1nqa.css');
   const siteKey = metadataValue('turnstile-sitekey');
+  const search = new URLSearchParams(window.location.search);
+  const campaigns = search.getAll('campaign');
+  const [campaign] = campaigns;
+  const validCampaign = campaigns.length === 1 && campaign.length === 36 && UUID_V4.test(campaign);
+  const publicCampaignId = validCampaign ? campaign : null;
   const header = document.createElement('div');
   header.className = 'rrf-masthead';
   header.innerHTML = `
@@ -384,7 +369,7 @@ export default function init(el) {
   setCoverage();
   desktop.addEventListener('change', setCoverage);
   const content = main.querySelector('.rrf-content');
-  if (new URLSearchParams(window.location.search).get('reason') === 'unavailable') {
+  if (search.get('reason') === 'unavailable') {
     const notice = document.createElement('aside');
     notice.className = 'rrf-recovery';
     notice.innerHTML = `
@@ -400,7 +385,7 @@ export default function init(el) {
     unavailable.textContent = 'Report requests are not available right now. Please speak with an Adobe representative.';
     content.append(unavailable);
   } else {
-    content.append(createForm(siteKey));
+    content.append(createForm(siteKey, publicCampaignId));
   }
   main.append(createDemos());
   el.replaceChildren(header, main);

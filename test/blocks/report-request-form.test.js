@@ -5,6 +5,7 @@ import { BOOTH_DEMOS } from '../../scripts/booth-demos.js';
 
 const tick = () => new Promise((resolve) => { window.setTimeout(resolve, 0); });
 const settle = () => new Promise((resolve) => { window.setTimeout(resolve, 80); });
+const PUBLIC_CAMPAIGN_ID = '2a6aa96b-8078-4efb-8d16-cd0d79645589';
 
 function makeBlock() {
   const block = document.createElement('div');
@@ -42,19 +43,15 @@ describe('report-request-form', () => {
     window.history.replaceState(null, '', originalUrl);
   });
 
-  it('collects first and last name and source, without role or market fields', () => {
+  it('collects five required details without asking for the source', () => {
     const block = makeBlock();
     init(block);
 
     expect([...block.querySelectorAll('input')].map((input) => input.name))
-      .to.deep.equal(['firstName', 'lastName', 'email', 'company', 'website', 'requestSource', 'websiteConfirm', 'consent']);
+      .to.deep.equal(['firstName', 'lastName', 'email', 'company', 'website', 'websiteConfirm', 'consent']);
     expect(block.querySelector('[name="firstName"]').autocomplete).to.equal('given-name');
     expect(block.querySelector('[name="lastName"]').autocomplete).to.equal('family-name');
-    const source = block.querySelector('[name="requestSource"]');
-    expect(source.required).to.equal(true);
-    expect(source.maxLength).to.equal(200);
-    expect(source.getAttribute('aria-describedby')).to.include(`${source.id}-hint`);
-    expect(block.querySelector('.rrf-field-hint').textContent).to.include('event name and city');
+    expect(block.textContent).not.to.include('Where did you hear about this report?');
     expect(block.querySelector('.rrf-optional')).to.equal(null);
     expect(block.textContent).to.not.include('DR ID');
     expect(block.textContent).to.not.include('event code');
@@ -101,7 +98,7 @@ describe('report-request-form', () => {
     document.head.append(marker);
     const block = makeBlock();
     init(block);
-    ['firstName', 'lastName', 'email', 'company', 'website', 'requestSource'].forEach((name) => {
+    ['firstName', 'lastName', 'email', 'company', 'website'].forEach((name) => {
       const input = block.querySelector(`[name="${name}"]`);
       expect(input.value).to.equal('');
       expect(input.autocomplete).to.equal('off');
@@ -118,18 +115,18 @@ describe('report-request-form', () => {
     expect(block.querySelector('.rrf-error-summary').hidden).to.equal(false);
     expect(block.querySelector('.rrf-field-error').textContent).to.include('first name');
     expect(block.querySelector('[name="lastName"]').getAttribute('aria-invalid')).to.equal('true');
-    expect(block.querySelector('[name="requestSource"]').getAttribute('aria-invalid')).to.equal('true');
+    expect(form.textContent).not.to.include('where you heard about this report');
     expect(fetchStub.called).to.equal(false);
   });
 
-  it('rejects whitespace-only names and source before requesting verification', () => {
+  it('rejects whitespace-only names before requesting verification', () => {
     const block = makeBlock();
     init(block);
-    ['firstName', 'lastName', 'requestSource'].forEach((name) => {
+    ['firstName', 'lastName'].forEach((name) => {
       block.querySelector(`[name="${name}"]`).value = '   ';
     });
     block.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
-    ['firstName', 'lastName', 'requestSource'].forEach((name) => {
+    ['firstName', 'lastName'].forEach((name) => {
       expect(block.querySelector(`[name="${name}"]`).getAttribute('aria-invalid')).to.equal('true');
     });
     expect(fetchStub.called).to.equal(false);
@@ -145,7 +142,6 @@ describe('report-request-form', () => {
       lastName: 'Lee',
       company: 'Northstar',
       website: 'northstar.com',
-      requestSource: 'Email',
     }).forEach(([name, value]) => { form.elements[name].value = value; });
     form.elements.consent.checked = true;
     const execute = sinon.spy(window.turnstile, 'execute');
@@ -195,16 +191,17 @@ describe('report-request-form', () => {
   });
 
   it('submits with a retry-safe idempotency key and presents no customer-visible request ID', async () => {
+    window.history.replaceState(null, '', `/request-report?campaign=${PUBLIC_CAMPAIGN_ID}`);
     const block = makeBlock();
     init(block);
     await tick();
+    window.history.replaceState(null, '', '/request-report');
     const form = block.querySelector('form');
     form.elements.firstName.value = ' Jordan ';
     form.elements.lastName.value = ' Lee ';
     form.elements.email.value = 'jordan@example.com';
     form.elements.company.value = 'Northstar';
     form.elements.website.value = 'northstar.com';
-    form.elements.requestSource.value = 'Adobe Summit, London';
     form.elements.consent.checked = true;
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await settle();
@@ -216,16 +213,45 @@ describe('report-request-form', () => {
     expect(JSON.parse(options.body)).to.include({
       fullName: 'Jordan Lee',
       website: 'northstar.com',
-      requestSource: 'Adobe Summit, London',
+      publicCampaignId: PUBLIC_CAMPAIGN_ID,
       consent: true,
       turnstileToken: 'turnstile-token',
     });
+    expect(JSON.parse(options.body)).to.not.have.property('requestSource');
     expect(JSON.parse(options.body)).to.not.have.property('jobTitle');
     expect(JSON.parse(options.body)).to.not.have.property('primaryMarket');
     expect(block.querySelector('.rrf-success').textContent).to.include("We'll take it from here.");
     expect(block.querySelector('.rrf-success').textContent).to.not.include('internal-only-id');
     expect(block.querySelector('.rrf-shell > h1')).to.equal(null);
     expect(block.querySelector('.rrf-shell').children).to.have.length(1);
+  });
+
+  [
+    ['', 'direct visit'],
+    ['?campaign=not-a-uuid', 'malformed UUID'],
+    [`?campaign=${PUBLIC_CAMPAIGN_ID.toUpperCase()}`, 'uppercase UUID'],
+    [`?campaign=${PUBLIC_CAMPAIGN_ID}%0A`, 'UUID with trailing whitespace'],
+    [`?campaign=${PUBLIC_CAMPAIGN_ID}&campaign=`, 'repeated parameter'],
+  ].forEach(([query, label]) => {
+    it(`omits attribution for a ${label}`, async () => {
+      window.history.replaceState(null, '', `/request-report${query}`);
+      const block = makeBlock();
+      init(block);
+      await tick();
+      const form = block.querySelector('form');
+      Object.entries({
+        firstName: 'Jordan',
+        lastName: 'Lee',
+        email: 'jordan@example.com',
+        company: 'Northstar',
+        website: 'northstar.com',
+      }).forEach(([name, value]) => { form.elements[name].value = value; });
+      form.elements.consent.checked = true;
+      form.dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+      expect(fetchStub.calledOnce).to.equal(true);
+      expect(JSON.parse(fetchStub.firstCall.args[1].body)).not.to.have.property('publicCampaignId');
+    });
   });
 
   it('keeps entered details and the same retry key when submission fails', async () => {
@@ -240,13 +266,12 @@ describe('report-request-form', () => {
       email: 'jordan@example.com',
       company: 'Northstar',
       website: 'northstar.com',
-      requestSource: 'Email',
     }).forEach(([name, value]) => { form.elements[name].value = value; });
     form.elements.consent.checked = true;
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
     expect(block.querySelector('.rrf-submit-status').textContent).to.equal('Please try again.');
-    expect(form.elements.requestSource.value).to.equal('Email');
+    expect(form.elements.email.value).to.equal('jordan@example.com');
     expect(form.querySelector('button').disabled).to.equal(false);
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();

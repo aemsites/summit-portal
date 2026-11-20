@@ -1420,14 +1420,14 @@ collapses the four icon-and-label report topics under **Explore report coverage*
 to bring the form closer to the top. The single breakpoint remains 1000px.
 
 Required form fields are **first name, last name, business email, company,
-website/domain, request source**, and contact consent. Role and primary market
-are no longer collected. First/last name are combined into the existing
+website/domain**, and contact consent. Role, primary market and the source
+question are no longer collected. First/last name are combined into the existing
 `fullName`/`full_name` contract (up to 60 characters each, including the joining
-space up to 121); existing names are not migrated. **Where did you hear about
-this report?** accepts up to 200 characters and asks for the event name/city or
-email, colleague or web referral. The Worker normalizes whitespace and validates
-supplied source values; missing source is accepted only for compatibility with
-older clients during rollout, and historical source values remain null.
+space up to 121); existing names are not migrated. Links of the form
+`/request-report?campaign=<public-id>` pass a single lowercase UUIDv4 to the
+Worker for attribution without showing campaign details on the page. Direct
+visits and links with invalid or repeated campaign parameters still submit
+normally, without attribution.
 
 **Customer-only intake (November 12; deployment pending):** the public form and
 Worker reject email addresses at `adobe.com` and `semrush.com`, including

@@ -96,7 +96,7 @@ export default async function verifyRecovery(page, base = 'http://localhost:3000
   await form.getByRole('textbox', { name: 'Business email', exact: true }).fill('jordan@example.com');
   await form.getByRole('textbox', { name: 'Company', exact: true }).fill('Example Company');
   await form.getByRole('textbox', { name: 'Website or domain', exact: true }).fill('example.com');
-  await form.getByRole('textbox', { name: 'Where did you hear about this report?', exact: true }).fill('Email');
+  check(await form.locator('[name="requestSource"]').count() === 0, 'Retired source field returned');
   await form.getByRole('checkbox').check();
   await form.getByRole('button', { name: 'Request my report' }).click();
   await page.locator('.rrf-success').waitFor();
