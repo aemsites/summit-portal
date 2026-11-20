@@ -9,7 +9,7 @@ import {
 } from '../src/booth-activity.js';
 import { createMockBoothD1, createMockEnv } from './helpers.js';
 
-const session = { method: 'oauth', email: 'seller@adobe.com' };
+const session = { method: 'oauth', email: 'josec@adobe.com' };
 const report = { path: '/accounts/e/example/insights/example-com/portal-landing/', company: 'Example', label: 'Example — example.com' };
 
 describe('identified booth activity and anonymous analytics boundary', () => {
@@ -28,6 +28,35 @@ describe('identified booth activity and anonymous analytics boundary', () => {
   function request(query = '', path = '/api/booth-activity') {
     return new Request(`https://portal.example${path}${query}`);
   }
+
+  it('denies ordinary users and non-OAuth admin identities before querying private activity', async () => {
+    const prepare = vi.spyOn(env.REPORT_REQUESTS, 'prepare');
+    for (const identity of [
+      { method: 'oauth', email: 'seller@adobe.com' },
+      ...['staff', 'sharelink', 'magiclink', undefined].map((method) => ({ method, email: session.email })),
+    ]) {
+      const cookie = `auth_token=${await createSession(env, identity)}`;
+      for (const path of ['/api/booth-activity', '/api/booth-activity.csv']) {
+        for (const method of ['GET', 'HEAD']) {
+          const response = await worker.fetch(new Request(`https://portal.example${path}`, { method, headers: { Cookie: cookie } }), env);
+          expect(response.status).toBe(403);
+          expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+        }
+      }
+    }
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it.each(['josec@adobe.com', 'nglauser@adobe.com', 'ebill@adobe.com', 'constantinp@adobe.com', 'JOSEC@ADOBE.COM'])(
+    'allows the configured admin %s to retrieve JSON and CSV',
+    async (email) => {
+      for (const path of ['/api/booth-activity', '/api/booth-activity.csv']) {
+        const response = await handleBoothActivity(request('', path), env, { method: 'oauth', email });
+        expect(response.status).toBe(200);
+        await response.text();
+      }
+    },
+  );
 
   it('stores stable visit correlation, canonical company/report, notice and exact 90-day expiry', async () => {
     const activity = createBoothActivity('contact_requested', 'visit-one', 'visitor@example.com', report);

@@ -154,9 +154,14 @@
   cursor: pointer;
 }
 
-.dashboard-page .dashboard-resource-actions :is(a, button):hover {
+.dashboard-page .dashboard-resource-actions :is(a, button):not(:disabled):hover {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.dashboard-page .dashboard-export-action:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
 }
 
 .dashboard-page .dashboard-device-note {

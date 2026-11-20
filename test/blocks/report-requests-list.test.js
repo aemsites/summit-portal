@@ -36,6 +36,7 @@ describe('report-requests-list', () => {
 
   it('renders list records and keeps CSV export aligned with search', async () => {
     fetchStub = sinon.stub(window, 'fetch').resolves(new Response(JSON.stringify({
+      isAdmin: true,
       requests: [{
         request_id: 'internal-id',
         submitted_at: '2026-09-08T10:00:00.000Z',
@@ -55,6 +56,7 @@ describe('report-requests-list', () => {
 
     expect(block.querySelector('.rrl-back').getAttribute('href')).to.equal('/adobe/dashboard');
     expect(block.textContent).to.include('Jordan Lee');
+    expect(block.querySelector('.rrl-privacy').hidden).to.equal(true);
     expect(block.textContent).to.include('Request source');
     expect(block.textContent).to.include('Adobe Summit, London');
     expect(block.textContent).to.include('VP, Digital');
@@ -66,6 +68,23 @@ describe('report-requests-list', () => {
     await new Promise((resolve) => { window.setTimeout(resolve, 300); });
     expect(block.querySelector('.rrl-export').getAttribute('href')).to.equal('/api/report-requests.csv?q=northstar');
     expect(fetchStub.lastCall.args[0]).to.equal('/api/report-requests?q=northstar');
+  });
+
+  it('renders non-admin requests without contact elements and explains the private CSV', async () => {
+    fetchStub = sinon.stub(window, 'fetch').resolves(Response.json({
+      isAdmin: false,
+      requests: [{ company: 'Example', website: 'example.com', submitted_at: '2026-11-20T09:30:00Z' }],
+      nextCursor: null,
+    }));
+    const block = makeBlock();
+    init(block);
+    await settle();
+    expect(block.querySelector('.rrl-contact h3, .rrl-contact p')).to.equal(null);
+    expect(block.querySelector('.rrl-contact time')).to.exist;
+    expect(block.querySelector('.rrl-privacy').hidden).to.equal(false);
+    expect(block.querySelector('.rrl-privacy').textContent).to.include('excluded from your CSV export');
+    expect(block.querySelector('input').placeholder).to.equal('Company, website, or source');
+    expect(block.querySelector('.rrl-export')).to.exist;
   });
 
   it('clearly separates staff generation, customer intake and dashboard delivery', async () => {
@@ -90,9 +109,12 @@ describe('report-requests-list', () => {
   it('appends cursor pages and resets pagination and export when search is cleared', async () => {
     const request = { full_name: 'First Example', email: 'first@example.com', submitted_at: '2026-11-03T10:00:00Z' };
     fetchStub = sinon.stub(window, 'fetch');
-    fetchStub.onFirstCall().resolves(Response.json({ requests: [request], nextCursor: 'page+2/=' }));
-    fetchStub.onSecondCall().resolves(Response.json({ requests: [{ ...request, full_name: 'Second Example' }], nextCursor: null }));
-    fetchStub.callsFake(async () => Response.json({ requests: [request], nextCursor: null }));
+    const firstPage = { isAdmin: true, requests: [request], nextCursor: 'page+2/=' };
+    const nextRequest = { ...request, full_name: 'Second Example' };
+    const secondPage = { isAdmin: true, requests: [nextRequest], nextCursor: null };
+    fetchStub.onFirstCall().resolves(Response.json(firstPage));
+    fetchStub.onSecondCall().resolves(Response.json(secondPage));
+    fetchStub.callsFake(async () => Response.json({ ...firstPage, nextCursor: null }));
     const block = makeBlock();
     init(block);
     await settle();
@@ -184,6 +206,7 @@ describe('report-requests-list', () => {
             primary_market: 'North America',
             submitted_at: '2026-11-03T10:00:00Z',
           }],
+          isAdmin: true,
           nextCursor: null,
         }));
         const block = makeBlock();

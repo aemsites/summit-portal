@@ -145,6 +145,13 @@ main:has(.report-requests-list) {
   background: var(--color-surface);
 }
 
+.report-requests-list .rrl-privacy {
+  margin: 0 0 16px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .report-requests-list .rrl-row {
   padding: 20px 16px;
 }

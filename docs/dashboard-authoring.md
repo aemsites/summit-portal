@@ -91,7 +91,17 @@ The DIH header action is for Adobe staff to generate reports. It is not the
 public customer request form. Keep both workflows distinct.
 
 **Booth usage export (CSV)** opens the original controls with all activity
-choices, access feedback and guidance. Retain the 90-day retention and downloaded
+choices, access feedback and guidance. Only data admins signed in with Adobe ID
+can download; other users see disabled controls and **Please request this data
+from someone on the Digital Insights team.** The dashboard entry itself is
+greyed out, with that guidance immediately beneath it; admins can open the
+existing download panel. The server enforces the same
+restriction on both Booth JSON and CSV. The admin list is maintained in the
+Worker's `src/report-requests.js`, not authored content.
+Report requests remain visible to authorized Adobe users, but customer names
+and emails appear in the list and CSV only for data admins. Ordinary-user
+search matches company, website and source only.
+Retain the 90-day retention and downloaded
 email policy, action-versus-person interpretation, Email/Visit correlation,
 unsuccessful lookups, limits of opens and mail acceptance, and the distinction
 between activity and historical contact opt-ins. Do not move that guidance away

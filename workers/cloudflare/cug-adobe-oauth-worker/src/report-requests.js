@@ -9,6 +9,12 @@ const RATE_LIMIT_WINDOW_SECONDS = 600;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const CONSENT_VERSION = 'adobe-privacy-v1';
 const IDENTITY_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+const DATA_ADMINS = new Set([
+  'josec@adobe.com', 'nglauser@adobe.com', 'ebill@adobe.com', 'constantinp@adobe.com',
+]);
+const REQUEST_COLUMNS = [
+  'request_id', 'submitted_at', 'company', 'website', 'job_title', 'primary_market', 'request_source',
+];
 export const STAGE_TEST_PATH = '/api/report-requests/test';
 // Direct AEM delivery URLs do not share the Worker origin, so limit CORS to them.
 const PUBLIC_FORM_ORIGINS = new Set([
@@ -227,11 +233,21 @@ export function reportRequestsAuthorisation(session) {
   return authorisedAdobeSession(session) ? 200 : 403;
 }
 
-function requestRowsQuery(search, cursor, limit, includeCampaign = false) {
+export function isDataAdmin(session) {
+  return authorisedAdobeSession(session) && DATA_ADMINS.has(session.email.toLowerCase());
+}
+
+function requestColumns(admin) {
+  return admin ? [...REQUEST_COLUMNS, 'full_name', 'email'] : REQUEST_COLUMNS;
+}
+
+function requestRowsQuery(search, cursor, limit, includeCampaign = false, admin = false) {
   const clauses = [];
   const params = [];
   if (search) {
-    clauses.push("search_text LIKE ? ESCAPE '\\'");
+    const searchColumn = admin ? 'search_text'
+      : "lower(coalesce(company, '') || ' ' || coalesce(website, '') || ' ' || coalesce(request_source, ''))";
+    clauses.push(`${searchColumn} LIKE ? ESCAPE '\\'`);
     params.push(`%${escapeLike(search)}%`);
   }
   if (cursor) {
@@ -242,7 +258,7 @@ function requestRowsQuery(search, cursor, limit, includeCampaign = false) {
   const campaignColumns = includeCampaign ? ', c.hub_campaign_id, c.campaign_name' : '';
   const join = includeCampaign ? 'LEFT JOIN report_request_campaigns c USING (public_campaign_id)' : '';
   return {
-    sql: `SELECT request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source${campaignColumns}
+    sql: `SELECT ${requestColumns(admin).join(', ')}${campaignColumns}
       FROM report_requests ${join} ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
     params: [...params, limit],
   };
@@ -264,36 +280,38 @@ function httpsOrigin(value) {
   }
 }
 
-export function reportRequestsCsv(rows, hubOrigin) {
+export function reportRequestsCsv(rows, hubOrigin, admin = false) {
   const origin = httpsOrigin(hubOrigin);
   const header = [
     'Company Name',
     'Website',
     'Sub-ID',
     'DR ID',
-    'Representative Email',
+    ...(admin ? ['Representative Email'] : []),
     'CMS',
     'Primary Country (Optional)',
     'Audience',
-    'Access Emails',
+    ...(admin ? ['Access Emails'] : []),
     'Request Source',
     'Campaign Name',
     'Campaign Link',
+    ...(admin ? ['Customer Name'] : []),
   ];
   const lines = rows.map((row) => [
     row.company,
     row.website,
     '',
     '',
-    '',
+    ...(admin ? [''] : []),
     '',
     '', // Let the Hub infer the country instead of using an unvalidated free-text market.
     '',
-    row.email,
+    ...(admin ? [row.email] : []),
     row.request_source,
     row.campaign_name,
     origin && row.hub_campaign_id
       ? `${origin}/insights-campaigns/${encodeURIComponent(row.hub_campaign_id)}` : '',
+    ...(admin ? [row.full_name] : []),
   ].map(csvCell).join(','));
   return `${[header.map(csvCell).join(','), ...lines].join('\r\n')}\r\n`;
 }
@@ -434,27 +452,30 @@ async function handleCreate(request, env) {
   return privateResponse({ requestId: stored.request_id, submittedAt: stored.submitted_at }, 201);
 }
 
-async function handleList(url, env) {
+async function handleList(url, env, admin) {
   const search = normaliseSearch(url.searchParams.get('q'));
   const rawCursor = url.searchParams.get('cursor');
   const cursor = rawCursor ? decodeCursor(rawCursor) : null;
   if (rawCursor && !cursor) return privateResponse({ error: 'Invalid cursor.' }, 400);
 
-  const query = requestRowsQuery(search, cursor, PAGE_SIZE + 1);
+  const query = requestRowsQuery(search, cursor, PAGE_SIZE + 1, false, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
   const hasNext = results.length > PAGE_SIZE;
-  const requests = results.slice(0, PAGE_SIZE);
+  const requests = results.slice(0, PAGE_SIZE).map((row) => Object.fromEntries(
+    requestColumns(admin).map((column) => [column, row[column]]),
+  ));
   return privateResponse({
+    isAdmin: admin,
     requests,
     nextCursor: hasNext ? encodeCursor(requests[requests.length - 1]) : null,
   });
 }
 
-async function handleCsv(url, env) {
+async function handleCsv(url, env, admin) {
   const search = normaliseSearch(url.searchParams.get('q'));
-  const query = requestRowsQuery(search, null, EXPORT_LIMIT, true);
+  const query = requestRowsQuery(search, null, EXPORT_LIMIT, true, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
-  const csv = reportRequestsCsv(results, env.DIH_REPORT_REQUEST_HUB_ORIGIN);
+  const csv = reportRequestsCsv(results, env.DIH_REPORT_REQUEST_HUB_ORIGIN, admin);
   return new Response(csv, { headers: CSV_HEADERS });
 }
 
@@ -496,5 +517,7 @@ export async function handleReportRequests(request, env, session) {
     return privateResponse({ error: 'Report requests are unavailable.' }, 503);
   }
   if (request.method === 'HEAD') return new Response(null, { status: 200, headers: NO_STORE_HEADERS });
-  return url.pathname === '/api/report-requests.csv' ? handleCsv(url, env) : handleList(url, env);
+  const admin = isDataAdmin(session);
+  return url.pathname === '/api/report-requests.csv'
+    ? handleCsv(url, env, admin) : handleList(url, env, admin);
 }

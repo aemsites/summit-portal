@@ -88,7 +88,10 @@ function resourceDialog(id, title, sources) {
   let opener;
   function closeDialog() {
     dialog.close();
-    if (opener?.isConnected) opener.focus();
+    const target = opener?.disabled
+      ? opener.closest('.dashboard-resource-actions')?.querySelector('a, button:not(:disabled)')
+      : opener;
+    if (target?.isConnected) target.focus();
   }
   close.addEventListener('click', closeDialog);
   dialog.addEventListener('cancel', (event) => { event.preventDefault(); closeDialog(); });
@@ -136,6 +139,21 @@ function resourceCard(main, {
     action.type = 'button';
     action.addEventListener('click', () => open(action, exportForm));
     actions.append(action);
+    if (exportForm) {
+      const tools = sources.find((source) => source.classList.contains('dashboard-tools'));
+      const guidance = node('p', 'dashboard-resource-copy');
+      guidance.id = `${id}-access`;
+      action.setAttribute('aria-describedby', guidance.id);
+      actions.append(guidance);
+      const updateAccess = () => {
+        action.disabled = tools?.querySelector('.dt-download')?.disabled !== false;
+        guidance.textContent = tools?.querySelector('.dt-access')?.textContent
+          ?? 'Could not verify download access. Reload the page to try again.';
+        guidance.hidden = !guidance.textContent;
+      };
+      updateAccess();
+      tools?.addEventListener('booth-export-access-change', updateAccess);
+    }
     card.append(dialog);
   }
   return card;

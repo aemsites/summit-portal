@@ -10,7 +10,9 @@ const EXPORTS = [
   ['contact_requested', 'Historical contact opt-ins'],
 ];
 
-export default function init(el) {
+const ACCESS_GUIDANCE = 'Please request this data from someone on the Digital Insights team.';
+
+export default async function init(el) {
   if (el.querySelector('.dt-usage')) return;
   el.innerHTML = `
     <details class="dt-usage">
@@ -20,9 +22,10 @@ export default function init(el) {
       <form class="dt-export">
         <label for="booth-activity-kind">Activity to include</label>
         <div class="dt-export-controls">
-          <select id="booth-activity-kind" name="kind"></select>
-          <button class="dt-download" type="submit">Download CSV</button>
+          <select id="booth-activity-kind" name="kind" disabled></select>
+          <button class="dt-download" type="submit" aria-describedby="booth-export-access" disabled>Download CSV</button>
         </div>
+        <p id="booth-export-access" class="dt-access" role="status">Checking download access...</p>
         <p class="dt-retention">Portal records are deleted after 90 days. Downloaded copies are your responsibility.</p>
         <p class="dt-export-status" role="status"></p>
       </form>
@@ -43,9 +46,11 @@ export default function init(el) {
   });
   const download = form.querySelector('.dt-download');
   const status = form.querySelector('.dt-export-status');
+  const access = form.querySelector('.dt-access');
+  let canDownload = false;
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (download.disabled) return;
+    if (!canDownload || download.disabled) return;
     const kind = select.value;
     const url = new URL('/api/booth-activity.csv', window.location.origin);
     if (kind) url.searchParams.set('kind', kind);
@@ -61,6 +66,7 @@ export default function init(el) {
         signal: AbortSignal.timeout(60000),
       });
       if (response.status === 401) {
+        canDownload = false;
         status.textContent = 'Your session has expired. ';
         const login = document.createElement('a');
         login.href = '/auth/portal?redirect=%2Fadobe%2Fdashboard';
@@ -69,7 +75,9 @@ export default function init(el) {
         return;
       }
       if (response.status === 403) {
-        status.textContent = 'Downloads require an Adobe employee signed in with Adobe ID, not a booth or shared-link login.';
+        canDownload = false;
+        access.textContent = ACCESS_GUIDANCE;
+        status.textContent = 'Downloads are available to admins signed in with Adobe ID only.';
         return;
       }
       if (!response.ok || !/^text\/csv(?:;|$)/i.test(response.headers.get('Content-Type') || '')) {
@@ -89,9 +97,23 @@ export default function init(el) {
     } catch {
       status.textContent = 'Could not download the complete CSV. Please try again.';
     } finally {
-      download.disabled = false;
-      select.disabled = false;
+      download.disabled = !canDownload;
+      select.disabled = !canDownload;
       form.removeAttribute('aria-busy');
+      el.dispatchEvent(new Event('booth-export-access-change'));
     }
   });
+
+  try {
+    const response = await fetch('/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) throw new Error('Download access could not be verified');
+    const identity = await response.json();
+    canDownload = identity.isAdmin === true;
+    access.textContent = canDownload ? '' : ACCESS_GUIDANCE;
+    download.disabled = !canDownload;
+    select.disabled = !canDownload;
+  } catch {
+    access.textContent = 'Could not verify download access. Reload the page to try again.';
+  }
+  el.dispatchEvent(new Event('booth-export-access-change'));
 }

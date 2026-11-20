@@ -18,7 +18,7 @@ describe('dashboard layout', () => {
     markup = await response.text();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     document.body.innerHTML = markup;
     main = document.querySelector('main');
     sandbox = sinon.createSandbox();
@@ -32,7 +32,9 @@ describe('dashboard layout', () => {
     const tools = document.createElement('div');
     tools.className = 'dashboard-tools';
     picker.after(tools);
-    initTools(tools);
+    const identity = sandbox.stub(window, 'fetch').resolves(Response.json({ isAdmin: true }));
+    await initTools(tools);
+    identity.restore();
   });
 
   afterEach(async () => {
@@ -111,10 +113,36 @@ describe('dashboard layout', () => {
     await new Promise((resolve) => { setTimeout(resolve, 80); });
     expect(formListener.calledOnce).to.equal(true);
     expect(fetchStub.firstCall.args[0]).to.equal('/api/booth-activity.csv?kind=no_report');
-    expect(dialog.querySelector('.dt-export-status').textContent).to.include('Adobe employee');
+    expect(dialog.querySelector('.dt-export-status').textContent).to.include('admins signed in');
+    expect(exportAction.disabled).to.equal(true);
     dialog.querySelector('.dashboard-dialog-close').click();
     expect(dialog.open).to.equal(false);
-    expect(document.activeElement).to.equal(exportAction);
+    const staffGuide = exportAction.closest('.dashboard-resource-actions').querySelector('a');
+    expect(document.activeElement === staffGuide).to.equal(true);
+  });
+
+  it('disables the visible Booth export entry while checking and for non-admins', async () => {
+    const tools = main.querySelector('.dashboard-tools');
+    tools.replaceChildren();
+    let resolveAccess;
+    const fetchStub = sandbox.stub(window, 'fetch').returns(
+      new Promise((resolve) => { resolveAccess = resolve; }),
+    );
+    const ready = initTools(tools);
+    await composeDashboard(main, '/adobe/dashboard');
+    const action = main.querySelector('.dashboard-export-action');
+    expect(action.disabled).to.equal(true);
+    const guidance = main.querySelector(`#${action.getAttribute('aria-describedby')}`);
+    expect(guidance.textContent).to.include('Checking download access');
+    resolveAccess(Response.json({ isAdmin: false }));
+    await ready;
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(action.disabled).to.equal(true);
+    expect(guidance.textContent).to.include('Digital Insights team');
+    expect(guidance.hidden).to.equal(false);
+    action.click();
+    expect(tools.closest('dialog').open).to.equal(false);
+    expect(fetchStub.callCount).to.equal(1);
   });
 
   it('retains the current resource destinations and sharing guidance', async () => {

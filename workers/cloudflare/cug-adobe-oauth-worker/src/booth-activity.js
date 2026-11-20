@@ -1,4 +1,4 @@
-import { reportRequestsAuthorisation, csvCell } from './report-requests.js';
+import { reportRequestsAuthorisation, isDataAdmin, csvCell } from './report-requests.js';
 
 export const BOOTH_NOTICE_VERSION = 'booth-privacy-v1';
 export const BOOTH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -185,6 +185,7 @@ function csvRows(rows) {
 export async function handleBoothActivity(request, env, session) {
   const auth = reportRequestsAuthorisation(session);
   if (auth !== 200) return reply({ error: 'Adobe OAuth access required.' }, auth);
+  if (!isDataAdmin(session)) return reply({ error: 'Admin access required. Please request this data from someone on the Digital Insights team.' }, 403);
   if (!['GET', 'HEAD'].includes(request.method)) return reply({ error: 'Method not allowed.' }, 405);
   if (!env.REPORT_REQUESTS?.prepare) return reply({ error: 'Booth activity is unavailable.' }, 503);
   const url = new URL(request.url);

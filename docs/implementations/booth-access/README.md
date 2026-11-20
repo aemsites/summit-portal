@@ -1032,8 +1032,14 @@ Expanding it offers all retained activity
 or a specific action (search, no report, report/demo selected or opened, report
 email sent, historical contact opt-in). Each CSV row is an action, not a unique
 person; Email and Visit correlate the journey. Business emails and the 90-day
-retention window are disclosed beside the controls. Downloads require the existing
-Adobe OAuth authorization, complete the response body before saving, and show
+retention window are disclosed beside the controls. Downloads require an
+allowlisted data admin signed in through Adobe OAuth. Ordinary users still see
+the utility, with disabled controls and guidance to request the data from the
+Digital Insights team. Its visible dashboard entry is also disabled, with the
+guidance beneath it. The entry and panel stay synchronized through the
+`booth-export-access-change` event. Controls remain disabled until `/auth/me` confirms admin
+access; failed verification or a rejected/expired download never enables them.
+Admin downloads complete the response body before saving, and show
 visible failures instead of downloading an error document or partial CSV.
 
 Expanded content includes **View the booth experience**, linking to `/booth`.
@@ -1314,8 +1320,13 @@ Search/view/send and static follow-up guidance must not be treated as permission
 for sales or general marketing communications. The public request form retains
 its separate, unchecked consent flow.
 
-Only real Adobe OAuth sessions can retrieve PII. Event/booth credentials,
-Semrush OAuth and magic/share-link sessions are rejected:
+Only Adobe OAuth sessions for `josec@adobe.com`, `nglauser@adobe.com`,
+`ebill@adobe.com`, or `constantinp@adobe.com` can retrieve Booth PII. The
+case-insensitive allowlist is shared with report-request contact access in
+`src/report-requests.js`. Both JSON and CSV (including HEAD) enforce this before
+querying D1. Other Adobe users, event/booth credentials, Semrush OAuth and
+magic/share-link sessions are rejected. Deploy the Worker before the matching
+frontend; a frontend branch push alone does not close the live exposure.
 
 | List | Authenticated CSV route |
 |---|---|

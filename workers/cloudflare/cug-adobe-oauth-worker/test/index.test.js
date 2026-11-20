@@ -101,7 +101,7 @@ describe('index (request routing)', () => {
   });
 
   describe('identified booth activity', () => {
-    it('routes lead exports without proxying them and requires real Adobe OAuth', async () => {
+    it('routes lead exports without proxying them and requires an admin Adobe OAuth session', async () => {
       env.REPORT_REQUESTS = createMockBoothD1();
       vi.stubGlobal('fetch', vi.fn());
       await storeBoothActivity(env, createBoothActivity('search', 'visit', 'visitor@example.com'));
@@ -110,7 +110,7 @@ describe('index (request routing)', () => {
         expect((await worker.fetch(new Request(url), env)).status).toBe(401);
         const staff = await createBoothSession(env, { email: 'operator@adobe.com', method: 'staff' });
         expect((await worker.fetch(new Request(url, { headers: { Cookie: `auth_token=${staff}` } }), env)).status).toBe(403);
-        const oauth = await createBoothSession(env, { email: 'operator@adobe.com', method: 'oauth' });
+        const oauth = await createBoothSession(env, { email: 'josec@adobe.com', method: 'oauth' });
         const response = await worker.fetch(new Request(url, { headers: { Cookie: `auth_token=${oauth}` } }), env);
         expect(response.status).toBe(200);
         expect(await response.text()).toContain('visitor@example.com');
@@ -323,6 +323,16 @@ describe('index (request routing)', () => {
       expect(body.email).toBe('alice@adobe.com');
       expect(body.method).toBe('oauth');
       expect(body.verified).toBe(true);
+      expect(body.isAdmin).toBe(false);
+    });
+
+    it.each(['oauth', 'staff', 'sharelink', 'magiclink'])('derives admin capability only from an admin OAuth session, not %s identity alone', async (method) => {
+      const { createSession } = await import('../src/session.js');
+      const token = await createSession(env, { email: 'JOSEC@ADOBE.COM', groups: ['adobe.com'], method });
+      const options = { headers: { Cookie: `auth_token=${token}` } };
+      const response = await worker.fetch(new Request('https://mysite.com/auth/me', options), env);
+      expect((await response.json()).isAdmin).toBe(method === 'oauth');
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     });
 
     it.each(['magiclink', 'sharelink', undefined])('withholds viewer identity for an unverified %s session', async (method) => {
