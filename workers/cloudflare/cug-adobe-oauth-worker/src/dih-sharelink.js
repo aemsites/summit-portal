@@ -12,7 +12,7 @@ function respond(body, status) {
 }
 
 /** Bound streamed bodies as well as requests with a Content-Length header. */
-async function readBody(request) {
+async function readBody(request, maxBodyBytes) {
   const reader = request.body?.getReader();
   if (!reader) return { text: '' };
   const chunks = [];
@@ -21,7 +21,7 @@ async function readBody(request) {
     const { done, value } = await reader.read();
     if (done) break;
     length += value.byteLength;
-    if (length > MAX_BODY_BYTES) {
+    if (length > maxBodyBytes) {
       await reader.cancel();
       return { oversized: true };
     }
@@ -37,17 +37,17 @@ async function readBody(request) {
   return { text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes) };
 }
 
-/** Service-only copy adapter; browser sessions and IMS tokens are not consulted. */
-export async function handleDihShareLinkRequest(request, env) {
+/** Verify the signed JSON envelope shared by the private Hub routes. */
+export async function authenticateDihJson(request, options) {
+  const { endpoint, secret, configurationError, maxBodyBytes = MAX_BODY_BYTES } = options;
   if (request.method !== 'POST') {
     const response = respond({ error: 'Method Not Allowed' }, 405);
     response.headers.set('Allow', 'POST');
-    return response;
+    return { response };
   }
-  const secret = env.DIH_SHARE_LINK_SECRET;
   if (typeof secret !== 'string' || [...secret].length < 32 || secret.trim() !== secret
     || [...secret].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) {
-    return respond({ error: 'DIH share link service is not configured' }, 503);
+    return { response: respond({ error: configurationError }, 503) };
   }
 
   const timestamp = request.headers.get('X-DIH-Timestamp') || '';
@@ -56,32 +56,41 @@ export async function handleDihShareLinkRequest(request, env) {
   if (!/^\d+$/.test(timestamp) || !Number.isSafeInteger(seconds)
     || Math.abs(Math.floor(Date.now() / 1000) - seconds) > 300
     || !/^[a-f0-9]{64}$/.test(signature)) {
-    return respond({ error: 'Invalid service authentication' }, 401);
+    return { response: respond({ error: 'Invalid service authentication' }, 401) };
   }
 
   let body;
   try {
-    body = await readBody(request);
+    body = await readBody(request, maxBodyBytes);
   } catch {
-    return respond({ error: 'Invalid UTF-8 body' }, 400);
+    return { response: respond({ error: 'Invalid UTF-8 body' }, 400) };
   }
-  if (body.oversized) return respond({ error: 'Request body too large' }, 413);
+  if (body.oversized) return { response: respond({ error: 'Request body too large' }, 413) };
 
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
   const mac = Uint8Array.from(signature.match(/../g), (pair) => parseInt(pair, 16));
-  const valid = await crypto.subtle.verify('HMAC', key, mac, encoder.encode(`${timestamp}\nPOST\n${ENDPOINT}\n${body.text}`));
-  if (!valid) return respond({ error: 'Invalid service authentication' }, 401);
+  const valid = await crypto.subtle.verify('HMAC', key, mac, encoder.encode(`${timestamp}\nPOST\n${endpoint}\n${body.text}`));
+  if (!valid) return { response: respond({ error: 'Invalid service authentication' }, 401) };
 
   const contentType = request.headers.get('Content-Type') || '';
   if (!/^application\/json(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(contentType)) {
-    return respond({ error: 'Content-Type must be application/json with UTF-8 encoding' }, 415);
+    return { response: respond({ error: 'Content-Type must be application/json with UTF-8 encoding' }, 415) };
   }
-  let payload;
   try {
-    payload = JSON.parse(body.text);
+    return { payload: JSON.parse(body.text) };
   } catch {
-    return respond({ error: 'Invalid JSON body' }, 400);
+    return { response: respond({ error: 'Invalid JSON body' }, 400) };
   }
+}
+
+/** Service-only copy adapter; browser sessions and IMS tokens are not consulted. */
+export async function handleDihShareLinkRequest(request, env) {
+  const { payload, response: authError } = await authenticateDihJson(request, {
+    endpoint: ENDPOINT,
+    secret: env.DIH_SHARE_LINK_SECRET,
+    configurationError: 'DIH share link service is not configured',
+  });
+  if (authError) return authError;
   if (!payload || Array.isArray(payload) || typeof payload !== 'object'
     || Object.keys(payload).length !== 2
     || typeof payload.path !== 'string' || typeof payload.actor_email !== 'string'

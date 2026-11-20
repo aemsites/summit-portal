@@ -26,7 +26,8 @@ import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleDihShareLinkRequest } from './dih-sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
-import { handleReportRequests } from './report-requests.js';
+import { handleReportRequests, STAGE_TEST_PATH } from './report-requests.js';
+import { handleReportRequestCampaigns, REPORT_REQUEST_CAMPAIGNS_PATH } from './report-request-campaigns.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
 import { serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset } from './booth-shell.js';
@@ -164,6 +165,9 @@ const handleRequest = async (request, env) => {
   // Service authentication only; deliberately no browser CORS or IMS fallback.
   if (url.pathname === '/auth/sharelink/dih') {
     return handleDihShareLinkRequest(request, env);
+  }
+  if (url.pathname === REPORT_REQUEST_CAMPAIGNS_PATH) {
+    return handleReportRequestCampaigns(request, env);
   }
 
   // Magic link request: POST email, check CUG domain, send signed link
@@ -316,6 +320,9 @@ const handleRequest = async (request, env) => {
 
   // Public lead creation and Adobe-IMS-only lead retrieval never proxy to the
   // EDS origin. This keeps request data in D1 and outside authored content.
+  if (url.pathname === STAGE_TEST_PATH) {
+    return handleReportRequests(request, env, null);
+  }
   if (url.pathname === '/api/report-requests' || url.pathname === '/api/report-requests.csv') {
     const session = await getSession(request, env);
     return handleReportRequests(request, env, session);

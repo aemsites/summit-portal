@@ -1420,14 +1420,28 @@ collapses the four icon-and-label report topics under **Explore report coverage*
 to bring the form closer to the top. The single breakpoint remains 1000px.
 
 Required form fields are **first name, last name, business email, company,
-website/domain, request source**, and contact consent. Role and primary market
-are no longer collected. First/last name are combined into the existing
+website/domain**, and contact consent. Role, primary market and the source
+question are no longer collected. First/last name are combined into the existing
 `fullName`/`full_name` contract (up to 60 characters each, including the joining
-space up to 121); existing names are not migrated. **Where did you hear about
-this report?** accepts up to 200 characters and asks for the event name/city or
-email, colleague or web referral. The Worker normalizes whitespace and validates
-supplied source values; missing source is accepted only for compatibility with
-older clients during rollout, and historical source values remain null.
+space up to 121); existing names are not migrated. Links of the form
+`/request-report?campaign=<public-id>` pass a single lowercase UUIDv4 to the
+Worker for attribution without showing campaign details on the page. Direct
+visits and links with invalid or repeated campaign parameters still submit
+normally, without attribution.
+
+**Stage links:** a single signed `stage` query value opens **Test mode** instead
+of live intake. The form only posts to `/api/report-requests/test`, and only
+shows confirmation after receiving an explicit test receipt. Invalid or
+repeated values never open the live form. The Worker verifies the Stage token
+with `DIH_REPORT_REQUEST_STAGE_TEST_SECRET` (a dedicated shared secret, at
+least 32 non-whitespace characters, with the original bytes used for signing).
+Test submissions still use Turnstile and rate limits, but never access D1 or
+appear in the request list or CSV. Live intake rejects payloads carrying a
+test token. No schema change is needed for test mode. Verify both the updated
+Portal block and Worker in the intended environment **before** enabling Stage
+link issuance in the Hub. Disable issuance and stop sharing existing Stage
+links before rolling back the Portal block: an older block treats those URLs
+as live intake. Verify both components again before re-enabling issuance.
 
 **Customer-only intake (November 12; deployment pending):** the public form and
 Worker reject email addresses at `adobe.com` and `semrush.com`, including
@@ -1454,10 +1468,16 @@ retry. Success replaces the entire intake shell, including hero and demos, with
 the confirmation; internal request IDs are never shown as support references.
 The validation-summary accent is intentional error feedback, not decorative chrome.
 
-**Rollout:** apply `0004_report_request_source.sql` before deploying the Worker
-and publishing the frontend. The migration adds a nullable `request_source`
-column without changing existing leads or consent records. No production
-deployment is part of this design change. Local synthetic preview:
+**Rollout:** apply the `REPORT_REQUESTS` D1 migrations through
+`0005_report_request_campaign_attribution.sql` (after `0004_report_request_source.sql`)
+before publishing the compatible Worker, then publish the frontend. Set
+`DIH_REPORT_REQUEST_CAMPAIGN_SYNC_SECRET` as a Worker secret matching the Hub's
+dedicated signing credential (at least 32 characters; do not reuse the share-link
+or session secret). Set `DIH_REPORT_REQUEST_HUB_ORIGIN` to the corresponding
+HTTPS Hub origin, with no path, query, or fragment. Without a valid origin,
+campaign names can still export, but campaign links remain blank. Apply no
+backfill; if reverting the Worker or form, leave the additive schema in place.
+No production deployment is part of this change. Local synthetic preview:
 `npm run preview:booth`, then `/content/index?preview=request` or `/request-report`;
 it never sends a real request or records a lead.
 
@@ -1483,9 +1503,12 @@ Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads new
 **Campaign intake CSV (October 27; Worker deployment required):** `/api/report-requests.csv`
 now matches the current Digital Insights Hub Companies-sheet columns and order:
 `Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
-`Primary Country (Optional)`, `Audience`, `Access Emails`. The November 3 source
-tracking change appends **Request Source** after those nine existing columns;
-it contains the submitted event/referral text, with blank values for older leads.
+`Primary Country (Optional)`, `Audience`, `Access Emails`, `Request Source`.
+Attribution appends only **Campaign Name** and **Campaign Link** after those ten
+columns. New requests use `Public request form` as their source; source values
+on existing leads are preserved. The campaign columns stay blank until the Hub
+registers a matching public ID through the signed private Worker endpoint. The
+staff list remains unchanged, and the CSV never exports the public ID.
 Company and website
 come from the request; the customer's business email goes in `Access Emails`,
 not the Adobe representative field. Uncollected campaign settings remain blank.
