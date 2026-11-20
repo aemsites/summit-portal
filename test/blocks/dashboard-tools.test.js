@@ -8,7 +8,7 @@ describe('dashboard-tools', () => {
   let downloadStub;
   let objectUrlStub;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     document.body.innerHTML = `
       <main>
         <div class="section"><div class="block-content">
@@ -24,10 +24,12 @@ describe('dashboard-tools', () => {
     `;
     block = document.querySelector('.dashboard-tools');
     fetchStub = sinon.stub(window, 'fetch');
+    fetchStub.withArgs('/auth/me').resolves(Response.json({ isAdmin: true }));
     downloadStub = sinon.stub(HTMLAnchorElement.prototype, 'click');
     objectUrlStub = sinon.stub(URL, 'createObjectURL').returns('blob:test-export');
     sinon.stub(URL, 'revokeObjectURL');
-    init(block);
+    await init(block);
+    fetchStub.resetHistory();
   });
 
   afterEach(() => {
@@ -41,6 +43,38 @@ describe('dashboard-tools', () => {
     // Includes response and body microtasks before asserting the visible result.
     await new Promise((resolve) => { window.setTimeout(resolve, 80); });
   }
+
+  it('keeps export disabled until verified and never fetches activity for a non-admin', async () => {
+    block.replaceChildren();
+    let resolveAccess;
+    fetchStub.withArgs('/auth/me').returns(new Promise((resolve) => { resolveAccess = resolve; }));
+    const ready = init(block);
+    expect(block.querySelector('.dt-download').disabled).to.equal(true);
+    expect(block.querySelector('select').disabled).to.equal(true);
+    await submit();
+    expect(fetchStub.callCount).to.equal(1);
+    resolveAccess(Response.json({ isAdmin: false }));
+    await ready;
+    await submit();
+    expect(fetchStub.callCount).to.equal(1);
+    expect(block.querySelector('.dt-access').textContent).to.include('Digital Insights team');
+    expect(block.querySelector('.dt-download').disabled).to.equal(true);
+  });
+
+  it('fails closed with visible feedback if permission verification fails or omits the admin flag', async () => {
+    for (const response of [new Response('', { status: 503 }), Response.json({ authenticated: true })]) {
+      block.replaceChildren();
+      fetchStub.withArgs('/auth/me').resolves(response);
+      await init(block);
+      expect(block.querySelector('.dt-download').disabled).to.equal(true);
+      expect(block.querySelector('.dt-access').textContent).not.to.equal('');
+    }
+    block.replaceChildren();
+    fetchStub.withArgs('/auth/me').rejects(new Error('Offline'));
+    await init(block);
+    expect(block.querySelector('.dt-download').disabled).to.equal(true);
+    expect(block.querySelector('.dt-access').textContent).to.include('Could not verify');
+  });
 
   it('shows only a closed export utility and leaves authored notices and the picker intact', () => {
     init(block);
@@ -134,13 +168,18 @@ describe('dashboard-tools', () => {
     expect(block.querySelector('.dt-export-status a').getAttribute('href'))
       .to.equal('/auth/portal?redirect=%2Fadobe%2Fdashboard');
     expect(downloadStub.called).to.equal(false);
-    expect(block.querySelector('select').disabled).to.equal(false);
+    expect(block.querySelector('select').disabled).to.equal(true);
   });
 
-  it('explains Adobe OAuth restrictions for forbidden downloads', async () => {
+  it('explains admin restrictions and does not re-enable a forbidden download', async () => {
     fetchStub.resolves(new Response('{}', { status: 403 }));
     await submit();
-    expect(block.querySelector('.dt-export-status').textContent).to.include('not a booth or shared-link login');
+    expect(block.querySelector('.dt-export-status').textContent).to.include('admins signed in with Adobe ID');
+    expect(block.querySelector('.dt-access').textContent).to.include('Digital Insights team');
+    expect(block.querySelector('.dt-download').disabled).to.equal(true);
+    expect(block.querySelector('select').disabled).to.equal(true);
+    await submit();
+    expect(fetchStub.callCount).to.equal(1);
     expect(downloadStub.called).to.equal(false);
   });
 

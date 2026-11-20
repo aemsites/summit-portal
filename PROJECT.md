@@ -2,6 +2,47 @@
 
 ## Overview
 
+**Customer data privacy (November 20; branch only, deployment required):**
+customer names and emails in report requests and identified Booth history are
+restricted server-side to Adobe OAuth sessions for `josec@adobe.com`,
+`nglauser@adobe.com`, `ebill@adobe.com`, and `constantinp@adobe.com`.
+The shared `isDataAdmin` check requires an exact, case-insensitive email match;
+event credentials and link-based sessions never gain admin access.
+`/auth/me` and the report-request list return a server-derived `isAdmin` flag.
+Other authorized Adobe OAuth users retain company/request details and CSV export,
+but JSON omits `full_name`/`email` and CSV omits customer-name/email columns
+(including the empty Representative Email column). Their search matches only
+company, website and source, not the combined identity-bearing search index.
+Admin CSV retains the existing Hub columns and appends **Customer Name**.
+Both `/api/booth-activity` and `.csv`, including HEAD, reject non-admins before
+querying D1. The dashboard utility remains visible; its controls start disabled,
+are enabled only after a successful admin check, and stay disabled for ordinary
+users with **Please request this data from someone on the Digital Insights team.**
+The dashboard's visible **Booth usage export (CSV)** entry mirrors that disabled
+state and displays the same guidance directly beneath it. If access expires
+while its panel is open, closing the panel returns keyboard focus to an enabled
+staff-guide link instead of the now-disabled export entry.
+The report list removes contact elements for ordinary users and explains that
+their CSV excludes names/emails. Jose approved the synthetic browser mock.
+Deploy the Worker protections before publishing the matching frontend. Pushing
+this branch does not deploy the Worker or secure the live endpoints. No migration,
+PR, merge or production deployment is included.
+
+Verification: 88 focused Worker checks for intake, attribution, Stage isolation
+and Booth exports pass, plus 11 routing/identity checks and 52 browser checks.
+Real SQLite queries verify contact omission, private-search isolation, CSV
+column alignment and cursor pagination across 52 synthetic records. Actual
+components were checked at `/content/index` on an isolated local server at
+390px and 1280px in both roles, including the dashboard entry and admin panel.
+Port 3000 serves an unrelated process, so the preview used port 3017; no live
+customer data was requested. The shared Playwright MCP profile was busy, so
+the side browser's evaluate checks and existing Chromium test runner were used.
+Full lint retains its 1,642 baseline findings, with no added JavaScript findings;
+all three changed stylesheets pass. The repository has no `build` script, but
+the real Wrangler `--dry-run --env summit` bundle succeeds without deploying.
+The broader routing run retains the two previously documented guide-redirect
+failures; no unrelated fixes are included.
+
 **Shared-link viewer identity and staff-session preservation (November 17, branch only):**
 `/auth/me` exposes email/name only for verified interactive (`oauth`/`staff`)
 sessions. Link-based and legacy unverified sessions retain their signed
@@ -1504,7 +1545,7 @@ Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads new
 now matches the current Digital Insights Hub Companies-sheet columns and order:
 `Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
 `Primary Country (Optional)`, `Audience`, `Access Emails`, `Request Source`.
-Attribution appends only **Campaign Name** and **Campaign Link** after those ten
+Attribution appends **Campaign Name** and **Campaign Link** after those ten
 columns. New requests use `Public request form` as their source; source values
 on existing leads are preserved. The campaign columns stay blank until the Hub
 registers a matching public ID through the signed private Worker endpoint. The
@@ -1514,9 +1555,11 @@ come from the request; the customer's business email goes in `Access Emails`,
 not the Adobe representative field. Uncollected campaign settings remain blank.
 Per Jose's decision, the optional country is also blank so the Hub can infer it;
 the request's free-text market is not a validated country override. Submitted
-date, contact name, role and entered market remain available in the list, but
-are not campaign intake columns. Search, newest-first order, the existing
-1,000-row export limit, Adobe-only access and CSV escaping are unchanged.
+date, role and entered market remain available in the list. The November 20
+privacy change appends **Customer Name** to admin exports, keeps contact name
+and email admin-only in the list, and removes email/name columns from ordinary
+Adobe OAuth exports. Newest-first order, the existing 1,000-row export limit,
+campaign attribution and CSV escaping are unchanged.
 Open the CSV in Excel and save it as `.xlsx` before creating a campaign batch:
 the Hub does not accept CSV uploads directly. The schema was checked against
 [`company-template.ts`](https://github.com/Adobe-AEM-Foundation/digital-insights-hub/blob/c201e8e53ac34212fc7ac1364f6a897b43fc04a2/frontend/src/lib/campaigns-v3/company-template.ts).
@@ -1604,6 +1647,7 @@ Auth is handled by the Cloudflare worker in `workers/cloudflare/cug-adobe-oauth-
 
 - `POST /api/report-requests` is public, JSON-only, size-bounded, and verifies Cloudflare Turnstile server-side. It applies a honeypot, then a best-effort 5-per-10-minute salted IP-digest KV rate limit only after a valid Turnstile challenge, and salted idempotency-key deduplication. Raw client IPs and Turnstile tokens are never persisted or logged.
 - `GET /api/report-requests` and `GET /api/report-requests.csv` require `session.method === 'oauth'` and an exact `@adobe.com` email. Event-staff credentials, Semrush OAuth, magic links, and share links receive `401`/`403`, even though some can access other staff surfaces.
+- The four data admins listed above can retrieve/search/export customer name and email. Other Adobe OAuth users receive an explicit safe-column projection and search only company, website and source. Report CSV uses role-specific columns; Booth JSON/CSV are admin-only. All decisions use the server-validated session, never browser identity or query parameters.
 - Durable records are stored in the `REPORT_REQUESTS` D1 binding using `migrations/0001_report_requests.sql`: internal request ID, timestamp, submitted fields, consent version/timestamp, and search text. A D1 batch writes the request before its foreign-key-constrained idempotency mapping; if another request already owns that mapping, the provisional duplicate is removed within the same batch. Responses that contain lead information — and errors from these endpoints — send `Cache-Control: private, no-store`. CSV cells are quoted and formula-prefixed values are escaped.
 
 The form does not generate a report or add submission telemetry. D1 is provisioned and migrated, the internal salts and `TURNSTILE_SECRET_KEY` are configured, and the managed Turnstile widget is bound to `act.aem.now`, `main--summit-portal--aemsites.aem.page`, and `main--summit-portal--aemsites.aem.live` with its public site key in DA metadata. Before production launch, establish D1 backup/recovery and obtain approval for the privacy copy, accountable data owner, and retention/deletion policy. Data is retained until that policy is approved; no automated deletion is configured.

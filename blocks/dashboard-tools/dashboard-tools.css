@@ -69,23 +69,26 @@
   font-weight: 600;
 }
 
-.dashboard-tools .dt-download:hover {
+.dashboard-tools .dt-download:not(:disabled):hover {
   background: var(--color-surface-hover);
 }
 
 .dashboard-tools :disabled {
-  cursor: wait;
-  opacity: 0.65;
+  cursor: not-allowed;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
 }
 
 .dashboard-tools .dt-retention,
+.dashboard-tools .dt-access,
 .dashboard-tools .dt-export-status {
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 1.4;
 }
 
-.dashboard-tools .dt-export-status:empty {
+.dashboard-tools .dt-export-status:empty,
+.dashboard-tools .dt-access:empty {
   display: none;
 }
 

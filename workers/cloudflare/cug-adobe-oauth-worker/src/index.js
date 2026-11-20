@@ -26,7 +26,7 @@ import { handleMagicLinkRequest } from './magiclink.js';
 import { handleShareLinkRequest } from './sharelink.js';
 import { handleDihShareLinkRequest } from './dih-sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
-import { handleReportRequests, STAGE_TEST_PATH } from './report-requests.js';
+import { handleReportRequests, isDataAdmin, STAGE_TEST_PATH } from './report-requests.js';
 import { handleReportRequestCampaigns, REPORT_REQUEST_CAMPAIGNS_PATH } from './report-request-campaigns.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
@@ -310,6 +310,7 @@ const handleRequest = async (request, env) => {
       // not viewer identities; keep their email/name out of the identity UI.
       method: session.method || null,
       verified: isVerifiedMethod(session.method),
+      isAdmin: isDataAdmin(session),
     }), {
       headers: {
         'Content-Type': 'application/json',

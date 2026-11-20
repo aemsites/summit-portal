@@ -24,12 +24,16 @@
       { full_name: 'Taylor Example', email: 'taylor@example.net', company: 'Example with a longer company name', website: 'a-very-long-website-name.example.net', job_title: 'Digital experience lead', primary_market: 'North America', submitted_at: '2026-10-25T10:00:00Z' },
     ];
     const originalFetch = window.fetch.bind(window);
+    const isAdmin = new URLSearchParams(location.search).get('role') === 'admin';
     window.fetch = (input, options) => {
       const url = new URL(input, window.location.href);
       if (url.pathname === '/api/report-requests') {
         const query = (url.searchParams.get('q') || '').toLowerCase();
-        const matches = requests.filter((request) => Object.values(request).join(' ').toLowerCase().includes(query));
-        return Promise.resolve(Response.json({ requests: matches, nextCursor: null }));
+        const visible = requests.map(({ full_name, email, ...rest }) => (
+          isAdmin ? { full_name, email, ...rest } : rest
+        ));
+        const matches = visible.filter((request) => Object.values(request).join(' ').toLowerCase().includes(query));
+        return Promise.resolve(Response.json({ isAdmin, requests: matches, nextCursor: null }));
       }
       if (url.pathname === '/api/report-requests.csv') {
         return Promise.reject(new Error('CSV downloads are disabled in this synthetic preview.'));

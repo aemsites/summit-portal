@@ -18,19 +18,22 @@ function detailsRow(label, value) {
   return row;
 }
 
-function requestRow(request) {
+function requestRow(request, admin) {
   const row = document.createElement('article');
   row.className = 'rrl-row';
   const top = document.createElement('div');
   top.className = 'rrl-contact';
-  const name = document.createElement('h3');
-  const email = document.createElement('p');
   const submitted = document.createElement('time');
-  name.textContent = request.full_name;
-  email.textContent = request.email;
+  if (admin) {
+    const name = document.createElement('h3');
+    const email = document.createElement('p');
+    name.textContent = request.full_name;
+    email.textContent = request.email;
+    top.append(name, email);
+  }
   submitted.dateTime = request.submitted_at;
   submitted.textContent = formatDate(request.submitted_at);
-  top.append(name, email, submitted);
+  top.append(submitted);
 
   const details = document.createElement('dl');
   details.append(
@@ -92,9 +95,10 @@ export default function init(el) {
       <section class="rrl-list" aria-labelledby="rrl-list-title">
         <h2 id="rrl-list-title">Customer requests</h2>
         <div class="rrl-controls">
-          <label><span>Search report requests</span><input type="search" placeholder="Name, company, website, or source"></label>
+          <label><span>Search report requests</span><input type="search" placeholder="Company, website, or source"></label>
           <a class="rrl-export" href="/api/report-requests.csv">Export CSV</a>
         </div>
+        <p class="rrl-privacy">Customer names and emails are visible to admins only and are excluded from your CSV export.</p>
       </section>
       <aside id="rrl-guidance" class="dashboard-resources" aria-labelledby="rrl-guidance-title" tabindex="-1">
         <h2 id="rrl-guidance-title">Resources &amp; guidance</h2>
@@ -141,7 +145,10 @@ export default function init(el) {
   const load = async (append = false) => {
     if (!append) setMessage(results, 'is-loading', 'Loading report requests...');
     try {
-      const response = await fetch(buildUrl(query, append ? cursor : null), { headers: { Accept: 'application/json' } });
+      const response = await fetch(buildUrl(query, append ? cursor : null), {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
       if (response.status === 401) {
         setMessage(results, 'is-error', 'Sign in with Adobe ID to view report requests.', () => {
           window.location.assign(`/auth/portal?redirect=${encodeURIComponent(window.location.pathname)}`);
@@ -154,6 +161,9 @@ export default function init(el) {
       }
       if (!response.ok) throw new Error('Requests could not be loaded.');
       const body = await response.json();
+      const admin = body.isAdmin === true;
+      search.placeholder = admin ? 'Name, email, company, website, or source' : 'Company, website, or source';
+      shell.querySelector('.rrl-privacy').hidden = admin;
       cursor = body.nextCursor;
       const rows = append ? [...results.querySelectorAll('.rrl-row')] : [];
       if (!body.requests.length && !rows.length) {
@@ -165,7 +175,7 @@ export default function init(el) {
 
       if (!append) results.replaceChildren();
       results.querySelector('.rrl-more')?.remove();
-      body.requests.forEach((request) => results.append(requestRow(request)));
+      body.requests.forEach((request) => results.append(requestRow(request, admin)));
       if (cursor) {
         const more = document.createElement('button');
         more.className = 'rrl-more';
