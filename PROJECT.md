@@ -1454,10 +1454,16 @@ retry. Success replaces the entire intake shell, including hero and demos, with
 the confirmation; internal request IDs are never shown as support references.
 The validation-summary accent is intentional error feedback, not decorative chrome.
 
-**Rollout:** apply `0004_report_request_source.sql` before deploying the Worker
-and publishing the frontend. The migration adds a nullable `request_source`
-column without changing existing leads or consent records. No production
-deployment is part of this design change. Local synthetic preview:
+**Rollout:** apply the `REPORT_REQUESTS` D1 migrations through
+`0005_report_request_campaign_attribution.sql` (after `0004_report_request_source.sql`)
+before publishing the compatible Worker, then publish the frontend. Set
+`DIH_REPORT_REQUEST_CAMPAIGN_SYNC_SECRET` as a Worker secret matching the Hub's
+dedicated signing credential (at least 32 characters; do not reuse the share-link
+or session secret). Set `DIH_REPORT_REQUEST_HUB_ORIGIN` to the corresponding
+HTTPS Hub origin, with no path, query, or fragment. Without a valid origin,
+campaign names can still export, but campaign links remain blank. Apply no
+backfill; if reverting the Worker or form, leave the additive schema in place.
+No production deployment is part of this change. Local synthetic preview:
 `npm run preview:booth`, then `/content/index?preview=request` or `/request-report`;
 it never sends a real request or records a lead.
 
@@ -1483,9 +1489,12 @@ Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads new
 **Campaign intake CSV (October 27; Worker deployment required):** `/api/report-requests.csv`
 now matches the current Digital Insights Hub Companies-sheet columns and order:
 `Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
-`Primary Country (Optional)`, `Audience`, `Access Emails`. The November 3 source
-tracking change appends **Request Source** after those nine existing columns;
-it contains the submitted event/referral text, with blank values for older leads.
+`Primary Country (Optional)`, `Audience`, `Access Emails`, `Request Source`.
+Attribution appends only **Campaign Name** and **Campaign Link** after those ten
+columns. New requests use `Public request form` as their source; source values
+on existing leads are preserved. The campaign columns stay blank until the Hub
+registers a matching public ID through the signed private Worker endpoint. The
+staff list remains unchanged, and the CSV never exports the public ID.
 Company and website
 come from the request; the customer's business email goes in `Access Emails`,
 not the Adobe representative field. Uncollected campaign settings remain blank.

@@ -27,6 +27,7 @@ import { handleShareLinkRequest } from './sharelink.js';
 import { handleDihShareLinkRequest } from './dih-sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests } from './report-requests.js';
+import { handleReportRequestCampaigns, REPORT_REQUEST_CAMPAIGNS_PATH } from './report-request-campaigns.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
 import { serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset } from './booth-shell.js';
@@ -164,6 +165,9 @@ const handleRequest = async (request, env) => {
   // Service authentication only; deliberately no browser CORS or IMS fallback.
   if (url.pathname === '/auth/sharelink/dih') {
     return handleDihShareLinkRequest(request, env);
+  }
+  if (url.pathname === REPORT_REQUEST_CAMPAIGNS_PATH) {
+    return handleReportRequestCampaigns(request, env);
   }
 
   // Magic link request: POST email, check CUG domain, send signed link

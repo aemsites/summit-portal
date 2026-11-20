@@ -48,8 +48,18 @@ export function createMockEnv(overrides = {}) {
 export function createMockD1() {
   const requests = new Map();
   const idempotency = new Map();
+  const campaigns = new Map();
 
   const execute = (sql, params) => {
+    if (sql.startsWith('INSERT INTO report_request_campaigns')) {
+      const [id, hubId, name] = params;
+      if (!campaigns.has(id)) campaigns.set(id, { hub_campaign_id: hubId, campaign_name: name });
+      return { success: true };
+    }
+    if (sql.includes('FROM report_request_campaigns WHERE')) {
+      const campaign = campaigns.get(params[0]);
+      return campaign ? [campaign] : [];
+    }
     if (sql.startsWith('INSERT OR IGNORE INTO report_request_idempotency')) {
       const [hash, requestId, createdAt] = params;
       if (!requests.has(requestId)) throw new Error('FOREIGN KEY constraint failed');
@@ -60,7 +70,7 @@ export function createMockD1() {
       const [
         requestId, submittedAt, fullName, email, company, website,
         jobTitle, primaryMarket, requestSource,
-        consentVersion, consentedAt, searchText,
+        consentVersion, consentedAt, searchText, publicCampaignId,
       ] = params;
       if (!requests.has(requestId)) {
         requests.set(requestId, {
@@ -76,6 +86,7 @@ export function createMockD1() {
           consent_version: consentVersion,
           consented_at: consentedAt,
           search_text: searchText,
+          public_campaign_id: publicCampaignId,
         });
       }
       return { success: true };
@@ -108,7 +119,10 @@ export function createMockD1() {
       }
       rows.sort((a, b) => b.submitted_at.localeCompare(a.submitted_at)
         || b.request_id.localeCompare(a.request_id));
-      return rows.slice(0, limit);
+      return rows.slice(0, limit).map((stored) => {
+        const { public_campaign_id: id, ...row } = stored;
+        return sql.includes('LEFT JOIN report_request_campaigns') ? { ...row, ...campaigns.get(id) } : row;
+      });
     }
     throw new Error(`Unexpected mock D1 query: ${sql}`);
   };
@@ -125,9 +139,11 @@ export function createMockD1() {
 
   return {
     prepare,
-    batch: async (statements) => {
-      for (const statement of statements) await statement.run();
-    },
+    batch: async (statements) => statements.map(({ _sql: sql, _params: params }) => {
+      const result = execute(sql, params);
+      return Array.isArray(result) ? { results: result } : result;
+    }),
+    campaigns,
     requests,
     idempotency,
     _requests: requests,

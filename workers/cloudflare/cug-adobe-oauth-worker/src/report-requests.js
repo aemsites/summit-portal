@@ -1,5 +1,6 @@
 import { isVerifiedMethod } from './session.js';
 import { EMAIL_RE } from './magiclink.js';
+import { normalizePublicCampaignId } from './report-request-campaigns.js';
 
 const MAX_BODY_BYTES = 8192;
 const PAGE_SIZE = 50;
@@ -93,7 +94,6 @@ export function normaliseRequest(body) {
   const website = normaliseWebsite(body.website);
   const jobTitle = normaliseText(body.jobTitle);
   const primaryMarket = normaliseText(body.primaryMarket);
-  const requestSource = normaliseText(body.requestSource);
 
   if (body.websiteConfirm != null && body.websiteConfirm !== '') {
     return { error: 'Unable to submit request' };
@@ -112,10 +112,6 @@ export function normaliseRequest(body) {
   if (!hasAtMost(jobTitle, 120) || !hasAtMost(primaryMarket, 120)) {
     return { error: 'Optional details must be 120 characters or fewer.' };
   }
-  if (body.requestSource !== undefined
-    && (typeof body.requestSource !== 'string' || !requestSource || !hasAtMost(requestSource, 200))) {
-    return { error: 'Tell us where you heard about this report using 200 characters or fewer.' };
-  }
   if (body.consent !== true) {
     return { error: 'Please agree that Adobe may contact you about your requested report.' };
   }
@@ -128,7 +124,8 @@ export function normaliseRequest(body) {
       website,
       jobTitle: jobTitle || null,
       primaryMarket: primaryMarket || null,
-      requestSource: requestSource || null,
+      requestSource: 'Public request form',
+      publicCampaignId: normalizePublicCampaignId(body.publicCampaignId),
     },
   };
 }
@@ -229,7 +226,7 @@ export function reportRequestsAuthorisation(session) {
   return authorisedAdobeSession(session) ? 200 : 403;
 }
 
-function requestRowsQuery(search, cursor, limit) {
+function requestRowsQuery(search, cursor, limit, includeCampaign = false) {
   const clauses = [];
   const params = [];
   if (search) {
@@ -241,9 +238,11 @@ function requestRowsQuery(search, cursor, limit) {
     params.push(cursor.submittedAt, cursor.submittedAt, cursor.requestId);
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const campaignColumns = includeCampaign ? ', c.hub_campaign_id, c.campaign_name' : '';
+  const join = includeCampaign ? 'LEFT JOIN report_request_campaigns c USING (public_campaign_id)' : '';
   return {
-    sql: `SELECT request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source
-      FROM report_requests ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
+    sql: `SELECT request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source${campaignColumns}
+      FROM report_requests ${join} ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
     params: [...params, limit],
   };
 }
@@ -254,7 +253,18 @@ export function csvCell(value) {
   return `"${protectedValue.replace(/"/g, '""')}"`;
 }
 
-export function reportRequestsCsv(rows) {
+function httpsOrigin(value) {
+  if (typeof value !== 'string' || !/^https:\/\/[^/?#\\\s]+\/?$/i.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return url.username || url.password ? null : url.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function reportRequestsCsv(rows, hubOrigin) {
+  const origin = httpsOrigin(hubOrigin);
   const header = [
     'Company Name',
     'Website',
@@ -266,6 +276,8 @@ export function reportRequestsCsv(rows) {
     'Audience',
     'Access Emails',
     'Request Source',
+    'Campaign Name',
+    'Campaign Link',
   ];
   const lines = rows.map((row) => [
     row.company,
@@ -278,6 +290,9 @@ export function reportRequestsCsv(rows) {
     '',
     row.email,
     row.request_source,
+    row.campaign_name,
+    origin && row.hub_campaign_id
+      ? `${origin}/insights-campaigns/${encodeURIComponent(row.hub_campaign_id)}` : '',
   ].map(csvCell).join(','));
   return `${[header.map(csvCell).join(','), ...lines].join('\r\n')}\r\n`;
 }
@@ -327,7 +342,7 @@ async function handleCreate(request, env) {
   const submittedAt = new Date().toISOString();
   const keyHash = await requestKeyHash(idempotencyKey, env);
   const {
-    fullName, email, company, website, jobTitle, primaryMarket, requestSource,
+    fullName, email, company, website, jobTitle, primaryMarket, requestSource, publicCampaignId,
   } = normalised.value;
   const searchText = [fullName, email, company, website, jobTitle, primaryMarket, requestSource]
     .filter(Boolean).join(' ').toLowerCase();
@@ -335,8 +350,8 @@ async function handleCreate(request, env) {
   await env.REPORT_REQUESTS.batch([
     env.REPORT_REQUESTS.prepare(`INSERT INTO report_requests (
       request_id, submitted_at, full_name, email, company, website, job_title, primary_market, request_source,
-      consent_version, consented_at, search_text
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+      consent_version, consented_at, search_text, public_campaign_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
       requestId,
       submittedAt,
       fullName,
@@ -349,6 +364,7 @@ async function handleCreate(request, env) {
       CONSENT_VERSION,
       submittedAt,
       searchText,
+      publicCampaignId,
     ),
     env.REPORT_REQUESTS.prepare(
       'INSERT OR IGNORE INTO report_request_idempotency (request_key_hash, request_id, created_at) VALUES (?, ?, ?)',
@@ -393,9 +409,10 @@ async function handleList(url, env) {
 
 async function handleCsv(url, env) {
   const search = normaliseSearch(url.searchParams.get('q'));
-  const query = requestRowsQuery(search, null, EXPORT_LIMIT);
+  const query = requestRowsQuery(search, null, EXPORT_LIMIT, true);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
-  return new Response(reportRequestsCsv(results), { headers: CSV_HEADERS });
+  const csv = reportRequestsCsv(results, env.DIH_REPORT_REQUEST_HUB_ORIGIN);
+  return new Response(csv, { headers: CSV_HEADERS });
 }
 
 /**
