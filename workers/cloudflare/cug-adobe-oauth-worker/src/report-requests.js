@@ -9,6 +9,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 600;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const CONSENT_VERSION = 'adobe-privacy-v1';
 const IDENTITY_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+export const STAGE_TEST_PATH = '/api/report-requests/test';
 // Direct AEM delivery URLs do not share the Worker origin, so limit CORS to them.
 const PUBLIC_FORM_ORIGINS = new Set([
   'https://main--summit-portal--aemsites.aem.page',
@@ -317,6 +318,56 @@ async function parsePublicRequest(request) {
   }
 }
 
+async function validateSubmission(request, env, body) {
+  const normalised = normaliseRequest(body);
+  if (normalised.error) return { error: invalid(normalised.error) };
+
+  const idempotencyKey = request.headers.get('Idempotency-Key') || '';
+  if (!IDENTITY_KEY_RE.test(idempotencyKey)) {
+    return { error: invalid('A valid idempotency key is required.') };
+  }
+  if (!await verifyTurnstile(body.turnstileToken, env)) {
+    return { error: invalid('We could not verify your submission. Please try again.') };
+  }
+  if (!await rateLimit(request, env)) {
+    return { error: privateResponse({ error: 'Too many requests. Please try again later.' }, 429) };
+  }
+  return { value: normalised.value, idempotencyKey };
+}
+
+async function handleStageTest(request, env, url) {
+  const unavailable = () => privateResponse({ error: 'Test requests are unavailable.' }, 503);
+  try {
+    const origin = request.headers.get('Origin');
+    if (origin && origin !== url.origin && !PUBLIC_FORM_ORIGINS.has(origin)) {
+      return privateResponse({ error: 'Origin not allowed.' }, 403);
+    }
+
+    const parsed = await parsePublicRequest(request);
+    if (parsed.error) return parsed.error;
+    const secret = env.DIH_REPORT_REQUEST_STAGE_TEST_SECRET;
+    if (typeof secret !== 'string' || (secret.match(/\S/gu)?.length ?? 0) < 32) return unavailable();
+    const token = parsed.body?.stageToken;
+    const [id, mac] = typeof token === 'string' && token.length === 101 ? token.split('.') : [];
+    if (!normalizePublicCampaignId(id) || !/^[a-f0-9]{64}$/.test(mac)) {
+      return privateResponse({ error: 'Invalid test link.' }, 403);
+    }
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const signature = Uint8Array.from(mac.match(/../g), (pair) => parseInt(pair, 16));
+    const message = encoder.encode(`dih-report-request-stage-v1\n${id}`);
+    if (!await crypto.subtle.verify('HMAC', key, signature, message)) {
+      return privateResponse({ error: 'Invalid test link.' }, 403);
+    }
+    const { error } = await validateSubmission(request, env, parsed.body);
+    return error || privateResponse({ testOnly: true });
+  } catch {
+    // Do not surface exceptions containing test form data or tokens.
+    return unavailable();
+  }
+}
+
 async function handleCreate(request, env) {
   if (databaseUnavailable(env)) {
     return privateResponse({ error: 'Report requests are unavailable.' }, 503);
@@ -324,26 +375,18 @@ async function handleCreate(request, env) {
 
   const parsed = await parsePublicRequest(request);
   if (parsed.error) return parsed.error;
-  const normalised = normaliseRequest(parsed.body);
-  if (normalised.error) return invalid(normalised.error);
-
-  const idempotencyKey = request.headers.get('Idempotency-Key') || '';
-  if (!IDENTITY_KEY_RE.test(idempotencyKey)) {
-    return invalid('A valid idempotency key is required.');
+  if (parsed.body && Object.hasOwn(parsed.body, 'stageToken')) {
+    return invalid('Test requests must use the test endpoint.');
   }
-  if (!await verifyTurnstile(parsed.body.turnstileToken, env)) {
-    return privateResponse({ error: 'We could not verify your submission. Please try again.' }, 400);
-  }
-  if (!await rateLimit(request, env)) {
-    return privateResponse({ error: 'Too many requests. Please try again later.' }, 429);
-  }
+  const { value, error, idempotencyKey } = await validateSubmission(request, env, parsed.body);
+  if (error) return error;
 
   const requestId = crypto.randomUUID();
   const submittedAt = new Date().toISOString();
   const keyHash = await requestKeyHash(idempotencyKey, env);
   const {
     fullName, email, company, website, jobTitle, primaryMarket, requestSource, publicCampaignId,
-  } = normalised.value;
+  } = value;
   const searchText = [fullName, email, company, website, jobTitle, primaryMarket, requestSource]
     .filter(Boolean).join(' ').toLowerCase();
 
@@ -422,7 +465,9 @@ async function handleCsv(url, env) {
  */
 export async function handleReportRequests(request, env, session) {
   const url = new URL(request.url);
-  if (url.pathname === '/api/report-requests' && request.method === 'OPTIONS') {
+  const stageTest = url.pathname === STAGE_TEST_PATH;
+  const publicIntake = url.pathname === '/api/report-requests';
+  if ((publicIntake || stageTest) && request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
       headers: {
@@ -431,9 +476,13 @@ export async function handleReportRequests(request, env, session) {
       },
     });
   }
-  if (url.pathname === '/api/report-requests' && request.method === 'POST') {
-    return withPublicFormCors(await handleCreate(request, env), request);
+  if ((publicIntake || stageTest) && request.method === 'POST') {
+    const response = stageTest
+      ? await handleStageTest(request, env, url)
+      : await handleCreate(request, env);
+    return withPublicFormCors(response, request);
   }
+  if (stageTest) return new Response(null, { status: 405, headers: { ...NO_STORE_HEADERS, Allow: 'POST, OPTIONS' } });
   if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method Not Allowed', { status: 405 });
 
   const authStatus = reportRequestsAuthorisation(session);

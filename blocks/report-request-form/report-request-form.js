@@ -4,6 +4,9 @@ import { BOOTH_DEMOS } from '../../scripts/booth-demos.js';
 const API_PATH = 'https://act.aem.now/api/report-requests';
 const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const STAGE_INVALID = 'This test link doesn’t work.';
+const STAGE_RETRY = 'Open the campaign in Stage and copy its test request link again. No report was requested.';
+const STAGE_UNAVAILABLE = 'We could not confirm the test. No report was requested. Please try again.';
 
 const fieldSpecs = [
   {
@@ -176,34 +179,51 @@ function successView(form) {
   document.dispatchEvent(new Event('booth-request-complete'));
 }
 
-function buildPayload(form, turnstileToken, publicCampaignId) {
+function stageMessage(container, className, title, detail) {
+  const notice = document.createElement('section');
+  notice.className = className;
+  notice.tabIndex = -1;
+  notice.setAttribute('aria-live', 'polite');
+  const heading = document.createElement('h2');
+  const description = document.createElement('p');
+  heading.textContent = title;
+  description.textContent = detail;
+  notice.append(heading, description);
+  container.replaceChildren(notice);
+  notice.focus();
+}
+
+function buildPayload(form, turnstileToken, { publicCampaignId, stageToken }) {
   const formData = new FormData(form);
   return {
     fullName: `${formData.get('firstName').trim()} ${formData.get('lastName').trim()}`,
     email: formData.get('email'),
     company: formData.get('company'),
     website: formData.get('website'),
-    ...(publicCampaignId ? { publicCampaignId } : {}),
+    ...(stageToken ? { stageToken } : { publicCampaignId: publicCampaignId || undefined }),
     consent: formData.get('consent') === 'on',
     websiteConfirm: formData.get('websiteConfirm'),
     turnstileToken,
   };
 }
 
-function validForm(form) {
+function validForm(form, stageToken) {
   const inputs = [...form.querySelectorAll('input[required]')];
   const errors = inputs.map(setFieldError).filter(Boolean);
   const summary = form.querySelector('.rrf-error-summary');
   summary.hidden = errors.length === 0;
   if (errors.length) {
-    summary.textContent = `Please check ${errors.length === 1 ? 'this field' : `${errors.length} fields`} before requesting your report.`;
+    const action = stageToken ? 'submitting your test' : 'requesting your report';
+    summary.textContent = `Please check ${errors.length === 1 ? 'this field' : `${errors.length} fields`} before ${action}.`;
     summary.focus();
     return false;
   }
   return true;
 }
 
-function createForm(siteKey, publicCampaignId) {
+function createForm(siteKey, attribution) {
+  const { stageToken } = attribution;
+  const submitLabel = stageToken ? 'Submit test request' : 'Request my report';
   const prefix = `report-request-${crypto.randomUUID().slice(0, 8)}`;
   const form = document.createElement('form');
   form.className = 'report-request-form-form';
@@ -244,7 +264,7 @@ function createForm(siteKey, publicCampaignId) {
   action.className = 'rrf-action';
   const submit = document.createElement('button');
   submit.type = 'submit';
-  submit.textContent = 'Request my report';
+  submit.textContent = submitLabel;
   const status = document.createElement('p');
   status.className = 'rrf-submit-status';
   status.setAttribute('aria-live', 'polite');
@@ -255,21 +275,38 @@ function createForm(siteKey, publicCampaignId) {
   const idempotencyKey = crypto.randomUUID();
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!validForm(form)) return;
+    if (!validForm(form, stageToken)) return;
 
     submit.disabled = true;
     submit.textContent = 'Sending request...';
     status.textContent = '';
     try {
       const turnstileToken = await turnstile.token();
-      const response = await fetch(API_PATH, {
+      const response = await fetch(stageToken ? `${API_PATH}/test` : API_PATH, {
         method: 'POST',
+        ...(stageToken ? { redirect: 'error', referrerPolicy: 'no-referrer' } : {}),
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(buildPayload(form, turnstileToken, publicCampaignId)),
+        body: JSON.stringify(buildPayload(form, turnstileToken, attribution)),
       });
+      if (stageToken) {
+        if (response.status === 403) {
+          stageMessage(form.closest('.rrf-content'), 'rrf-recovery', STAGE_INVALID, STAGE_RETRY);
+          return;
+        }
+        if (response.status !== 200 || (await response.json())?.testOnly !== true) {
+          throw new Error(STAGE_UNAVAILABLE);
+        }
+        stageMessage(
+          form.closest('.rrf-shell'),
+          'rrf-success',
+          'Test complete. No report was requested.',
+          'Your information was not saved, and nothing was added to the staff request list.',
+        );
+        return;
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || 'We could not send your request.');
@@ -278,8 +315,9 @@ function createForm(siteKey, publicCampaignId) {
     } catch (error) {
       turnstile.reset();
       submit.disabled = false;
-      submit.textContent = 'Request my report';
-      status.textContent = error.message || 'We could not send your request. Please try again.';
+      submit.textContent = submitLabel;
+      status.textContent = stageToken ? STAGE_UNAVAILABLE
+        : error.message || 'We could not send your request. Please try again.';
     }
   });
 
@@ -322,6 +360,10 @@ export default function init(el) {
   loadStyle('https://use.typekit.net/pbq1nqa.css');
   const siteKey = metadataValue('turnstile-sitekey');
   const search = new URLSearchParams(window.location.search);
+  const stages = search.getAll('stage');
+  const [stage] = stages;
+  const [stageId, stageMac] = stages.length === 1 && stage.length === 101 ? stage.split('.') : [];
+  const stageToken = UUID_V4.test(stageId) && /^[a-f0-9]{64}$/.test(stageMac) ? stage : null;
   const campaigns = search.getAll('campaign');
   const [campaign] = campaigns;
   const validCampaign = campaigns.length === 1 && campaign.length === 36 && UUID_V4.test(campaign);
@@ -369,7 +411,14 @@ export default function init(el) {
   setCoverage();
   desktop.addEventListener('change', setCoverage);
   const content = main.querySelector('.rrf-content');
-  if (search.get('reason') === 'unavailable') {
+  if (stages.length) {
+    const title = content.querySelector('.rrf-intro h2');
+    const detail = content.querySelector('.rrf-intro p');
+    title.textContent = stageToken ? 'Test mode' : STAGE_INVALID;
+    detail.textContent = stageToken
+      ? 'Use sample details. This form won’t save your information or request a report.'
+      : STAGE_RETRY;
+  } else if (search.get('reason') === 'unavailable') {
     const notice = document.createElement('aside');
     notice.className = 'rrf-recovery';
     notice.innerHTML = `
@@ -378,14 +427,17 @@ export default function init(el) {
     `;
     content.prepend(notice);
   }
-  if (!siteKey) {
-    const unavailable = document.createElement('p');
-    unavailable.className = 'rrf-unavailable';
-    unavailable.setAttribute('role', 'alert');
-    unavailable.textContent = 'Report requests are not available right now. Please speak with an Adobe representative.';
-    content.append(unavailable);
-  } else {
-    content.append(createForm(siteKey, publicCampaignId));
+  if (!stages.length || stageToken) {
+    if (siteKey) {
+      content.append(createForm(siteKey, { publicCampaignId, stageToken }));
+    } else {
+      const unavailable = document.createElement('p');
+      unavailable.className = 'rrf-unavailable';
+      unavailable.setAttribute('role', 'alert');
+      unavailable.textContent = stageToken ? STAGE_UNAVAILABLE
+        : 'Report requests are not available right now. Please speak with an Adobe representative.';
+      content.append(unavailable);
+    }
   }
   main.append(createDemos());
   el.replaceChildren(header, main);

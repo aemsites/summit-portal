@@ -1429,6 +1429,20 @@ Worker for attribution without showing campaign details on the page. Direct
 visits and links with invalid or repeated campaign parameters still submit
 normally, without attribution.
 
+**Stage links:** a single signed `stage` query value opens **Test mode** instead
+of live intake. The form only posts to `/api/report-requests/test`, and only
+shows confirmation after receiving an explicit test receipt. Invalid or
+repeated values never open the live form. The Worker verifies the Stage token
+with `DIH_REPORT_REQUEST_STAGE_TEST_SECRET` (a dedicated shared secret, at
+least 32 non-whitespace characters, with the original bytes used for signing).
+Test submissions still use Turnstile and rate limits, but never access D1 or
+appear in the request list or CSV. Live intake rejects payloads carrying a
+test token. No schema change is needed for test mode. Verify both the updated
+Portal block and Worker in the intended environment **before** enabling Stage
+link issuance in the Hub. Disable issuance and stop sharing existing Stage
+links before rolling back the Portal block: an older block treats those URLs
+as live intake. Verify both components again before re-enabling issuance.
+
 **Customer-only intake (November 12; deployment pending):** the public form and
 Worker reject email addresses at `adobe.com` and `semrush.com`, including
 subdomains, regardless of case or surrounding whitespace. The email field
