@@ -77,7 +77,8 @@ if (selected === 'denied') {
   initRequest(block);
   if (selected === 'request-success') {
     const form = block.querySelector('form');
-    form.elements.fullName.value = 'Jordan Lee';
+    form.elements.firstName.value = 'Jordan';
+    form.elements.lastName.value = 'Lee';
     form.elements.email.value = 'jordan@example.com';
     form.elements.company.value = 'Example Company';
     form.elements.website.value = 'example.com';
