@@ -8,12 +8,19 @@ function formatDate(value) {
   }).format(date);
 }
 
-function detailsRow(label, value) {
+function detailsRow(label, value, href) {
   const row = document.createElement('div');
   const term = document.createElement('dt');
   const description = document.createElement('dd');
   term.textContent = label;
-  description.textContent = value || '—';
+  if (typeof href === 'string' && /^https:\/\/[^/?#\\\s]+/i.test(href)) {
+    const link = document.createElement('a');
+    link.href = href;
+    link.textContent = value;
+    description.append(link);
+  } else {
+    description.textContent = value || '—';
+  }
   row.append(term, description);
   return row;
 }
@@ -41,6 +48,9 @@ function requestRow(request, admin) {
     detailsRow('Website', request.website),
     detailsRow('Request source', request.request_source),
   );
+  if (request.campaign_name) {
+    details.append(detailsRow('DIH campaign', request.campaign_name, request.campaign_link));
+  }
   if (request.job_title) details.append(detailsRow('Role', request.job_title));
   if (request.primary_market) details.append(detailsRow('Market', request.primary_market));
   row.append(top, details);

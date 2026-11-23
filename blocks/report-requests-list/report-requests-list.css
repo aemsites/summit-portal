@@ -21,7 +21,7 @@ main:has(.report-requests-list) {
 }
 
 .report-requests-list .rrl-shell {
-  max-width: 1200px;
+  max-width: 1360px;
 }
 
 .report-requests-list .rrl-back {
@@ -208,6 +208,12 @@ main:has(.report-requests-list) {
   line-height: 1.6;
 }
 
+.report-requests-list dd a {
+  color: light-dark(var(--color-purple-700), var(--color-purple-200));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .report-requests-list .rrl-state {
   padding: 32px 20px;
   color: var(--color-text-secondary);
@@ -244,7 +250,7 @@ main:has(.report-requests-list) {
 
 @media (width >= 1000px) {
   .report-requests-list.dashboard-page {
-    padding: 32px 24px 64px;
+    padding: 32px 16px 64px;
   }
 
   .report-requests-list .rrl-layout {
@@ -271,5 +277,11 @@ main:has(.report-requests-list) {
   .report-requests-list dl {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 0;
+  }
+}
+
+@media (width >= 1280px) {
+  .report-requests-list dl {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

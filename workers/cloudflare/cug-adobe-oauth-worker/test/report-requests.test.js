@@ -74,8 +74,7 @@ describe('report requests', () => {
     const csv = await (await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=northstar'), env, session)).text();
     expect(csv).toContain('Northstar Commerce');
     expect(csv).not.toMatch(/jordan|Jordan|Access Emails|Representative Email|Customer Name/);
-    expect(csv.split('\r\n')[0]).toBe('"Company Name","Website","Sub-ID","DR ID","CMS","Primary Country (Optional)","Audience","Request Source","Campaign Name","Campaign Link"');
-    expect(csv.split('\r\n')[1].split(',')).toHaveLength(10);
+    expect(csv.split('\r\n')[1]).toBe(`"Northstar Commerce","example.com/growth","Public request form","","","${body.requests[0].submitted_at}"`);
   });
 
   it.each(['josec@adobe.com', 'nglauser@adobe.com', 'ebill@adobe.com', 'constantinp@adobe.com', 'JOSEC@ADOBE.COM'])(
@@ -203,11 +202,15 @@ describe('report requests', () => {
     expect((await list.json()).requests).toMatchObject([{ request_source: 'Public request form' }]);
   });
 
-  it('exports only trusted campaign details once the mapping arrives', async () => {
+  it('lists and exports only trusted campaign details once the mapping arrives', async () => {
     const env = environment();
     env.DIH_REPORT_REQUEST_HUB_ORIGIN = 'https://hub.example';
     const session = { email: 'josec@adobe.com', method: 'oauth' };
     const csv = () => handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=northstar'), env, session);
+    const list = async (viewer) => {
+      const response = await handleReportRequests(new Request('https://mysite.com/api/report-requests?q=northstar'), env, viewer);
+      return (await response.json()).requests;
+    };
     const response = await handleReportRequests(request({
       ...validBody,
       publicCampaignId: PUBLIC_CAMPAIGN_ID,
@@ -218,21 +221,30 @@ describe('report requests', () => {
     expect(response.status).toBe(201);
     const [stored] = env.REPORT_REQUESTS.requests.values();
     expect(stored.public_campaign_id).toBe(PUBLIC_CAMPAIGN_ID);
-    const lead = '"Northstar Commerce","example.com/growth","","","","","","","jordan@example.com","Public request form"';
-    expect((await (await csv()).text()).split('\r\n')[1]).toBe(`${lead},"","","Jordan Lee"`);
+    const lead = '"Northstar Commerce","example.com/growth","jordan@example.com","Public request form"';
+    const tail = `,"${stored.submitted_at}","Jordan Lee"`;
+    const [pending] = await list(session);
+    expect(pending).not.toHaveProperty('campaign_name');
+    expect(pending).not.toHaveProperty('campaign_link');
+    expect((await (await csv()).text()).split('\r\n')[1]).toBe(`${lead},"",""${tail}`);
 
     env.REPORT_REQUESTS.campaigns.set(PUBLIC_CAMPAIGN_ID, {
       campaign_name: '=Synthetic, "Event"',
       hub_campaign_id: 'campaign/test',
     });
     const exported = await (await csv()).text();
-    expect(exported.split('\r\n')[1]).toBe(`${lead},"'=Synthetic, ""Event""","https://hub.example/insights-campaigns/campaign%2Ftest","Jordan Lee"`);
+    const campaignLink = 'https://hub.example/insights-campaigns/campaign%2Ftest';
+    expect(exported.split('\r\n')[1]).toBe(`${lead},"'=Synthetic, ""Event""","${campaignLink}"${tail}`);
     expect(exported).not.toContain(PUBLIC_CAMPAIGN_ID);
-    const list = await handleReportRequests(new Request('https://mysite.com/api/report-requests'), env, session);
-    const { requests } = await list.json();
-    for (const field of ['public_campaign_id', 'campaign_name', 'hub_campaign_id']) {
-      expect(requests[0]).not.toHaveProperty(field);
+    const [mapped] = await list({ email: 'staff@adobe.com', method: 'oauth' });
+    expect(mapped).toMatchObject({ campaign_name: '=Synthetic, "Event"', campaign_link: campaignLink });
+    for (const field of ['public_campaign_id', 'hub_campaign_id', 'full_name', 'email']) {
+      expect(mapped).not.toHaveProperty(field);
     }
+    env.DIH_REPORT_REQUEST_HUB_ORIGIN = 'http://hub.example';
+    const [withoutLink] = await list(session);
+    expect(withoutLink.campaign_name).toBe('=Synthetic, "Event"');
+    expect(withoutLink).not.toHaveProperty('campaign_link');
   });
 
   it.each([undefined, 'http://hub.example', 'https://hub.example/path', 'https://hub.example/?', 'https://user@hub.example'])(
@@ -240,7 +252,7 @@ describe('report requests', () => {
     (origin) => {
       const rows = [{ campaign_name: 'Synthetic Event', hub_campaign_id: 'internal-id' }];
       const csv = reportRequestsCsv(rows, origin);
-      expect(csv.split('\r\n')[1]).toMatch(/,"Synthetic Event",""$/);
+      expect(csv.split('\r\n')[1]).toMatch(/,"Synthetic Event","",""$/);
     },
   );
 
@@ -305,10 +317,11 @@ describe('report requests', () => {
     expect(reportRequestsAuthorisation({ email: 'employee@adobe.com', method: 'oauth' })).toBe(200);
   });
 
-  it('keeps the admin Hub intake columns and appends customer name', () => {
+  it('exports only the requested columns, with contact columns restricted to admins', () => {
     expect(reportRequestsCsv([], undefined, true)).toBe(
-      '"Company Name","Website","Sub-ID","DR ID","Representative Email","CMS","Primary Country (Optional)","Audience","Access Emails","Request Source","Campaign Name","Campaign Link","Customer Name"\r\n',
+      '"Company Name","Website","Access Emails","Request Source","Campaign Name","Campaign Link","Submitted At (UTC)","Customer Name"\r\n',
     );
+    expect(reportRequestsCsv([])).toBe('"Company Name","Website","Request Source","Campaign Name","Campaign Link","Submitted At (UTC)"\r\n');
   });
 
   it('maps requests to company intake without inventing account details or a country override', () => {
@@ -325,7 +338,7 @@ describe('report requests', () => {
     }], undefined, true);
 
     expect(csv.split('\r\n').slice(1)).toEqual([
-      '"Northstar Commerce","example.com/growth","","","","","","","jordan@example.com","Adobe Summit, London","","","Jordan Lee"',
+      '"Northstar Commerce","example.com/growth","jordan@example.com","Adobe Summit, London","","","2026-09-08T10:00:00.000Z","Jordan Lee"',
       '',
     ]);
   });
@@ -361,26 +374,26 @@ describe('report requests', () => {
     expect(csv.headers.get('Content-Type')).toContain('text/csv');
     expect(csv.headers.get('Content-Disposition')).toBe('attachment; filename="report-requests.csv"');
     expect((await csv.text()).split('\r\n').slice(1)).toEqual([
-      '"Northstar","northstar.com","","","","","","","jordan@example.com","","","","Jordan"',
-      '"Example","example.com","","","","","","","taylor@example.com","","","","Taylor"',
+      '"Northstar","northstar.com","jordan@example.com","","","","2026-09-08T10:00:00.000Z","Jordan"',
+      '"Example","example.com","taylor@example.com","","","","2026-09-07T10:00:00.000Z","Taylor"',
       '',
     ]);
 
     const filtered = await handleReportRequests(new Request('https://mysite.com/api/report-requests.csv?q=northstar'), env, session);
     expect((await filtered.text()).split('\r\n').slice(1)).toEqual([
-      '"Northstar","northstar.com","","","","","","","jordan@example.com","","","","Jordan"',
+      '"Northstar","northstar.com","jordan@example.com","","","","2026-09-08T10:00:00.000Z","Jordan"',
       '',
     ]);
   });
 
   it.each(['=SUM(A1)', '+SUM(A1)', '-SUM(A1)', '@SUM(A1)'])('escapes a formula-prefixed company: %s', (company) => {
     expect(reportRequestsCsv([{ company, website: 'example.com', email: 'a@example.com' }], undefined, true).split('\r\n')[1])
-      .toBe(`"'${company}","example.com","","","","","","","a@example.com","","","",""`);
+      .toBe(`"'${company}","example.com","a@example.com","","","","",""`);
   });
 
   it.each(['=SUM(A1)', '+SUM(A1)', '-SUM(A1)', '@SUM(A1)'])('escapes a formula-prefixed source: %s', (source) => {
     const csv = reportRequestsCsv([{ company: 'Example', website: 'example.com', email: 'a@example.com', request_source: source }], undefined, true);
-    expect(csv.split('\r\n')[1]).toBe(`"Example","example.com","","","","","","","a@example.com","'${source}","","",""`);
+    expect(csv.split('\r\n')[1]).toBe(`"Example","example.com","a@example.com","'${source}","","","",""`);
   });
 
   it('escapes the customer name appended to admin CSV and omits it by default', () => {
@@ -391,11 +404,11 @@ describe('report requests', () => {
 
   it('quotes commas, quotes, and line breaks in intake cells', () => {
     const csv = reportRequestsCsv([{ company: 'A "quoted",\r\ncompany', website: 'example.com', email: 'a@example.com' }], undefined, true);
-    expect(csv).toContain('"A ""quoted"",\r\ncompany","example.com","","","","","","","a@example.com","","","",""\r\n');
+    expect(csv).toContain('"A ""quoted"",\r\ncompany","example.com","a@example.com","","","","",""\r\n');
   });
 
   it('quotes punctuation and line breaks in source without altering existing intake cells', () => {
     const csv = reportRequestsCsv([{ company: 'Example', website: 'example.com', email: 'a@example.com', request_source: 'Event "One",\r\nLondon' }], undefined, true);
-    expect(csv).toContain('"Example","example.com","","","","","","","a@example.com","Event ""One"",\r\nLondon","","",""\r\n');
+    expect(csv).toContain('"Example","example.com","a@example.com","Event ""One"",\r\nLondon","","","",""\r\n');
   });
 });

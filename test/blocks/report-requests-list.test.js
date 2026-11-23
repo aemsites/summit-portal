@@ -87,6 +87,33 @@ describe('report-requests-list', () => {
     expect(block.querySelector('.rrl-export')).to.exist;
   });
 
+  it('links mapped campaigns and shows names without usable links as plain text', async () => {
+    const campaignUrl = 'https://hub.example/insights-campaigns/example';
+    fetchStub = sinon.stub(window, 'fetch').resolves(Response.json({
+      requests: [
+        { company: 'Mapped', campaign_name: 'Example campaign', campaign_link: campaignUrl },
+        { company: 'Name only', campaign_name: 'Earlier event' },
+        { company: 'Invalid URL', campaign_name: 'Another event', campaign_link: 'http://hub.example' },
+        { company: 'Direct' },
+      ],
+      nextCursor: null,
+    }));
+    const block = makeBlock();
+    init(block);
+    await settle();
+    const campaign = (row) => [...row.querySelectorAll('dl > div')]
+      .find((detail) => detail.querySelector('dt').textContent === 'DIH campaign');
+    const [mapped, nameOnly, invalidUrl, direct] = block.querySelectorAll('.rrl-row');
+    const link = campaign(mapped).querySelector('a');
+    expect(link.getAttribute('href')).to.equal(campaignUrl);
+    expect(link.textContent).to.equal('Example campaign');
+    expect(campaign(nameOnly).querySelector('dd').textContent).to.equal('Earlier event');
+    expect(campaign(nameOnly).querySelector('a')).to.equal(null);
+    expect(campaign(invalidUrl).querySelector('dd').textContent).to.equal('Another event');
+    expect(campaign(invalidUrl).querySelector('a')).to.equal(null);
+    expect(campaign(direct)).to.be.undefined;
+  });
+
   it('clearly separates staff generation, customer intake and dashboard delivery', async () => {
     fetchStub = sinon.stub(window, 'fetch').resolves(Response.json({ requests: [], nextCursor: null }));
     const block = makeBlock();
@@ -204,6 +231,8 @@ describe('report-requests-list', () => {
             request_source: 'Adobe Summit, London',
             job_title: 'Digital experience lead',
             primary_market: 'North America',
+            campaign_name: 'LongCampaignNameWithoutAnySpacesForAnInternationalDigitalInsightsEvent',
+            campaign_link: 'https://hub.example/insights-campaigns/example',
             submitted_at: '2026-11-03T10:00:00Z',
           }],
           isAdmin: true,
@@ -214,7 +243,11 @@ describe('report-requests-list', () => {
         await settle();
         expect(document.documentElement.scrollWidth).to.be.at.most(width);
         expect(block.getBoundingClientRect().width).to.equal(width);
-        expect(block.querySelector('.rrl-shell').getBoundingClientRect().width).to.be.at.most(1200);
+        const shellWidth = block.querySelector('.rrl-shell').getBoundingClientRect().width;
+        if (width === 1440) expect(shellWidth).to.be.greaterThan(1200);
+        const campaignLink = block.querySelector('.rrl-row a[href^="https://hub.example/"]');
+        expect(campaignLink).to.exist;
+        expect(campaignLink.getBoundingClientRect().right).to.be.at.most(width);
         const title = getComputedStyle(block.querySelector('h1'));
         expect(title.fontFamily).to.include('Montserrat');
         expect(parseFloat(title.fontSize)).to.be.at.most(28);
