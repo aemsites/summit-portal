@@ -15,7 +15,7 @@ function failure(error, status) {
 export async function handleReportRequestCampaigns(request, env) {
   const { payload, response: authError } = await authenticateDihJson(request, {
     endpoint: REPORT_REQUEST_CAMPAIGNS_PATH,
-    secret: env.DIH_REPORT_REQUEST_CAMPAIGN_SYNC_SECRET,
+    secret: env.DIH_SHARE_LINK_SECRET,
     configurationError: 'DIH report request campaign sync is not configured',
     maxBodyBytes: 256 * 1024, // Above the Hub's 128 KiB campaign document budget.
   });

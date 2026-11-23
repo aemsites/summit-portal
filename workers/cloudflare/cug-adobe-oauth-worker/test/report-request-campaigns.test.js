@@ -4,6 +4,7 @@ import worker from '../src/index.js';
 import { createMockD1, createMockEnv } from './helpers.js';
 
 const PATH = '/api/report-request-campaigns/dih';
+const SHARE_LINK_PATH = '/auth/sharelink/dih';
 const SECRET = 'synthetic-report-request-sync-secret';
 const CAMPAIGN = {
   publicCampaignId: '2a6aa96b-8078-4efb-8d16-cd0d79645589',
@@ -13,8 +14,9 @@ const CAMPAIGN = {
 
 function signedRequest(payload = CAMPAIGN, options = {}) {
   const { timestamp = Math.floor(Date.now() / 1000), secret = SECRET, method = 'POST' } = options;
+  const signedPath = options.signedPath ?? PATH;
   const body = JSON.stringify(payload);
-  const signature = createHmac('sha256', secret).update(`${timestamp}\nPOST\n${PATH}\n${body}`).digest('hex');
+  const signature = createHmac('sha256', secret).update(`${timestamp}\nPOST\n${signedPath}\n${body}`).digest('hex');
   return new Request(`https://mysite.com${PATH}`, {
     method,
     headers: {
@@ -28,8 +30,7 @@ function signedRequest(payload = CAMPAIGN, options = {}) {
 
 function environment() {
   return createMockEnv({
-    DIH_REPORT_REQUEST_CAMPAIGN_SYNC_SECRET: SECRET,
-    DIH_SHARE_LINK_SECRET: 'synthetic-separate-share-link-secret',
+    DIH_SHARE_LINK_SECRET: SECRET,
     REPORT_REQUESTS: createMockD1(),
   });
 }
@@ -68,7 +69,8 @@ describe('signed report request campaign registration', () => {
     unsigned.headers.delete('X-DIH-Signature');
     const cases = [
       [unsigned, 401],
-      [signedRequest(CAMPAIGN, { secret: env.DIH_SHARE_LINK_SECRET }), 401],
+      [signedRequest(CAMPAIGN, { secret: 'synthetic-different-signing-secret' }), 401],
+      [signedRequest(CAMPAIGN, { signedPath: SHARE_LINK_PATH }), 401],
       [signedRequest(CAMPAIGN, { timestamp: Math.floor(Date.now() / 1000) - 301 }), 401],
       [signedRequest(CAMPAIGN, { method: 'GET' }), 405],
       [signedRequest({ ...CAMPAIGN, publicCampaignId: 'not-a-uuid' }), 400],

@@ -83,13 +83,14 @@ OAUTH_REDIRECT_URI = "https://act.aem.now/auth/callback"
 OAUTH_SCOPE = "openid,AdobeID,email,profile"
 OAUTH_CLIENT_ID = "aem-sites-cug"
 ENVIRONMENT = "prod"
+DIH_REPORT_REQUEST_HUB_ORIGIN = "https://digital-insights.corp.adobe.com"
 # Bump to revoke all generic event staff-login sessions at once (kill switch).
 EVENT_CRED_EPOCH = "1"
 
 # Secrets (set via: wrangler secret put <NAME> --env summit)
 # OAUTH_CLIENT_SECRET = "..."
 # JWT_SECRET = "..."
-# DIH_SHARE_LINK_SECRET (same dedicated secret as the DIH backend; >=32 characters;
+# DIH_SHARE_LINK_SECRET (same signing secret as the DIH backend and validation worker;
 # set with wrangler secret put DIH_SHARE_LINK_SECRET --env summit, never JWT_SECRET)
 # EVENT_STAFF_CREDENTIALS = "..."  (newline/comma list of username:sha256hex(password) for on-site iPad logins)
 # ORIGIN_AUTHENTICATION = "..."  (site token for the protected origin)

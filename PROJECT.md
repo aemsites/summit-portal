@@ -1511,11 +1511,12 @@ The validation-summary accent is intentional error feedback, not decorative chro
 
 **Rollout:** apply the `REPORT_REQUESTS` D1 migrations through
 `0005_report_request_campaign_attribution.sql` (after `0004_report_request_source.sql`)
-before publishing the compatible Worker, then publish the frontend. Set
-`DIH_REPORT_REQUEST_CAMPAIGN_SYNC_SECRET` as a Worker secret matching the Hub's
-dedicated signing credential (at least 32 characters; do not reuse the share-link
-or session secret). Set `DIH_REPORT_REQUEST_HUB_ORIGIN` to the corresponding
-HTTPS Hub origin, with no path, query, or fragment. Without a valid origin,
+before publishing the compatible Worker, then publish the frontend. Campaign
+mapping uses the existing `DIH_SHARE_LINK_SECRET`. The Hub validation worker
+must use the same signing key. Signatures are tied to the endpoint, so a
+share-link signature cannot authorize a campaign mapping. The Stage test
+credential remains separate. `DIH_REPORT_REQUEST_HUB_ORIGIN` in `wrangler.toml`
+is the HTTPS Hub origin, with no path, query, or fragment. Without a valid origin,
 campaign names can still export, but campaign links remain blank. Apply no
 backfill; if reverting the Worker or form, leave the additive schema in place.
 No production deployment is part of this change. Local synthetic preview:
