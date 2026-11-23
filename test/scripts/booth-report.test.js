@@ -367,6 +367,35 @@ describe('confirmed booth report portrait layout', () => {
     layout(false);
   });
 
+  it('keeps the event on report actions and records each crossed scroll milestone once', async () => {
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const original = window.location.href;
+    const search = `?campaign=${campaign}&touchscreen=frame`;
+    window.history.replaceState({}, '', `${window.location.pathname}${search}`);
+    try {
+      await reportFixture();
+      await mount();
+      const path = window.location.pathname;
+      const finish = document.querySelector('#booth-return a');
+      expect(new URL(finish.href).searchParams.get('campaign')).to.equal(campaign);
+      expect(new URL(finish.href).searchParams.get('touchscreen')).to.equal('frame');
+      expect(window.fetch.calledWith(`/auth/booth/status?campaign=${campaign}`)).to.equal(true);
+      expect(window.fetch.calledWith(`/auth/booth/view?campaign=${campaign}`)).to.equal(true);
+
+      const scroll = window.addEventListener.getCalls().find(({ args }) => args[0] === 'scroll').args[1];
+      sandbox.stub(document.documentElement, 'scrollHeight').value(2000);
+      sandbox.stub(document.documentElement, 'clientHeight').value(1000);
+      sandbox.stub(window, 'scrollY').get(() => 600);
+      scroll();
+      scroll();
+      const requests = window.fetch.getCalls().filter(({ args }) => args[0] === `/auth/booth/scroll?campaign=${campaign}`);
+      expect(requests).to.have.length(1);
+      expect(JSON.parse(requests[0].args[1].body)).to.deep.equal({ path, depths: [25, 50] });
+    } finally {
+      window.history.replaceState({}, '', original);
+    }
+  });
+
   it('mounts demo controls without a personal Finish or request action and records demo viewing', async () => {
     const previous = window.location.href;
     window.history.replaceState(null, '', '/example-report/luma/');

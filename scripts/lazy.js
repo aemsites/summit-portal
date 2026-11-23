@@ -28,7 +28,9 @@ async function loadSidekick() {
 
   if (document.querySelector('.report-hero.insight')) {
     import('./utils/insights-feedback.js').then(({ default: mount }) => mount());
-    import('./utils/insights-tracking.js').then(({ default: mount }) => mount());
+    if (!document.querySelector('[data-booth-expires-at]')) {
+      import('./utils/insights-tracking.js').then(({ default: mount }) => mount());
+    }
     import('./utils/brand-chip.js').then(({ default: mount }) => mount());
     import('./utils/cannes-stripe.js').then(({ default: mount }) => mount());
     relocateFooters();

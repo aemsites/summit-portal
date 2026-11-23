@@ -8,6 +8,7 @@ const EXPORTS = [
   ['demo_selected', 'Industry demos selected'],
   ['demo_viewed', 'Industry demos opened'],
   ['contact_requested', 'Historical contact opt-ins'],
+  ['report_scroll', 'Report scrolling'],
 ];
 
 const ACCESS_GUIDANCE = 'Please request this data from someone on the Digital Insights team.';

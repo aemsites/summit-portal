@@ -1,4 +1,10 @@
 const defaultHeading = 'Amplify your brand visibility';
+const CAMPAIGN_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+export function readBoothCampaign(search) {
+  const values = new URLSearchParams(search).getAll('campaign');
+  return values.length === 1 && values[0].length === 36 && CAMPAIGN_ID.test(values[0]) ? values[0] : '';
+}
 
 /** Cosmetic URL settings never provide report access or select a report. */
 export function readBoothPresentation(search = '') {
@@ -11,12 +17,14 @@ export function readBoothPresentation(search = '') {
     ? 'semrush' : 'adobe';
   const touchscreen = params.getAll('touchscreen').length === 1
     && ['1', 'frame'].includes(params.get('touchscreen')) ? params.get('touchscreen') : '';
+  const campaign = readBoothCampaign(search);
   return {
     heading: validHeading ? heading : '',
     brand,
     entry: '3',
     finish: '6',
     ...(touchscreen ? { touchscreen } : {}),
+    ...(campaign ? { campaign } : {}),
   };
 }
 
@@ -31,6 +39,7 @@ export function withBoothPresentation(path, presentation) {
   }
   if (presentation.heading) params.set('heading', presentation.heading);
   if (presentation.brand === 'semrush') params.set('brand', 'semrush');
+  if (presentation.campaign) params.set('campaign', presentation.campaign);
   if (['1', 'frame'].includes(presentation.touchscreen)) params.set('touchscreen', presentation.touchscreen);
   if (pathname === '/booth' && new URLSearchParams(query).get('recover') === '1') params.set('recover', '1');
   const search = params.toString();

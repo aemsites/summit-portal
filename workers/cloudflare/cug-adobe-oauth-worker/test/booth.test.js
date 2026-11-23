@@ -33,7 +33,7 @@ describe('booth isolated context', () => {
   let actor;
   let state;
   async function request(action, body, overrides = {}) {
-    const payload = action === 'lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body;
+    const payload = action.split('?')[0] === 'lookup' ? { noticeVersion: 'booth-privacy-v1', ...body } : body;
     const req = new Request(`https://portal.example/auth/booth/${action}`, {
       method: body === undefined ? 'GET' : 'POST',
       headers: { Cookie: cookie, Origin: 'https://portal.example', 'Content-Type': 'application/json', ...overrides },
@@ -92,6 +92,38 @@ describe('booth isolated context', () => {
     expect(response.headers.get('Set-Cookie')).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...env.SESSIONS.store.values()].join()).toContain('visitor@example.com');
+  });
+
+  it('attributes viewed, scrolled, and emailed reports to their own event, not to another tab', async () => {
+    const toronto = '00000000-0000-4000-8000-000000000001';
+    const paris = '00000000-0000-4000-8000-000000000002';
+    const action = (name, id, body) => request(`${name}?campaign=${id}`, body);
+    for (const id of [toronto, paris]) {
+      expect((await action('lookup', id, { email: 'visitor@example.com' })).status).toBe(200);
+      const other = id === toronto ? paris : toronto;
+      expect((await action('send', other, {})).status).toBe(409);
+      expect((await action('view', id, { path })).status).toBe(200);
+      expect((await action('scroll', id, { path, depths: [25, 50] })).status).toBe(200);
+      expect((await action('scroll', id, { path, depths: [50] })).status).toBe(200);
+      expect((await action('scroll', id, { path, depths: [42] })).status).toBe(400);
+      expect((await action('send', id, {})).status).toBe(200);
+      const rows = [...env.REPORT_REQUESTS.events.values()]
+        .filter((row) => row.public_campaign_id === id);
+      expect(rows.map((row) => row.kind)).toEqual([
+        'search', 'report_selected', 'report_viewed', 'report_scroll', 'report_scroll', 'report_sent',
+      ]);
+      expect(rows.filter((row) => row.kind === 'report_scroll').map((row) => [row.scroll_depth, row.email]))
+        .toEqual([[25, ''], [50, '']]);
+    }
+    expect(sendAuthorizedBoothReport).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps duplicate campaign parameters unattributed without blocking an ordinary lookup', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    const query = `lookup?campaign=${id}&campaign=${id}`;
+    const response = await request(query, { email: 'visitor@example.com' });
+    expect(response.status).toBe(200);
+    expect([...env.REPORT_REQUESTS.events.values()].map((row) => row.public_campaign_id)).toEqual([null, null]);
   });
 
   it('staff-gates icons and binds them to fresh authorized picker candidates without renewing expiry', async () => {

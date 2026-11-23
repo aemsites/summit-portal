@@ -159,9 +159,10 @@ export function createMockD1() {
 
 export function createMockBoothD1() {
   const events = new Map();
+  const campaigns = new Map();
   const execute = (sql, params) => {
     if (sql.startsWith('INSERT OR IGNORE INTO booth_activity')) {
-      const keys = ['event_id', 'flow_id', 'occurred_at', 'expires_at', 'email', 'kind', 'report_path', 'company', 'report_label', 'notice_version'];
+      const keys = ['event_id', 'flow_id', 'occurred_at', 'expires_at', 'email', 'kind', 'report_path', 'company', 'report_label', 'notice_version', 'public_campaign_id', 'scroll_depth'];
       const row = Object.fromEntries(keys.map((key, index) => [key, params[index]]));
       const changes = events.has(row.event_id) ? 0 : 1;
       events.set(row.event_id, events.get(row.event_id) || row);
@@ -171,7 +172,7 @@ export function createMockBoothD1() {
       events.forEach((row, id) => { if (row.expires_at <= params[0]) events.delete(id); });
       return { success: true };
     }
-    if (sql.includes('FROM booth_activity WHERE')) {
+    if (sql.includes('FROM booth_activity a LEFT JOIN report_request_campaigns')) {
       let rows = [...events.values()].filter((row) => row.expires_at > params[0]
         && row.occurred_at <= params[1]);
       let offset = 2;
@@ -198,12 +199,21 @@ export function createMockBoothD1() {
       }
       rows.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)
         || b.event_id.localeCompare(a.event_id));
-      return { success: true, results: rows.slice(0, params.at(-1)) };
+      return {
+        success: true,
+        results: rows.slice(0, params.at(-1)).map((row) => ({
+          ...row,
+          campaign_name: null,
+          hub_campaign_id: null,
+          ...campaigns.get(row.public_campaign_id),
+        })),
+      };
     }
     throw new Error('Unexpected booth database query');
   };
   return {
     events,
+    campaigns,
     prepare: (sql) => ({
       bind: (...params) => ({
         run: async () => execute(sql, params),

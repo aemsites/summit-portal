@@ -7,12 +7,13 @@ import { parseCugSheetRows, compileSheetGroups } from './cugsheet.js';
 import { sendAuthorizedBoothReport } from './sharelink.js';
 import { matchesCugGroup, normalizeCugGroup } from './cug-group.js';
 import {
-  BOOTH_NOTICE_VERSION, BoothActivityError, createBoothActivity,
+  BOOTH_NOTICE_VERSION, BOOTH_SCROLL_MILESTONES, BoothActivityError, createBoothActivity,
   storeBoothActivity, countBoothActivity,
 } from './booth-activity.js';
 import createBoothTiming from './booth-timing.js';
 import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
 import { websiteHost, fetchWebsiteIcon } from './booth-icons.js';
+import { boothCampaignId } from './report-request-campaigns.js';
 
 const TTL = 24 * 60 * 60;
 const COOKIE = 'booth_context';
@@ -281,7 +282,7 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
+  if (!['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
     || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
@@ -443,7 +444,10 @@ export class BoothCoordinator {
       for (const activity of pending) {
         if (Date.parse(activity.expires_at) > Date.now()) {
           const inserted = await timing.measure('booth_d1', () => storeBoothActivity(this.env, activity));
-          if (inserted) this.state.waitUntil(countBoothActivity(this.env, activity.kind));
+          if (inserted) {
+            const { kind, public_campaign_id: campaign, scroll_depth: depth } = activity;
+            this.state.waitUntil(countBoothActivity(this.env, kind, campaign, depth));
+          }
         }
       }
       await storage.delete('activity');
@@ -461,7 +465,10 @@ export class BoothCoordinator {
     const queued = new Map(pending.filter((event) => Date.parse(event.expires_at) > Date.now())
       .map((event) => [event.event_id, event]));
     events.forEach((event) => {
-      if (!queued.has(event.event_id)) queued.set(event.event_id, event);
+      if (!queued.has(event.event_id)) {
+        const campaign = record?.publicCampaignId ?? null;
+        queued.set(event.event_id, { public_campaign_id: campaign, ...event });
+      }
     });
     // A multi-key put atomically saves the action outcome and its export outbox.
     await storage.put({
@@ -509,7 +516,7 @@ export class BoothCoordinator {
       return reply({ error: 'Staff authentication required' }, 401);
     }
     const binding = await staffBinding(request, this.env);
-    if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'].includes(action)) {
+    if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     if (!['reset', 'exit'].includes(action) && await storage.get('retired')) {
@@ -540,6 +547,11 @@ export class BoothCoordinator {
       await this.clear(record, timing);
       return reply({ state: 'entry' });
     }
+    const campaign = boothCampaignId(new URL(request.url));
+    if (record && !['lookup', 'authorize', 'icon-context'].includes(action)
+      && (record.publicCampaignId ?? null) !== campaign) {
+      return reply({ error: 'The current booth visit belongs to another event. Clear this screen to start again.' }, 409);
+    }
     let body;
     let activityAt;
     if (!['status', 'authorize', 'icon-context'].includes(action)) {
@@ -565,7 +577,14 @@ export class BoothCoordinator {
         await this.clear(record, timing);
         record = null;
       } else if (record) {
-        record = { mode: 'unavailable', binding, expiresAt: record.expiresAt, flowId: record.flowId, email: record.email };
+        record = {
+          mode: 'unavailable',
+          binding,
+          expiresAt: record.expiresAt,
+          flowId: record.flowId,
+          email: record.email,
+          publicCampaignId: record.publicCampaignId,
+        };
         await storage.put('context', record);
       }
       return reply({ state: 'demos', unmatched, expiresAt: record?.expiresAt });
@@ -580,6 +599,7 @@ export class BoothCoordinator {
       await this.clear(record, timing);
       record = {
         mode: action,
+        publicCampaignId: campaign,
         binding,
         expiresAt: Date.now() + TTL * 1000,
         selectedPath: demo.path,
@@ -588,6 +608,10 @@ export class BoothCoordinator {
         company: demo.company,
         ...correlation,
       };
+      if (campaign && !record.flowId) {
+        record.flowId = crypto.randomUUID();
+        record.email = '';
+      }
       await storage.put('context', record);
       if (!await storage.get('activity')) await storage.setAlarm(record.expiresAt);
       if (record.flowId) {
@@ -712,7 +736,8 @@ export class BoothCoordinator {
         return reply({ error: 'Reload the booth to review the current privacy notice before searching.' }, 409);
       }
       const key = crypto.randomUUID();
-      await this.activity([createBoothActivity('search', key, email)], undefined, timing);
+      const search = createBoothActivity('search', key, email);
+      await this.activity([{ ...search, public_campaign_id: campaign }], undefined, timing);
       let candidates;
       try {
         candidates = await discoverReports(email, this.env, timing);
@@ -723,6 +748,7 @@ export class BoothCoordinator {
       if (!candidates.length) {
         record = {
           mode: 'unavailable',
+          publicCampaignId: campaign,
           flowId: key,
           email,
           binding,
@@ -734,6 +760,7 @@ export class BoothCoordinator {
       await timing.measure('booth_kv_write', () => this.env.SESSIONS.put(`booth:${key}`, JSON.stringify({ email, candidates }), { expirationTtl: TTL }));
       record = {
         key,
+        publicCampaignId: campaign,
         binding,
         expiresAt: Date.now() + TTL * 1000,
         selectedPath: candidates.length === 1 ? candidates[0].path : null,
@@ -756,6 +783,22 @@ export class BoothCoordinator {
     if (!record) return reply({ error: 'Booth context expired. Start again.' }, 410);
     if (record.noticeVersion !== BOOTH_NOTICE_VERSION) {
       return reply({ error: 'Start again to review the current booth privacy notice.' }, 409);
+    }
+    if (action === 'scroll') {
+      const { path, depths } = body;
+      if (!record.selectedPath || path !== record.selectedPath
+        || Object.keys(body).some((key) => !['path', 'depths'].includes(key))
+        || !Array.isArray(depths) || !depths.length
+        || depths.length > BOOTH_SCROLL_MILESTONES.length
+        || !depths.every((depth) => BOOTH_SCROLL_MILESTONES.includes(depth))) {
+        return reply({ error: 'Invalid report scroll request.' }, 400);
+      }
+      const events = depths.map((depth) => {
+        const activity = createBoothActivity('report_scroll', record.key, '', { path });
+        return { ...activity, event_id: `${activity.event_id}:${depth}`, scroll_depth: depth };
+      });
+      await this.activity(events, record, timing);
+      return reply({ recorded: true });
     }
     if (action === 'select') {
       if (Object.keys(body).some((key) => key !== 'path')

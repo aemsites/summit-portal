@@ -1,5 +1,6 @@
 /* global HTMLRewriter */
 /* eslint-disable import/no-relative-packages */
+import { boothCampaignId } from './report-request-campaigns.js';
 import shell from '../../../../booth.html';
 import touchscreenShell from '../../../../booth-touchscreen.html';
 import touchscreen from '../../../../scripts/booth-touchscreen.js';
@@ -146,6 +147,10 @@ function touchscreenMode(request) {
 
 function recoveryPage(headers, request) {
   const framed = touchscreenMode(request) === 'frame';
+  const campaign = boothCampaignId(new URL(request.url));
+  const entry = new URL('/booth', request.url);
+  if (framed) entry.searchParams.set('touchscreen', 'frame');
+  if (campaign) entry.searchParams.set('campaign', campaign);
   return new Response(`<!doctype html><html><head>${framed ? deviceBridge : ''}<title>Booth recovery</title></head><body>
 <main><h1>Reset this booth visit</h1><p>No company content is shown here.</p>
 <button id="reset" type="button">Clear visit and return to entry</button><p id="result" role="status"></p>
@@ -153,7 +158,7 @@ function recoveryPage(headers, request) {
 <script>document.getElementById('reset').onclick=async function(){this.disabled=true;try{
 const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
 if(!r.ok||(await r.json()).state!=='entry')throw Error();
-location.replace(${JSON.stringify(framed ? '/booth?touchscreen=frame' : '/booth')});
+location.replace(${JSON.stringify(`${entry.pathname}${entry.search}`)});
 }catch{document.getElementById('result').textContent='Reset could not be confirmed. Ask staff for help.';this.disabled=false;}};</script>
 </body></html>`, { headers });
 }
@@ -182,6 +187,8 @@ export async function serveBooth(request, env) {
   if (!session) {
     const setup = new URL('/booth', request.url);
     const params = new URL(request.url).searchParams;
+    const campaign = boothCampaignId(new URL(request.url));
+    if (campaign) setup.searchParams.set('campaign', campaign);
     const headings = params.getAll('heading');
     const heading = headings.length === 1 ? headings[0].trim() : '';
     const invalidHeading = params.has('heading') && (headings.length !== 1 || !heading
@@ -270,7 +277,7 @@ html.booth-report-pending:not(.booth-report-clearing) #booth-report-content[hidd
 html.booth-report-clearing body > :not(#booth-return):not(#booth-recovery):not(noscript) { display: none !important; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-recovery { display: none; }
 html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-content { display: block !important; }
-</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-transitions-1"></script>`, { html: true });
+</style><noscript><style>.booth-loading-overlay { display: none !important; }</style></noscript><script type="module" data-booth-mode="${context.state}" data-booth-expires-at="${context.expiresAt}" src="/scripts/booth-report.js?v=booth-campaign-1"></script>`, { html: true });
     },
   }).on('body', {
     element(element) {

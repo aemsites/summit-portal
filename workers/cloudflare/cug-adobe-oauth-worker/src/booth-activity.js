@@ -1,8 +1,10 @@
-import { reportRequestsAuthorisation, isDataAdmin, csvCell } from './report-requests.js';
+import { reportRequestsAuthorisation, isDataAdmin, csvCell, httpsOrigin, campaignLink } from './report-requests.js';
+import { normalizePublicCampaignId } from './report-request-campaigns.js';
 
 export const BOOTH_NOTICE_VERSION = 'booth-privacy-v1';
 export const BOOTH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-const KINDS = ['search', 'no_report', 'demo_selected', 'demo_viewed', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent'];
+const KINDS = ['search', 'no_report', 'demo_selected', 'demo_viewed', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent', 'report_scroll'];
+export const BOOTH_SCROLL_MILESTONES = [25, 50, 75, 100];
 const PAGE_SIZE = 100;
 const HEADERS = {
   'Cache-Control': 'private, no-store',
@@ -42,8 +44,8 @@ export async function storeBoothActivity(env, activity) {
   try {
     const result = await env.REPORT_REQUESTS.prepare(`INSERT OR IGNORE INTO booth_activity (
       event_id, flow_id, occurred_at, expires_at, email, kind,
-      report_path, company, report_label, notice_version
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+      report_path, company, report_label, notice_version, public_campaign_id, scroll_depth
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
       activity.event_id,
       activity.flow_id,
       activity.occurred_at,
@@ -54,6 +56,8 @@ export async function storeBoothActivity(env, activity) {
       activity.company,
       activity.report_label,
       activity.notice_version,
+      normalizePublicCampaignId(activity.public_campaign_id),
+      activity.scroll_depth ?? null,
     ).run();
     if (!result.success) throw new BoothActivityError();
     return result.meta.changes > 0;
@@ -64,7 +68,7 @@ export async function storeBoothActivity(env, activity) {
 }
 
 /** Counts only: do not forward even hashed identities, company data or request headers. */
-export async function countBoothActivity(env, kind) {
+export async function countBoothActivity(env, kind, campaign, depth) {
   // Historical outbox records remain private, but this retired action is no longer counted.
   if (kind === 'contact_requested') return;
   if (!env.BOOTH_ANALYTICS_HOSTNAME) return;
@@ -73,6 +77,11 @@ export async function countBoothActivity(env, kind) {
     return;
   }
   try {
+    const publicId = normalizePublicCampaignId(campaign);
+    const metadata = {
+      ...(publicId ? { campaign_id: publicId } : {}),
+      ...(kind === 'report_scroll' && BOOTH_SCROLL_MILESTONES.includes(depth) ? { scroll_depth: depth } : {}),
+    };
     const response = await fetch('https://queue.simpleanalyticscdn.com/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,6 +91,7 @@ export async function countBoothActivity(env, kind) {
         event: `booth_${kind}`,
         path: '/booth',
         ua: 'ServerSide/1.0 (+https://act.aem.now/)',
+        ...(Object.keys(metadata).length ? { metadata } : {}),
       }),
       signal: AbortSignal.timeout(3000),
       redirect: 'manual',
@@ -164,11 +174,16 @@ async function page(env, filter, snapshot, cursor, limit) {
     params.push(cursor.at, cursor.at, cursor.id);
   }
   try {
-    const result = await env.REPORT_REQUESTS.prepare(`SELECT *
-      FROM booth_activity WHERE ${clauses.join(' AND ')}
+    const result = await env.REPORT_REQUESTS.prepare(`SELECT a.*, c.campaign_name, c.hub_campaign_id
+      FROM booth_activity a LEFT JOIN report_request_campaigns c USING (public_campaign_id)
+      WHERE ${clauses.join(' AND ')}
       ORDER BY occurred_at DESC, event_id DESC LIMIT ?`).bind(...params, limit).all();
     if (!result.success) throw new BoothActivityError();
-    return result.results;
+    const origin = httpsOrigin(env.DIH_REPORT_REQUEST_HUB_ORIGIN);
+    return result.results.map(({ hub_campaign_id: id, ...row }) => ({
+      ...row,
+      campaign_link: campaignLink({ hub_campaign_id: id }, origin),
+    }));
   } catch {
     logFailure('Private activity retrieval unavailable');
     throw new BoothActivityError();
@@ -178,7 +193,8 @@ async function page(env, filter, snapshot, cursor, limit) {
 function csvRows(rows) {
   return rows.map((row) => [
     row.occurred_at, row.email, row.flow_id, row.kind, row.company, row.report_label,
-    row.report_path, row.notice_version, row.expires_at,
+    row.report_path, row.notice_version, row.expires_at, row.public_campaign_id,
+    row.campaign_name, row.campaign_link, row.scroll_depth,
   ].map(csvCell).join(',')).join('\r\n');
 }
 
@@ -223,7 +239,8 @@ export async function handleBoothActivity(request, env, session) {
     });
   }
   const encoder = new TextEncoder();
-  const header = ['Occurred', 'Email', 'Visit', 'Action', 'Company', 'Report', 'Report path', 'Notice', 'Expires'];
+  const header = ['Occurred', 'Email', 'Visit', 'Action', 'Company', 'Report', 'Report path', 'Notice', 'Expires',
+    'Campaign ID', 'Campaign Name', 'Campaign Link', 'Scroll Depth (%)'];
   let first = true;
   let next = null;
   const stream = new ReadableStream({
