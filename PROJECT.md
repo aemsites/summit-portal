@@ -1540,31 +1540,24 @@ production bundle builds successfully without deployment.
 ### report-requests-list
 Adobe internal, responsive Sales list for `/adobe/report-requests`. It loads newest-first rows from `GET /api/report-requests`, supports a debounced text search (including request source) and cursor pagination, and keeps the CSV download query synchronized with the active search. Each record displays **Request source**; historical requests show a dash instead of invented attribution. Legacy role/market details remain visible only when present. On mobile, rows use labelled records rather than a horizontally overflowing table. The page and interactive shell both link back to `/adobe/dashboard`. Because this authenticated route previously remained as raw authored markup when normal Author Kit discovery missed the block, `scripts.js` explicitly ensures the required block loads after standard page decoration. Its DA source includes a static loading fallback with dashboard navigation, so a module-loading failure cannot leave a blank page or sign-in loop. The list intentionally has no event filter, workflow status, owner, assignment, editing, or internal request-ID surface.
 
-**Internal dashboard consistency (November 3):** the list imports the existing `styles/dashboard.css` and reuses its heading, actions and resource-card classes, Montserrat typography, semantic light/dark surfaces and purple action colors. Search and request records follow the dashboard's bordered controls and compact list styling; the 1200px shell has a guidance sidebar at 1000px and stacks on mobile without hiding actions. **Request one report** goes to `https://digital-insights.corp.adobe.com/request-report`; **Request in bulk** goes to `https://digital-insights.corp.adobe.com/insights-campaigns`. The guidance distinguishes staff generation from the public customer intake form and explains the existing delivery path: once available, find the report in the dashboard, choose **Share**, select a format if prompted, then **Send link** to the customer's email or **Copy link** to share manually. Links work for one month without customer sign-in. This list does not generate or send reports; staff access, API behavior and CSV exports are unchanged. `test/fixtures/report-requests-dashboard.html` provides a synthetic-only visual preview with no live lead requests.
+**Internal dashboard consistency:** the list imports the existing `styles/dashboard.css` and reuses its heading, actions and resource-card classes, Montserrat typography, semantic light/dark surfaces and purple action colors. Search and request records follow the dashboard's bordered controls and compact list styling; the 1360px shell has a guidance sidebar at 1000px and stacks on mobile without hiding actions. **Request one report** goes to `https://digital-insights.corp.adobe.com/request-report`; **Request in bulk** goes to `https://digital-insights.corp.adobe.com/insights-campaigns`. The guidance distinguishes staff generation from the public customer intake form and explains the existing delivery path: once available, find the report in the dashboard, choose **Share**, select a format if prompted, then **Send link** to the customer's email or **Copy link** to share manually. Links work for one month without customer sign-in. This list does not generate or send reports. `test/fixtures/report-requests-dashboard.html` provides a synthetic-only visual preview with no live lead requests.
 
-**Campaign intake CSV (October 27; Worker deployment required):** `/api/report-requests.csv`
-now matches the current Digital Insights Hub Companies-sheet columns and order:
-`Company Name`, `Website`, `Sub-ID`, `DR ID`, `Representative Email`, `CMS`,
-`Primary Country (Optional)`, `Audience`, `Access Emails`, `Request Source`.
-Attribution appends **Campaign Name** and **Campaign Link** after those ten
-columns. New requests use `Public request form` as their source; source values
-on existing leads are preserved. The campaign columns stay blank until the Hub
-registers a matching public ID through the signed private Worker endpoint. The
-staff list remains unchanged, and the CSV never exports the public ID.
-Company and website
-come from the request; the customer's business email goes in `Access Emails`,
-not the Adobe representative field. Uncollected campaign settings remain blank.
-Per Jose's decision, the optional country is also blank so the Hub can infer it;
-the request's free-text market is not a validated country override. Submitted
-date, role and entered market remain available in the list. The November 20
-privacy change appends **Customer Name** to admin exports, keeps contact name
-and email admin-only in the list, and removes email/name columns from ordinary
-Adobe OAuth exports. Newest-first order, the existing 1,000-row export limit,
-campaign attribution and CSV escaping are unchanged.
+**Report request CSV and campaign attribution:** `/api/report-requests.csv`
+exports `Company Name`, `Website`, `Request Source`, `Campaign Name`,
+`Campaign Link`, and `Submitted At (UTC)`. Admin exports also include
+`Access Emails` (the customer's business email) after `Website` and `Customer Name`
+at the end. Customer names and emails remain admin-only in the list and export.
+New requests use `Public request form` as their source; historical source values
+are preserved. The staff list shows the DIH campaign name as a link when the Hub
+registers a matching request through the signed private Worker endpoint, or as
+plain text if the link is unavailable. Requests with no mapping omit the campaign
+detail and export blank campaign cells. Neither the list nor the CSV exposes the
+public campaign ID. The list continues to show submission date and any legacy
+role and market values; the export does not treat the free-text market as a country
+override. Exports retain newest-first ordering and the 1,000-row limit.
 Open the CSV in Excel and save it as `.xlsx` before creating a campaign batch:
 the Hub does not accept CSV uploads directly. The schema was checked against
 [`company-template.ts`](https://github.com/Adobe-AEM-Foundation/digital-insights-hub/blob/c201e8e53ac34212fc7ac1364f6a897b43fc04a2/frontend/src/lib/campaigns-v3/company-template.ts).
-No production deployment or campaign creation is included.
 
 ### header
 Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor.

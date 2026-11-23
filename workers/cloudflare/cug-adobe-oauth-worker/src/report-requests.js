@@ -241,7 +241,7 @@ function requestColumns(admin) {
   return admin ? [...REQUEST_COLUMNS, 'full_name', 'email'] : REQUEST_COLUMNS;
 }
 
-function requestRowsQuery(search, cursor, limit, includeCampaign = false, admin = false) {
+function requestRowsQuery(search, cursor, limit, admin) {
   const clauses = [];
   const params = [];
   if (search) {
@@ -255,11 +255,10 @@ function requestRowsQuery(search, cursor, limit, includeCampaign = false, admin 
     params.push(cursor.submittedAt, cursor.submittedAt, cursor.requestId);
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const campaignColumns = includeCampaign ? ', c.hub_campaign_id, c.campaign_name' : '';
-  const join = includeCampaign ? 'LEFT JOIN report_request_campaigns c USING (public_campaign_id)' : '';
   return {
-    sql: `SELECT ${requestColumns(admin).join(', ')}${campaignColumns}
-      FROM report_requests ${join} ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
+    sql: `SELECT ${requestColumns(admin).join(', ')}, c.hub_campaign_id, c.campaign_name
+      FROM report_requests LEFT JOIN report_request_campaigns c USING (public_campaign_id)
+      ${where} ORDER BY submitted_at DESC, request_id DESC LIMIT ?`,
     params: [...params, limit],
   };
 }
@@ -280,37 +279,31 @@ function httpsOrigin(value) {
   }
 }
 
+function campaignLink(row, origin) {
+  return origin && row.hub_campaign_id
+    ? `${origin}/insights-campaigns/${encodeURIComponent(row.hub_campaign_id)}` : '';
+}
+
 export function reportRequestsCsv(rows, hubOrigin, admin = false) {
   const origin = httpsOrigin(hubOrigin);
   const header = [
     'Company Name',
     'Website',
-    'Sub-ID',
-    'DR ID',
-    ...(admin ? ['Representative Email'] : []),
-    'CMS',
-    'Primary Country (Optional)',
-    'Audience',
     ...(admin ? ['Access Emails'] : []),
     'Request Source',
     'Campaign Name',
     'Campaign Link',
+    'Submitted At (UTC)',
     ...(admin ? ['Customer Name'] : []),
   ];
   const lines = rows.map((row) => [
     row.company,
     row.website,
-    '',
-    '',
-    ...(admin ? [''] : []),
-    '',
-    '', // Let the Hub infer the country instead of using an unvalidated free-text market.
-    '',
     ...(admin ? [row.email] : []),
     row.request_source,
     row.campaign_name,
-    origin && row.hub_campaign_id
-      ? `${origin}/insights-campaigns/${encodeURIComponent(row.hub_campaign_id)}` : '',
+    campaignLink(row, origin),
+    row.submitted_at,
     ...(admin ? [row.full_name] : []),
   ].map(csvCell).join(','));
   return `${[header.map(csvCell).join(','), ...lines].join('\r\n')}\r\n`;
@@ -458,12 +451,18 @@ async function handleList(url, env, admin) {
   const cursor = rawCursor ? decodeCursor(rawCursor) : null;
   if (rawCursor && !cursor) return privateResponse({ error: 'Invalid cursor.' }, 400);
 
-  const query = requestRowsQuery(search, cursor, PAGE_SIZE + 1, false, admin);
+  const query = requestRowsQuery(search, cursor, PAGE_SIZE + 1, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
   const hasNext = results.length > PAGE_SIZE;
-  const requests = results.slice(0, PAGE_SIZE).map((row) => Object.fromEntries(
-    requestColumns(admin).map((column) => [column, row[column]]),
-  ));
+  const origin = httpsOrigin(env.DIH_REPORT_REQUEST_HUB_ORIGIN);
+  const columns = requestColumns(admin);
+  const requests = results.slice(0, PAGE_SIZE).map((row) => {
+    const record = Object.fromEntries(columns.map((column) => [column, row[column]]));
+    const link = campaignLink(row, origin);
+    if (row.campaign_name) record.campaign_name = row.campaign_name;
+    if (link) record.campaign_link = link;
+    return record;
+  });
   return privateResponse({
     isAdmin: admin,
     requests,
@@ -473,7 +472,7 @@ async function handleList(url, env, admin) {
 
 async function handleCsv(url, env, admin) {
   const search = normaliseSearch(url.searchParams.get('q'));
-  const query = requestRowsQuery(search, null, EXPORT_LIMIT, true, admin);
+  const query = requestRowsQuery(search, null, EXPORT_LIMIT, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
   const csv = reportRequestsCsv(results, env.DIH_REPORT_REQUEST_HUB_ORIGIN, admin);
   return new Response(csv, { headers: CSV_HEADERS });
