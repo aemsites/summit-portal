@@ -8,6 +8,11 @@ export function normalizePublicCampaignId(value) {
   return typeof value === 'string' && value.length === 36 && UUID_V4.test(value) ? value : null;
 }
 
+export function boothCampaignId(url) {
+  const values = url.searchParams.getAll('campaign');
+  return values.length === 1 ? normalizePublicCampaignId(values[0]) : null;
+}
+
 function failure(error, status) {
   return Response.json({ error }, { status, headers: NO_STORE });
 }

@@ -1,5 +1,5 @@
 import { readBoothPresentation, withBoothPresentation } from './booth-presentation.js';
-import { createBoothInactivity } from './booth-session.js';
+import { boothActionUrl, createBoothInactivity } from './booth-session.js';
 import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 
 const portraitQuery = '(min-width: 1000px) and (min-height: 1600px) and (max-aspect-ratio: 3/4)';
@@ -68,7 +68,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     document.body.append(recovery);
   }
   const recoveryButton = recovery.querySelector('[data-booth-recover]');
-  recovery.querySelector('a[href="/booth?recover=1"]')
+  recovery.querySelector('a[data-booth-recovery-link], a[href="/booth?recover=1"]')
     ?.setAttribute('href', withBoothPresentation('/booth?recover=1', presentation));
   const recoveryMessage = recovery.querySelector('p') || document.createElement('p');
   if (!recoveryMessage.parentElement) {
@@ -149,7 +149,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     recoveryButton.disabled = true;
     try {
       await pending;
-      const result = await fetch('/auth/booth/reset', {
+      const result = await fetch(boothActionUrl('reset'), {
         method: 'POST',
         credentials: 'same-origin',
         cache: 'no-store',
@@ -526,7 +526,7 @@ export default async function mountBoothReturn() {
   }
   let context;
   try {
-    const response = await fetch('/auth/booth/status', {
+    const response = await fetch(boothActionUrl('status'), {
       credentials: 'same-origin',
       cache: 'no-store',
       signal: AbortSignal.timeout(10000),
@@ -667,7 +667,7 @@ export default async function mountBoothReturn() {
     status.hidden = false;
   };
   ['click', 'auxclick'].forEach((name) => document.body.addEventListener(name, containNavigation, true));
-  fetch('/auth/booth/view', {
+  fetch(boothActionUrl('view'), {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -682,6 +682,32 @@ export default async function mountBoothReturn() {
     status.hidden = false;
   });
   if (existingControl) return;
+  if (context.state === 'report') {
+    const remaining = new Set([25, 50, 75, 100]);
+    window.addEventListener('scroll', () => {
+      if (guard.interrupted || guard.resetting || !remaining.size) return;
+      const { scrollHeight, clientHeight } = document.documentElement;
+      const distance = scrollHeight - clientHeight;
+      if (distance <= 0) return;
+      const percent = Math.round((window.scrollY / distance) * 100);
+      const depths = [...remaining].filter((depth) => percent >= depth);
+      if (!depths.length) return;
+      depths.forEach((depth) => remaining.delete(depth));
+      fetch(boothActionUrl('scroll'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: window.location.pathname, depths }),
+      }).then((response) => {
+        if (!response.ok) throw new Error('Booth scroll activity was not recorded');
+      }).catch(() => {
+        // Never interrupt the kiosk UI for analytics.
+        // eslint-disable-next-line no-console
+        console.warn('[booth] Scroll activity could not be recorded.');
+      });
+    }, { passive: true });
+  }
   (control.querySelector('[data-booth-clear]') || control.querySelector('button')).addEventListener('click', guard.reset);
   const picker = control.querySelector('[data-booth-picker]');
   if (picker) {
@@ -690,7 +716,7 @@ export default async function mountBoothReturn() {
       if (guard.interrupted || guard.resetting) return;
       const current = guard.revision;
       guard.conceal();
-      const transition = fetch('/auth/booth/picker', {
+      const transition = fetch(boothActionUrl('picker'), {
         method: 'POST',
         credentials: 'same-origin',
         cache: 'no-store',

@@ -269,7 +269,7 @@ export function csvCell(value) {
   return `"${protectedValue.replace(/"/g, '""')}"`;
 }
 
-function httpsOrigin(value) {
+export function httpsOrigin(value) {
   if (typeof value !== 'string' || !/^https:\/\/[^/?#\\\s]+\/?$/i.test(value)) return null;
   try {
     const url = new URL(value);
@@ -279,7 +279,7 @@ function httpsOrigin(value) {
   }
 }
 
-function campaignLink(row, origin) {
+export function campaignLink(row, origin) {
   return origin && row.hub_campaign_id
     ? `${origin}/insights-campaigns/${encodeURIComponent(row.hub_campaign_id)}` : '';
 }

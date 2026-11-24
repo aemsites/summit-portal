@@ -151,6 +151,14 @@ describe('bundled booth shell and exact report injection', () => {
     }
   });
 
+  it('keeps the event campaign through staff sign-in on the touchscreen', async () => {
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const setup = new URL(`https://portal.example/booth?campaign=${campaign}&touchscreen=frame`);
+    const response = await serveBooth(new Request(setup), env);
+    const login = new URL(response.headers.get('Location'), setup);
+    expect(login.searchParams.get('redirect')).toBe(`/booth?campaign=${campaign}&touchscreen=1`);
+  });
+
   it('bundles a minimal frame only for opted-in authorized staff; inner and ordinary booth share the shell', async () => {
     const request = (query) => new Request(`https://portal.example/booth${query}`, { headers: { Cookie: cookie } });
     const ordinary = await (await serveBooth(request(''), env)).text();
@@ -227,7 +235,7 @@ describe('bundled booth shell and exact report injection', () => {
     expect(injected[1][1]).toContain('display: none !important');
     expect(injected[1][1]).toContain('data-booth-mode="report"');
     expect(injected[1][1]).toMatch(/data-booth-expires-at="\d{13}"/);
-    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-transitions-1');
+    expect(injected[1][1]).toContain('/scripts/booth-report.js?v=booth-campaign-1');
     expect(injected[1][1]).toContain('visibility: hidden !important');
     expect(injected[1][1]).toContain('zoom: 1 !important');
     expect(injected[1][1]).toContain('.booth-loading.booth-loading-overlay');

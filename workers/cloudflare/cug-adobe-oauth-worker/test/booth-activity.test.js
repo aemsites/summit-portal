@@ -66,7 +66,13 @@ describe('identified booth activity and anonymous analytics boundary', () => {
     const retention = Date.parse(activity.expires_at) - Date.parse(activity.occurred_at);
     expect(retention).toBe(BOOTH_RETENTION_MS);
     const response = await handleBoothActivity(request('?kind=contact_requested'), env, session);
-    expect((await response.json()).events).toEqual([activity]);
+    expect((await response.json()).events).toEqual([{
+      ...activity,
+      public_campaign_id: null,
+      scroll_depth: null,
+      campaign_name: null,
+      campaign_link: '',
+    }]);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
@@ -134,6 +140,63 @@ describe('identified booth activity and anonymous analytics boundary', () => {
     env.REPORT_REQUESTS = undefined;
     expect((await handleBoothActivity(request(), env, session)).status).toBe(503);
     await expect(purgeBoothActivity(env)).rejects.toThrow('Booth activity');
+  });
+
+  it('joins a late campaign mapping to existing activity only inside the private export', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    env.DIH_REPORT_REQUEST_HUB_ORIGIN = 'https://hub.example';
+    const exportCsv = async () => (await handleBoothActivity(request('', '/api/booth-activity.csv'), env, session)).text();
+    await storeBoothActivity(env, {
+      ...createBoothActivity('report_scroll', 'one', '', report),
+      public_campaign_id: id,
+      scroll_depth: 50,
+    });
+
+    await storeBoothActivity(env, createBoothActivity('report_sent', 'generic', 'visitor@example.com', report));
+    expect(await exportCsv()).toContain(`"${id}","","","50"`);
+    env.REPORT_REQUESTS.campaigns.set(id, { campaign_name: '=Synthetic Event', hub_campaign_id: 'event/toronto' });
+    const csv = await exportCsv();
+    expect(csv).toContain(`"${id}","'=Synthetic Event","https://hub.example/insights-campaigns/event%2Ftoronto","50"`);
+    expect(csv.split('\r\n').find((row) => row.includes('"generic"'))).not.toContain('Synthetic Event');
+    env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+    await countBoothActivity(env, 'report_scroll', id, 50);
+    const payload = JSON.parse(fetch.mock.lastCall[1].body);
+    expect(payload).toEqual({
+      type: 'event',
+      hostname: 'act.aem.now',
+      event: 'booth_report_scroll',
+      path: '/booth',
+      ua: 'ServerSide/1.0 (+https://act.aem.now/)',
+      metadata: { campaign_id: id, scroll_depth: 50 },
+    });
+  });
+
+  it('emits a campaign-bound report ID without attendee or raw report data', async () => {
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const otherCampaign = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
+    env.DIH_SHARE_LINK_SECRET = 'fixture-booth-secret';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+    await countBoothActivity(env, 'report_viewed', campaign, null, report.path);
+    await countBoothActivity(env, 'report_scroll', campaign, 75, report.path);
+    await countBoothActivity(env, 'report_viewed', otherCampaign, null, report.path);
+    await countBoothActivity(env, 'report_viewed', null, null, report.path);
+    const payloads = fetch.mock.calls.map(([, options]) => JSON.parse(options.body));
+    const reportId = '9f18f056612eb83d10c6745659689df273f1a590767e9a391559546475cfe39c';
+    expect(payloads[0]).toEqual({
+      type: 'event',
+      hostname: 'act.aem.now',
+      path: '/booth',
+      event: 'booth_report_viewed',
+      ua: 'ServerSide/1.0 (+https://act.aem.now/)',
+      metadata: { campaign_id: campaign, report_id: reportId },
+    });
+    expect(payloads[1].metadata).toMatchObject({ campaign_id: campaign, report_id: reportId });
+    expect(payloads[1].metadata.scroll_depth).toBe(75);
+    expect(payloads[2].metadata.report_id).not.toBe(reportId);
+    expect(payloads[3]).not.toHaveProperty('metadata');
+    expect(JSON.stringify(payloads)).not.toContain(report.path);
   });
 
   it('fails a mid-export download rather than returning a silently truncated CSV', async () => {

@@ -1,6 +1,13 @@
+import { readBoothCampaign } from './booth-presentation.js';
+
 export const BOOTH_INACTIVITY_MS = 24 * 60 * 60 * 1000;
 const RENEW_BEFORE_EXPIRY_MS = 3 * 60 * 1000;
 const RETRY_INTERVAL_MS = 30000;
+
+export function boothActionUrl(action) {
+  const campaign = readBoothCampaign(window.location.search);
+  return `/auth/booth/${action}${campaign ? `?campaign=${campaign}` : ''}`;
+}
 
 export async function boothRequest(action, body) {
   const controller = new AbortController();
@@ -18,7 +25,7 @@ export async function boothRequest(action, body) {
     }, 10000);
   });
   const operation = async () => {
-    const response = await fetch(`/auth/booth/${action}`, {
+    const response = await fetch(boothActionUrl(action), {
       method: body === undefined ? 'GET' : 'POST',
       credentials: 'same-origin',
       cache: 'no-store',

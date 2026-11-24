@@ -108,6 +108,19 @@ between activity and historical contact opt-ins. Do not move that guidance away
 from the form. Booth and portal access remain separate; shared event devices
 need a dedicated browser profile without a portal sign-in.
 
+For event-specific tracking, open the booth experience link from the event
+campaign’s **Event links** in Digital Insights Hub. The generic `/booth` link
+still works, but leaves the campaign blank. The admin CSV includes the public
+campaign ID and, when the campaign mapping is available, the campaign name and
+Hub link. Scroll rows show the report’s 25%, 50%, 75%, and 100% milestones.
+Existing rows are not assigned retroactively. Simple Analytics receives only
+the public campaign ID and scroll milestone as new fields, not the campaign
+name, Hub link, or attendee data.
+
+Roll out D1 migration `0006_booth_campaign_attribution` before releasing the
+updated Portal Worker. Release the Hub Event links panel after the Worker.
+The previous Worker can still write activity with the new schema.
+
 ## DA editing checklist
 
 - Edit the existing dashboard page; do not create a second picker or hand-maintained
