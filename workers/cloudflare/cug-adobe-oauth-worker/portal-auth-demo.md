@@ -52,15 +52,19 @@ These are operator instructions, not steps performed by this source change:
 ### Request and signature contract
 
 `POST /auth/sharelink/dih` accepts UTF-8 `application/json` (optionally
-`; charset=utf-8`) with **exactly** two fields:
+`; charset=utf-8`) with two required fields and one optional field:
 
 ```json
 {"path":"/accounts/a/acme/insights/index","actor_email":"seller@example.com"}
 ```
 
 `path` uses the existing same-origin safe-path validator. `actor_email` must be a
-string matching a basic email shape. Fields such as `mode`, `email`, or any other
-extra key are rejected. There is no email-delivery option.
+string matching a basic email shape. The optional `public_campaign_id` must
+be a lowercase UUID v4 and is covered by the same signature. Tagged requests
+must use a published `/accounts/{bucket}/{account}/insights/{report}[/…]` path
+with lowercase slug segments and no query or fragment. A trailing slash is
+optional in the request and is canonicalized in the issued link. Unknown fields
+are rejected. There is no email-delivery option.
 
 - `X-DIH-Timestamp`: decimal integer Unix seconds, within **300 seconds inclusive**
   of the Worker clock in either direction.
@@ -92,6 +96,66 @@ prefers sheet groups over live headers over mapping groups, and excludes staff
 domains and exact staff emails. The actor is never granted access through their
 own identity. No recipient confirmation or internal-notification email is sent.
 
+Tagged responses add `expires_at`, the UTC ISO timestamp of the token's actual
+expiry. The token remains valid through that Unix second, inclusive. The URL's
+only query parameter is `token`; the signed JWT binds the campaign to the exact
+report path. The Worker strips the bearer before delivering any report HTML.
+Each new issuance starts its own 30-day window without extending or invalidating
+previously issued URLs. A link opens the currently published content at its
+original path, subject to current access rules; refreshing that report does not
+change the campaign attached to an existing link.
+
+### Campaign share activity
+
+New tagged requests return `503` before any CUG lookup if the Worker lacks
+the approved analytics hostname (`BOOTH_ANALYTICS_HOSTNAME=act.aem.now`).
+The JSON response has `code: "campaign_share_analytics_unconfigured"`; the Hub
+can stop the export instead of retrying per report. Other `503` responses do
+not carry this code.
+Untagged issuance is unchanged. Existing tagged links still grant ordinary
+report access when analytics is unconfigured or unavailable, subject to the
+same signature, expiry, and CUG checks.
+
+When a visitor emails themselves a report from a campaign booth, the email
+link carries the campaign from the validated booth session in its signed
+token. The send counts as booth activity. Opening the link later counts as
+Customer Portal activity for that campaign. Booth visits without a campaign
+still send ordinary links. Analytics configuration does not block booth email
+delivery.
+
+Only a matching, non-redirected, CUG-authorized report can start campaign
+activity. An opaque `share_context` in the redirected report URL selects a
+signed, report-scoped HttpOnly cookie. Neither authorizes access, and the
+context lasts up to one hour without outliving the share token. The signed
+cookie is not forwarded to the origin. Keep the original share link for longer
+follow-up; a direct or clean visit in another tab does not inherit attribution.
+The report posts activity to Portal under a separate, scoped proof. The
+analytics request runs in the background, and outages do not block access.
+
+Events use the existing analytics hostname and fixed path `/campaign-share`:
+`campaign_share_report_viewed`, `campaign_share_report_scroll`, and
+`campaign_share_report_download` (activation of a report download link, not proof
+that a file transfer completed). Metadata contains only `campaign_id`,
+`report_id`, and `scroll_depth` for scroll milestones (25/50/75/100, each once per
+page load). No name, email, raw report path, or token is sent in this stream.
+The report ID is lowercase hex HMAC-SHA256 with `DIH_SHARE_LINK_SECRET` over
+UTF-8 `dih-campaign-share-report-v1\n<campaign-id>\n<path-without-trailing-slash>`.
+Keep the matching Hub/Worker secret stable across a campaign's reporting window;
+rotation changes opaque report IDs and ends pending navigation contexts.
+
+There are no new issuance lookups or datastore writes. Each mint still reads
+the CUG mapping and resolves group authority sheet-first; an origin HEAD is the
+fallback when the sheet has no covering groups. Bulk queueing and concurrency
+belong to the Hub.
+
+For the local release check, use a synthetic `/accounts/` report in the local
+Worker with stubbed origin and analytics responses. This verifies issuance,
+redemption, and event shape without sending live telemetry. Tagged issuance
+does not support `/accounts-stage/`; a deployed stage check requires a separate
+Portal receiver with isolated report access and analytics configuration.
+
+### Errors and cache policy
+
 Errors:
 
 | Status | Meaning |
@@ -104,7 +168,7 @@ Errors:
 | `415` | Content type is not supported UTF-8 JSON |
 | `500` | Share-token minting or unexpected access-resolution failure |
 | `502` | Existing CUG mapping lookup failed |
-| `503` | Dedicated service secret missing or malformed |
+| `503` | Dedicated service secret missing or malformed, or tagged analytics not configured |
 
 Method and configuration checks run before authentication; schema checks follow
 signature verification. All service responses, including errors, use

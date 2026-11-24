@@ -267,11 +267,26 @@ export async function verifyMagicLink(token, env) {
  * do not add the recipient's domain when redeemed; other/legacy links preserve
  * their existing domain behavior.
  */
-export async function createShareLinkToken(email, env, grantGroups = []) {
+export async function mintShareLink(email, env, grantGroups, campaign) {
   const now = Math.floor(Date.now() / 1000);
   const payload = { purpose: 'sharelink', email, iat: now, exp: now + SHARE_LINK_TTL };
   if (Array.isArray(grantGroups) && grantGroups.length) payload.groups = grantGroups;
-  return signJwt(payload, env.JWT_SECRET);
+  if (campaign) payload.campaign = campaign;
+  return { token: await signJwt(payload, env.JWT_SECRET), exp: payload.exp };
+}
+
+export async function createShareLinkToken(email, env, grantGroups) {
+  return (await mintShareLink(email, env, grantGroups)).token;
+}
+
+export async function signCampaignShareContext(env, purpose, context) {
+  return signJwt({ ...context, purpose }, env.JWT_SECRET);
+}
+
+export async function verifyCampaignShareContext(token, env, purpose) {
+  if (typeof token !== 'string' || token.length > 1024) return null;
+  const claims = await verifyJwt(token, env.JWT_SECRET);
+  return claims?.purpose === purpose && Number.isSafeInteger(claims.exp) ? claims : null;
 }
 
 /**

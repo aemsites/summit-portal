@@ -1,12 +1,10 @@
 import { authenticateDihJson } from './dih-sharelink.js';
+import normalizePublicCampaignId from './campaign-id.js';
+
+export { normalizePublicCampaignId };
 
 export const REPORT_REQUEST_CAMPAIGNS_PATH = '/api/report-request-campaigns/dih';
-const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const NO_STORE = { 'Cache-Control': 'private, no-store' };
-
-export function normalizePublicCampaignId(value) {
-  return typeof value === 'string' && value.length === 36 && UUID_V4.test(value) ? value : null;
-}
 
 export function boothCampaignId(url) {
   const values = url.searchParams.getAll('campaign');

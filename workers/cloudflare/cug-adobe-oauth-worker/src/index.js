@@ -35,6 +35,10 @@ import {
   returnToBooth, boothRecoveryError,
 } from './booth-shell.js';
 import { serveBoothGuide } from './booth-guide.js';
+import {
+  CAMPAIGN_SHARE_CONTEXT, CAMPAIGN_SHARE_ACTIVITY_PATH, CAMPAIGN_SHARE_COOKIE_PREFIX,
+  campaignShareNavigation, injectCampaignShare, handleCampaignShareActivity,
+} from './campaign-share.js';
 
 export { BoothCoordinator } from './booth.js';
 
@@ -53,6 +57,7 @@ const isRUMRequest = (url) => /\/\.(rum|optel)\/.*/.test(url.pathname);
  */
 async function proxyToOrigin(request, env, url) {
   const extension = getExtension(url.pathname);
+  url.searchParams.delete(CAMPAIGN_SHARE_CONTEXT);
   const savedSearch = url.search;
   const { searchParams } = url;
 
@@ -78,7 +83,8 @@ async function proxyToOrigin(request, env, url) {
   const req = new Request(url, request);
   const cookies = req.headers.get('Cookie');
   if (cookies) {
-    const portalCookies = cookies.split(';').filter((cookie) => !/^\s*booth_/.test(cookie)).join(';');
+    const portalCookies = cookies.split(';').filter((cookie) => !/^\s*booth_/.test(cookie)
+      && !cookie.trimStart().startsWith(CAMPAIGN_SHARE_COOKIE_PREFIX)).join(';');
     if (portalCookies.trim()) req.headers.set('Cookie', portalCookies);
     else req.headers.delete('Cookie');
   }
@@ -103,6 +109,7 @@ async function proxyToOrigin(request, env, url) {
     cf: hasBoothBoundary(request)
       ? { cacheTtl: 0, cacheEverything: false } : { cacheEverything: true },
   });
+  const { redirected } = resp;
   resp = new Response(resp.body, resp);
 
   // Preserve query string on redirects
@@ -117,10 +124,10 @@ async function proxyToOrigin(request, env, url) {
   }
   resp.headers.delete('age');
   resp.headers.delete('x-robots-tag');
-  return resp;
+  return { response: resp, redirected };
 }
 
-const handleRequest = async (request, env) => {
+const handleRequest = async (request, env, ctx) => {
   const url = new URL(request.url);
   const boothRestriction = await protectBoothDocument(request, env);
   if (boothRestriction) return boothRestriction;
@@ -154,6 +161,16 @@ const handleRequest = async (request, env) => {
     && getExtension(url.pathname) === '') {
     const redirectTo = new URL(request.url);
     redirectTo.pathname = `${url.pathname}/`;
+    if (url.searchParams.has('token')) {
+      return new Response(null, {
+        status: 308,
+        headers: {
+          Location: redirectTo.href,
+          'Referrer-Policy': 'no-referrer',
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    }
     return Response.redirect(redirectTo.href, 308);
   }
 
@@ -168,6 +185,9 @@ const handleRequest = async (request, env) => {
   // Service authentication only; deliberately no browser CORS or IMS fallback.
   if (url.pathname === '/auth/sharelink/dih') {
     return handleDihShareLinkRequest(request, env);
+  }
+  if (url.pathname === CAMPAIGN_SHARE_ACTIVITY_PATH) {
+    return handleCampaignShareActivity(request, env, ctx);
   }
   if (url.pathname === REPORT_REQUEST_CAMPAIGNS_PATH) {
     return handleReportRequestCampaigns(request, env);
@@ -346,7 +366,7 @@ const handleRequest = async (request, env) => {
 
   // RUM and media requests bypass authentication
   if (!hasBoothBoundary(request) && (isRUMRequest(url) || isMediaRequest(url))) {
-    return proxyToOrigin(request, env, url);
+    return (await proxyToOrigin(request, env, url)).response;
   }
 
   // Link access must never replace a verified staff portal sign-in.
@@ -354,20 +374,27 @@ const handleRequest = async (request, env) => {
   if (magicToken) {
     const cleanUrl = new URL(url.href);
     cleanUrl.searchParams.delete('token');
-    const existing = await getSession(request, env);
-    if (existing && isVerifiedMethod(existing.method) && isStaffEmail(existing.email, env)) {
-      return new Response(null, {
-        status: 302,
-        headers: { Location: cleanUrl.href, 'Cache-Control': 'private, no-store' },
-      });
-    }
+    cleanUrl.searchParams.delete(CAMPAIGN_SHARE_CONTEXT);
     // eslint-disable-next-line no-console
     console.log(`[magiclink] token present on ${url.pathname}`);
     // Accept both the 2-day self-service magic link and the 30-day staff share
     // link — either can establish link-based access without an IMS round-trip.
     const claims = (await verifyMagicLink(magicToken, env))
       || (await verifyShareLink(magicToken, env));
-    if (!claims) {
+    const campaign = claims?.purpose === 'sharelink' && Object.hasOwn(claims, 'campaign');
+    const targetUrl = campaign && request.method === 'GET'
+      ? await campaignShareNavigation(url, claims, env) : null;
+    const headers = new Headers({
+      Location: targetUrl?.href || cleanUrl.href,
+      'Cache-Control': 'private, no-store',
+      'Referrer-Policy': 'no-referrer',
+    });
+    if (targetUrl?.contextCookie) headers.append('Set-Cookie', targetUrl.contextCookie);
+    const existing = await getSession(request, env);
+    if (existing && isVerifiedMethod(existing.method) && isStaffEmail(existing.email, env)) {
+      return new Response(null, { status: 302, headers });
+    }
+    if (!claims || (campaign && !targetUrl)) {
       // eslint-disable-next-line no-console
       console.warn(`[magiclink] token verification failed for path=${url.pathname}`);
       // An expired/invalid link must NOT strand the user. Treat it like "not
@@ -377,7 +404,8 @@ const handleRequest = async (request, env) => {
       const target = safeRedirectPath(`${cleanUrl.pathname}${cleanUrl.search}`);
       const loginUrl = new URL('/login', request.url);
       if (target) loginUrl.searchParams.set('redirect', target);
-      return Response.redirect(loginUrl.href, 302);
+      headers.set('Location', loginUrl.href);
+      return new Response(null, { status: 302, headers });
     }
 
     const email = normalizeCugGroup(claims.email);
@@ -407,7 +435,6 @@ const handleRequest = async (request, env) => {
     // eslint-disable-next-line no-console
     console.log(`[magiclink] session created, redirecting to ${cleanUrl.pathname}`);
 
-    const headers = new Headers({ Location: cleanUrl.href, 'Cache-Control': 'private, no-store' });
     headers.append('Set-Cookie', sessionCookie(newToken, ttl));
     headers.append('Set-Cookie', signedInMarkerCookie());
     return new Response(null, { status: 302, headers });
@@ -420,7 +447,7 @@ const handleRequest = async (request, env) => {
     if (!context) return returnToBooth(request);
     session = context.state === 'report' ? { email: context.email, groups: context.grantGroups } : null;
   }
-  const originResponse = await proxyToOrigin(request, env, url);
+  const { response: originResponse, redirected } = await proxyToOrigin(request, env, url);
   if (hasBoothBoundary(request) && originResponse.status >= 300
     && originResponse.status < 400 && originResponse.status !== 304) {
     return boothRecoveryError(request, 'This destination is not available on the booth.', 403);
@@ -453,6 +480,11 @@ const handleRequest = async (request, env) => {
     if (!response.ok) response = new Response(null, response);
     response.headers.set('Cache-Control', 'private, no-store');
   }
+  const campaignShare = new URL(request.url).searchParams.has(CAMPAIGN_SHARE_CONTEXT);
+  if (campaignShare && !redirected && !hasBoothBoundary(request)
+    && originResponse.headers.get('x-aem-cug-required') === 'true') {
+    response = await injectCampaignShare(response, request, session, env);
+  }
   return injectBoothReturn(response, request, env);
 };
 
@@ -460,9 +492,9 @@ export default {
   async scheduled(event, env) {
     await purgeBoothActivity(env);
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     try {
-      return await handleRequest(request, env);
+      return await handleRequest(request, env, ctx);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Unhandled worker error:', err.stack || err);
