@@ -1587,7 +1587,7 @@ Renders copyright text and a horizontal list of legal links (Terms of use, Priva
 `POST /auth/sharelink/dih` lets the DIH backend request a copied 30-day Portal
 link for **any authenticated DIH user**, without a Portal visit or an additional
 staff-domain/role requirement. The service-only adapter in `src/dih-sharelink.js`
-accepts exactly `{path, actor_email}` and verifies a dedicated
+accepts `{path, actor_email}` plus optional `public_campaign_id` and verifies a dedicated
 `DIH_SHARE_LINK_SECRET` HMAC over timestamp, method, route and exact UTF-8 body.
 The timestamp window is ±300 seconds inclusive; there is no cookie/IMS fallback,
 browser CORS, recipient field, or email delivery. Missing/malformed service
@@ -1601,6 +1601,26 @@ mask the actor and omit query strings, signatures and signed links; shared CUG
 diagnostics omit query strings too. `test/dih-sharelink.test.js` covers the service
 contract with real signed tokens and a fixed Python HMAC reference vector;
 existing staff email/copy tests remain in `test/sharelink.test.js`.
+
+Tagged copies add `expires_at` from the existing 30-day signer and scope the
+share token to the campaign and exact published report. Redemption removes the
+bearer; an expiring navigation context keeps campaign activity separate across
+report tabs and refreshes. Only CUG-authorized report HTML can initialize the
+separate `/campaign-share` analytics stream, which records an opaque report ID
+and anonymous view, scroll, and download activity without changing booth or
+ordinary share telemetry. The Hub owns async bulk issuance; the Portal adds no
+issuance network calls or datastore writes.
+
+A fresh link minted for a CSV export starts its own 30-day validity window.
+Publishing refreshed content at the same report path does not change the
+campaign attribution or expiry of a previously issued link.
+
+The Worker returns `503` with `campaign_share_analytics_unconfigured` for new
+tagged links when campaign analytics is not configured, so the Hub can stop
+the export instead of retrying every report. Ordinary links and access through already-issued tagged links
+remain available. The release check uses a local synthetic `/accounts/`
+report; tagged stage paths (`/accounts-stage/`) stay unsupported without an
+isolated stage Portal receiver.
 
 Before deployment, operators must provision the same dedicated random secret
 (at least 32 characters) in the Worker environment and DIH backend, then verify

@@ -1,4 +1,11 @@
-import { getSession, createShareLinkToken, staffDomains, validateImsStaffToken, hasBoothBoundary } from './session.js';
+import {
+  getSession,
+  createShareLinkToken,
+  mintShareLink,
+  staffDomains,
+  validateImsStaffToken,
+  hasBoothBoundary,
+} from './session.js';
 import {
   safeRedirectPath, appendTokenParam, fetchCugMapping, fetchLiveCugGroups, EMAIL_RE, jsonResponse,
   templateForOrg,
@@ -58,7 +65,8 @@ async function dispatchReportEmail(email, shareLinkUrl, org, env) {
  * Shared CUG resolution and minting after the caller has been authenticated.
  * The DIH service adapter uses only the default no-recipient copy mode.
  */
-export async function createAuthorizedShareLink(request, env, path, email = '', copyOnly = true) {
+export async function createAuthorizedShareLink(request, env, path, options = {}) {
+  const { email = '', copyOnly = true, campaign } = options;
   const recipientDomain = email ? email.split('@')[1] : null;
   const targetPath = normalisePath(path);
 
@@ -142,22 +150,29 @@ export async function createAuthorizedShareLink(request, env, path, email = '', 
   }
 
   // --- Mint a long-lived (30-day) signed share token ---
-  let token;
+  let link;
+  let expiry;
   try {
-    token = await createShareLinkToken(tokenEmail, env, grantGroups);
+    let token;
+    if (campaign) {
+      const minted = await mintShareLink(tokenEmail, env, grantGroups, campaign);
+      token = minted.token;
+      expiry = new Date(minted.exp * 1000).toISOString();
+    } else {
+      token = await createShareLinkToken(tokenEmail, env, grantGroups);
+    }
+    link = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
     log(`share link token created (grant count=${grantGroups.length})`);
   } catch (err) {
     logError(`createShareLinkToken failed: ${err.message}`);
     return jsonResponse({ error: 'Failed to create share link token' }, 500);
   }
 
-  const shareLinkUrl = `${new URL(request.url).origin}${appendTokenParam(path, token)}`;
-
   // Copy mode: return the link for the staff caller to deliver themselves. No
   // email is sent (neither the recipient confirm nor the internal notify), so
   // there's no dependency on a recipient's mail gateway accepting APO mail.
   if (copyOnly) {
-    return jsonResponse({ result: 'link', link: shareLinkUrl });
+    return jsonResponse({ result: 'link', link, ...(expiry ? { expires_at: expiry } : {}) });
   }
 
   // Choose the email template from the PAGE's org (Semrush vs Adobe). The
@@ -165,7 +180,7 @@ export async function createAuthorizedShareLink(request, env, path, email = '', 
   // recipient. Prefer an entry that names an org; fall back to the first.
   const matchedEntry = pageEntries.find((e) => (e.org || '').trim()) || pageEntries[0];
   const org = (matchedEntry.org || '').trim();
-  return dispatchReportEmail(email, shareLinkUrl, org, env);
+  return dispatchReportEmail(email, link, org, env);
 }
 
 /**
@@ -255,7 +270,7 @@ export async function handleShareLinkRequest(request, env) {
   const targetPath = normalisePath(path);
   log(`staff=***@${callerDomain} sharing path=${targetPath}${recipientDomain ? ` with domain=${recipientDomain}` : ' (copy mode, no recipient)'}`);
 
-  const response = await createAuthorizedShareLink(request, env, path, email, copyOnly);
+  const response = await createAuthorizedShareLink(request, env, path, { email, copyOnly });
   if (copyOnly && response.ok) {
     log(`copy-mode link minted for staff=***@${callerDomain} (no email sent)`);
   }

@@ -1,9 +1,14 @@
 import { createAuthorizedShareLink } from './sharelink.js';
 import { EMAIL_RE, jsonResponse, safeRedirectPath } from './magiclink.js';
+import normalizePublicCampaignId, { canonicalCampaignReportPath } from './campaign-id.js';
 
 const ENDPOINT = '/auth/sharelink/dih';
 const MAX_BODY_BYTES = 8192;
 const encoder = new TextEncoder();
+
+export function isCampaignShareAnalyticsConfigured(env) {
+  return env.BOOTH_ANALYTICS_HOSTNAME === 'act.aem.now' && Boolean(env.DIH_SHARE_LINK_SECRET);
+}
 
 function respond(body, status) {
   const response = jsonResponse(body, status);
@@ -12,7 +17,7 @@ function respond(body, status) {
 }
 
 /** Bound streamed bodies as well as requests with a Content-Length header. */
-async function readBody(request, maxBodyBytes) {
+export async function readBody(request, maxBodyBytes) {
   const reader = request.body?.getReader();
   if (!reader) return { text: '' };
   const chunks = [];
@@ -91,14 +96,26 @@ export async function handleDihShareLinkRequest(request, env) {
     configurationError: 'DIH share link service is not configured',
   });
   if (authError) return authError;
+  const tagged = Object.hasOwn(payload || {}, 'public_campaign_id');
   if (!payload || Array.isArray(payload) || typeof payload !== 'object'
-    || Object.keys(payload).length !== 2
+    || Object.keys(payload).length !== (tagged ? 3 : 2)
     || typeof payload.path !== 'string' || typeof payload.actor_email !== 'string'
     || !EMAIL_RE.test(payload.actor_email)) {
     return respond({ error: 'Expected exactly path and a valid actor_email' }, 400);
   }
   const path = safeRedirectPath(payload.path);
   if (!path) return respond({ error: 'Invalid page path' }, 400);
+  const campaignId = tagged && normalizePublicCampaignId(payload.public_campaign_id);
+  const reportPath = tagged && canonicalCampaignReportPath(payload.path);
+  if (tagged && (!campaignId || !reportPath)) {
+    return respond({ error: 'Expected a lowercase campaign UUID and published report path' }, 400);
+  }
+  if (tagged && !isCampaignShareAnalyticsConfigured(env)) {
+    return respond({
+      error: 'Campaign share analytics is not configured',
+      code: 'campaign_share_analytics_unconfigured',
+    }, 503);
+  }
 
   // Log only a masked actor and pathname: never query strings or signed links.
   const audit = {
@@ -108,7 +125,8 @@ export async function handleDihShareLinkRequest(request, env) {
   // eslint-disable-next-line no-console
   console.log('[dih-sharelink]', JSON.stringify(audit));
   try {
-    const response = await createAuthorizedShareLink(request, env, path);
+    const campaign = tagged ? { id: campaignId, path: reportPath } : undefined;
+    const response = await createAuthorizedShareLink(request, env, campaign ? `${reportPath}/` : path, { campaign });
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
   } catch {
