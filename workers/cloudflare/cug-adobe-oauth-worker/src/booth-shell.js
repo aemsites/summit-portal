@@ -54,6 +54,7 @@ import {
 import { findBoothDemo } from './booth-demos.js';
 
 const assets = new Map([
+  ['/scripts/booth-presentation.js', [presentation, 'text/javascript']],
   ['/scripts/booth-touchscreen.js', [touchscreen, 'text/javascript']],
   ['/scripts/booth-touchscreen-device.js', [touchscreenDevice, 'text/javascript']],
   ['/styles/booth-touchscreen.css', [touchscreenCss, 'text/css']],
@@ -97,8 +98,49 @@ const assets = new Map([
   ['/img/booth/industry-wknd-fly.svg', [wkndIcon, 'image/svg+xml']],
 ]);
 
-function returnToBooth() {
-  return new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } });
+function touchscreenMode(request) {
+  const params = new URL(request.url).searchParams;
+  return params.getAll('touchscreen').length === 1 ? params.get('touchscreen') : '';
+}
+
+function boothEntry(request, { recover = false, login = false } = {}) {
+  const url = new URL(request.url);
+  const params = new URLSearchParams();
+  const campaign = boothCampaignId(url);
+  if (campaign) params.set('campaign', campaign);
+  const headings = url.searchParams.getAll('heading');
+  const heading = headings.length === 1 ? headings[0].trim() : '';
+  if (heading && [...heading].length <= 80 && !/[\p{C}\p{Zl}\p{Zp}<>]/u.test(headings[0])) {
+    params.set('heading', heading);
+  }
+  const brands = url.searchParams.getAll('brand');
+  if (brands.length === 1 && ['adobe', 'semrush'].includes(brands[0])) params.set('brand', brands[0]);
+  const mode = touchscreenMode(request);
+  if (['1', 'frame'].includes(mode)) params.set('touchscreen', login ? '1' : mode);
+  if (recover) params.set('recover', '1');
+  const search = params.toString();
+  const entry = `/booth${search ? `?${search}` : ''}`;
+  if (!login) return entry;
+  return `/login?staff${campaign ? `&campaign=${campaign}` : ''}&redirect=${encodeURIComponent(entry)}`;
+}
+
+export function returnToBooth(request) {
+  return new Response(null, { status: 302, headers: { Location: boothEntry(request), 'Cache-Control': 'private, no-store' } });
+}
+
+function recoveryHref(request) {
+  return boothEntry(request, { recover: true }).replaceAll('&', '&amp;');
+}
+
+export function boothRecoveryError(request, message, status) {
+  return new Response(`<!doctype html><title>Booth recovery</title><p>${message} <a href="${recoveryHref(request)}">Return to booth recovery</a>.</p>`, {
+    status,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'private, no-store',
+      'Referrer-Policy': 'no-referrer',
+    },
+  });
 }
 
 function isSharedAsset(path) {
@@ -140,17 +182,8 @@ export function isBoothSharedAsset(path) {
 
 const deviceBridge = '<script src="/scripts/booth-touchscreen-device.js"></script>';
 
-function touchscreenMode(request) {
-  const params = new URL(request.url).searchParams;
-  return params.getAll('touchscreen').length === 1 ? params.get('touchscreen') : '';
-}
-
 function recoveryPage(headers, request) {
   const framed = touchscreenMode(request) === 'frame';
-  const campaign = boothCampaignId(new URL(request.url));
-  const entry = new URL('/booth', request.url);
-  if (framed) entry.searchParams.set('touchscreen', 'frame');
-  if (campaign) entry.searchParams.set('campaign', campaign);
   return new Response(`<!doctype html><html><head>${framed ? deviceBridge : ''}<title>Booth recovery</title></head><body>
 <main><h1>Reset this booth visit</h1><p>No company content is shown here.</p>
 <button id="reset" type="button">Clear visit and return to entry</button><p id="result" role="status"></p>
@@ -158,7 +191,7 @@ function recoveryPage(headers, request) {
 <script>document.getElementById('reset').onclick=async function(){this.disabled=true;try{
 const r=await fetch('/auth/booth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
 if(!r.ok||(await r.json()).state!=='entry')throw Error();
-location.replace(${JSON.stringify(`${entry.pathname}${entry.search}`)});
+location.replace(${JSON.stringify(boothEntry(request))});
 }catch{document.getElementById('result').textContent='Reset could not be confirmed. Ask staff for help.';this.disabled=false;}};</script>
 </body></html>`, { headers });
 }
@@ -185,28 +218,11 @@ export async function serveBooth(request, env) {
     'X-Robots-Tag': 'noindex, nofollow',
   });
   if (!session) {
-    const setup = new URL('/booth', request.url);
-    const params = new URL(request.url).searchParams;
-    const campaign = boothCampaignId(new URL(request.url));
-    if (campaign) setup.searchParams.set('campaign', campaign);
-    const headings = params.getAll('heading');
-    const heading = headings.length === 1 ? headings[0].trim() : '';
-    const invalidHeading = params.has('heading') && (headings.length !== 1 || !heading
-      || [...heading].length > 80 || /[\p{C}\p{Zl}\p{Zp}<>]/u.test(headings[0] || ''));
-    if (params.has('heading') && !invalidHeading) setup.searchParams.set('heading', heading);
-    const brands = params.getAll('brand');
-    const invalidBrand = params.has('brand') && (brands.length !== 1 || !['adobe', 'semrush'].includes(brands[0]));
-    if (params.has('brand') && !invalidBrand) setup.searchParams.set('brand', brands[0]);
-    if (['1', 'frame'].includes(touchscreenMode(request))) setup.searchParams.set('touchscreen', '1');
-    if (invalidHeading || invalidBrand) {
-      // eslint-disable-next-line no-console
-      console.warn('[booth] Ignored invalid presentation parameters on staff login redirect');
-    }
     if (new URL(request.url).searchParams.has('recover')) {
       return recoveryPage(headers, request);
     }
-    const redirect = encodeURIComponent(`${setup.pathname}${setup.search}`);
-    return new Response(null, { status: 302, headers: { Location: `/login?staff&redirect=${redirect}`, 'Cache-Control': 'private, no-store' } });
+    const login = boothEntry(request, { login: true });
+    return new Response(null, { status: 302, headers: { Location: login, 'Cache-Control': 'private, no-store' } });
   }
   if (!scoped) {
     (await boothSessionCookies(session, env)).forEach((cookie) => headers.append('Set-Cookie', cookie));
@@ -222,11 +238,11 @@ export async function protectBoothDocument(request, env) {
   if (!hasBoothBoundary(request)) return null;
   const url = new URL(request.url);
   const { pathname } = url;
-  if (url.searchParams.has('token') || pathname.includes('%') || pathname.includes('\\')) return returnToBooth();
+  if (url.searchParams.has('token') || pathname.includes('%') || pathname.includes('\\')) return returnToBooth(request);
   if (['/booth', '/login', '/auth/logout', '/auth/me', '/auth/portal', '/auth/callback', '/auth/staff-login'].includes(pathname)
     || pathname.startsWith('/auth/booth/')) return null;
   if (pathname === '/api/report-requests' && request.method === 'POST') {
-    return returnToBooth();
+    return returnToBooth(request);
   }
   if (pathname === '/auth/sharelink') {
     return new Response('Booth browsers cannot share arbitrary reports', {
@@ -234,19 +250,20 @@ export async function protectBoothDocument(request, env) {
       headers: { 'Cache-Control': 'private, no-store' },
     });
   }
-  if (!['GET', 'HEAD'].includes(request.method)) return returnToBooth();
+  if (!['GET', 'HEAD'].includes(request.method)) return returnToBooth(request);
   if (isSharedAsset(pathname)) return null;
-  if (!await boothStaff(request, env)) return returnToBooth();
+  if (!await boothStaff(request, env)) return returnToBooth(request);
   try {
     const context = await authorizeBoothContext(request, env);
     // Hashed EDS media is a public rendering dependency, not a document/index.
     const media = /^\/media_[0-9a-f]{40,}[/a-zA-Z0-9_-]*\.(?:png|jpe?g|webp|gif|avif|svg)$/.test(pathname);
-    if (context?.state === 'report' && context.resourceAuthorized !== true) return returnToBooth();
-    return allowedContextPath(pathname, context) || (media && context) ? null : returnToBooth();
+    if (context?.state === 'report' && context.resourceAuthorized !== true) return returnToBooth(request);
+    if (allowedContextPath(pathname, context) || (media && context)) return null;
+    return returnToBooth(request);
   } catch {
     // eslint-disable-next-line no-console
     console.error('[booth] Request authorization unavailable');
-    return new Response('Booth state cannot be checked. Return to /booth or ask staff.', { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
+    return boothRecoveryError(request, 'Booth state cannot be checked. Ask staff for help.', 503);
   }
 }
 
@@ -255,7 +272,7 @@ export async function injectBoothReturn(response, request, env) {
   if (isSharedAsset(new URL(request.url).pathname) || new URL(request.url).pathname === '/login') return response;
   const context = await authorizeBoothContext(request, env);
   if (!context || !allowedContextPath(new URL(request.url).pathname, context)
-    || context.selectedPath !== new URL(request.url).pathname) return returnToBooth();
+    || context.selectedPath !== new URL(request.url).pathname) return returnToBooth(request);
   if (request.method === 'HEAD') return new Response(null, response);
   const privateResponse = new Response(response.body, response);
   privateResponse.headers.set('Cache-Control', 'private, no-store');
@@ -282,7 +299,7 @@ html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-conten
   }).on('body', {
     element(element) {
       marked.body = true;
-      element.prepend('<aside id="booth-recovery"><div class="booth-loading booth-loading-overlay" data-booth-loading role="status"><span class="booth-loading-ring" aria-hidden="true"></span><p class="booth-loading-title">Opening your report...</p></div><div class="booth-recovery-actions" hidden><button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a href="/booth?recover=1">return to booth recovery</a> and ask staff to reset the visit.</div></aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>', { html: true });
+      element.prepend(`<aside id="booth-recovery"><div class="booth-loading booth-loading-overlay" data-booth-loading role="status"><span class="booth-loading-ring" aria-hidden="true"></span><p class="booth-loading-title">Opening your report...</p></div><div class="booth-recovery-actions" hidden><button type="button" data-booth-recover>Retry and clear screen</button> If this screen does not recover, <a data-booth-recovery-link href="${recoveryHref(request)}">return to booth recovery</a> and ask staff to reset the visit.</div></aside><noscript>This booth requires JavaScript. Company content stays concealed. Ask staff to reset this visit on the booth entry screen.</noscript><div id="booth-report-content" hidden>`, { html: true });
       element.append('</div>', { html: true });
     },
   })
@@ -306,13 +323,10 @@ html:not(.booth-report-pending):not(.booth-report-clearing) #booth-report-conten
   // Do not stream any company bytes until the early concealment really exists.
   const html = await transformed.text();
   if (!Object.values(marked).every(Boolean)) {
-    return new Response('This report cannot be safely displayed. Return to /booth?recover=1 and ask staff.', {
-      status: 503,
-      headers: { 'Cache-Control': 'private, no-store' },
-    });
+    return boothRecoveryError(request, 'This report cannot be safely displayed. Ask staff for help.', 503);
   }
   const current = await authorizeBoothContext(request, env);
   if (!current || current.state !== context.state || current.selectedPath !== context.selectedPath
-    || current.expiresAt !== context.expiresAt) return returnToBooth();
+    || current.expiresAt !== context.expiresAt) return returnToBooth(request);
   return new Response(html, transformed);
 }

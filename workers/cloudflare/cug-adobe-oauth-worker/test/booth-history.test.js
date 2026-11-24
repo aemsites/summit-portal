@@ -316,6 +316,35 @@ describe('request-scoped booth authorization boundary', () => {
     expect((await request('/adobe/dashboard')).status).toBe(302);
   });
 
+  it('retains the exact campaign on report expiry, recovery, staff re-login and return to entry', async () => {
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    await start();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 86401000);
+    const report = await request(`${selected}?campaign=${campaign}&touchscreen=frame&email=private`);
+    const entry = `/booth?campaign=${campaign}&touchscreen=frame`;
+    expect(report.status).toBe(302);
+    expect(report.headers.get('Location')).toBe(entry);
+    expect((await (await request(`${entry}&recover=1`)).text())).toContain(`location.replace("${entry}")`);
+    cookies.clear();
+    const login = new URL((await request(entry)).headers.get('Location'), 'https://portal.example');
+    expect(login.searchParams.get('campaign')).toBe(campaign);
+    const destination = `/booth?campaign=${campaign}&touchscreen=1`;
+    expect(login.searchParams.get('redirect')).toBe(destination);
+    // Even the alternate Portal auth entry hands tagged kiosks to staff login.
+    const portal = await request(`/auth/portal?redirect=${encodeURIComponent(destination)}`, undefined, 'GET', {}, false);
+    expect(portal.headers.get('Location')).toBe(destination);
+    handleCallback.mockResolvedValueOnce({
+      userInfo: { email: 'operator@adobe.com', groups: ['adobe.com'] },
+      originalUrl: destination,
+    });
+    expect((await request('/auth/callback?code=test&state=test')).headers.get('Location')).toBe(destination);
+    expect((await request(destination)).status).toBe(200);
+    expect((await request(`/auth/logout?campaign=${campaign}`)).headers.get('Location')).toBe(`/booth?campaign=${campaign}`);
+    expect((await request(`${selected}?campaign=${campaign}&campaign=${campaign}`)).headers.get('Location')).toBe('/booth');
+    expect((await request(selected)).headers.get('Location')).toBe('/booth');
+  });
+
   it('fully exits booth mode only after fresh staff credentials and confirmed visit revocation', async () => {
     await start();
     cookies.set('signed_in', '1');
@@ -662,9 +691,11 @@ describe('request-scoped booth authorization boundary', () => {
       && new URL(input.url).pathname === selected
       ? Response.redirect('https://origin.aem.live/accounts/other/report.pdf', 302)
       : original(input, options)));
-    const response = await request(selected);
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const response = await request(`${selected}?campaign=${campaign}`);
     expect(response.status).toBe(403);
     expect(response.headers.has('Location')).toBe(false);
+    expect(await response.text()).toContain(`href="/booth?campaign=${campaign}&amp;recover=1"`);
   });
 
   it('rejects raw JSON disguised as a selected document and narrower private display dependencies', async () => {

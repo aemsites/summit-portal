@@ -68,7 +68,7 @@ function createReportGuard(key, expiresAt, presentation, pendingVerification = f
     document.body.append(recovery);
   }
   const recoveryButton = recovery.querySelector('[data-booth-recover]');
-  recovery.querySelector('a[href="/booth?recover=1"]')
+  recovery.querySelector('a[data-booth-recovery-link], a[href="/booth?recover=1"]')
     ?.setAttribute('href', withBoothPresentation('/booth?recover=1', presentation));
   const recoveryMessage = recovery.querySelector('p') || document.createElement('p');
   if (!recoveryMessage.parentElement) {

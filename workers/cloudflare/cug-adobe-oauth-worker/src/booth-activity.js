@@ -67,8 +67,21 @@ export async function storeBoothActivity(env, activity) {
   }
 }
 
-/** Counts only: do not forward even hashed identities, company data or request headers. */
-export async function countBoothActivity(env, kind, campaign, depth) {
+async function analyticsReportId(secret, campaign, reportPath) {
+  const canonical = reportPath?.replace(/\/$/, '');
+  if (!canonical || !/^\/accounts\/[a-z0-9-]+\/[a-z0-9-]+\/insights\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(canonical)) return null;
+  if (!secret) {
+    logFailure('Campaign report attribution is not configured');
+    return null;
+  }
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(`dih-booth-impact-report-v1\n${campaign}\n${canonical}`));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** Send only allowlisted activity fields; never forward attendance or report details. */
+export async function countBoothActivity(env, kind, campaign, depth, reportPath) {
   // Historical outbox records remain private, but this retired action is no longer counted.
   if (kind === 'contact_requested') return;
   if (!env.BOOTH_ANALYTICS_HOSTNAME) return;
@@ -78,8 +91,11 @@ export async function countBoothActivity(env, kind, campaign, depth) {
   }
   try {
     const publicId = normalizePublicCampaignId(campaign);
+    const reportId = publicId
+      && await analyticsReportId(env.DIH_SHARE_LINK_SECRET, publicId, reportPath);
     const metadata = {
       ...(publicId ? { campaign_id: publicId } : {}),
+      ...(reportId ? { report_id: reportId } : {}),
       ...(kind === 'report_scroll' && BOOTH_SCROLL_MILESTONES.includes(depth) ? { scroll_depth: depth } : {}),
     };
     const response = await fetch('https://queue.simpleanalyticscdn.com/events', {

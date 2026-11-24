@@ -446,7 +446,8 @@ export class BoothCoordinator {
           const inserted = await timing.measure('booth_d1', () => storeBoothActivity(this.env, activity));
           if (inserted) {
             const { kind, public_campaign_id: campaign, scroll_depth: depth } = activity;
-            this.state.waitUntil(countBoothActivity(this.env, kind, campaign, depth));
+            const path = activity.report_path;
+            this.state.waitUntil(countBoothActivity(this.env, kind, campaign, depth, path));
           }
         }
       }

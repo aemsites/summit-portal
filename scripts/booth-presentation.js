@@ -46,12 +46,14 @@ export function withBoothPresentation(path, presentation) {
   return `${pathname}${search ? `?${search}` : ''}`;
 }
 
-export function boothStaffLogin(presentation) {
+export function boothStaffLogin(presentation, { exit = false } = {}) {
   const setup = {
     ...presentation,
     ...(presentation.touchscreen ? { touchscreen: '1' } : {}),
   };
-  return `/login?staff&redirect=${encodeURIComponent(withBoothPresentation('/booth', setup))}`;
+  const campaign = setup.campaign ? `&campaign=${setup.campaign}` : '';
+  if (exit && !campaign) return '/login?staff&exit-booth';
+  return `/login?staff${exit ? '&exit-booth' : ''}${campaign}&redirect=${encodeURIComponent(withBoothPresentation('/booth', setup))}`;
 }
 
 export function applyBoothPresentation(root, presentation) {

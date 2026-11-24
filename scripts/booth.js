@@ -1,4 +1,4 @@
-import { readBoothPresentation, withBoothPresentation, applyBoothPresentation } from './booth-presentation.js';
+import { readBoothPresentation, withBoothPresentation, applyBoothPresentation, boothStaffLogin } from './booth-presentation.js';
 import { createBoothPreview } from './booth-preview.js';
 import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 import { boothRequest, createBoothInactivity } from './booth-session.js';
@@ -128,7 +128,7 @@ export function mountBooth(root = document) {
       const result = await boothRequest('reset', action === 'exit' ? { prepareExit: true } : {});
       if (result.state !== 'entry') throw new Error('This screen could not be cleared. Retry or ask the booth team.');
       if (action === 'exit') {
-        window.location.replace('/login?staff&exit-booth');
+        window.location.replace(boothStaffLogin(presentation, { exit: true }));
         return;
       }
       window.history.replaceState(null, '', withBoothPresentation('/booth', presentation));
@@ -139,7 +139,7 @@ export function mountBooth(root = document) {
       form.querySelector('button').disabled = false;
     } catch (error) {
       if (action === 'exit' && error.status === 401) {
-        window.location.replace('/login?staff&exit-booth');
+        window.location.replace(boothStaffLogin(presentation, { exit: true }));
       } else recovery(error);
     } finally {
       resetting = false;

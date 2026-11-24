@@ -27,10 +27,13 @@ import { handleShareLinkRequest } from './sharelink.js';
 import { handleDihShareLinkRequest } from './dih-sharelink.js';
 import { handleStaffLoginRequest } from './stafflogin.js';
 import { handleReportRequests, isDataAdmin, STAGE_TEST_PATH } from './report-requests.js';
-import { handleReportRequestCampaigns, REPORT_REQUEST_CAMPAIGNS_PATH } from './report-request-campaigns.js';
+import { boothCampaignId, handleReportRequestCampaigns, REPORT_REQUEST_CAMPAIGNS_PATH } from './report-request-campaigns.js';
 import { handleBoothActivity, purgeBoothActivity } from './booth-activity.js';
 import { handleBooth, authorizeBoothContext, boothStaff, resetBeforeBoothLogin } from './booth.js';
-import { serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset } from './booth-shell.js';
+import {
+  serveBooth, injectBoothReturn, protectBoothDocument, isBoothSharedAsset,
+  returnToBooth, boothRecoveryError,
+} from './booth-shell.js';
 import { serveBoothGuide } from './booth-guide.js';
 
 export { BoothCoordinator } from './booth.js';
@@ -253,11 +256,11 @@ const handleRequest = async (request, env) => {
         }), env);
         if (!reset.ok) return reset;
       }
-      const headers = new Headers({ Location: '/booth', 'Cache-Control': 'private, no-store' });
+      const response = returnToBooth(request);
       [clearBoothKioskCookie(),
         'booth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-      ].forEach((cookie) => headers.append('Set-Cookie', cookie));
-      return new Response(null, { status: 302, headers });
+      ].forEach((cookie) => response.headers.append('Set-Cookie', cookie));
+      return response;
     }
     const imsLogoutUrl = `${env.OAUTH_LOGOUT_URL}?client_id=${env.OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(url.origin + '/')}`;
     const headers = new Headers({ Location: imsLogoutUrl });
@@ -269,10 +272,19 @@ const handleRequest = async (request, env) => {
   // Portal redirect: authenticate then redirect based on group mapping
   if (url.pathname === '/auth/portal') {
     if (hasBoothBoundary(request)) {
-      const target = safeRedirectPath(url.searchParams.get('redirect')) || '/booth';
-      return await boothStaff(request, env)
-        ? new Response(null, { status: 302, headers: { Location: target, 'Cache-Control': 'private, no-store' } })
-        : redirectToLogin(new URL(target, request.url).href, env);
+      const fallback = returnToBooth(request);
+      const target = safeRedirectPath(url.searchParams.get('redirect')) || fallback.headers.get('Location');
+      const destination = new URL(target, url.origin);
+      // Tagged kiosks stay on the booth staff sign-in flow, including on retries.
+      if (boothCampaignId(url)) return fallback;
+      if (isBoothUrl(destination) && boothCampaignId(destination)) {
+        return returnToBooth(new Request(destination));
+      }
+      if (await boothStaff(request, env)) {
+        const headers = { Location: target, 'Cache-Control': 'private, no-store' };
+        return new Response(null, { status: 302, headers });
+      }
+      return redirectToLogin(destination.href, env);
     }
     const session = await getSession(request, env);
     if (!session) {
@@ -405,16 +417,13 @@ const handleRequest = async (request, env) => {
   let session = await getSession(request, env);
   if (hasBoothBoundary(request) && !isBoothSharedAsset(url.pathname) && url.pathname !== '/login') {
     const context = await authorizeBoothContext(request, env);
-    if (!context) return new Response(null, { status: 302, headers: { Location: '/booth', 'Cache-Control': 'private, no-store' } });
+    if (!context) return returnToBooth(request);
     session = context.state === 'report' ? { email: context.email, groups: context.grantGroups } : null;
   }
   const originResponse = await proxyToOrigin(request, env, url);
   if (hasBoothBoundary(request) && originResponse.status >= 300
     && originResponse.status < 400 && originResponse.status !== 304) {
-    return new Response('This destination is not available on the booth. Return to /booth?recover=1.', {
-      status: 403,
-      headers: { 'Cache-Control': 'private, no-store' },
-    });
+    return boothRecoveryError(request, 'This destination is not available on the booth.', 403);
   }
 
   let response = await checkCugAccess(originResponse, session, request, env);
@@ -422,6 +431,7 @@ const handleRequest = async (request, env) => {
   if (session && request.method === 'GET' && response.status === 404
     && originResponse.headers.get('x-aem-cug-required') === 'true'
     && url.pathname.startsWith('/accounts/') && getExtension(url.pathname) === '') {
+    if (hasBoothBoundary(request)) return returnToBooth(request);
     return Response.redirect(new URL('/request-report?reason=unavailable', request.url).href, 302);
   }
   const currentBoothDocument = await protectBoothDocument(request, env);

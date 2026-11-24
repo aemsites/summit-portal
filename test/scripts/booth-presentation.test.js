@@ -87,6 +87,15 @@ describe('cosmetic booth presentation', () => {
     expect(root.getElementById('staff-login').getAttribute('href')).to.equal('/login?staff&redirect=%2Fbooth');
   });
 
+  it('keeps the campaign while exit is awaiting confirmation so cancel returns to the same event', () => {
+    const campaign = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const presentation = readBoothPresentation(`?campaign=${campaign}&touchscreen=frame`);
+    const login = new URL(boothStaffLogin(presentation, { exit: true }), 'https://portal.example');
+    expect(login.searchParams.has('exit-booth')).to.equal(true);
+    expect(login.searchParams.get('campaign')).to.equal(campaign);
+    expect(login.searchParams.get('redirect')).to.equal(`/booth?campaign=${campaign}&touchscreen=1`);
+  });
+
   it('carries explicit frame mode through real report, picker, Finish, reset and recovery URLs', () => {
     const presentation = readBoothPresentation('?touchscreen=frame&email=private&token=private');
     [canonicalReport, '/booth', '/booth?step=finish', '/booth?step=picker', '/booth?step=demos', '/booth?recover=1'].forEach((path) => {

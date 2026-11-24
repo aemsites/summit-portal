@@ -1361,11 +1361,23 @@ email outcome; they do not ask the visitor to send again. Historical contact
 outbox entries remain private. Reset still removes the live attendee context and
 KV access data. Anonymous Simple Analytics events are only best-effort counts:
 `booth_search`, `booth_report_selected`, `booth_report_viewed`,
-`booth_report_sent`, `booth_no_report`, `booth_demo_selected` and
+`booth_report_sent`, `booth_report_scroll`, `booth_no_report`, `booth_demo_selected` and
 `booth_demo_viewed`. The latter two count correlated unmatched visits, not
 unidentified direct staff demos. `booth_contact_requested` is no longer emitted, including
-when replaying old outbox events. No email, email hash, visit ID,
-company/report identifiers, attendee IP, browser headers or cosmetics are sent.
+when replaying old outbox events. The analytics path is always `/booth`. Tagged
+visits send the public `campaign_id`; report actions also send a campaign-scoped
+`report_id` signed with the same secret used for Hub campaign mapping. The Hub
+can match it to a published report without sending report paths or company
+names to Simple Analytics. No attendee email, name, email hash, visit ID,
+IP address, browser headers or cosmetics are sent.
+
+The kiosk carries the validated `campaign` parameter through report navigation,
+recovery and staff sign-in. Starting from the generic booth link is not
+attributed; canceling an exit returns to the tagged booth, while confirming
+exit leaves it. Apply D1 migration `0006` before deploying the Worker, then roll
+out the Hub Event Impact reader. Keep the report-attribution signing secret
+consistent across deployments for the reporting window; rotation changes report
+IDs. Older counts without report IDs cannot be broken down by company.
 
 **Activation gates:** have Adobe Privacy/Legal review this report-specific notice
 and contact permission, purpose/lawful basis, geographic requirements and the

@@ -183,7 +183,8 @@ screen.addEventListener('load', () => {
       disconnect();
       url.searchParams.set('redirect', withBoothPresentation('/booth', { ...presentation, touchscreen: '1' }));
       window.location.replace(url.href);
-    } else if (url.pathname === '/booth' && url.searchParams.get('touchscreen') !== 'frame') {
+    } else if (url.pathname === '/booth' && (url.searchParams.get('touchscreen') !== 'frame'
+      || (presentation.campaign && !url.searchParams.has('campaign')))) {
       screen.contentWindow.location.replace(withBoothPresentation(`/booth${url.search}`, { ...presentation, touchscreen: 'frame' }));
     } else if (!device) {
       error.textContent = 'This page could not connect to the touchscreen. Reload the booth or ask staff.';
