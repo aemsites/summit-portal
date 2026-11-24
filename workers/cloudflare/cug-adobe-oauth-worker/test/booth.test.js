@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BoothCoordinator, handleBooth, discoverReports } from '../src/booth.js';
-import { createSession } from '../src/session.js';
+import { createSession, verifyShareLink } from '../src/session.js';
 import { createMockEnv, createMockBoothD1, createMockBoothStorage, createMockBoothCookie } from './helpers.js';
 import { sendAuthorizedBoothReport } from '../src/sharelink.js';
+import { sendShareLinkConfirm } from '../src/notification.js';
 import * as cugsheet from '../src/cugsheet.js';
 import { createBoothActivity } from '../src/booth-activity.js';
 
 vi.mock('../src/sharelink.js', () => ({ sendAuthorizedBoothReport: vi.fn() }));
+vi.mock('../src/notification.js', () => ({
+  sendShareLinkConfirm: vi.fn(),
+  sendMagicLinkInternalNotify: vi.fn(),
+}));
 
 const path = '/accounts/e/example/insights/example-com/portal-landing/';
 const second = '/accounts/e/example/insights/example-org/portal-landing/';
@@ -124,6 +129,42 @@ describe('booth isolated context', () => {
     const response = await request(query, { email: 'visitor@example.com' });
     expect(response.status).toBe(200);
     expect([...env.REPORT_REQUESTS.events.values()].map((row) => row.public_campaign_id)).toEqual([null, null]);
+  });
+
+  it.each([
+    ['the booth campaign', '00000000-0000-4000-8000-000000000001'],
+    ['no campaign', null],
+  ])('emails a signed report link with %s', async (_label, campaign) => {
+    const { sendAuthorizedBoothReport: send } = await vi.importActual('../src/sharelink.js');
+    const { default: worker } = await vi.importActual('../src/index.js');
+    vi.mocked(sendAuthorizedBoothReport).mockImplementation(send);
+    vi.mocked(sendShareLinkConfirm).mockClear();
+    const query = campaign ? `?campaign=${campaign}` : '';
+    expect((await request(`lookup${query}`, { email: 'visitor@example.com' })).status).toBe(200);
+    expect((await request(`send${query}`, {})).status).toBe(200);
+    expect(sendShareLinkConfirm).toHaveBeenCalledTimes(1);
+    const [recipient, shareUrl] = vi.mocked(sendShareLinkConfirm).mock.calls[0];
+    const url = new URL(shareUrl);
+    expect(recipient).toBe('visitor@example.com');
+    expect(url.pathname).toBe(path);
+    expect([...url.searchParams.keys()]).toEqual(['token']);
+    const claims = await verifyShareLink(url.searchParams.get('token'), env);
+    expect(claims.email).toBe(recipient);
+    if (campaign) {
+      expect(claims.campaign).toEqual({ id: campaign, path: path.slice(0, -1) });
+    } else {
+      expect(claims).not.toHaveProperty('campaign');
+    }
+    const sent = [...env.REPORT_REQUESTS.events.values()].find((event) => event.kind === 'report_sent');
+    expect(sent.public_campaign_id).toBe(campaign);
+    env.BOOTH_ANALYTICS_HOSTNAME = 'act.aem.now';
+    env.DIH_SHARE_LINK_SECRET = 'local-synthetic-share-signing-secret';
+    const opened = await worker.fetch(new Request(url), env);
+    expect(opened.status).toBe(302);
+    const redirected = new URL(opened.headers.get('Location'));
+    expect(redirected.pathname).toBe(path);
+    expect(redirected.searchParams.has('token')).toBe(false);
+    expect(redirected.searchParams.has('share_context')).toBe(Boolean(campaign));
   });
 
   it('staff-gates icons and binds them to fresh authorized picker candidates without renewing expiry', async () => {

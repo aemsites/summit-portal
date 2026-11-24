@@ -868,6 +868,7 @@ export class BoothCoordinator {
       authorized.grantGroups,
       authorized.org,
       this.env,
+      record.publicCampaignId,
     );
     if (!response.ok) {
       operationalError('Share-link dispatch could not be confirmed');

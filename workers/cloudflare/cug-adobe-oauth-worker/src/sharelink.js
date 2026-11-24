@@ -13,6 +13,7 @@ import {
 import { sendShareLinkConfirm, sendMagicLinkInternalNotify } from './notification.js';
 import { cugSheetGroups } from './cugsheet.js';
 import { matchesCugGroup } from './cug-group.js';
+import normalizePublicCampaignId, { canonicalCampaignReportPath } from './campaign-id.js';
 
 // eslint-disable-next-line no-console
 const log = (...args) => console.log('[sharelink]', ...args);
@@ -278,13 +279,24 @@ export async function handleShareLinkRequest(request, env) {
 }
 
 /** Server-only dispatch. The coordinator supplies freshly authorized, context-bound values. */
-export async function sendAuthorizedBoothReport(email, path, origin, grantGroups, org, env) {
-  if (!EMAIL_RE.test(email) || !safeRedirectPath(path) || !grantGroups?.length
+export async function sendAuthorizedBoothReport(email, path, origin, groups, org, env, campaignId) {
+  if (!EMAIL_RE.test(email) || !safeRedirectPath(path) || !groups?.length
     || staffDomains(env).has(email.split('@')[1])
-    || !grantGroups.every((group) => matchesCugGroup(group, email))) {
+    || !groups.every((group) => matchesCugGroup(group, email))) {
     return jsonResponse({ error: 'Report recipient is not authorized' }, 403);
   }
-  const token = await createShareLinkToken(email, env, grantGroups);
+  let token;
+  if (campaignId) {
+    const reportPath = canonicalCampaignReportPath(path);
+    if (!reportPath || !normalizePublicCampaignId(campaignId)) {
+      logError('Invalid campaign or report path for booth share');
+      return jsonResponse({ error: 'Invalid campaign report' }, 400);
+    }
+    const campaign = { id: campaignId, path: reportPath };
+    ({ token } = await mintShareLink(email, env, groups, campaign));
+  } else {
+    token = await createShareLinkToken(email, env, groups);
+  }
   const link = `${origin}${appendTokenParam(path, token)}`;
   return dispatchReportEmail(email, link, org, env);
 }

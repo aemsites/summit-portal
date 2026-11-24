@@ -116,6 +116,13 @@ Untagged issuance is unchanged. Existing tagged links still grant ordinary
 report access when analytics is unconfigured or unavailable, subject to the
 same signature, expiry, and CUG checks.
 
+When a visitor emails themselves a report from a campaign booth, the email
+link carries the campaign from the validated booth session in its signed
+token. The send counts as booth activity. Opening the link later counts as
+Customer Portal activity for that campaign. Booth visits without a campaign
+still send ordinary links. Analytics configuration does not block booth email
+delivery.
+
 Only a matching, non-redirected, CUG-authorized report can start campaign
 activity. An opaque `share_context` in the redirected report URL selects a
 signed, report-scoped HttpOnly cookie. Neither authorizes access, and the
