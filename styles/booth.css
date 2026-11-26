@@ -638,7 +638,8 @@
     }
 
     .stage-footer {
-      padding: 1.8519vw 5.1852vw 5.1852vw;
+      /* Reserve the staff button's height so it never covers the progress bar on iPads. */
+      padding: 1.8519vw 5.1852vw max(5.1852vw, calc(max(48px, 2.963vw) + 24px));
       font-size: max(14px, 1.111vw);
     }
 
@@ -746,7 +747,8 @@
       }
 
       .stage-footer {
-        padding: calc(40 * var(--entry-unit)) calc(112 * var(--entry-unit)) calc(112 * var(--entry-unit));
+        padding: calc(40 * var(--entry-unit)) calc(112 * var(--entry-unit))
+          max(calc(112 * var(--entry-unit)), calc(max(48px, 2.963vw) + 24px));
       }
 
       .booth-progress {
@@ -1277,6 +1279,12 @@
     width: 100%;
   }
 
+  @media (width >= 600px) {
+    .request-fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
   .request-field {
     display: grid;
     align-content: start;
@@ -1395,6 +1403,7 @@
 
   .requested-panel .lead strong {
     color: var(--ink);
+    overflow-wrap: anywhere;
   }
 
   .requested-card {

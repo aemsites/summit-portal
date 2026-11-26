@@ -692,6 +692,13 @@ same geometry in 2048 units):
   report document's own `Last-Modified` for `/accounts/**/insights/**` and
   `/example-report/*` HTML only; without a valid header nothing is shown.
 
+iPads and desktops: the request form uses two columns from 600px, the
+confirmation wraps long websites, and the footer always reserves the staff
+button's height so it no longer covers the progress bar at 1024–1440px (this
+overlap pre-dated the change on Entry). Checked at 744×1133, 820×1180, 834×1194,
+1024×1366, 1133×744, 1180×820, 1366×1024, 1440×900 and 1920×1080 for overflow,
+clipped text, 44px targets, 16px+ field text (no iOS zoom) and keyboard scrolling.
+
 Requests use the new staff-scoped `POST /auth/booth/request`
 (`handleBoothReportRequest` in `src/report-requests.js`): same validation,
 consent and storage as the public form, `request_source = 'Booth request
