@@ -274,6 +274,36 @@ async function pickerIcon(request, stub, env, timing) {
   return new Response(icon.body, { headers: { ...ASSET_HEADERS, 'Content-Type': icon.type } });
 }
 
+/** Activity is best effort: the stored request is the authoritative record. */
+async function recordBoothRequest(request, env, stored) {
+  const {
+    requestId,
+    email,
+    company,
+    website,
+  } = stored;
+  if (!env.BOOTH_COORDINATOR) return;
+  try {
+    const name = contextId(request) || requestId;
+    const stub = env.BOOTH_COORDINATOR.get(env.BOOTH_COORDINATOR.idFromName(name));
+    const url = new URL(request.url);
+    url.pathname = '/auth/booth/requested';
+    const response = await stub.fetch(new Request(url, {
+      method: 'POST',
+      headers: { Cookie: request.headers.get('Cookie') || '', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requestId,
+        email,
+        company,
+        website,
+      }),
+    }));
+    if (!response.ok) operationalError('Booth request activity was not recorded');
+  } catch {
+    operationalError('Booth request activity was not recorded');
+  }
+}
+
 export async function handleBooth(request, env) {
   const timing = createBoothTiming(env);
   const start = timing.now();
@@ -301,6 +331,7 @@ export async function handleBooth(request, env) {
     const response = await handleBoothReportRequest(request, env, {
       campaign: boothCampaignId(new URL(request.url)),
       binding: staff.binding,
+      onStored: (stored) => recordBoothRequest(request, env, stored),
     });
     Object.entries(ASSET_HEADERS).forEach(([key, value]) => response.headers.set(key, value));
     return finish(response);
@@ -529,7 +560,7 @@ export class BoothCoordinator {
       return reply({ error: 'Staff authentication required' }, 401);
     }
     const binding = await staffBinding(request, this.env);
-    if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity'].includes(action)) {
+    if (!['status', 'authorize', 'icon-context', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity', 'requested'].includes(action)) {
       return reply({ error: 'Unknown booth action' }, 404);
     }
     if (!['reset', 'exit'].includes(action) && await storage.get('retired')) {
@@ -546,6 +577,30 @@ export class BoothCoordinator {
     if (record?.mode === 'request') {
       await this.clear(record, timing);
       record = null;
+    }
+    if (action === 'requested') {
+      // Internal-only: handleBooth never routes this action from a browser.
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return reply({ error: 'Invalid request activity' }, 400);
+      }
+      const { requestId, email, company, website } = body || {};
+      if (typeof requestId !== 'string' || !/^[0-9a-f-]{36}$/.test(requestId)) {
+        return reply({ error: 'Invalid request activity' }, 400);
+      }
+      const flowId = record?.flowId || record?.key || requestId;
+      const activity = createBoothActivity('report_requested', flowId, typeof email === 'string' ? email : '', {
+        company: typeof company === 'string' ? company : null,
+        label: typeof website === 'string' ? website : null,
+      });
+      await this.activity([{
+        ...activity,
+        event_id: `${flowId}:report_requested:${requestId}`,
+        public_campaign_id: boothCampaignId(new URL(request.url)),
+      }], record || undefined, timing);
+      return reply({ recorded: true });
     }
     if (['reset', 'exit'].includes(action)) {
       let prepareExit = false;

@@ -457,7 +457,7 @@ async function handleCreate(request, env) {
  * attendee shares one network address, so the limit is per booth login rather
  * than per IP. Campaign attribution comes only from the booth URL.
  */
-export async function handleBoothReportRequest(request, env, { campaign, binding }) {
+export async function handleBoothReportRequest(request, env, { campaign, binding, onStored }) {
   if (databaseUnavailable(env)) {
     return privateResponse({ error: BOOTH_UNAVAILABLE }, 503);
   }
@@ -491,11 +491,18 @@ export async function handleBoothReportRequest(request, env, { campaign, binding
   }
   const expirationTtl = RATE_LIMIT_WINDOW_SECONDS;
   await env.SESSIONS.put(storageKey, String(count + 1), { expirationTtl });
-  return storeReportRequest(env, {
+  const value = {
     ...normalised.value,
     requestSource: BOOTH_REQUEST_SOURCE,
     publicCampaignId: normalizePublicCampaignId(campaign),
-  }, idempotencyKey);
+  };
+  const response = await storeReportRequest(env, value, idempotencyKey);
+  // Only a newly stored request is reported; confirmed retries returned above.
+  if (response.status === 201 && onStored) {
+    const { requestId } = await response.clone().json();
+    await onStored({ ...value, requestId });
+  }
+  return response;
 }
 
 async function handleList(url, env, admin) {

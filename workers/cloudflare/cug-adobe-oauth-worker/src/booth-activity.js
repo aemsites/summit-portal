@@ -3,7 +3,10 @@ import { normalizePublicCampaignId } from './report-request-campaigns.js';
 
 export const BOOTH_NOTICE_VERSION = 'booth-privacy-v1';
 export const BOOTH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-const KINDS = ['search', 'no_report', 'demo_selected', 'demo_viewed', 'report_selected', 'report_viewed', 'contact_requested', 'report_sent', 'report_scroll'];
+const KINDS = [
+  'search', 'no_report', 'demo_selected', 'demo_viewed', 'report_selected', 'report_viewed',
+  'contact_requested', 'report_sent', 'report_scroll', 'report_requested',
+];
 export const BOOTH_SCROLL_MILESTONES = [25, 50, 75, 100];
 const PAGE_SIZE = 100;
 const HEADERS = {

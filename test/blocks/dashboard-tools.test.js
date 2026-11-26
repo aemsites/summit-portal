@@ -108,7 +108,7 @@ describe('dashboard-tools', () => {
   it('offers every existing action filter without suggesting new contact consent', () => {
     expect([...block.querySelectorAll('option')].map((option) => option.value)).to.deep.equal([
       '', 'search', 'no_report', 'report_selected', 'report_viewed', 'report_sent',
-      'demo_selected', 'demo_viewed', 'contact_requested', 'report_scroll',
+      'demo_selected', 'demo_viewed', 'contact_requested', 'report_scroll', 'report_requested',
     ]);
     expect(block.querySelector('option[value="contact_requested"]').textContent).to.equal('Historical contact opt-ins');
   });

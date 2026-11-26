@@ -713,6 +713,16 @@ the stored request instead of creating a duplicate and does not consume the
 limit; edited details create a new key. Submissions never touch the visitor's
 report/demo context.
 
+Each newly stored booth request also records a private `report_requested`
+booth activity event (migration `0007_booth_report_requested.sql`) with the
+submitted business email, company (`company`), website (`report_label`) and the
+booth URL campaign. It joins the visit's existing Visit (`flow_id`) when one
+exists, so a no-match lookup and its request line up in the CSV, and it is
+counted anonymously as `booth_report_requested` with `campaign_id`. Confirmed
+retries do not record it twice. Recording is best effort and never changes the
+request response; the stored request remains authoritative. Staff can export it
+from **Booth usage export → Booth report requests**.
+
 The form keeps typed details on failure, explains that a retry will not send
 twice, and locks fields while sending. Field errors appear only after a submit
 attempt so a tap is never displaced by a message appearing under the finger.
@@ -1385,8 +1395,8 @@ email outcome; they do not ask the visitor to send again. Historical contact
 outbox entries remain private. Reset still removes the live attendee context and
 KV access data. Anonymous Simple Analytics events are only best-effort counts:
 `booth_search`, `booth_report_selected`, `booth_report_viewed`,
-`booth_report_sent`, `booth_report_scroll`, `booth_no_report`, `booth_demo_selected` and
-`booth_demo_viewed`. The latter two count correlated unmatched visits, not
+`booth_report_sent`, `booth_report_scroll`, `booth_no_report`, `booth_demo_selected`,
+`booth_demo_viewed` and `booth_report_requested`. The latter two count correlated unmatched visits, not
 unidentified direct staff demos. `booth_contact_requested` is no longer emitted, including
 when replaying old outbox events. The analytics path is always `/booth`. Tagged
 visits send the public `campaign_id`; report actions also send a campaign-scoped
