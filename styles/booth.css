@@ -1000,7 +1000,8 @@
   .industry-panel .recovery-actions,
   .picker-panel .recovery-actions {
     display: flex;
-    justify-content: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     margin-top: 48px;
   }
 
@@ -1264,6 +1265,7 @@
   }
 
   .request-form {
+    position: relative;
     display: grid;
     justify-items: start;
     gap: 28px;
@@ -1271,6 +1273,92 @@
     border-radius: 24px;
     padding: 28px 20px;
     background: #f8f8f8;
+  }
+
+  .request-submitted {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 24px;
+    border-radius: inherit;
+    background: #f8f8f8;
+  }
+
+  .request-submitted-icon {
+    display: grid;
+    place-items: center;
+    width: 120px;
+    height: 120px;
+    border: 6px solid #07a721;
+    border-radius: 50%;
+  }
+
+  .request-submitted-icon img {
+    width: 66.67%;
+    height: 66.67%;
+  }
+
+  .request-submitted p {
+    margin: 0;
+    color: #717171;
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .request-field-website {
+    position: relative;
+  }
+
+  .request-tip {
+    border-radius: 16px;
+    padding: 12px 20px;
+    background: var(--surface);
+    box-shadow: 11px 7px 20px rgb(0 0 0 / 18%);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .request-tip ul {
+    margin: 0;
+    padding-inline-start: 20px;
+  }
+
+  .request-tip li + li {
+    margin-top: 12px;
+  }
+
+  /* Single-column phones keep it as visible help text so taps never shift. */
+  @media (width >= 600px) {
+    .request-tip {
+      position: absolute;
+      top: 0;
+      left: calc(100% + 20px);
+      z-index: 3;
+      display: none;
+      pointer-events: none;
+      width: min(360px, calc(100% - 8px));
+      font-size: 14px;
+    }
+
+    .request-tip::before {
+      position: absolute;
+      top: calc(50% - 6px);
+      left: -6px;
+      width: 12px;
+      height: 12px;
+      background: var(--surface);
+      transform: rotate(45deg);
+      content: "";
+    }
+
+    .request-field-website:is(:focus-within, :hover) .request-tip {
+      display: block;
+    }
   }
 
   .request-fields {
@@ -1710,6 +1798,36 @@
 
     .request-panel h2 {
       margin-top: 0;
+    }
+
+    .request-submitted {
+      gap: calc(64 * var(--industry-unit));
+    }
+
+    .request-submitted-icon {
+      width: calc(410 * var(--industry-unit));
+      height: calc(410 * var(--industry-unit));
+      border-width: calc(18 * var(--industry-unit));
+    }
+
+    .request-submitted p {
+      font-size: calc(127 * var(--industry-unit));
+    }
+
+    .request-tip {
+      top: calc(10 * var(--industry-unit));
+      left: calc(100% + 28 * var(--industry-unit));
+      width: max(240px, calc(577 * var(--industry-unit)));
+      border-radius: calc(25 * var(--industry-unit));
+      padding: calc(14 * var(--industry-unit)) calc(36 * var(--industry-unit));
+      font-size: max(14px, calc(22 * var(--industry-unit)));
+    }
+
+    .request-tip::before {
+      top: calc(50% - 9 * var(--industry-unit));
+      left: calc(-8 * var(--industry-unit));
+      width: max(10px, calc(18 * var(--industry-unit)));
+      height: max(10px, calc(18 * var(--industry-unit)));
     }
 
     .request-form {

@@ -1,3 +1,15 @@
+/** The Worker supplies this only for report documents with a real Last-Modified date. */
+function reportGeneratedDate() {
+  const value = Date.parse(document.querySelector('meta[name="report-last-updated"]')?.content || '');
+  if (!Number.isFinite(value)) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(value));
+}
+
 function typeText(el) {
   const full = el.textContent;
   el.textContent = '';
@@ -117,7 +129,18 @@ export function buildInsightHero(block, rows) {
           const meta = document.createElement('div');
           meta.className = 'rh-insight-meta';
           meta.append(anchor);
-          scopeParas.forEach((p) => meta.append(p));
+          const generated = reportGeneratedDate();
+          // The date replaces the generic report label under the website button.
+          const scope = generated
+            ? scopeParas.filter((p) => p.textContent.trim() !== 'Digital Opportunity Report')
+            : scopeParas;
+          if (generated) {
+            const dateLine = document.createElement('p');
+            dateLine.className = 'rh-insight-scope rh-insight-generated';
+            dateLine.textContent = `Report generated: ${generated}`;
+            scope.unshift(dateLine);
+          }
+          scope.forEach((p) => meta.append(p));
           scopeParas.length = 0;
           textCol.append(meta);
           return;

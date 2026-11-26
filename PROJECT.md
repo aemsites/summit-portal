@@ -744,6 +744,21 @@ render the header's account area (**Sign in**, email menu, **My Portal**), which
 let visitors leave the kiosk flow. Test requests and their booth activity from
 the November 26 live checks were deleted from production.
 
+**November 26 evening Figma follow-up:** copy now says **Your Adobe team**
+instead of Adobe Sales (form intro, confirmation and its second step, "A member
+of the Adobe team will be in touch with your report"), "Explore an example
+report from your industry." and "…available for your company yet." A green
+**Submitted** check fills the form card for 1.6 seconds before the confirmation
+(leaving the screen cancels it). The website field shows the team's guidance
+tooltip (public website, 1,000 monthly unpaid-search visits, single-market
+focus): a floating pop-up from 600px wide while the field is focused or hovered
+(taps pass through), and always-visible help text on phones so taps never shift.
+The report date moved from the portal top bar into the report hero, as
+**Report generated: <date>** in place of the "Digital Opportunity Report" line,
+still from the Worker's `report-last-updated` meta. Industry and picker actions
+are left-aligned per Figma. The staff guide's "Adobe Sales" wording was updated
+in KV and the repo copy.
+
 Requests use the new staff-scoped `POST /auth/booth/request`
 (`handleBoothReportRequest` in `src/report-requests.js`): same validation,
 consent and storage as the public form, `request_source = 'Booth request
@@ -1656,7 +1671,7 @@ the Hub does not accept CSV uploads directly. The schema was checked against
 [`company-template.ts`](https://github.com/Adobe-AEM-Foundation/digital-insights-hub/blob/c201e8e53ac34212fc7ac1364f6a897b43fc04a2/frontend/src/lib/campaigns-v3/company-template.ts).
 
 ### header
-Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor. On report pages with a Worker-supplied `<meta name="report-last-updated">`, the actions start with a blue status dot and italic **Report last updated: Month D, YYYY** (`.report-updated`, shown at ≥900px; nothing is shown without the meta).
+Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor. The report date is shown by `report-hero` (insight variant) as **Report generated: Month D, YYYY**, not in the header.
 
 ### customer-picker
 Staff-facing search/share surface with **two-level navigation** — a primary family control (**Digital Opportunity Reports** / **Accounts**) over a secondary chip row of report sets (**All reports**, **Adobe Summit 2026**, then one chip per event, **authored in DA — no code change per event**) — plus A–Z letter nav, per-format report links, and per-page sharing via `/auth/sharelink`. Data is fetched live from four DA sheets under `/data/`: `account-list.json` (Accounts), `company-list.json` (Adobe Summit 2026), `insights-list.json` (All reports + event membership), and `event-tabs.json` (which event tabs exist); CUG email domains come from `/closed-user-groups.json`.

@@ -144,3 +144,27 @@ describe('report-hero optional screenshots', () => {
     expect(block.querySelector('.rh-insight-badge-icon')).not.to.equal(null);
   });
 });
+
+describe('report-hero generated date', () => {
+  let meta;
+  beforeEach(() => { document.body.innerHTML = ''; });
+  afterEach(() => meta?.remove());
+
+  it('replaces the report label under the website with the report date', () => {
+    meta = document.createElement('meta');
+    meta.name = 'report-last-updated';
+    meta.content = '2026-12-21T09:00:00.000Z';
+    document.head.append(meta);
+    const block = createHero();
+    decorate(block);
+    const scope = [...block.querySelectorAll('.rh-insight-meta .rh-insight-scope')].map((p) => p.textContent);
+    expect(scope).to.deep.equal(['Report generated: December 21, 2026']);
+  });
+
+  it('keeps the report label when the page has no trustworthy date', () => {
+    const block = createHero();
+    decorate(block);
+    expect(block.querySelector('.rh-insight-generated')).to.equal(null);
+    expect(block.querySelector('.rh-insight-meta').textContent).to.include('Digital Opportunity Report');
+  });
+});
