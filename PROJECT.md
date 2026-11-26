@@ -699,6 +699,14 @@ overlap pre-dated the change on Entry). Checked at 744×1133, 820×1180, 834×11
 1024×1366, 1133×744, 1180×820, 1366×1024, 1440×900 and 1920×1080 for overflow,
 clipped text, 44px targets, 16px+ field text (no iOS zoom) and keyboard scrolling.
 
+**Request telemetry (November 26, follow-up):** each new booth request also
+records a private `report_requested` booth activity event (D1 migration
+`0007_booth_report_requested.sql`) on the same Visit as the lookup, with the
+booth URL campaign, plus an anonymous `booth_report_requested` count with
+`campaign_id`. The dashboard export offers **Booth report requests**. Live
+checks on November 26 confirmed campaign IDs on `search`, `no_report`,
+`report_selected`, `report_viewed`, `report_scroll` and `report_sent` events.
+
 Requests use the new staff-scoped `POST /auth/booth/request`
 (`handleBoothReportRequest` in `src/report-requests.js`): same validation,
 consent and storage as the public form, `request_source = 'Booth request

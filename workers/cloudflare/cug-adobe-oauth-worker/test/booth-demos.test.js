@@ -106,7 +106,14 @@ describe('staff-bound booth demos and booth report requests', () => {
   it('stores a booth request against the booth URL campaign without changing the visit', async () => {
     const campaign = '2a6aa96b-8078-4efb-8d16-cd0d79645589';
     await request(`demo?campaign=${campaign}`, { id: 'luma' });
-    env.REPORT_REQUESTS = createMockD1();
+    const activity = env.REPORT_REQUESTS;
+    const requests = createMockD1();
+    // Production uses one D1 binding for both tables.
+    env.REPORT_REQUESTS = {
+      prepare: (sql) => (sql.includes('booth_activity') ? activity : requests).prepare(sql),
+      batch: requests.batch,
+      requests: requests.requests,
+    };
     const body = {
       fullName: 'Jordan Lee',
       email: 'jordan@example.com',
@@ -122,6 +129,20 @@ describe('staff-bound booth demos and booth report requests', () => {
     expect(stored.request_source).toBe('Booth request form');
     expect(stored.public_campaign_id).toBe(campaign);
     expect((await storage.get('context')).selectedPath).toBe('/example-report/luma/');
+    const events = [...activity.events.values()];
+    const selected = events.find((event) => event.kind === 'demo_selected');
+    const requested = events.filter((event) => event.kind === 'report_requested');
+    expect(requested).toHaveLength(1);
+    expect(requested[0]).toMatchObject({
+      flow_id: selected.flow_id,
+      email: 'jordan@example.com',
+      company: 'Northstar',
+      report_label: 'example.com',
+      public_campaign_id: campaign,
+    });
+    expect((await request(`request?campaign=${campaign}`, body, headers)).status).toBe(201);
+    expect([...activity.events.values()].filter((event) => event.kind === 'report_requested'))
+      .toHaveLength(1);
   });
 
   it.each(['demo'])('preserves the existing outbox retry when switching to %s', async (mode) => {
