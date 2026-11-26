@@ -48,7 +48,7 @@ describe('responsive booth guide', () => {
     await init(root);
     expect(root.querySelectorAll('.bg-section')).to.have.length(20);
     expect(root.querySelectorAll('#guide-index a')).to.have.length(20);
-    expect(root.querySelectorAll('.bg-screenshot')).to.have.length(13);
+    expect(root.querySelectorAll('.bg-screenshot')).to.have.length(15);
     expect(root.querySelectorAll('h1')).to.have.length(1);
     expect(root.querySelector('#guide-index [href="#16-first-screen-setup-test"]')).to.exist;
     expect(root.querySelector('#guide-search').disabled).to.equal(false);

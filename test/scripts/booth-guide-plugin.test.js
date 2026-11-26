@@ -107,7 +107,7 @@ describe('staff companion route matching', () => {
     expect(response.ok).to.equal(true);
     const guide = await response.json();
     expect(guide.redacted).to.equal(true);
-    expect(guide.contentVersion).to.equal('2026-10-09-v4-availability');
+    expect(guide.contentVersion).to.equal('2026-11-26-v5-requests');
     expect(guide.sourceDocument).to.equal('Amplify your brand visibility activation guide (4).docx');
     expect(guide.sections.find((section) => section.id === '2-open-the-right-company-report').searchText)
       .to.include('new website, limited traffic')
@@ -118,9 +118,10 @@ describe('staff companion route matching', () => {
       expect(guide.sections.some((section) => section.id === sectionId)).to.equal(true);
     });
     const text = guide.sections.map((section) => section.html).join('\n');
-    expect(text.match(/<img /g)).to.have.length(13);
+    expect(text.match(/<img /g)).to.have.length(15);
     [
-      '{{STAFF_USERNAME}}', '{{STAFF_PASSWORD}}', '{{SETUP_TEST_EMAIL}}',
+      '{{SETUP_TEST_EMAIL}}', 'https://digital-insights.corp.adobe.com/insights-campaigns',
+      'Browse Industry Reports', 'Request my report',
       'What Adobe Brand Visibility helps you understand', 'Google PageSpeed Insights',
       '13. Statements to avoid', 'Objection handling: value and next steps', '30 days',
       'Click button to clear the screen', 'José Correia',
@@ -130,10 +131,11 @@ describe('staff companion route matching', () => {
     expect(text).not.to.include('No email test is required on site');
     expect(guide.sections.find(({ id }) => id === '15-readiness-and-recovery').html.match(/\[ \]/g)).to.have.length(4);
     expect(text).not.to.include('Edge Delivery');
-    expect(text).not.to.include('Request my report');
+    ['{{STAFF_USERNAME}}', '{{STAFF_PASSWORD}}', 'https://act.aem.now/booth', 'Industry demos']
+      .forEach((phrase) => expect(text).not.to.include(phrase));
     const imagePaths = [...text.matchAll(/<img [^>]*src="([^"]+)"/g)]
       .map((match) => match[1]);
-    expect(imagePaths).to.have.length(13);
+    expect(imagePaths).to.have.length(15);
     const base = new URL('/docs/demo-guide/plugin/sidepanel.html', window.location.origin);
     const images = await Promise.all(imagePaths.map((path) => fetch(new URL(path, base))));
     images.forEach((image) => expect(image.ok).to.equal(true));

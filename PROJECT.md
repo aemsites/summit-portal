@@ -707,6 +707,18 @@ booth URL campaign, plus an anonymous `booth_report_requested` count with
 checks on November 26 confirmed campaign IDs on `search`, `no_report`,
 `report_selected`, `report_viewed`, `report_scroll` and `report_sent` events.
 
+**Staff guide and kiosk exits (November 26, follow-up):** the published
+`/adobe/booth-guide` (KV content version `2026-11-26-v5-requests`) no longer
+contains the shared staff credentials or fixed booth URLs. Staff get the booth
+link and sign-in from the event's Digital Insights Hub campaign
+(https://digital-insights.corp.adobe.com/insights-campaigns). It also documents
+Browse Industry Reports, picker report dates and the embedded request form,
+with refreshed screenshots. The redacted repo copy
+(`docs/demo-guide/plugin/guide.json`) matches. Booth report pages no longer
+render the header's account area (**Sign in**, email menu, **My Portal**), which
+let visitors leave the kiosk flow. Test requests and their booth activity from
+the November 26 live checks were deleted from production.
+
 Requests use the new staff-scoped `POST /auth/booth/request`
 (`handleBoothReportRequest` in `src/report-requests.js`): same validation,
 consent and storage as the public form, `request_source = 'Booth request
