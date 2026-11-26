@@ -296,8 +296,34 @@ async function decorateUserInfo(section) {
   container.append(wrapper);
 }
 
+const reportDate = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** The Worker supplies this only for report documents with a real Last-Modified date. */
+function decorateReportUpdated(section) {
+  const container = section.querySelector('.default-content');
+  const value = Date.parse(document.querySelector('meta[name="report-last-updated"]')?.content || '');
+  if (!container || !Number.isFinite(value)) return;
+  const status = document.createElement('p');
+  status.className = 'report-updated';
+  const dot = document.createElement('img');
+  dot.src = '/img/icons/status-dot-informative.svg';
+  dot.alt = '';
+  dot.width = 12;
+  dot.height = 12;
+  const text = document.createElement('span');
+  text.textContent = `Report last updated: ${reportDate.format(new Date(value))}`;
+  status.append(dot, text);
+  container.prepend(status);
+}
+
 async function decorateActionSection(section) {
   section.classList.add('actions-section');
+  decorateReportUpdated(section);
   decorateUserInfo(section);
 }
 

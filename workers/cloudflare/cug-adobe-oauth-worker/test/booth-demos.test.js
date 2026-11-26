@@ -4,9 +4,15 @@ import {
 import { BOOTH_DEMOS } from '../src/booth-demos.js';
 import { BoothCoordinator, handleBooth } from '../src/booth.js';
 import { createBoothActivity } from '../src/booth-activity.js';
-import { createMockEnv, createMockBoothD1, createMockBoothStorage, createMockBoothCookie } from './helpers.js';
+import {
+  createMockEnv,
+  createMockBoothD1,
+  createMockBoothStorage,
+  createMockBoothCookie,
+  createMockD1,
+} from './helpers.js';
 
-describe('staff-bound booth demos and retired report requests', () => {
+describe('staff-bound booth demos and booth report requests', () => {
   let env;
   let cookie;
   let storage;
@@ -61,7 +67,7 @@ describe('staff-bound booth demos and retired report requests', () => {
     expect((await request('contact', {})).status).toBe(404);
   });
 
-  it('clears the previous visitor KV before switching to a demo and rejects the retired request flow', async () => {
+  it('clears the previous visitor KV before switching to a demo and keeps it through an invalid request', async () => {
     await env.SESSIONS.put('booth:previous', JSON.stringify({ email: 'previous@example.com' }));
     await storage.put('context', { key: 'previous', expiresAt: Date.now() + 600000, binding: '' });
     // Establish a legitimate binding using the same staff session.
@@ -72,7 +78,7 @@ describe('staff-bound booth demos and retired report requests', () => {
     await request('demo', { id: 'luma' });
     expect(await env.SESSIONS.get('booth:previous')).toBeNull();
     const response = await request('request', {});
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(400);
     expect((await storage.get('context')).selectedPath).toBe('/example-report/luma/');
     expect(env.REPORT_REQUESTS.events.size).toBe(0);
     expect((await request('reset', {})).headers.get('Set-Cookie')).toContain('Max-Age=0');
@@ -87,13 +93,35 @@ describe('staff-bound booth demos and retired report requests', () => {
     expect(await storage.get('context')).toBeUndefined();
   });
 
-  it('rejects request prefill, cross-origin changes and anonymous access', async () => {
-    expect((await request('request', { email: 'visitor@example.com' })).status).toBe(404);
+  it('rejects incomplete requests, cross-origin changes and anonymous access', async () => {
+    expect((await request('request', { email: 'visitor@example.com' })).status).toBe(400);
+    expect((await request('request', {}, { Origin: 'https://evil.example' })).status).toBe(403);
     expect((await request('demo', { id: 'luma' }, { Origin: 'https://evil.example' })).status).toBe(403);
     for (const action of ['demos', 'demo', 'request']) {
       expect((await request(action, action === 'demos' ? undefined : {}, { Cookie: '' })).status).toBe(401);
     }
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('stores a booth request against the booth URL campaign without changing the visit', async () => {
+    const campaign = '2a6aa96b-8078-4efb-8d16-cd0d79645589';
+    await request(`demo?campaign=${campaign}`, { id: 'luma' });
+    env.REPORT_REQUESTS = createMockD1();
+    const body = {
+      fullName: 'Jordan Lee',
+      email: 'jordan@example.com',
+      company: 'Northstar',
+      website: 'example.com',
+      consent: true,
+    };
+    const headers = { 'Idempotency-Key': 'booth-route-1234' };
+    const response = await request(`request?campaign=${campaign}`, body, headers);
+    expect(response.status).toBe(201);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    const [stored] = env.REPORT_REQUESTS.requests.values();
+    expect(stored.request_source).toBe('Booth request form');
+    expect(stored.public_campaign_id).toBe(campaign);
+    expect((await storage.get('context')).selectedPath).toBe('/example-report/luma/');
   });
 
   it.each(['demo'])('preserves the existing outbox retry when switching to %s', async (mode) => {

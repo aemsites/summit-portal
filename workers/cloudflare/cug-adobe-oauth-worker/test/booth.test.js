@@ -525,7 +525,13 @@ describe('booth isolated context', () => {
       { Folder: '/adobe/data/customer/other/', Report: 'Internal' },
       { Folder: '/accounts/e/example/insights/example-com/', Created: '3.10.2026' },
     );
-    expect(await discoverReports('visitor@example.com', env)).toEqual([{ path, label: 'Example — example.com', company: 'Example', websiteHost: 'example.com' }]);
+    expect(await discoverReports('visitor@example.com', env)).toEqual([{
+      path,
+      label: 'Example — example.com',
+      company: 'Example',
+      websiteHost: 'example.com',
+      createdAt: Date.UTC(2026, 9, 1),
+    }]);
     expect(await discoverReports('operator@adobe.com', env)).toEqual([]);
     expect(await discoverReports('nobody@unknown.example', env)).toEqual([]);
   });

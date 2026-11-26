@@ -302,7 +302,7 @@ the bounded `heading` parameter; `brand=adobe|semrush` is unchanged. See
 
 - `/docs/sales-playbook` — **legacy internal seller playbook**: how to read, present, and defend a Digital Opportunity Report so any seller can pitch a portal landing page. Staff-only; the dashboard now points to Digital Insights Hub Guides instead. Authored in DA from existing report blocks (`report-cards`, `table`, `report-callout`) plus the `copy-markdown` button and the `docs` theme block. Opens with a `docs` block that switches the page into the documentation theme (`blocks/docs/docs.css`). (`advanced-tabs` was deliberately avoided — its decorator hijacks every sibling `.section` in `main` as a tab panel, which breaks a long multi-section page.)
 - `docs/universal-booth-access.html` — standalone, print-friendly concept brief for a reusable event-booth flow: registration-email lookup opens the existing portal-landing report directly, a booth-only Finish control returns to the same booth page for report email delivery and non-interactive sales guidance, with Adobe/Semrush presentation options and portrait display requirements.
-- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and readable privacy notices, adds an adjacent white/gray outlined **Industry demos** staff shortcut, and displays the real three-step progress footer. Booth report requests are retired; the separate public form remains available outside kiosk mode. See the October 8 final-design section and `docs/implementations/booth-access/README.md` for rollout gates.
+- `/booth` — **reusable booth prototype**: the Worker bundles the final Figma Entry / Finish 6 shell, scoped assets and live report renderers, without DA imports. Staff setup and fresh exact-email/domain CUG discovery open one authorized report or an explicit website picker. Finish uses three swipeable excerpts from the selected report (overview/metrics, briefing, LLM visibility), with **Email my report** and an outlined **Finish and clear this screen** action. The default header is **Amplify your brand visibility**, with the exported Adobe wordmark. Cosmetic `heading` and `brand` settings never affect permissions or emailed links. Entry preserves keyboard support and readable privacy notices, adds an adjacent outlined **Browse Industry Reports** action, and displays the real three-step progress footer. Missing-report, industry and picker screens embed a campaign-attributed report request form (see the November 26 section). See the November 26 and October 8 final-design sections and `docs/implementations/booth-access/README.md` for rollout gates.
 - `/booth?touchscreen=1` — **authenticated live presentation** (October 9, deployed): a persistent, laptop-fit portrait frame around the ordinary booth/report documents, with automatic schematic email keyboard and no operator controls. Staff sign-in escapes to the top-level page and returns to this presentation; lookup and email use the real production APIs. The inner layout stays **2160 × 3840 CSS pixels**; its explicit `touchscreen=frame` flag follows report, picker, Finish, reset and recovery without changing authorization. Keyboard Close blurs the field, preserves its text and restores pre-edit scrolling; document changes cancel old listeners and pending scroll restoration. Repeated report returns preserve Entry's resting bounds. This assumes 100% Windows scaling, not a measured hardware viewport or native Windows keyboard/DPR emulation. Use a separate browser/private window because the existing kiosk restriction is browser-wide. The matching Worker is deployed; the local diagnostic simulator remains separate. `heading` still changes the small shared brand label, not the Entry hero headline.
 - `docs/implementations/booth-access/design/touchscreen-review.html` — local interactive Chrome review wrapper for the booth design: **2160 × 3840 CSS portrait event target by default**, with 1080 × 1920 as a fallback viewport check. The frame scales to fit smaller laptop displays, plus a larger scrollable inspection mode; fit-to-window is not proof of on-site legibility. It references `booth-preview.html` and repo icons: sending this file alone opens an empty preview for recipients. `design/export-touchscreen-review.mjs` generates a **single shareable HTML** with both screens, scripts and artwork embedded (Adobe Clean loads via Typekit when online, with a system fallback). Neither reviewer nor export is a production route; confirm the actual browser CSS viewport on event hardware.
 
@@ -661,6 +661,57 @@ responses. No customer lookup, reset or email was performed. The merge adds no
 schema migrations; a remote D1 migration-list query was denied (7403), so no
 claim is made about unrelated pending migrations. Bindings, epoch and hourly
 cron are unchanged. Close old report tabs and reload `/booth`.
+
+### November 26 NRF EMEA Figma refresh and embedded booth requests (not deployed)
+
+Implements the [Brand Visibility for NRF EMEA](https://www.figma.com/design/nwCKkvTon2FEpdtn3nYd7y/Brand-Visibility-for-NRF--EMEA?node-id=16-439)
+R1 screens at the 2160 × 3840 touchscreen size (the 2048 × 2732 frames use the
+same geometry in 2048 units):
+
+- **Entry:** shorter hero (921px) with the Figma "AI Gradient" glow
+  (`img/booth/entry-ai-gradient.svg`) instead of the red glow; 112px offer
+  heading, 64px label, 54px help text and 144px actions with a 64px gap. The
+  staff shortcut is now the outlined **Browse Industry Reports**.
+- **No report:** eyebrow, heading, **Browse Industry Reports** (blue) and **Try
+  another email** (dark), a divider, then the embedded **Request your Digital
+  Opportunity Report** form (grey card, two-column fields, required marks,
+  consent checkbox; **Request my report** stays disabled until complete).
+- **Industry chooser:** Figma typography, grey 181px cards, three refreshed
+  icons (coffee, healthcare, media), the step-2 progress footer, and **Try with
+  another email** / **Request a report**.
+- **Report picker:** each card shows *Report generated: Month D, YYYY* from the
+  report index `Created` column (`createdAt` on booth candidates), plus **Request
+  a new report** beside **Back to email lookup**.
+- **Confirmation (not in Figma):** **We'll take it from here.** with the
+  submitted website, a grey "What happens next" card mirroring the public form's
+  steps, **Finish and clear this screen** / **Browse Industry Reports**, and a
+  one-minute automatic clear.
+- **Report header (all portal report pages):** a blue status dot and italic
+  *Report last updated: Month D, YYYY* before the theme switch at ≥900px. The
+  Worker (`src/report-date.js`) adds `<meta name="report-last-updated">` from the
+  report document's own `Last-Modified` for `/accounts/**/insights/**` and
+  `/example-report/*` HTML only; without a valid header nothing is shown.
+
+iPads and desktops: the request form uses two columns from 600px, the
+confirmation wraps long websites, and the footer always reserves the staff
+button's height so it no longer covers the progress bar at 1024–1440px (this
+overlap pre-dated the change on Entry). Checked at 744×1133, 820×1180, 834×1194,
+1024×1366, 1133×744, 1180×820, 1366×1024, 1440×900 and 1920×1080 for overflow,
+clipped text, 44px targets, 16px+ field text (no iOS zoom) and keyboard scrolling.
+
+Requests use the new staff-scoped `POST /auth/booth/request`
+(`handleBoothReportRequest` in `src/report-requests.js`): same validation,
+consent and storage as the public form, `request_source = 'Booth request
+form'`, campaign from the booth URL only, no Turnstile, 40 requests per 10
+minutes per booth login, and an idempotency key that makes retries after a
+timeout safe. Details survive failures; fields lock while sending; errors appear
+only after submit so taps never shift; the privacy link stays on the booth. See
+`docs/implementations/booth-access/README.md#embedded-booth-report-request-november-26`.
+The front-end form lives in `scripts/booth-request.js` (Worker-bundled with
+`img/booth/required.svg` and `checkmark.svg`). Asset versions are
+`booth-request-form-1`. No D1 migration is needed. Rollout requires the Worker
+deployment (bundled booth assets and the new route) plus the frontend code sync
+for the header date.
 
 ### Touchscreen keyboard and navigation hardening
 
@@ -1560,7 +1611,7 @@ the Hub does not accept CSV uploads directly. The schema was checked against
 [`company-template.ts`](https://github.com/Adobe-AEM-Foundation/digital-insights-hub/blob/c201e8e53ac34212fc7ac1364f6a897b43fc04a2/frontend/src/lib/campaigns-v3/company-template.ts).
 
 ### header
-Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor.
+Fetches nav content and renders the Adobe logo, site title ("Adobe Summit Portal"), a help icon button, and a dark mode toggle button (half-moon icon) on the right edge. Preference is persisted in localStorage. The actions section renders auth-aware user info from `/auth/me`: signed in → email + Sign out + My Portal; signed out → a **Sign in** link that carries `?redirect=<current path>` so re-auth returns the user to the page they were on. When the non-HttpOnly `signed_in` marker cookie is present but `/auth/me` is unauthenticated, the header shows a small **"Your session expired"** notice (`.user-session-expired`) instead of failing silently — distinguishing a lapsed session from a never-signed-in visitor. On report pages with a Worker-supplied `<meta name="report-last-updated">`, the actions start with a blue status dot and italic **Report last updated: Month D, YYYY** (`.report-updated`, shown at ≥900px; nothing is shown without the meta).
 
 ### customer-picker
 Staff-facing search/share surface with **two-level navigation** — a primary family control (**Digital Opportunity Reports** / **Accounts**) over a secondary chip row of report sets (**All reports**, **Adobe Summit 2026**, then one chip per event, **authored in DA — no code change per event**) — plus A–Z letter nav, per-format report links, and per-page sharing via `/auth/sharelink`. Data is fetched live from four DA sheets under `/data/`: `account-list.json` (Accounts), `company-list.json` (Adobe Summit 2026), `insights-list.json` (All reports + event membership), and `event-tabs.json` (which event tabs exist); CUG email domains come from `/closed-user-groups.json`.

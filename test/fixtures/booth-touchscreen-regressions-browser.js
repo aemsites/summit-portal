@@ -195,12 +195,12 @@ export default async function verifyTouchscreenRegressions(page, root = 'http://
       await page.setViewportSize({ width: 728, height: 1296 });
       await page.goto(`${root}/content/index?preview=entry`);
       await page.locator('#email-form button[type="submit"]:not([disabled])').waitFor();
-      await page.getByRole('button', { name: 'Staff: show industry demos' }).click();
+      await page.getByRole('button', { name: 'Browse Industry Reports' }).click();
       await page.locator('#demo-options button').first().click();
       await page.locator('#booth-return').waitFor();
     } else {
       await start();
-      await frame.getByRole('button', { name: 'Staff: show industry demos' }).click();
+      await frame.getByRole('button', { name: 'Browse Industry Reports' }).click();
       await frame.locator('#demo-options button').first().click();
       await frame.locator('#booth-return').waitFor();
     }

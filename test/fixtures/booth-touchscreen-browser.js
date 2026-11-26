@@ -115,7 +115,7 @@ export default async function verifyBoothTouchscreen(page, root = 'http://localh
   await frame.locator('#booth-return').waitFor();
   await frame.getByRole('button', { name: 'Clear for next visitor', exact: true }).click();
   await ready();
-  await frame.getByRole('button', { name: 'Staff: show industry demos' }).click();
+  await frame.getByRole('button', { name: 'Browse Industry Reports' }).click();
   await frame.locator('#demo-options button').nth(9).waitFor();
   await frame.locator('#demo-options button').first().click();
   await frame.locator('#booth-return').waitFor();

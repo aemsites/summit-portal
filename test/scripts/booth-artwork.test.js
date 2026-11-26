@@ -33,20 +33,20 @@ describe('Figma booth artwork', () => {
     stage.dataset.entry = '3';
     const art = frame.contentWindow.getComputedStyle(hero, '::after');
     const glow = frame.contentWindow.getComputedStyle(hero, '::before');
-    close(art.left, 1020);
-    close(art.top, 94.5);
-    close(art.width, 1140);
-    close(art.height, 881);
-    close(glow.left, 1020);
-    close(glow.top, 94.5);
-    close(glow.width, 1140);
-    close(glow.height, 881);
-    expect(art.backgroundSize).to.equal('1278.96px 925.635px');
-    expect(glow.backgroundSize).to.equal('1510.62px 1023.62px');
+    close(art.left, 1022);
+    close(art.top, 0);
+    close(art.width, 1138);
+    close(art.height, 825);
+    close(glow.left, 855);
+    close(glow.top, -97);
+    close(glow.width, 1360);
+    close(glow.height, 1160);
+    expect(art.backgroundSize).to.equal('1140px 825px');
+    expect(glow.backgroundImage).to.include('entry-ai-gradient.svg');
   });
 
   it('aligns the Entry headline to the existing native Figma position without a subtitle', () => {
-    close(hero.querySelector('h1').getBoundingClientRect().y, 555.5);
+    close(hero.querySelector('h1').getBoundingClientRect().y, 501.5);
     expect(hero.querySelector('.hero-bottom')).to.equal(null);
   });
 
@@ -171,14 +171,16 @@ describe('Figma booth artwork', () => {
     }
   });
 
-  it('slightly reduces only the desktop portrait report offer and allows natural mobile wrapping', async () => {
+  it('uses the Figma report-offer size and allows natural mobile wrapping', async () => {
     const response = await fetch(new URL('../../booth.html', import.meta.url));
     const source = new DOMParser().parseFromString(await response.text(), 'text/html');
     stage.replaceWith(source.querySelector('.stage').cloneNode(true));
     stage = frame.contentDocument.querySelector('.stage');
     stage.querySelector('[data-panel="welcome"]').hidden = false;
     const lead = stage.querySelector('.welcome-entry .lead');
-    const sizes = [[2160, 3840, 94], [1080, 1920, 47], [2732, 2048, 84], [390, 844, 32]];
+    const sizes = [
+      [2160, 3840, 112], [1080, 1920, 56], [2048, 2732, 112], [2732, 2048, 84], [390, 844, 32],
+    ];
     for (const [width, height, fontSize] of sizes) {
       frame.style.width = `${width}px`;
       frame.style.height = `${height}px`;
@@ -197,15 +199,15 @@ describe('Figma booth artwork', () => {
     stage.querySelector('[data-panel="welcome"]').hidden = false;
     const heading = stage.querySelector('#welcome-heading');
     const sizes = [
-      [2160, 3840, 108], [1080, 1920, 54], [2048, 2732, 120],
-      [2732, 2048, 108], [390, 844, 38],
+      [2160, 3840, 112], [1080, 1920, 56], [2048, 2732, 112],
+      [2732, 2048, 112], [390, 844, 38],
     ];
     for (const [width, height, fontSize] of sizes) {
       frame.style.width = `${width}px`;
       frame.style.height = `${height}px`;
       const style = frame.contentWindow.getComputedStyle(heading);
       close(style.fontSize, fontSize);
-      close(style.lineHeight, fontSize * (width >= 1000 ? 1.08 : 1));
+      close(style.lineHeight, fontSize * (width >= 1000 ? 1.12 : 1));
       expect(style.fontWeight).to.equal('900');
       expect(heading.scrollWidth).to.be.at.most(heading.clientWidth);
     }
@@ -232,7 +234,9 @@ describe('Figma booth artwork', () => {
       expect(notice.bottom).to.be.at.most(primary.y);
       expect(primary.height).to.be.at.least(width >= 1000 ? 72 : 62);
       expect(demo.height).to.be.at.least(width >= 1000 ? 72 : 64);
-      expect(demo.x).to.be.closeTo(width >= 1000 ? primary.right + 24 : primary.x, 1);
+      // Figma separates the actions by 64 design pixels; iPad and landscape frames use 1:1 units.
+      const unit = [2048, 2732].includes(width) ? 1 : width / 2160;
+      expect(demo.x).to.be.closeTo(width >= 1000 ? primary.right + 64 * unit : primary.x, 1);
       expect(demo.y).to.be.at.least(primary.y);
       expect(frame.contentDocument.documentElement.scrollWidth).to.be.at.most(width);
       if (width >= 1000) {

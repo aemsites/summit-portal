@@ -654,12 +654,12 @@ and uncertain send. These changes are included in the October 8 deployment above
 
 ### Available fallback journeys
 
-Entry includes a staff demo shortcut, but **no report-request action**. A
-confirmed no-match (`404`, `code: no_report`) offers **Show an industry demo**,
-and **Try another email**, not automatic navigation. The chooser explains:
-**We don't have a report available for your email yet. Explore an example from
-your industry with our booth team.** Direct staff visits omit this no-match copy.
-Service outages remain errors, not missing reports.
+Entry offers **Browse Industry Reports** beside **View my report**. A confirmed
+no-match (`404`, `code: no_report`) shows **Browse Industry Reports**, **Try
+another email** and, below a divider, the embedded **Request your Digital
+Opportunity Report** form. The industry chooser and the multi-report picker also
+offer **Request a report** / **Request a new report**, which open the same form
+with a **Back** action. Service outages remain errors, not missing reports.
 The industry chooser uses the authoritative `src/booth-demos.js` catalogue:
 
 | Industry | Company / existing public report |
@@ -695,11 +695,35 @@ selected public document. Demos keep **Example report** labeling and offer
 than personal Finish/email/request actions. Public visitors do not
 receive the kiosk profile merely through viewport size or query parameters.
 
-`POST /auth/booth/request` is retired (404), historical request contexts are
-cleared, and kiosk `/request-report` documents/submissions return to `/booth`.
-The public form, Turnstile, validation, idempotency and explicit consent remain
-available outside booth mode. Recording an unavailable report and demo viewing
-is **not** a request submission or sales-contact opt-in.
+### Embedded booth report request (November 26)
+
+`POST /auth/booth/request` stores a report request from the embedded form. It
+requires the same staff-scoped, same-origin JSON boundary as every booth action
+and accepts only `fullName`, `email`, `company`, `website`, `consent` and the
+empty honeypot. It reuses the public form's validation, consent version and
+`report_requests` storage, with `request_source = 'Booth request form'`.
+Campaign attribution comes only from the booth URL's single valid `campaign`
+UUID (the same value already used for booth activity); body attribution is
+rejected. Turnstile is not used because the device is staff-authenticated and a
+shared kiosk cannot reliably complete an interactive challenge. The rate limit is
+40 requests per 10 minutes per booth staff login rather than 5 per IP, because
+every attendee shares one network address. The browser sends one
+`Idempotency-Key` per set of details: a retry after a timeout or outage returns
+the stored request instead of creating a duplicate and does not consume the
+limit; edited details create a new key. Submissions never touch the visitor's
+report/demo context.
+
+The form keeps typed details on failure, explains that a retry will not send
+twice, and locks fields while sending. Field errors appear only after a submit
+attempt so a tap is never displaced by a message appearing under the finger.
+The Adobe Privacy link stays on the booth and explains where to read it.
+Success shows **We'll take it from here.** with the submitted website, the two
+next steps, **Finish and clear this screen** and **Browse Industry Reports**;
+the confirmation clears itself after one minute. Reset, inactivity, pagehide and
+history recovery clear every field. Kiosk `/request-report` documents and
+`/api/report-requests` submissions still return to `/booth`. Recording an
+unavailable report and demo viewing is **not** a request submission or
+sales-contact opt-in.
 
 ### Touchscreen keyboard and link behavior
 

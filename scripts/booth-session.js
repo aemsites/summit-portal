@@ -9,15 +9,19 @@ export function boothActionUrl(action) {
   return `/auth/booth/${action}${campaign ? `?campaign=${campaign}` : ''}`;
 }
 
-export async function boothRequest(action, body) {
+const TIMEOUT_MESSAGES = {
+  send: 'Sending timed out. Delivery could not be confirmed. Clear this screen and ask the booth team before sending again.',
+  request: 'We could not confirm your request yet. Your details are still here. Tap Request my report to try again; it will not be sent twice.',
+};
+
+export async function boothRequest(action, body, { headers: extraHeaders = {} } = {}) {
   const controller = new AbortController();
   let timer;
   let responseStatus;
   const deadline = new Promise((resolve, reject) => {
     timer = setTimeout(() => {
-      const error = new Error(action === 'send'
-        ? 'Sending timed out. Delivery could not be confirmed. Clear this screen and ask the booth team before sending again.'
-        : 'The booth service timed out. Retry and clear this screen, or ask the booth team.');
+      const error = new Error(TIMEOUT_MESSAGES[action]
+        || 'The booth service timed out. Retry and clear this screen, or ask the booth team.');
       error.code = 'timeout';
       error.status = responseStatus;
       reject(error);
@@ -30,7 +34,7 @@ export async function boothRequest(action, body) {
       credentials: 'same-origin',
       cache: 'no-store',
       signal: controller.signal,
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json', ...extraHeaders },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     responseStatus = response.status;
