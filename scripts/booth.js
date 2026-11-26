@@ -5,6 +5,7 @@ import { boothRequest, createBoothInactivity } from './booth-session.js';
 import { mountBoothRequest } from './booth-request.js';
 
 const REQUESTED_CLEAR_MS = 60 * 1000;
+const SUBMITTED_MS = 1600;
 const reportDate = new Intl.DateTimeFormat('en-US', {
   month: 'long',
   day: 'numeric',
@@ -45,6 +46,7 @@ export function mountBooth(root = document) {
   let inactivity;
   let requestOrigin = 'unavailable';
   let requestedTimer;
+  let submittedTimer;
   let request;
 
   function opening(active) {
@@ -63,6 +65,12 @@ export function mountBooth(root = document) {
 
   function show(name) {
     panels.forEach((panel) => { panel.hidden = !panel.dataset.panel.split(' ').includes(name); });
+    const submitted = root.getElementById('request-submitted');
+    if (name !== 'requested' && submitted) {
+      // Leaving mid-acknowledgement must not later jump to the confirmation.
+      clearTimeout(submittedTimer);
+      submitted.hidden = true;
+    }
     let step = 1;
     if (name === 'finish') step = 3;
     else if (['picker', 'demos'].includes(name)) step = 2;
@@ -379,13 +387,25 @@ export function mountBooth(root = document) {
       if (summary) {
         const site = root.createElement('strong');
         site.textContent = website;
-        summary.replaceChildren('Your request for ', site, ' is with Adobe. Adobe Sales will prepare your Digital Opportunity Report and follow up with you.');
+        summary.replaceChildren('Your request for ', site, ' is with Adobe. Your Adobe team will prepare your Digital Opportunity Report and follow up with you.');
       }
-      show('requested');
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      root.getElementById('requested-heading')?.focus();
-      // A finished request leaves nothing for the next attendee to see.
-      requestedTimer = setTimeout(() => reset(), REQUESTED_CLEAR_MS);
+      const confirm = () => {
+        show('requested');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        root.getElementById('requested-heading')?.focus();
+        // A finished request leaves nothing for the next attendee to see.
+        requestedTimer = setTimeout(() => reset(), REQUESTED_CLEAR_MS);
+      };
+      const submitted = root.getElementById('request-submitted');
+      if (!submitted) {
+        confirm();
+        return;
+      }
+      submitted.hidden = false;
+      submittedTimer = setTimeout(() => {
+        submitted.hidden = true;
+        confirm();
+      }, SUBMITTED_MS);
     },
     // In-flight requests keep their retry key, so only staff clearing may leave the form.
     onSending(active) {

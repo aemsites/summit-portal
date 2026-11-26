@@ -37,6 +37,7 @@ import pickerAmazon from '../../../../img/booth/picker-amazon.svg';
 import pickerUnity from '../../../../img/booth/picker-unity.svg';
 import requiredMark from '../../../../img/booth/required.svg';
 import checkmark from '../../../../img/booth/checkmark.svg';
+import submittedCheck from '../../../../img/booth/submitted-check.svg';
 import globe from '../../../../img/icons/globe.svg';
 import carveloIcon from '../../../../img/booth/industry-carvelo.svg';
 import frescopaIcon from '../../../../img/booth/industry-frescopa.svg';
@@ -93,6 +94,7 @@ const assets = new Map([
   ['/img/booth/picker-unity.svg', [pickerUnity, 'image/svg+xml']],
   ['/img/booth/required.svg', [requiredMark, 'image/svg+xml']],
   ['/img/booth/checkmark.svg', [checkmark, 'image/svg+xml']],
+  ['/img/booth/submitted-check.svg', [submittedCheck, 'image/svg+xml']],
   ['/img/icons/globe.svg', [globe, 'image/svg+xml']],
   ['/img/booth/industry-carvelo.svg', [carveloIcon, 'image/svg+xml']],
   ['/img/booth/industry-frescopa.svg', [frescopaIcon, 'image/svg+xml']],

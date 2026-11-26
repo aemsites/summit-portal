@@ -39,8 +39,8 @@ describe('bundled booth shell and exact report injection', () => {
     const response = await serveBooth(new Request('https://portal.example/booth', { headers: { Cookie: cookie } }), env);
     const html = await response.text();
     expect(html).toContain('/scripts/booth.js');
-    expect(html).toContain('/scripts/booth.js?v=booth-request-form-1');
-    expect(html).toContain('/styles/booth.css?v=booth-request-form-1');
+    expect(html).toContain('/scripts/booth.js?v=booth-request-form-2');
+    expect(html).toContain('/styles/booth.css?v=booth-request-form-2');
     expect(html).toContain('Amplify your brand visibility');
     expect(html).toContain('<title>Digital Opportunity Report / booth</title>');
     expect(html).toContain('<div class="eyebrow">Digital Opportunity Report</div>');

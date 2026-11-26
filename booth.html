@@ -9,8 +9,8 @@
   <link rel="icon" href="/img/icons/adobe-logo.svg">
   <link rel="stylesheet" href="https://use.typekit.net/hah7vzn.css">
   <link rel="stylesheet" href="https://use.typekit.net/pbq1nqa.css">
-  <link rel="stylesheet" href="/styles/booth.css?v=booth-request-form-1">
-  <script type="module" src="/scripts/booth.js?v=booth-request-form-1"></script>
+  <link rel="stylesheet" href="/styles/booth.css?v=booth-request-form-2">
+  <script type="module" src="/scripts/booth.js?v=booth-request-form-2"></script>
 </head>
 <body class="booth">
   <main class="stage" id="stage" data-brand="adobe" data-entry="3" data-finish="6" data-notice-version="booth-privacy-v1" aria-busy="true">
@@ -56,8 +56,8 @@
 
       <section class="panel recovery-panel" data-panel="unavailable" aria-labelledby="unavailable-heading" hidden>
         <div class="eyebrow">Digital Opportunity Report</div>
-        <h2 id="unavailable-heading" tabindex="-1">We don’t have a report available for your email yet.</h2>
-        <p class="lead">Explore an example from your industry.</p>
+        <h2 id="unavailable-heading" tabindex="-1">We don’t have a report available for your company yet.</h2>
+        <p class="lead">Explore an example report from your industry.</p>
         <div class="recovery-actions">
           <button class="primary" data-show-demos type="button">Browse Industry Reports</button>
           <button class="secondary booth-alternative" data-reset type="button">Try another email</button>
@@ -66,7 +66,7 @@
       <section class="panel request-panel" data-panel="unavailable request" aria-labelledby="request-heading" hidden>
         <hr class="request-divider">
         <h2 id="request-heading" tabindex="-1">Request your Digital Opportunity Report.</h2>
-        <p class="lead">Tell us a little about you and your website. Adobe Sales will prepare your report and follow up with you.</p>
+        <p class="lead">Tell us a little about you and your website. Your Adobe team will prepare your report and follow up with you.</p>
         <form class="request-form" id="request-form" novalidate>
           <p class="request-summary" id="request-summary" role="alert" tabindex="-1" hidden></p>
           <div class="request-fields">
@@ -90,9 +90,15 @@
               <input id="request-company" name="company" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="160" placeholder="Company or brand name" required aria-describedby="request-company-error">
               <p class="request-field-error" id="request-company-error" hidden></p>
             </div>
-            <div class="request-field">
+            <div class="request-field request-field-website">
               <label for="request-website">Website or domain<img class="required-mark" src="/img/booth/required.svg" alt="" width="36" height="36"></label>
-              <input id="request-website" name="website" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="253" placeholder="www.company.com" required aria-describedby="request-website-error">
+              <input id="request-website" name="website" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="253" placeholder="www.company.com" required aria-describedby="request-website-tip request-website-error">
+              <div class="request-tip" id="request-website-tip">
+                <ul>
+                  <li>Enter your company’s public website address, not a link to a specific page.</li>
+                  <li>Reports need at least 1,000 estimated visits from unpaid search per month. If we find that your website primarily serves one country and there’s enough search data for that market, we’ll focus the report’s SEO and AI visibility analysis there.</li>
+                </ul>
+              </div>
               <p class="request-field-error" id="request-website-error" hidden></p>
             </div>
           </div>
@@ -103,6 +109,10 @@
           </div>
           <button class="primary request-submit" id="request-submit" type="submit" disabled>Request my report</button>
           <p class="request-status" id="request-status" role="status" aria-live="polite" hidden></p>
+          <div class="request-submitted" id="request-submitted" role="status" aria-live="polite" hidden>
+            <span class="request-submitted-icon"><img src="/img/booth/submitted-check.svg" alt="" width="273" height="273"></span>
+            <p>Submitted</p>
+          </div>
         </form>
         <div class="recovery-actions request-back">
           <button class="secondary booth-alternative" id="request-back" type="button">Back</button>
@@ -116,7 +126,7 @@
           <h3>What happens next</h3>
           <ol class="requested-steps">
             <li><strong>We review your website</strong><span>We use the site you shared to prepare your Digital Opportunity Report.</span></li>
-            <li><strong>Adobe Sales follows up</strong><span>We’ll share your report and help you decide what to explore next.</span></li>
+            <li><strong>Your Adobe team follows up</strong><span>A member of the Adobe team will be in touch with your report.</span></li>
           </ol>
         </div>
         <div class="recovery-actions">
@@ -127,8 +137,8 @@
       </section>
       <section class="panel recovery-panel industry-panel" data-panel="demos" aria-labelledby="demos-heading" hidden>
         <h2 id="demos-heading" tabindex="-1">Choose an industry.</h2>
-        <p class="lead" id="demo-recovery-copy" hidden>Explore an example from your industry.</p>
-        <p class="lead" id="demo-intro">Explore an example from your industry.</p>
+        <p class="lead" id="demo-recovery-copy" hidden>Explore an example report from your industry.</p>
+        <p class="lead" id="demo-intro">Explore an example report from your industry.</p>
         <div id="demo-options" class="demo-options"></div>
         <p id="demo-status" class="notice" role="status" aria-live="polite" hidden></p>
         <div class="recovery-actions">
