@@ -19,8 +19,8 @@
     const theme = new URLSearchParams(window.location.search).get('theme');
     if (theme === 'light' || theme === 'dark') document.documentElement.style.colorScheme = theme;
     const requests = [
-      { full_name: 'Alex Example', email: 'alex@example.com', company: 'Example Company', website: 'example.com', request_source: 'Adobe Summit, London', submitted_at: '2026-11-03T09:30:00Z' },
-      { full_name: 'Sam Sample', email: 'sam@example.org', company: 'Sample Organization', website: 'example.org', request_source: 'Partner campaign', submitted_at: '2026-11-02T15:15:00Z' },
+      { full_name: 'Alex Example', email: 'alex@example.com', company: 'Example Company', website: 'example.com', request_source: 'Adobe Summit, London', campaign_name: 'Adobe Summit London', submitted_at: '2026-11-03T09:30:00Z' },
+      { full_name: 'Sam Sample', email: 'sam@example.org', company: 'Sample Organization', website: 'example.org', request_source: 'Partner campaign', campaign_name: 'Partner Forum', submitted_at: '2026-11-02T15:15:00Z' },
       { full_name: 'Taylor Example', email: 'taylor@example.net', company: 'Example with a longer company name', website: 'a-very-long-website-name.example.net', job_title: 'Digital experience lead', primary_market: 'North America', submitted_at: '2026-10-25T10:00:00Z' },
     ];
     const originalFetch = window.fetch.bind(window);
@@ -29,10 +29,12 @@
       const url = new URL(input, window.location.href);
       if (url.pathname === '/api/report-requests') {
         const query = (url.searchParams.get('q') || '').toLowerCase();
+        const campaign = (url.searchParams.get('campaign') || '').toLowerCase();
         const visible = requests.map(({ full_name, email, ...rest }) => (
           isAdmin ? { full_name, email, ...rest } : rest
         ));
-        const matches = visible.filter((request) => Object.values(request).join(' ').toLowerCase().includes(query));
+        const matches = visible.filter((request) => Object.values(request).join(' ').toLowerCase().includes(query)
+          && (!campaign || request.campaign_name?.toLowerCase().includes(campaign)));
         return Promise.resolve(Response.json({ isAdmin, requests: matches, nextCursor: null }));
       }
       if (url.pathname === '/api/report-requests.csv') {

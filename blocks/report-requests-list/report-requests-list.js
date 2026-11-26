@@ -74,9 +74,10 @@ function setMessage(root, className, message, retry) {
   root.append(state);
 }
 
-function buildUrl(query, cursor) {
+function buildUrl(query, campaign, cursor) {
   const url = new URL(API_PATH, window.location.origin);
   if (query) url.searchParams.set('q', query);
+  if (campaign) url.searchParams.set('campaign', campaign);
   if (cursor) url.searchParams.set('cursor', cursor);
   return `${url.pathname}${url.search}`;
 }
@@ -106,6 +107,7 @@ export default function init(el) {
         <h2 id="rrl-list-title">Customer requests</h2>
         <div class="rrl-controls">
           <label><span>Search report requests</span><input type="search" placeholder="Company, website, or source"></label>
+          <label><span>Filter by campaign name</span><input class="rrl-campaign" type="search" placeholder="All campaigns"></label>
           <a class="rrl-export" href="/api/report-requests.csv">Export CSV</a>
         </div>
         <p class="rrl-privacy">Customer names and emails are visible to admins only and are excluded from your CSV export.</p>
@@ -142,23 +144,30 @@ export default function init(el) {
   el.replaceChildren(shell);
 
   const search = shell.querySelector('input');
+  const campaignFilter = shell.querySelector('.rrl-campaign');
   const exportLink = shell.querySelector('.rrl-export');
   let cursor = null;
   let query = '';
+  let campaign = '';
+  let loadId = 0;
 
   const updateExport = () => {
     const url = new URL('/api/report-requests.csv', window.location.origin);
     if (query) url.searchParams.set('q', query);
+    if (campaign) url.searchParams.set('campaign', campaign);
     exportLink.href = `${url.pathname}${url.search}`;
   };
 
   const load = async (append = false) => {
+    loadId += 1;
+    const currentLoad = loadId;
     if (!append) setMessage(results, 'is-loading', 'Loading report requests...');
     try {
-      const response = await fetch(buildUrl(query, append ? cursor : null), {
+      const response = await fetch(buildUrl(query, campaign, append ? cursor : null), {
         cache: 'no-store',
         headers: { Accept: 'application/json' },
       });
+      if (currentLoad !== loadId) return;
       if (response.status === 401) {
         setMessage(results, 'is-error', 'Sign in with Adobe ID to view report requests.', () => {
           window.location.assign(`/auth/portal?redirect=${encodeURIComponent(window.location.pathname)}`);
@@ -171,15 +180,20 @@ export default function init(el) {
       }
       if (!response.ok) throw new Error('Requests could not be loaded.');
       const body = await response.json();
+      if (currentLoad !== loadId) return;
       const admin = body.isAdmin === true;
       search.placeholder = admin ? 'Name, email, company, website, or source' : 'Company, website, or source';
       shell.querySelector('.rrl-privacy').hidden = admin;
       cursor = body.nextCursor;
       const rows = append ? [...results.querySelectorAll('.rrl-row')] : [];
       if (!body.requests.length && !rows.length) {
-        setMessage(results, 'is-empty', query
-          ? `No report requests match “${query}”.`
-          : 'No report requests yet. New customer requests will appear here.');
+        if (campaign) {
+          setMessage(results, 'is-empty', 'No report requests match the current filters.');
+        } else {
+          setMessage(results, 'is-empty', query
+            ? `No report requests match “${query}”.`
+            : 'No report requests yet. New customer requests will appear here.');
+        }
         return;
       }
 
@@ -195,20 +209,24 @@ export default function init(el) {
         results.append(more);
       }
     } catch {
+      if (currentLoad !== loadId) return;
       setMessage(results, 'is-error', 'We could not load report requests. Please try again.', () => load());
     }
   };
 
   let searchTimeout;
-  search.addEventListener('input', () => {
+  const filterRequests = () => {
     window.clearTimeout(searchTimeout);
     searchTimeout = window.setTimeout(() => {
       query = search.value.trim();
+      campaign = campaignFilter.value.trim();
       cursor = null;
       updateExport();
       load();
     }, 250);
-  });
+  };
+  search.addEventListener('input', filterRequests);
+  campaignFilter.addEventListener('input', filterRequests);
 
   load();
 }

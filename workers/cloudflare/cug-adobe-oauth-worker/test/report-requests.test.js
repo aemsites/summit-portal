@@ -255,6 +255,58 @@ describe('report requests', () => {
     expect(withoutLink).not.toHaveProperty('campaign_link');
   });
 
+  it.each(['josec@adobe.com', 'staff@adobe.com'])(
+    'filters campaigns with search, pagination and CSV for %s',
+    async (email) => {
+      const env = environment();
+      const session = { email, method: 'oauth' };
+      env.REPORT_REQUESTS.campaigns.set(PUBLIC_CAMPAIGN_ID, {
+        campaign_name: 'Summit 100%_\\ & Forum',
+        hub_campaign_id: 'synthetic-campaign',
+      });
+      const row = {
+        company: 'Northstar',
+        website: 'northstar.example',
+        full_name: 'Synthetic Customer',
+        email: 'customer@example.com',
+        search_text: 'northstar synthetic customer customer@example.com',
+        submitted_at: '2026-11-26T10:00:00Z',
+        public_campaign_id: PUBLIC_CAMPAIGN_ID,
+      };
+      for (let index = 0; index < 51; index += 1) {
+        const id = `match-${String(index).padStart(2, '0')}`;
+        env.REPORT_REQUESTS.requests.set(id, { ...row, request_id: id });
+      }
+      env.REPORT_REQUESTS.requests.set('unmapped', { ...row, request_id: 'unmapped', public_campaign_id: null });
+      env.REPORT_REQUESTS.requests.set('pending', { ...row, request_id: 'pending', public_campaign_id: 'unknown' });
+      env.REPORT_REQUESTS.requests.set('other-company', { ...row, request_id: 'other-company', company: 'Other', website: 'other.example', search_text: 'other' });
+      const params = new URLSearchParams({ q: 'northstar', campaign: ' SuMMIT   100%_\\ ' });
+      const get = (path, filters = params) => handleReportRequests(new Request(`https://mysite.com/api/report-requests${path}?${filters}`), env, session);
+      const first = await (await get('')).json();
+      expect(first.requests).toHaveLength(50);
+      expect(first.requests[0].request_id).toBe('match-50');
+      expect(first.requests.every((record) => record.campaign_name === 'Summit 100%_\\ & Forum')).toBe(true);
+      if (email === 'staff@adobe.com') {
+        expect(JSON.stringify(first)).not.toMatch(/Synthetic Customer|customer@example.com/);
+      }
+      const nextParams = new URLSearchParams(params);
+      nextParams.set('cursor', first.nextCursor);
+      const second = await (await get('', nextParams)).json();
+      expect(second.requests.map((record) => record.request_id)).toEqual(['match-00']);
+      expect(second.nextCursor).toBeNull();
+      const csv = await (await get('.csv')).text();
+      expect(csv.trim().split('\r\n')).toHaveLength(52);
+      expect(csv).not.toContain('"Other"');
+      if (email === 'staff@adobe.com') expect(csv).not.toMatch(/Synthetic Customer|customer@example.com/);
+      const missing = new URLSearchParams({ campaign: 'missing' });
+      expect((await (await get('', missing)).json()).requests).toEqual([]);
+      expect((await (await get('.csv', missing)).text()).trim().split('\r\n')).toHaveLength(1);
+      params.delete('campaign');
+      const unfiltered = await (await get('.csv')).text();
+      expect(unfiltered.trim().split('\r\n')).toHaveLength(54);
+    },
+  );
+
   it.each([undefined, 'http://hub.example', 'https://hub.example/path', 'https://hub.example/?', 'https://user@hub.example'])(
     'does not build a Hub link from an invalid origin: %j',
     (origin) => {
