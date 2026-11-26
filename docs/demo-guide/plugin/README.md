@@ -4,6 +4,10 @@ Adapted from Jason's Chrome side-panel plugin. This is a **staff-only guide**, n
 
 The current content comes from **Amplify your brand visibility activation guide (4).docx**, supplied October 9, 2026, plus José's subsequent explanation of unavailable reports. It includes the revised capability-led Adobe Brand Visibility messaging, edited reference/objection responses, updated screenshots and the new report-ready email image showing 30-day access. The availability guidance explains insufficient data, possible new-site/traffic/AI-access limitations and team follow-up to assess another website, without diagnosing a visitor's site from the lookup. Comments, deleted revisions and fixed Word page numbers are not included. The Word file is unchanged; the older Markdown/Word artifacts are not the current plugin's source.
 
+## November 26 update (content version `2026-11-26-v5-requests`)
+
+Removed the shared staff credentials and fixed booth URLs. Section 1 now sends staff to the event's [Digital Insights Hub campaign](https://digital-insights.corp.adobe.com/insights-campaigns) for its booth link and staff sign-in, because the campaign's booth link attributes all booth activity to that event. The guide also covers **Browse Industry Reports**, report dates on the picker, the embedded **Request your Digital Opportunity Report** form and its confirmation (new screenshots 14 and 15, refreshed 02 and 03). The published `/adobe/booth-guide` KV content and this redacted copy were updated together; screenshots were re-uploaded under the new content version, with the pointer published last.
+
 ## Platform page (review approved; PR and rollout pending)
 
 The responsive `/adobe/booth-guide` page uses the same approved guide content without requiring an extension. A dashboard banner above the report picker opens the guide, not the kiosk. Desktop has a sticky index; mobile has compact section navigation. Search excludes private values; screenshots open at full size; readiness/setup checks store only revision-scoped booleans on the staff device.
@@ -19,7 +23,7 @@ For the post-merge rollout, use the existing Summit Worker environment and `wran
 
 ## Install the restricted staff package
 
-1. Use a separate staff laptop/browser, not the customer-facing kiosk. The package contains the shared credentials, approved setup email and protected company screenshot.
+1. Use a separate staff laptop/browser, not the customer-facing kiosk. The package contains the approved setup email and protected company screenshot. Booth links and staff sign-in details are never in the guide: staff get them from the event's [Digital Insights Hub campaign](https://digital-insights.corp.adobe.com/insights-campaigns).
 2. Extract `amplify-brand-visibility-plugin-v4.zip`. Keep the extracted folder in a stable location.
 3. In Chrome 116 or newer, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted folder containing `manifest.json`.
 4. Pin the extension and click its Adobe icon to open the side panel.
@@ -42,7 +46,7 @@ The repository's `docs/demo-guide` folder can also be loaded for a **redacted re
 
 ## Quick installation check
 
-Open the guide, search for `INP`, open its definition, follow its section links, open a screenshot and tick a setup check. Reopen the panel and confirm the check remains. On the booth, move from Entry to Industry demos and verify the panel follows. Manually open Objection handling and confirm it stays there until you resume following.
+Open the guide, search for `INP`, open its definition, follow its section links, open a screenshot and tick a setup check. Reopen the panel and confirm the check remains. On the booth, move from Entry to Browse Industry Reports and verify the panel follows. Manually open Objection handling and confirm it stays there until you resume following.
 
 On a company report, scroll through AI, search and performance; on Finish, check the closing guidance. If the status says **URL only**, reload the booth tab to reconnect the content script. If Chrome reports an extension error, stop using the companion until the installation is corrected.
 

@@ -239,9 +239,10 @@ function decorateNavSection(section) {
   }
 }
 
-async function decorateUserInfo(section) {
+export async function decorateUserInfo(section) {
   const container = section.querySelector('.default-content');
-  if (!container) return;
+  // Booth reports must not offer sign-in or portal links that leave the kiosk flow.
+  if (!container || document.querySelector('script[data-booth-mode]')) return;
 
   const wrapper = document.createElement('div');
   wrapper.className = 'user-info';
