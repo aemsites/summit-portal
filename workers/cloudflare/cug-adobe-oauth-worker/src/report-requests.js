@@ -245,7 +245,7 @@ function requestColumns(admin) {
   return admin ? [...REQUEST_COLUMNS, 'full_name', 'email'] : REQUEST_COLUMNS;
 }
 
-function requestRowsQuery(search, cursor, limit, admin) {
+function requestRowsQuery(search, campaign, cursor, limit, admin) {
   const clauses = [];
   const params = [];
   if (search) {
@@ -253,6 +253,10 @@ function requestRowsQuery(search, cursor, limit, admin) {
       : "lower(coalesce(company, '') || ' ' || coalesce(website, '') || ' ' || coalesce(request_source, ''))";
     clauses.push(`${searchColumn} LIKE ? ESCAPE '\\'`);
     params.push(`%${escapeLike(search)}%`);
+  }
+  if (campaign) {
+    clauses.push("lower(c.campaign_name) LIKE ? ESCAPE '\\'");
+    params.push(`%${escapeLike(campaign)}%`);
   }
   if (cursor) {
     clauses.push('(submitted_at < ? OR (submitted_at = ? AND request_id < ?))');
@@ -507,11 +511,12 @@ export async function handleBoothReportRequest(request, env, { campaign, binding
 
 async function handleList(url, env, admin) {
   const search = normaliseSearch(url.searchParams.get('q'));
+  const campaign = normaliseSearch(url.searchParams.get('campaign'));
   const rawCursor = url.searchParams.get('cursor');
   const cursor = rawCursor ? decodeCursor(rawCursor) : null;
   if (rawCursor && !cursor) return privateResponse({ error: 'Invalid cursor.' }, 400);
 
-  const query = requestRowsQuery(search, cursor, PAGE_SIZE + 1, admin);
+  const query = requestRowsQuery(search, campaign, cursor, PAGE_SIZE + 1, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
   const hasNext = results.length > PAGE_SIZE;
   const origin = httpsOrigin(env.DIH_REPORT_REQUEST_HUB_ORIGIN);
@@ -532,7 +537,8 @@ async function handleList(url, env, admin) {
 
 async function handleCsv(url, env, admin) {
   const search = normaliseSearch(url.searchParams.get('q'));
-  const query = requestRowsQuery(search, null, EXPORT_LIMIT, admin);
+  const campaign = normaliseSearch(url.searchParams.get('campaign'));
+  const query = requestRowsQuery(search, campaign, null, EXPORT_LIMIT, admin);
   const { results = [] } = await env.REPORT_REQUESTS.prepare(query.sql).bind(...query.params).all();
   const csv = reportRequestsCsv(results, env.DIH_REPORT_REQUEST_HUB_ORIGIN, admin);
   return new Response(csv, { headers: CSV_HEADERS });

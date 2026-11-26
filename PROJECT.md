@@ -2,6 +2,31 @@
 
 ## Overview
 
+**Campaign-name filter for report requests (November 26; deployment pending):**
+`/adobe/report-requests` has a separate **Filter by campaign name** search field.
+It matches part of a trusted DIH campaign name, ignoring case, and combines with
+the existing customer-request search. Clearing it restores all campaigns,
+including requests without a mapping. The optional `campaign` parameter is
+shared by `/api/report-requests` and `/api/report-requests.csv`; filtering happens
+before pagination or export limits, with literal `%`, `_` and backslash matching.
+Load more and CSV export preserve both filters, and outdated responses cannot
+replace results from a newer filter. Existing admin-only contact visibility and
+private-search restrictions remain unchanged. No migration is needed. Deploy
+the Worker before publishing the frontend; a frontend-only publication cannot
+filter production requests. No production deployment is included.
+
+Verification: 97 focused Worker checks and 21 browser checks pass. Real SQLite
+checks cover combined search, cursor pagination, CSV alignment, literal
+wildcards and both privacy roles. Playwright exercised the synthetic dashboard
+at `/content/index` on isolated port 3017 at 390px and 1280px in both roles,
+including filtering, clearing and empty results, without horizontal overflow.
+Port 3000 belongs to another local service; no live customer data was used.
+Changed JavaScript and CSS pass lint. Repository-wide JavaScript lint retains
+1,643 pre-existing findings, and full CSS lint retains 51 unrelated errors,
+with no findings in the changed files. There is no
+top-level `build` script; the actual Worker dry-run bundle succeeds without
+deploying.
+
 **Customer data privacy (November 20; branch only, deployment required):**
 customer names and emails in report requests and identified Booth history are
 restricted server-side to Adobe OAuth sessions for `josec@adobe.com`,

@@ -103,8 +103,12 @@ export function createMockD1() {
     if (sql.includes('FROM report_requests')) {
       const limit = params.at(-1);
       let offset = 0;
-      const search = sql.includes('LIKE ? ESCAPE') ? String(params[offset]).slice(1, -1) : '';
+      const search = (sql.includes('search_text LIKE ?') || sql.includes("coalesce(request_source, '')) LIKE ?"))
+        ? String(params[offset]).slice(1, -1) : '';
       if (search) offset += 1;
+      const campaign = sql.includes('lower(c.campaign_name) LIKE ?')
+        ? String(params[offset]).slice(1, -1).replace(/\\([\\%_])/g, '$1') : '';
+      if (campaign) offset += 1;
       const cursor = sql.includes('submitted_at < ?')
         ? {
           submittedAt: params[offset],
@@ -112,6 +116,10 @@ export function createMockD1() {
         }
         : null;
       let rows = [...requests.values()];
+      if (campaign) {
+        rows = rows.filter((row) => campaigns.get(row.public_campaign_id)
+          ?.campaign_name.toLowerCase().includes(campaign));
+      }
       if (search) {
         rows = rows.filter((row) => {
           const text = sql.includes('search_text LIKE ?') ? row.search_text

@@ -87,6 +87,52 @@ describe('report-requests-list', () => {
     expect(block.querySelector('.rrl-export')).to.exist;
   });
 
+  it('combines campaign and text filters across pagination, export and clearing', async () => {
+    fetchStub = sinon.stub(window, 'fetch').callsFake(async () => Response.json({
+      requests: [{ company: 'Example', campaign_name: 'Summit & Forum' }],
+      nextCursor: 'next-page',
+    }));
+    const block = makeBlock();
+    init(block);
+    await settle();
+    const search = block.querySelector('input[type="search"]');
+    const campaign = block.querySelector('.rrl-campaign');
+    search.value = 'Example';
+    search.dispatchEvent(new Event('input'));
+    campaign.value = ' Summit & Forum ';
+    campaign.dispatchEvent(new Event('input'));
+    await new Promise((resolve) => { window.setTimeout(resolve, 350); });
+    const filters = '?q=Example&campaign=Summit+%26+Forum';
+    expect(fetchStub.lastCall.args[0]).to.equal(`/api/report-requests${filters}`);
+    expect(block.querySelector('.rrl-export').getAttribute('href')).to.equal(`/api/report-requests.csv${filters}`);
+    block.querySelector('.rrl-more').click();
+    await settle();
+    expect(fetchStub.lastCall.args[0]).to.equal(`/api/report-requests${filters}&cursor=next-page`);
+    campaign.value = '';
+    campaign.dispatchEvent(new Event('input'));
+    await new Promise((resolve) => { window.setTimeout(resolve, 350); });
+    expect(fetchStub.lastCall.args[0]).to.equal('/api/report-requests?q=Example');
+    expect(block.querySelector('.rrl-export').getAttribute('href')).to.equal('/api/report-requests.csv?q=Example');
+    expect(block.querySelectorAll('.rrl-row')).to.have.length(1);
+  });
+
+  it('ignores a stale response after changing the campaign filter', async () => {
+    let resolveInitial;
+    fetchStub = sinon.stub(window, 'fetch').callsFake(async () => Response.json({ requests: [], nextCursor: null }));
+    fetchStub.onFirstCall().returns(new Promise((resolve) => { resolveInitial = resolve; }));
+    const block = makeBlock();
+    init(block);
+    const campaign = block.querySelector('.rrl-campaign');
+    campaign.value = 'Missing campaign';
+    campaign.dispatchEvent(new Event('input'));
+    await new Promise((resolve) => { window.setTimeout(resolve, 350); });
+    expect(block.querySelector('.is-empty').textContent).to.include('No report requests match the current filters.');
+    resolveInitial(Response.json({ requests: [{ company: 'Stale company' }], nextCursor: 'stale' }));
+    await settle();
+    expect(block.querySelector('.rrl-row, .rrl-more')).to.equal(null);
+    expect(block.querySelector('.is-empty')).to.exist;
+  });
+
   it('links mapped campaigns and shows names without usable links as plain text', async () => {
     const campaignUrl = 'https://hub.example/insights-campaigns/example';
     fetchStub = sinon.stub(window, 'fetch').resolves(Response.json({
