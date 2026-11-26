@@ -89,7 +89,7 @@ export async function verifyBoothReportRecovery(page, root = 'http://localhost:3
       await page.goto(`${root}/booth?preview=entry`);
       await ready();
       if (journey.includes('demo')) {
-        await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
+        await page.getByRole('button', { name: 'Browse Industry Reports', exact: true }).click();
         await page.locator('#demo-options button').first().click();
       } else {
         await page.getByLabel('Registration email').fill('visitor@example.test');

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleReportRequests, normaliseRequest, normaliseWebsite, reportRequestsAuthorisation, reportRequestsCsv } from '../src/report-requests.js';
+import {
+  BOOTH_REQUEST_SOURCE,
+  handleBoothReportRequest,
+  handleReportRequests,
+  normaliseRequest,
+  normaliseWebsite,
+  reportRequestsAuthorisation,
+  reportRequestsCsv,
+} from '../src/report-requests.js';
 import { createMockD1, createMockEnv } from './helpers.js';
 
 const TURNSTILE_RESPONSE = new Response(JSON.stringify({ success: true }), {
@@ -410,5 +418,85 @@ describe('report requests', () => {
   it('quotes punctuation and line breaks in source without altering existing intake cells', () => {
     const csv = reportRequestsCsv([{ company: 'Example', website: 'example.com', email: 'a@example.com', request_source: 'Event "One",\r\nLondon' }], undefined, true);
     expect(csv).toContain('"Example","example.com","a@example.com","Event ""One"",\r\nLondon","","","",""\r\n');
+  });
+});
+
+describe('booth report requests', () => {
+  const boothBody = {
+    fullName: 'Jordan Lee',
+    email: 'jordan@example.com',
+    company: 'Northstar Commerce',
+    website: 'www.example.com',
+    consent: true,
+  };
+  const boothRequest = (body = boothBody, key = 'booth-key-1234') => new Request(
+    'https://mysite.com/auth/booth/request',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify(body),
+    },
+  );
+  const booth = { campaign: PUBLIC_CAMPAIGN_ID, binding: 'staff-binding' };
+
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Booth requests must not call Turnstile'); }));
+  });
+
+  it('stores a booth request with its source and URL campaign, without Turnstile', async () => {
+    const env = environment();
+    const response = await handleBoothReportRequest(boothRequest(), env, booth);
+    expect(response.status).toBe(201);
+    const [stored] = env.REPORT_REQUESTS.requests.values();
+    expect(stored).toMatchObject({
+      full_name: 'Jordan Lee',
+      website: 'example.com',
+      request_source: BOOTH_REQUEST_SOURCE,
+      public_campaign_id: PUBLIC_CAMPAIGN_ID,
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('ignores body attribution and stores no campaign for an untagged booth', async () => {
+    const env = environment();
+    const spoofed = boothRequest({ ...boothBody, publicCampaignId: PUBLIC_CAMPAIGN_ID });
+    expect((await handleBoothReportRequest(spoofed, env, booth)).status).toBe(400);
+    const untagged = { ...booth, campaign: null };
+    expect((await handleBoothReportRequest(boothRequest(), env, untagged)).status).toBe(201);
+    expect([...env.REPORT_REQUESTS.requests.values()][0].public_campaign_id).toBeNull();
+  });
+
+  it('confirms a retried submission once and does not spend the booth limit', async () => {
+    const env = environment();
+    const first = await (await handleBoothReportRequest(boothRequest(), env, booth)).json();
+    const retry = await handleBoothReportRequest(boothRequest(), env, booth);
+    expect(retry.status).toBe(201);
+    expect((await retry.json()).requestId).toBe(first.requestId);
+    expect(env.REPORT_REQUESTS.requests.size).toBe(1);
+    expect([...env.SESSIONS.store.values()]).toEqual(['1']);
+  });
+
+  it('limits one booth login, not one shared network address', async () => {
+    const env = environment();
+    const results = [];
+    for (let index = 0; index < 41; index += 1) {
+      const submission = boothRequest(boothBody, `booth-key-${1000 + index}`);
+      results.push((await handleBoothReportRequest(submission, env, booth)).status);
+    }
+    expect(results.slice(0, 40).every((status) => status === 201)).toBe(true);
+    expect(results[40]).toBe(429);
+    const other = boothRequest(boothBody, 'booth-key-other');
+    expect((await handleBoothReportRequest(other, env, { ...booth, binding: 'other' })).status).toBe(201);
+  });
+
+  it('rejects invalid fields, missing keys and an unavailable database', async () => {
+    const env = environment();
+    const declined = boothRequest({ ...boothBody, consent: false });
+    expect((await handleBoothReportRequest(declined, env, booth)).status).toBe(400);
+    expect((await handleBoothReportRequest(boothRequest(boothBody, 'short'), env, booth)).status).toBe(400);
+    const offline = createMockEnv();
+    expect((await handleBoothReportRequest(boothRequest(), offline, booth)).status).toBe(503);
+    expect(env.REPORT_REQUESTS.requests.size).toBe(0);
   });
 });

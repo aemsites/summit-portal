@@ -729,7 +729,11 @@ describe('booth runtime boundary', () => {
       ok: true,
       json: async () => ({
         state: 'picker',
-        candidates: [{ label: 'Company website', path: '/accounts/e/example/insights/example-com/portal-landing/' }],
+        candidates: [{
+          label: 'Company website',
+          path: '/accounts/e/example/insights/example-com/portal-landing/',
+          createdAt: Date.UTC(2026, 6, 30),
+        }],
       }),
     });
     mountBooth(root);
@@ -741,7 +745,8 @@ describe('booth runtime boundary', () => {
     expect(JSON.parse(fetchStub.secondCall.args[1].body)).to.deep.equal({ email: 'visitor@example.com', noticeVersion: 'booth-privacy-v1' });
     expect(root.getElementById('registration-email').value).to.equal('');
     expect(root.querySelector('[data-panel="picker"]').hidden).to.equal(false);
-    expect(root.getElementById('report-options').textContent).to.equal('Company website');
+    expect(root.querySelector('.report-label').textContent).to.equal('Company website');
+    expect(root.querySelector('.report-meta').textContent).to.equal('Report generated: July 30, 2026');
     expect(fetchStub.callCount).to.equal(2);
   });
 

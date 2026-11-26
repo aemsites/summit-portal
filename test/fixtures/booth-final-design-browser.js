@@ -25,14 +25,14 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
   await page.evaluate(() => window.scrollTo(0, 0));
   await match('.stage-header', { x: 0, y: 0, width: 2160, height: 277 });
   await match('.brand-icon', { x: 100, y: 64, width: 264.858, height: 64 });
-  await match('.welcome-intro h1', { x: 100, y: 555.5, width: 840, height: 349.9 });
+  await match('.welcome-intro h1', { x: 100, y: 501.5, width: 840, height: 376.3 });
   check(await page.locator('#welcome-heading').textContent() === 'See where your brand appears in AI search.', 'Entry headline does not match the approved offer');
   check(await page.locator('.hero-bottom').count() === 0, 'Entry repeats the headline as a subtitle');
-  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 112, y: 1507, width: 1936, height: 89.3 });
-  await match('.email-form label', { x: 112, y: 1652.3, width: 1936, height: 66 });
-  await match('.email-form input', { x: 112, y: 1748.3, width: 1936, height: 144 });
-  await match('#search-privacy', { x: 112, y: 1942.3, width: 1936, height: 38 });
-  await match('.email-form .primary', { x: 112, y: 2060.3, width: 454, height: 120 });
+  await match('[data-panel="welcome"] .welcome-entry .lead', { x: 128, y: 1230, width: 1904, height: 224 });
+  await match('.email-form label', { x: 128, y: 1486, width: 1904, height: 80 });
+  await match('.email-form input', { x: 128, y: 1622, width: 1904, height: 144 });
+  await match('#search-privacy', { x: 128, y: 1784, width: 1904, height: 132 });
+  await match('.email-form .primary', { x: 128, y: 1996, height: 144 });
   await match('.stage-footer', { x: 0, y: 2652, width: 2160, height: 229 });
   const field = await page.locator('.email-form input').evaluate((element) => {
     const style = getComputedStyle(element);
@@ -47,37 +47,38 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     && field.color === 'rgb(218, 218, 218)' && Math.abs(field.radius - 30) < 1, 'Final email-field styling differs');
   check(await page.locator('.arrow').getAttribute('src') === '/img/booth/finish-open-in.svg', 'Entry uses the wrong action glyph');
   check(await page.locator('#search-privacy').isVisible(), 'Design corrections removed the privacy disclosure');
-  check(await page.getByRole('button', { name: 'Staff: show industry demos' }).isVisible(), 'Design corrections removed the staff shortcut');
+  check(await page.getByRole('button', { name: 'Browse Industry Reports' }).isVisible(), 'Design corrections removed the industry shortcut');
   const staffStyle = await page.locator('.entry-alternatives button').evaluate((element) => {
     const style = getComputedStyle(element);
     return { background: style.backgroundColor, color: style.color, border: style.borderColor };
   });
   check(staffStyle.background === 'rgb(255, 255, 255)'
-    && staffStyle.color === 'rgb(80, 80, 80)'
-    && staffStyle.border === 'rgb(143, 143, 143)', 'Staff shortcut is not a quiet outlined action');
+    && staffStyle.color === 'rgb(41, 41, 41)'
+    && staffStyle.border === 'rgb(41, 41, 41)', 'Industry shortcut is not the outlined Figma action');
   const staff = await bounds('.entry-alternatives button');
-  check(Math.abs(staff.y - 2060.3) < 1 && staff.height === 120
-    && Math.abs(staff.x - 590) < 1, 'Industry demos is not adjacent to the lookup action');
+  const primaryAction = await bounds('.email-form .primary');
+  check(Math.abs(staff.y - 1996) < 1 && staff.height === 144
+    && Math.abs(staff.x - (primaryAction.x + primaryAction.width + 64)) < 1, 'Browse Industry Reports is not 64px after the lookup action');
   const profiles = [
     {
       width: 2048,
       height: 2732,
-      headline: { x: 100, y: 374, width: 1041, height: 388.8 },
-      lead: { x: 112, y: 1621, width: 1824, height: 178.6 },
-      input: { x: 112, y: 1951.7, width: 1824, height: 144 },
-      privacy: { x: 112, y: 2145.7, width: 1824, height: 38 },
-      action: { x: 112, y: 2263.7, width: 454, height: 120 },
+      headline: { x: 100, y: 501.5, width: 840, height: 376.3 },
+      lead: { x: 128, y: 1230, width: 1792, height: 224 },
+      input: { x: 128, y: 1622, width: 1792, height: 144 },
+      privacy: { x: 128, y: 1784, width: 1792, height: 132 },
+      action: { x: 128, y: 1996, height: 144 },
       footer: 2503,
     },
     {
       width: 2732,
       height: 2048,
-      headline: { x: 100, y: 514, width: 1308, height: 233.3 },
-      lead: { x: 112, y: 1187.6, width: 2508, height: 80 },
-      input: { x: 112, y: 1406.6, width: 2312, height: 132.9 },
-      privacy: { x: 112, y: 1562.1, width: 2312, height: 45 },
-      action: { x: 112, y: 1667.1, width: 454, height: 120 },
-      footer: 1819,
+      headline: { x: 100, y: 514, width: 1308, height: 250.9 },
+      lead: { x: 128, y: 1187.6, width: 2476, height: 84 },
+      input: { x: 128, y: 1400.6, width: 2312, height: 132.9 },
+      privacy: { x: 128, y: 1556.1, width: 2312, height: 45 },
+      action: { x: 128, y: 1661.1, height: 144 },
+      footer: 1837.1,
     },
   ];
   for (const profile of profiles) {
@@ -96,17 +97,15 @@ export default async function verifyBoothFinalDesign(page, root = 'http://localh
     const input = await bounds('.email-form input');
     check(input.height >= 64, 'Entry field is too small for touch');
     if (width >= 1000) {
-      const oneLine = await page.locator('.welcome-entry .lead').evaluate((element) => {
-        const style = getComputedStyle(element);
-        return element.getBoundingClientRect().height <= parseFloat(style.lineHeight) + 1
-          && element.scrollWidth <= element.clientWidth;
-      });
-      check(oneLine, 'Touchscreen report offer must fit one line without overflow');
+      const fits = await page.locator('.welcome-entry .lead').evaluate((element) => (
+        element.scrollWidth <= element.clientWidth
+      ));
+      check(fits, 'Touchscreen report offer overflows');
     }
     const primary = await bounds('.email-form .primary');
     const alternative = await bounds('.entry-alternatives button');
     check(alternative.height >= 64
-      && Math.abs(alternative.x - (width < 1000 ? primary.x : primary.x + primary.width + 24)) < 1, 'Industry demos loses its adjacency or touch target');
+      && Math.abs(alternative.x - (width < 1000 ? primary.x : primary.x + primary.width + (64 * width) / 2160)) < 1, 'Browse Industry Reports loses its adjacency or touch target');
     const aligned = width < 1000
       ? alternative.y >= primary.y + primary.height : Math.abs(alternative.y - primary.y) < 1;
     check(aligned, 'Entry actions do not adapt from a shared desktop row to stacked mobile rows');

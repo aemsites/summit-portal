@@ -2,6 +2,15 @@ import { readBoothPresentation, withBoothPresentation, applyBoothPresentation, b
 import { createBoothPreview } from './booth-preview.js';
 import { mountBoothKeyboard } from './booth-keyboard.js?v=booth-keyboard-scroll-1';
 import { boothRequest, createBoothInactivity } from './booth-session.js';
+import { mountBoothRequest } from './booth-request.js';
+
+const REQUESTED_CLEAR_MS = 60 * 1000;
+const reportDate = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 export { boothRequest } from './booth-session.js';
 
@@ -34,6 +43,9 @@ export function mountBooth(root = document) {
   let resetting = false;
   let settled = Promise.resolve();
   let inactivity;
+  let requestOrigin = 'unavailable';
+  let requestedTimer;
+  let request;
 
   function opening(active) {
     if (loading) {
@@ -50,10 +62,11 @@ export function mountBooth(root = document) {
   }
 
   function show(name) {
-    panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
+    panels.forEach((panel) => { panel.hidden = !panel.dataset.panel.split(' ').includes(name); });
     let step = 1;
     if (name === 'finish') step = 3;
     else if (['picker', 'demos'].includes(name)) step = 2;
+    else if (['request', 'requested'].includes(name) && requestOrigin !== 'unavailable') step = 2;
     stage.dataset.step = step;
     stage.dataset.screen = name;
     const staffExit = root.getElementById('staff-exit');
@@ -71,6 +84,11 @@ export function mountBooth(root = document) {
     email.blur();
     keyboard.clear();
     email.value = '';
+    clearTimeout(requestedTimer);
+    request?.clear();
+    requestOrigin = 'unavailable';
+    const requested = root.getElementById('requested-summary');
+    if (requested) requested.textContent = 'Your report request is with Adobe.';
     root.getElementById('report-options').replaceChildren();
     ['email-error', 'picker-status', 'finish-status', 'booth-status'].forEach((id) => notice(id, ''));
     root.getElementById('demo-options')?.replaceChildren();
@@ -224,10 +242,19 @@ export function mountBooth(root = document) {
           image.src = `/auth/booth/icon?path=${encodeURIComponent(candidate.path)}`;
         } else icon.title = 'Website icon unavailable';
         icon.append(fallback, image);
+        const copy = root.createElement('span');
+        copy.className = 'report-copy';
         const label = root.createElement('span');
         label.className = 'report-label';
         label.textContent = candidate.label;
-        button.append(icon, label);
+        copy.append(label);
+        if (Number.isFinite(candidate.createdAt) && candidate.createdAt > 0) {
+          const meta = root.createElement('span');
+          meta.className = 'report-meta';
+          meta.textContent = `Report generated: ${reportDate.format(new Date(candidate.createdAt))}`;
+          copy.append(meta);
+        }
+        button.append(icon, copy);
         button.addEventListener('click', async () => {
           if (busy || resetting || !ready) return;
           busy = true;
@@ -346,7 +373,46 @@ export function mountBooth(root = document) {
     },
   });
 
+  request = mountBoothRequest(root, {
+    onSubmitted({ website }) {
+      const summary = root.getElementById('requested-summary');
+      if (summary) {
+        const site = root.createElement('strong');
+        site.textContent = website;
+        summary.replaceChildren('Your request for ', site, ' is with Adobe. Adobe Sales will prepare your Digital Opportunity Report and follow up with you.');
+      }
+      show('requested');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      root.getElementById('requested-heading')?.focus();
+      // A finished request leaves nothing for the next attendee to see.
+      requestedTimer = setTimeout(() => reset(), REQUESTED_CLEAR_MS);
+    },
+    // In-flight requests keep their retry key, so only staff clearing may leave the form.
+    onSending(active) {
+      busy = active;
+      stage.toggleAttribute('data-request-sending', active);
+    },
+    track(operation) {
+      settled = Promise.allSettled([settled, operation]).then(() => undefined);
+    },
+  });
+
   root.querySelectorAll('[data-show-demos]').forEach((button) => button.addEventListener('click', showDemos));
+  root.querySelectorAll('[data-show-request]').forEach((button) => button.addEventListener('click', () => {
+    if (busy || resetting || !ready) return;
+    requestOrigin = button.closest('[data-panel]')?.dataset.panel || 'unavailable';
+    request.clear();
+    show('request');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    root.getElementById('request-heading')?.focus();
+  }));
+  root.getElementById('request-back')?.addEventListener('click', () => {
+    if (busy || resetting || !ready) return;
+    request.clear();
+    show(requestOrigin);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    root.querySelector(`[data-panel="${requestOrigin}"] h2`)?.focus();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

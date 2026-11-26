@@ -19,16 +19,17 @@ if (explicitPort && (!/^\d+$/.test(portValue || '') || Number(portValue) < 1 || 
 let port = Number(portValue || (simulator ? 3001 : 3000));
 const initialPort = port;
 const fixtures = new Map();
+const requestKeys = new Map();
 const reportPath = '/accounts/e/example/insights/example-com/portal-landing/';
 const otherReportPath = '/accounts/e/example/insights/example-org/portal-landing/';
 const candidates = [
-  { path: reportPath, label: 'Example.com', websiteHost: 'example.com' },
-  { path: otherReportPath, label: 'Example.org', websiteHost: 'example.org' },
+  { path: reportPath, label: 'Example.com', websiteHost: 'example.com', createdAt: Date.UTC(2026, 6, 30) },
+  { path: otherReportPath, label: 'Example.org', websiteHost: 'example.org', createdAt: Date.UTC(2026, 7, 7) },
 ];
 const designCandidates = [
-  { path: '/accounts/a/amazon/insights/amazon-com/portal-landing/', label: 'Amazon — amazon.com', websiteHost: 'amazon.com' },
-  { path: '/accounts/a/amazon/insights/amazon-co-uk/portal-landing/', label: 'Amazon — amazon.co.uk', websiteHost: 'amazon.co.uk' },
-  { path: '/accounts/u/unity/insights/unity-com/portal-landing/', label: 'Unity — unity.com', websiteHost: 'unity.com' },
+  { path: '/accounts/a/amazon/insights/amazon-com/portal-landing/', label: 'Amazon — amazon.com', websiteHost: 'amazon.com', createdAt: Date.UTC(2026, 6, 30) },
+  { path: '/accounts/a/amazon/insights/amazon-co-uk/portal-landing/', label: 'Amazon — amazon.co.uk', websiteHost: 'amazon.co.uk', createdAt: Date.UTC(2026, 7, 7) },
+  { path: '/accounts/u/unity/insights/unity-com/portal-landing/', label: 'Unity — unity.com', websiteHost: 'unity.com', createdAt: Date.UTC(2026, 9, 17) },
 ];
 const types = {
   '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -106,7 +107,7 @@ const server = createServer(async (request, response) => {
   if (preview && path.startsWith('/auth/booth/')) {
     const context = fixtureContext(request, response);
     const action = path.split('/').pop();
-    const known = ['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity'];
+    const known = ['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'send', 'reset', 'exit', 'activity', 'request'];
     if (!known.includes(action) || request.method !== (['status', 'icon', 'demos'].includes(action) ? 'GET' : 'POST')) {
       response.writeHead(405, { 'Content-Type': 'application/json' });
       response.end('{"error":"Unsupported local fixture action."}');
@@ -123,6 +124,32 @@ const server = createServer(async (request, response) => {
         response.end('{"error":"Invalid fixture JSON."}');
         return;
       }
+    }
+    if (action === 'request') {
+      // Local stand-in for the Worker: slow@ waits past the client timeout, down@ is a 503.
+      const key = request.headers['idempotency-key'];
+      const email = String(body.email || '').toLowerCase();
+      const complete = body.fullName?.trim() && body.company?.trim() && body.website?.includes('.');
+      if (!key || !complete || body.consent !== true) {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Please complete every field (local fixture)."}');
+        return;
+      }
+      if (email.startsWith('slow@') && !requestKeys.has(key)) {
+        requestKeys.set(key, randomUUID());
+        await new Promise((done) => { setTimeout(done, 11000); });
+      }
+      if (email.startsWith('down@')) {
+        response.writeHead(503, { 'Content-Type': 'application/json' });
+        response.end('{"error":"Report requests are unavailable right now."}');
+        return;
+      }
+      if (!requestKeys.has(key)) requestKeys.set(key, randomUUID());
+      process.stdout.write(`LOCAL REQUEST ${requestKeys.get(key)} campaign=${url.searchParams.get('campaign') || 'none'}\n`);
+      response.writeHead(201, { 'Content-Type': 'application/json' });
+      const submittedAt = new Date().toISOString();
+      response.end(JSON.stringify({ requestId: requestKeys.get(key), submittedAt }));
+      return;
     }
     if (action === 'demos') {
       response.writeHead(200, { 'Content-Type': 'application/json' });

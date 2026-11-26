@@ -38,14 +38,18 @@ export default async function verifyBoothPicker(page, root = 'http://localhost:3
   await match('.report-option:nth-child(2)', { x: 1120, y: 1352, width: 928, height: 180 });
   await match('.report-option:nth-child(3)', { x: 112, y: 1604, width: 928, height: 180 });
   await match('.report-option:first-child .report-icon', { x: 156, y: 1410, width: 64, height: 64 });
-  await match('.report-option:first-child .report-label', { x: 252, y: 1418, width: 414, height: 48 });
-  await match('.picker-panel [data-reset]', { x: 835.5, y: 1928, width: 489, height: 120 });
+  await match('.report-option:first-child .report-label', { x: 252, y: 1401, height: 48 });
+  await match('.report-option:first-child .report-meta', { x: 252, y: 1457, height: 26 });
+  await match('.picker-panel [data-reset]', { y: 1864, height: 144 });
+  await match('.picker-panel [data-show-request]', { y: 1864, height: 144 });
   check(await page.locator('.picker-panel [data-reset]').evaluate((button) => (
     parseFloat(getComputedStyle(button).borderRadius) >= button.getBoundingClientRect().height / 2
   )), 'Picker return action is not the approved outlined pill');
   await match('.stage-footer', { x: 0, y: 2652, width: 2160, height: 229 });
   check(await page.locator('.report-label').allTextContents().then((labels) => labels.join('|'))
     === 'Amazon — amazon.com|Amazon — amazon.co.uk|Unity — unity.com', 'Picker copy differs');
+  check(await page.locator('.report-meta').allTextContents().then((dates) => dates.join('|'))
+    === 'Report generated: July 30, 2026|Report generated: August 7, 2026|Report generated: October 17, 2026', 'Picker report dates differ');
   const cards = await page.locator('.report-option').evaluateAll((elements) => elements.map((element) => {
     const css = getComputedStyle(element);
     return {

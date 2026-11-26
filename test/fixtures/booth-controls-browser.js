@@ -54,7 +54,7 @@ export default async function verifyBoothControls(page, root = 'http://localhost
     check(!staff.underline && staff.border >= 1 && staff.radius >= 24
       && staff.height >= 48 && staff.height <= 72, 'Staff signout is not a compact outlined button');
   }
-  await page.getByRole('button', { name: 'Staff: show industry demos' }).click();
+  await page.getByRole('button', { name: 'Browse Industry Reports' }).click();
   const industryStaff = await buttonStyle('#staff-exit');
   check(!industryStaff.underline && industryStaff.border >= 1, 'Industry signout uses a different treatment');
   await page.locator('#demo-options button').first().click();

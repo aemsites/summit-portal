@@ -58,12 +58,12 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   check(!await page.locator('[data-panel="demos"]').isVisible(), 'Industry selection opened without a visitor action');
   check(await page.locator('#registration-email').inputValue() === '', 'Missing-report recovery retained email');
   await checkActions('[data-panel="unavailable"] .booth-alternative');
-  await page.getByRole('button', { name: 'Show an industry demo', exact: true }).click();
+  await page.getByRole('button', { name: 'Browse Industry Reports', exact: true }).click();
   await page.locator('#demo-options button').nth(9).waitFor();
   check(await page.locator('#demo-recovery-copy').isVisible(), 'Unmatched chooser guidance disappeared');
   check(await page.locator('#demo-options button').count() === 10, 'Industry catalogue is incomplete');
   check(!await page.locator('#demo-intro').isVisible(), 'Unmatched guidance was duplicated');
-  check(!await page.locator('.booth-progress').isVisible(), 'Industry screen retained the old progress footer');
+  check(await page.locator('.booth-progress li[aria-current="step"]').textContent() === 'View report', 'Industry screen does not show the Figma step 2 progress');
   check(!await page.locator('.demo-footer-note').isVisible(), 'Retired industry availability footer returned');
   const icons = await page.locator('#demo-options .demo-icon').evaluateAll(
     (images) => Promise.all(images.map((image) => image.decode().then(
@@ -91,19 +91,19 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   });
   const figma = {
     header: { x: 0, y: 0, width: 2160, height: 277 },
-    title: { x: 112, y: 397, width: 1936, height: 97 },
-    grid: { x: 112, y: 740, width: 1936, height: 1041 },
-    first: { x: 112, y: 740, width: 950, height: 165 },
-    last: { x: 1098, y: 1616, width: 950, height: 165 },
-    icon: { x: 153, y: 790.5, width: 64, height: 64 },
-    back: { x: 866.5, y: 1927, width: 427, height: 120 },
+    title: { x: 128, y: 405, width: 1904, height: 112 },
+    grid: { x: 128, y: 709, width: 1904, height: 1121 },
+    first: { x: 128, y: 709, width: 912, height: 181 },
+    last: { x: 1120, y: 1649, width: 912, height: 181 },
+    icon: { x: 172, y: 767.5, width: 64, height: 64 },
+    back: { y: 1910, height: 144 },
   };
   Object.entries(figma).forEach(([part, expected]) => {
     Object.entries(expected).forEach(([dimension, value]) => {
       check(Math.abs(design[part][dimension] - value) <= 1, `Figma ${part} ${dimension} changed`);
     });
   });
-  check(await page.locator('[data-panel="demos"] [data-reset]').textContent() === 'Try another email', 'Industry return copy differs from final Figma');
+  check(await page.locator('[data-panel="demos"] [data-reset]').textContent() === 'Try with another email', 'Industry return copy differs from final Figma');
   await checkActions('[data-panel="demos"] [data-reset]');
   for (const [width, height] of [[2160, 3840], [1080, 1920], [390, 844]]) {
     await page.setViewportSize({ width, height });
@@ -136,7 +136,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   await page.waitForURL('**/booth');
   await ready();
   check(await page.locator('#registration-email').inputValue() === '', 'Demo reset retained attendee details');
-  await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
+  await page.getByRole('button', { name: 'Browse Industry Reports', exact: true }).click();
   await page.locator('#demo-options button').nth(9).waitFor();
   check(!await page.locator('#demo-recovery-copy').isVisible(), 'New visitor inherited missing-report messaging');
   check(await page.locator('#demo-intro').isVisible(), 'Staff shortcut lost its truthful introduction');
@@ -164,7 +164,7 @@ export default async function verifyBoothDemos(page, root = 'http://localhost:30
   check(await page.evaluate(() => !localStorage.length && !sessionStorage.length), 'Attendee data persisted in browser storage');
   check(actions.filter((url) => url.endsWith('/view')).length >= demos.length, 'Demo views were not recorded');
   check(actions.every((url) => url.endsWith('/view')), 'Demo flow attempted sending, contact or report requests');
-  await page.getByRole('button', { name: 'Staff: show industry demos', exact: true }).click();
+  await page.getByRole('button', { name: 'Browse Industry Reports', exact: true }).click();
   await page.locator('#demo-options button').first().click();
   await page.locator('#booth-return').waitFor();
   await page.route('**/auth/booth/status', (route) => route.fulfill(

@@ -35,6 +35,7 @@ import {
   returnToBooth, boothRecoveryError,
 } from './booth-shell.js';
 import { serveBoothGuide } from './booth-guide.js';
+import injectReportLastUpdated from './report-date.js';
 import {
   CAMPAIGN_SHARE_CONTEXT, CAMPAIGN_SHARE_ACTIVITY_PATH, CAMPAIGN_SHARE_COOKIE_PREFIX,
   campaignShareNavigation, injectCampaignShare, handleCampaignShareActivity,
@@ -485,7 +486,7 @@ const handleRequest = async (request, env, ctx) => {
     && originResponse.headers.get('x-aem-cug-required') === 'true') {
     response = await injectCampaignShare(response, request, session, env);
   }
-  return injectBoothReturn(response, request, env);
+  return injectBoothReturn(injectReportLastUpdated(response, request), request, env);
 };
 
 export default {

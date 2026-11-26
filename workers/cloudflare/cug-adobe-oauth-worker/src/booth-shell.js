@@ -12,6 +12,7 @@ import presentation from '../../../../scripts/booth-presentation.js';
 import preview from '../../../../scripts/booth-preview.js';
 import keyboard from '../../../../scripts/booth-keyboard.js';
 import sessionRuntime from '../../../../scripts/booth-session.js';
+import requestRuntime from '../../../../scripts/booth-request.js';
 import hero from '../../../../blocks/report-hero/report-hero.js';
 import stats from '../../../../blocks/report-stats/report-stats.js';
 import carousel from '../../../../blocks/report-carousel/report-carousel.js';
@@ -26,6 +27,7 @@ import arrow from '../../../../img/booth/action-arrow.svg';
 import finishIcon from '../../../../img/booth/finish-open-in.svg';
 import wordmark from '../../../../img/booth/adobe-wordmark.svg';
 import finalGlow from '../../../../img/booth/entry-final-glow.svg';
+import aiGradient from '../../../../img/booth/entry-ai-gradient.svg';
 import landscapeGlow from '../../../../img/booth/entry-landscape-glow.svg';
 import portraitGlow from '../../../../img/booth/entry-portrait-glow.svg';
 import finishGlow from '../../../../img/booth/finish-glow.svg';
@@ -33,6 +35,8 @@ import finalWebpage from '../../../../img/booth/entry-final-webpage.png';
 import pickerArtwork from '../../../../img/booth/picker-artwork.png';
 import pickerAmazon from '../../../../img/booth/picker-amazon.svg';
 import pickerUnity from '../../../../img/booth/picker-unity.svg';
+import requiredMark from '../../../../img/booth/required.svg';
+import checkmark from '../../../../img/booth/checkmark.svg';
 import globe from '../../../../img/icons/globe.svg';
 import carveloIcon from '../../../../img/booth/industry-carvelo.svg';
 import frescopaIcon from '../../../../img/booth/industry-frescopa.svg';
@@ -64,6 +68,7 @@ const assets = new Map([
   ['/scripts/booth-preview.js', [preview, 'text/javascript']],
   ['/scripts/booth-keyboard.js', [keyboard, 'text/javascript']],
   ['/scripts/booth-session.js', [sessionRuntime, 'text/javascript']],
+  ['/scripts/booth-request.js', [requestRuntime, 'text/javascript']],
   ['/blocks/report-hero/report-hero.js', [hero, 'text/javascript']],
   ['/blocks/report-stats/report-stats.js', [stats, 'text/javascript']],
   ['/blocks/report-carousel/report-carousel.js', [carousel, 'text/javascript']],
@@ -78,6 +83,7 @@ const assets = new Map([
   ['/img/booth/finish-open-in.svg', [finishIcon, 'image/svg+xml']],
   ['/img/booth/adobe-wordmark.svg', [wordmark, 'image/svg+xml']],
   ['/img/booth/entry-final-glow.svg', [finalGlow, 'image/svg+xml']],
+  ['/img/booth/entry-ai-gradient.svg', [aiGradient, 'image/svg+xml']],
   ['/img/booth/entry-landscape-glow.svg', [landscapeGlow, 'image/svg+xml']],
   ['/img/booth/entry-portrait-glow.svg', [portraitGlow, 'image/svg+xml']],
   ['/img/booth/finish-glow.svg', [finishGlow, 'image/svg+xml']],
@@ -85,6 +91,8 @@ const assets = new Map([
   ['/img/booth/picker-artwork.png', [pickerArtwork, 'image/png']],
   ['/img/booth/picker-amazon.svg', [pickerAmazon, 'image/svg+xml']],
   ['/img/booth/picker-unity.svg', [pickerUnity, 'image/svg+xml']],
+  ['/img/booth/required.svg', [requiredMark, 'image/svg+xml']],
+  ['/img/booth/checkmark.svg', [checkmark, 'image/svg+xml']],
   ['/img/icons/globe.svg', [globe, 'image/svg+xml']],
   ['/img/booth/industry-carvelo.svg', [carveloIcon, 'image/svg+xml']],
   ['/img/booth/industry-frescopa.svg', [frescopaIcon, 'image/svg+xml']],
@@ -202,7 +210,7 @@ export async function serveBooth(request, env) {
   if (asset) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response(null, { status: 405 });
     const headers = { 'Content-Type': asset[1], 'X-Content-Type-Options': 'nosniff' };
-    if (pathname.startsWith('/img/booth/') || pathname.includes('/booth-touchscreen') || ['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
+    if (pathname.startsWith('/img/booth/') || pathname.includes('/booth-touchscreen') || ['/scripts/booth.js', '/scripts/booth-preview.js', '/blocks/report-ai-visibility/rav-core.js', '/styles/booth.css', '/scripts/booth-report.js', '/scripts/booth-presentation.js', '/styles/booth-report.css', '/scripts/booth-keyboard.js', '/scripts/booth-session.js', '/scripts/booth-request.js', '/styles/booth-keyboard.css', '/styles/booth-loading.css'].includes(pathname)) {
       headers['Cache-Control'] = 'no-cache';
     }
     return new Response(request.method === 'HEAD' ? null : asset[0], { headers });

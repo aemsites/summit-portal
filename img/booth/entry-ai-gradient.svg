@@ -1,0 +1,17 @@
+<svg width="1360" height="1160" viewBox="0 0 1360 1160" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="AI Gradient" filter="url(#filter0_f_0_5)">
+<ellipse cx="680" cy="580" rx="300" ry="200" fill="url(#paint0_linear_0_5)"/>
+</g>
+<defs>
+<filter id="filter0_f_0_5" x="0" y="0" width="1360" height="1160" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="190" result="effect1_foregroundBlur_0_5"/>
+</filter>
+<linearGradient id="paint0_linear_0_5" x1="380" y1="380" x2="1026.19" y2="479.255" gradientUnits="userSpaceOnUse">
+<stop stop-color="#D73220"/>
+<stop offset="0.33" stop-color="#D92361"/>
+<stop offset="1" stop-color="#7155FA"/>
+</linearGradient>
+</defs>
+</svg>

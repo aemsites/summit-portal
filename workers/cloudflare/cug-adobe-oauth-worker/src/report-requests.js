@@ -7,6 +7,10 @@ const PAGE_SIZE = 50;
 const EXPORT_LIMIT = 1000;
 const RATE_LIMIT_WINDOW_SECONDS = 600;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const BOOTH_RATE_LIMIT_MAX_REQUESTS = 40;
+export const BOOTH_REQUEST_SOURCE = 'Booth request form';
+const BOOTH_UNAVAILABLE = 'Report requests are unavailable right now. Ask the booth team for help.';
+const BOOTH_RATE_LIMITED = 'This booth has sent many requests in a short time. Ask the booth team for help.';
 const CONSENT_VERSION = 'adobe-privacy-v1';
 const IDENTITY_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
 const DATA_ADMINS = new Set([
@@ -379,19 +383,7 @@ async function handleStageTest(request, env, url) {
   }
 }
 
-async function handleCreate(request, env) {
-  if (databaseUnavailable(env)) {
-    return privateResponse({ error: 'Report requests are unavailable.' }, 503);
-  }
-
-  const parsed = await parsePublicRequest(request);
-  if (parsed.error) return parsed.error;
-  if (parsed.body && Object.hasOwn(parsed.body, 'stageToken')) {
-    return invalid('Test requests must use the test endpoint.');
-  }
-  const { value, error, idempotencyKey } = await validateSubmission(request, env, parsed.body);
-  if (error) return error;
-
+async function storeReportRequest(env, value, idempotencyKey) {
   const requestId = crypto.randomUUID();
   const submittedAt = new Date().toISOString();
   const keyHash = await requestKeyHash(idempotencyKey, env);
@@ -443,6 +435,67 @@ async function handleCreate(request, env) {
     return privateResponse({ error: 'Report requests are unavailable.' }, 503);
   }
   return privateResponse({ requestId: stored.request_id, submittedAt: stored.submitted_at }, 201);
+}
+
+async function handleCreate(request, env) {
+  if (databaseUnavailable(env)) {
+    return privateResponse({ error: 'Report requests are unavailable.' }, 503);
+  }
+
+  const parsed = await parsePublicRequest(request);
+  if (parsed.error) return parsed.error;
+  if (parsed.body && Object.hasOwn(parsed.body, 'stageToken')) {
+    return invalid('Test requests must use the test endpoint.');
+  }
+  const { value, error, idempotencyKey } = await validateSubmission(request, env, parsed.body);
+  if (error) return error;
+  return storeReportRequest(env, value, idempotencyKey);
+}
+
+/**
+ * Booth intake. The staff-authenticated device replaces Turnstile, and every
+ * attendee shares one network address, so the limit is per booth login rather
+ * than per IP. Campaign attribution comes only from the booth URL.
+ */
+export async function handleBoothReportRequest(request, env, { campaign, binding }) {
+  if (databaseUnavailable(env)) {
+    return privateResponse({ error: BOOTH_UNAVAILABLE }, 503);
+  }
+  const parsed = await parsePublicRequest(request);
+  if (parsed.error) return parsed.error;
+  const allowed = ['fullName', 'email', 'company', 'website', 'consent', 'websiteConfirm'];
+  if (!parsed.body || typeof parsed.body !== 'object'
+    || Object.keys(parsed.body).some((key) => !allowed.includes(key))) {
+    return invalid('Invalid request');
+  }
+  const normalised = normaliseRequest(parsed.body);
+  if (normalised.error) return invalid(normalised.error);
+  const idempotencyKey = request.headers.get('Idempotency-Key') || '';
+  if (!IDENTITY_KEY_RE.test(idempotencyKey)) {
+    return invalid('A valid idempotency key is required.');
+  }
+  const keyHash = await requestKeyHash(idempotencyKey, env);
+  const existing = await env.REPORT_REQUESTS.prepare(`SELECT r.request_id, r.submitted_at
+    FROM report_request_idempotency i JOIN report_requests r ON r.request_id = i.request_id
+    WHERE i.request_key_hash = ?`).bind(keyHash).first();
+  // A retry after an unconfirmed response must succeed without spending the limit.
+  if (existing) {
+    const { request_id: requestId, submitted_at: submittedAt } = existing;
+    return privateResponse({ requestId, submittedAt }, 201);
+  }
+  const rateKey = await sha256(`${env.RATE_LIMIT_SALT || env.JWT_SECRET}:booth:${binding}`);
+  const storageKey = `report-request-booth-rate:${rateKey}`;
+  const count = Number(await env.SESSIONS.get(storageKey)) || 0;
+  if (count >= BOOTH_RATE_LIMIT_MAX_REQUESTS) {
+    return privateResponse({ error: BOOTH_RATE_LIMITED }, 429);
+  }
+  const expirationTtl = RATE_LIMIT_WINDOW_SECONDS;
+  await env.SESSIONS.put(storageKey, String(count + 1), { expirationTtl });
+  return storeReportRequest(env, {
+    ...normalised.value,
+    requestSource: BOOTH_REQUEST_SOURCE,
+    publicCampaignId: normalizePublicCampaignId(campaign),
+  }, idempotencyKey);
 }
 
 async function handleList(url, env, admin) {

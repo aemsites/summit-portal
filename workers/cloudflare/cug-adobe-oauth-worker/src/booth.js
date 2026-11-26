@@ -14,6 +14,7 @@ import createBoothTiming from './booth-timing.js';
 import { BOOTH_DEMOS, findBoothDemo } from './booth-demos.js';
 import { websiteHost, fetchWebsiteIcon } from './booth-icons.js';
 import { boothCampaignId } from './report-request-campaigns.js';
+import { handleBoothReportRequest } from './report-requests.js';
 
 const TTL = 24 * 60 * 60;
 const COOKIE = 'booth_context';
@@ -206,6 +207,7 @@ export async function discoverReports(
       label,
       company,
       websiteHost: host,
+      created: createdAt,
       grantGroups,
       org,
       resourceAuthorized,
@@ -214,6 +216,7 @@ export async function discoverReports(
       label,
       company,
       ...(host ? { websiteHost: host } : {}),
+      ...(createdAt ? { createdAt } : {}),
       ...(grants ? { grantGroups, org, resourceAuthorized: !!resourceAuthorized } : {}),
     }));
   });
@@ -274,7 +277,8 @@ async function pickerIcon(request, stub, env, timing) {
 export async function handleBooth(request, env) {
   const timing = createBoothTiming(env);
   const start = timing.now();
-  if (!await timing.measure('booth_auth', () => boothStaff(request, env))) {
+  const staff = await timing.measure('booth_auth', () => boothStaff(request, env));
+  if (!staff) {
     return reply({ error: 'Staff authentication required' }, 401);
   }
   const finish = (response) => {
@@ -282,7 +286,7 @@ export async function handleBooth(request, env) {
     return timing.response(response);
   };
   const action = new URL(request.url).pathname.split('/').pop();
-  if (!['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity', 'authorize'].includes(action)
+  if (!['status', 'icon', 'demos', 'demo-picker', 'demo', 'lookup', 'picker', 'select', 'view', 'scroll', 'send', 'reset', 'exit', 'activity', 'request', 'authorize'].includes(action)
     || action === 'authorize') {
     return finish(reply({ error: 'Unknown booth action' }, 404));
   }
@@ -292,6 +296,14 @@ export async function handleBooth(request, env) {
   if (request.method === 'POST' && (request.headers.get('Origin') !== new URL(request.url).origin
     || request.headers.get('Content-Type')?.split(';')[0] !== 'application/json')) {
     return finish(reply({ error: 'Same-origin JSON request required' }, 403));
+  }
+  if (action === 'request') {
+    const response = await handleBoothReportRequest(request, env, {
+      campaign: boothCampaignId(new URL(request.url)),
+      binding: staff.binding,
+    });
+    Object.entries(ASSET_HEADERS).forEach(([key, value]) => response.headers.set(key, value));
+    return finish(response);
   }
   if (!env.BOOTH_COORDINATOR) return finish(reply({ error: 'Booth service is not configured' }, 503));
   if (action === 'demos') return finish(reply({ demos: BOOTH_DEMOS }));
